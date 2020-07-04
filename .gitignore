@@ -26,7 +26,12 @@
 *.a
 *.lib
 
+# Misc
+/.settings/
+
 # Executables
 *.exe
 *.out
 *.app
+/SAMC21/
+/SAME5x/
