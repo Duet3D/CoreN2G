@@ -4,20 +4,29 @@
  *  Created on: 19 Jun 2020
  *      Author: David
  *
- * This file contains basic CPU and I/O pin support.
- * Use it where we can't include the full Core.h file.
+ * This file contains basic CPU and I/O pin support for the SAME5x (also works with SAMD5x) and SAMC21
+ * Use it where we can't include the full CoreIO.h file, for example in C source files
  */
 
-#ifndef SRC_HARDWARE_SAME5X_CORE_H_
-#define SRC_HARDWARE_SAME5X_CORE_H_
+#ifndef SRC_CORE_H_
+#define SRC_CORE_H_
 
 // Basic CPU and I/O pin support
 
-#if defined(__SAME54P20A__)
+#include "ecv.h"
+#undef array
+#undef assert
+#undef result
+#undef value
+
+#if defined(__SAME54P20A__) || defined(__SAMD51N19A__)
 # include <same54.h>
 # define __ARM_ARCH_7EM__	1
 # define SAME5x				1
 # define SAMC21				0
+# ifndef SUPPORT_CAN
+#  define SUPPORT_CAN		0
+# endif
 #elif defined(__SAMC21G18A__)
 # include <samc21.h>
 # define __ARM_ARCH_6M__	1
@@ -42,6 +51,7 @@ typedef uint8_t DmaChannel;
 typedef uint8_t DmaPriority;
 typedef uint8_t Pin;
 typedef uint8_t ExintNumber;
+typedef uint16_t PwmFrequency;
 
 static const Pin NoPin = 0xFF;
 
@@ -81,11 +91,15 @@ extern uint32_t SystemPeripheralClock;
 
 uint32_t millis() noexcept;
 uint64_t millis64() noexcept;
-uint32_t trueRandom() noexcept;
+void delay(uint32_t millis) noexcept;
 
 void pinMode(Pin pin, enum PinMode mode) noexcept;
 bool digitalRead(Pin pin) noexcept;
 void digitalWrite(Pin pin, bool high) noexcept;
+
+#if SAME5x
+uint32_t trueRandom() noexcept;
+#endif
 
 static inline void delayMicroseconds(uint32_t) noexcept __attribute__((always_inline, unused));
 static inline void delayMicroseconds(uint32_t usec) noexcept
@@ -160,4 +174,4 @@ static inline bool inInterrupt() noexcept
 }		// end extern "C"
 #endif
 
-#endif /* SRC_HARDWARE_SAME5X_CORE_H_ */
+#endif /* SRC_CORE_H_ */

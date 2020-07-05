@@ -13,10 +13,23 @@
 #include <General/SimpleMath.h>
 #include <hal_gpio.h>
 
+// Define NumTotalPins as pin number at and beyond which it is not safe to access the corresponding port registers on this processor family.
+// This may be greater than the number of I/O pins actually on the particular device we are running on.
+#if SAME5x
+constexpr unsigned int NumTotalPins = (3 * 32) + 22;	// SAME54P20A goes up to PD21
+#elif SAMC21
+constexpr unsigned int NumTotalPins = 2 * 32;			// SAMC21J goes up to PB31. We don't support the SAMC21N.
+#else
+# error Unsupported processor
+#endif
+
 inline constexpr Pin PortAPin(unsigned int n) noexcept { return n; }
 inline constexpr Pin PortBPin(unsigned int n) noexcept { return 32+n; }
+
+#if SAME5x
 inline constexpr Pin PortCPin(unsigned int n) noexcept { return 64+n; }
 inline constexpr Pin PortDPin(unsigned int n) noexcept { return 96+n; }
+#endif
 
 // Pin function numbers for calls to gpio_set_pin_function
 enum class GpioPinFunction : uint32_t { A = 0, B, C, D, E, F, G, H, I, J, K, L, M, N };
@@ -68,12 +81,9 @@ extern "C" uint32_t SystemPeripheralClock;		// in system_samxxx.c
 void WatchdogInit() noexcept;
 void watchdogReset() noexcept;
 void CoreSysTick() noexcept;
-void CoreInit() noexcept;
+void CoreInit(DmaChannel firstAdcDmaChannel) noexcept;
 
-static inline int32_t random(uint32_t howbig) noexcept
-{
-	return trueRandom() % howbig;
-}
+int32_t random(uint32_t howbig) noexcept;
 
 static inline uint32_t random(uint32_t howsmall, uint32_t howbig) noexcept
 {
@@ -103,9 +113,11 @@ enum class TcOutput : uint8_t
 	tc2_0, tc2_1,
 	tc3_0, tc3_1,
 	tc4_0, tc4_1,
+#if SAME5x
 	tc5_0, tc5_1,
 	tc6_0, tc6_1,
 	tc7_0, tc7_1,
+#endif
 
 	none = 0xFF,
 };
@@ -119,6 +131,7 @@ void EnableTccClock(unsigned int tccNumber, uint32_t gclkVal) noexcept;
 
 enum class TccOutput : uint8_t
 {
+#if SAME5x
 	// TCC devices on peripheral F
 	tcc0_0F = 0x00, tcc0_1F, tcc0_2F, tcc0_3F, tcc0_4F, tcc0_5F,
 	tcc1_0F = 0x08, tcc1_1F, tcc1_2F, tcc1_3F, tcc1_4F, tcc1_5F, tcc1_6F,
@@ -134,6 +147,17 @@ enum class TccOutput : uint8_t
 	tcc3_0G = 0x98, tcc3_1G, tcc3_2G, tcc3_3G, tcc3_4G, tcc3_5G,
 	tcc4_0G = 0xA0, tcc4_1G, tcc4_2G, tcc4_3G, tcc4_4G, tcc4_5G,
 	tcc5_0G = 0xA8, tcc5_1G, tcc5_2G, tcc5_3G, tcc5_4G, tcc5_5G,
+#endif
+
+#if SAMC21
+	// TCC devices on peripheral E
+	tcc0_0E = 0x00, tcc0_1E, tcc0_2E, tcc0_3E, tcc0_4E, tcc0_5E,
+	tcc1_0E = 0x08, tcc1_1E, tcc1_2E, tcc1_3E, tcc1_4E, tcc1_5E,
+	tcc2_0E = 0x10, tcc2_1E, tcc2_2E, tcc2_3E, tcc2_4E, tcc2_5E,
+	// TCC devices on peripheral F
+	tcc0_0F = 0x80, tcc0_1F, tcc0_2F, tcc0_3F, tcc0_4F, tcc0_5F, tcc0_6F, tcc0_7F,
+	tcc1_0F = 0x88, tcc1_1F, tcc1_2F, tcc1_3F, tcc1_4F, tcc1_5F,
+#endif
 
 	none = 0xFF
 };
@@ -146,12 +170,16 @@ static inline constexpr GpioPinFunction GetPeriNumber(TccOutput tcc) noexcept
 	return ((uint8_t)tcc >= 0x80) ? GpioPinFunction::G : GpioPinFunction::F;		// peripheral G or F
 }
 
-// ADC input identifiers
+// ADC input identifiers. On the SAMC21 we only support the first ADC and the SDADC. On the SAME5x we support both ADCs.
 enum class AdcInput : uint8_t
 {
 	adc0_0 = 0x00, adc0_1, adc0_2, adc0_3, adc0_4, adc0_5, adc0_6, adc0_7, adc0_8, adc0_9, adc0_10, adc0_11,
+#if SAME5x
 	adc0_12, adc0_13, adc0_14, adc0_15,
 	adc1_0 = 0x10, adc1_1, adc1_2, adc1_3, adc1_4, adc1_5, adc1_6, adc1_7, adc1_8, adc1_9, adc1_10, adc1_11,
+#elif SAMC21
+	sdadc_0 = 0x10, sdadc_1,
+#endif
 	none = 0xFF
 };
 
@@ -169,12 +197,16 @@ enum class SercomIo : uint8_t
 	// SERCOM pins on peripheral C
 	sercom0c = 0x00,
 	sercom1c, sercom2c, sercom3c, sercom4c, sercom5c,
+#if SAME5x
 	sercom6c, sercom7c,
+#endif
 
 	// SERCOM pins on peripheral D
 	sercom0d = 0x80,
 	sercom1d, sercom2d, sercom3d, sercom4d, sercom5d,
+#if SAME5x
 	sercom6d, sercom7d,
+#endif
 
 	none = 0xFF
 };
@@ -188,5 +220,23 @@ constexpr uint32_t SerialNumberAddresses[4] = { 0x008061FC, 0x00806010, 0x008060
 #elif SAMC21
 constexpr uint32_t SerialNumberAddresses[4] = { 0x0080A00C, 0x0080A040, 0x0080A044, 0x0080A048 };
 #endif
+
+// Pin table format. A client of this library may inherit it in order to define additional fields at the end.
+//TODO check that we can still brace-initialise such an inherited strict
+struct PinDescriptionBase
+{
+	TcOutput tc;
+	TccOutput tcc;
+	AdcInput adc;
+#if SAMC21
+	AdcInput sdadc;
+#endif
+	SercomIo sercomIn;
+	SercomIo sercomOut;
+	uint8_t exintNumber;
+};
+
+// External function to get a pin table entry. This must be provided by the client project.
+const PinDescriptionBase *GetPinDescription(Pin p) noexcept;
 
 #endif /* SRC_HARDWARE_SAME5X_COREIO_H_ */

@@ -25,7 +25,7 @@ enum class DmaCallbackReason : uint8_t
 	completeAndError = DMAC_CHINTFLAG_TERR | DMAC_CHINTFLAG_TCMPL
 };
 
-typedef void (*DmaCallbackFunction)(CallbackParameter cb, DmaCallbackReason reason);
+typedef void (*DmaCallbackFunction)(CallbackParameter cb, DmaCallbackReason reason) noexcept;
 
 enum class DmaTrigSource : uint8_t
 {
@@ -188,35 +188,36 @@ static_assert((uint8_t)DmaTrigSource::ptc_seq == 0x30, "Error in DmaTrigSource e
 #endif
 
 // The following works for all sercoms on the SAME51 and sercoms 1 to 5 on the SAMC21. We don't support sercoms 6-7 on the SAMC21 because they only exist on the 100-pin version.
-static inline uint8_t GetSercomTxTrigSource(uint8_t sercomNumber)
+static inline uint8_t GetSercomTxTrigSource(uint8_t sercomNumber) noexcept
 {
 	return (uint8_t)DmaTrigSource::sercom0_tx + (sercomNumber * 2);
 }
 
 // The following works for all sercoms on the SAME51 and sercoms 1 to 5 on the SAMC21. We don't support sercoms 6-7 on the SAMC21 because they only exist on the 100-pin version.
-static inline uint8_t GetSercomRxTrigSource(uint8_t sercomNumber)
+static inline uint8_t GetSercomRxTrigSource(uint8_t sercomNumber) noexcept
 {
 	return (uint8_t)DmaTrigSource::sercom0_rx + (sercomNumber * 2);
 }
 
 namespace DmacManager
 {
-	void Init();
-	void SetBtctrl(uint8_t channel, uint16_t val);								// warning: call SetBtctrl, SetSourceAddress and SetDestinationAddress BEFORE SetDataLength!
-	void SetSourceAddress(uint8_t channel, const volatile void *const src);		// warning: call SetBtctrl, SetSourceAddress and SetDestinationAddress BEFORE SetDataLength!
-	void SetDestinationAddress(uint8_t channel, volatile void *const dst);		// warning: call SetBtctrl, SetSourceAddress and SetDestinationAddress BEFORE SetDataLength!
-	void SetDataLength(uint8_t channel, uint32_t amount);						// warning: call SetBtctrl, SetSourceAddress and SetDestinationAddress BEFORE SetDataLength!
-	void SetTriggerSource(uint8_t channel, DmaTrigSource source);
-	void SetTriggerSourceSercomTx(uint8_t channel, uint8_t sercomNumber);
-	void SetTriggerSourceSercomRx(uint8_t channel, uint8_t sercomNumber);
-	void SetArbitrationLevel(uint8_t channel, uint8_t level);
-	void EnableChannel(uint8_t channel, uint8_t priority);
-	void DisableChannel(uint8_t channel);
-	void SetInterruptCallback(uint8_t channel, DmaCallbackFunction fn, CallbackParameter param);
-	void EnableCompletedInterrupt(uint8_t channel);
-	void DisableCompletedInterrupt(uint8_t channel);
-	uint8_t GetChannelStatus(uint8_t channel);
-	uint16_t GetBytesTransferred(uint8_t channel);
+	void Init() noexcept;
+	void SetBtctrl(DmaChannel channel, uint16_t val) noexcept;								// warning: call SetBtctrl, SetSourceAddress and SetDestinationAddress BEFORE SetDataLength!
+	void SetSourceAddress(DmaChannel channel, const volatile void *const src) noexcept;		// warning: call SetBtctrl, SetSourceAddress and SetDestinationAddress BEFORE SetDataLength!
+	void SetDestinationAddress(DmaChannel channel, volatile void *const dst) noexcept;		// warning: call SetBtctrl, SetSourceAddress and SetDestinationAddress BEFORE SetDataLength!
+	void SetDataLength(DmaChannel channel, uint32_t amount) noexcept;						// warning: call SetBtctrl, SetSourceAddress and SetDestinationAddress BEFORE SetDataLength!
+	void SetTriggerSource(DmaChannel channel, DmaTrigSource source) noexcept;
+	void SetTriggerSourceSercomTx(DmaChannel channel, uint8_t sercomNumber) noexcept;
+	void SetTriggerSourceSercomRx(DmaChannel channel, uint8_t sercomNumber) noexcept;
+	void SetArbitrationLevel(DmaChannel channel, uint8_t level) noexcept;
+	void EnableChannel(DmaChannel channel) noexcept;
+	void DisableChannel(DmaChannel channel) noexcept;
+	void SetInterruptCallback(DmaChannel channel, DmaCallbackFunction fn, CallbackParameter param) noexcept;
+	void EnableCompletedInterrupt(DmaChannel channel) noexcept;
+	void DisableCompletedInterrupt(DmaChannel channel) noexcept;
+	void SetPriority(DmaChannel channel, DmaPriority priority) noexcept;
+	uint8_t GetChannelStatus(DmaChannel channel) noexcept;
+	uint16_t GetBytesTransferred(DmaChannel channel) noexcept;
 }
 
 #endif /* SRC_HARDWARE_DMACMANAGER_H_ */

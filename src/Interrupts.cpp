@@ -12,7 +12,7 @@ struct InterruptCallback
 	StandardCallbackFunction func;
 	CallbackParameter param;
 
-	InterruptCallback() : func(nullptr) { }
+	InterruptCallback() noexcept : func(nullptr) { }
 };
 
 // On the SAME5x we have 16 external interrupts shared between multiple pins. Only one of those pins may be programmed to generate an interrupt.
@@ -20,7 +20,7 @@ struct InterruptCallback
 // The pin table ensures that only one pin is flagged as able to use each EXINT.
 static InterruptCallback exintCallbacks[16];
 
-void InitialisePinChangeInterrupts()
+void InitialisePinChangeInterrupts() noexcept
 {
 	hri_gclk_write_PCHCTRL_reg(GCLK, EIC_GCLK_ID, GCLK_PCHCTRL_GEN_GCLK0_Val | (1 << GCLK_PCHCTRL_CHEN_Pos));
 	hri_mclk_set_APBAMASK_EIC_bit(MCLK);
@@ -64,7 +64,7 @@ void InitialisePinChangeInterrupts()
 }
 
 // Attach an interrupt to the specified pin returning true if successful
-bool AttachInterrupt(Pin pin, ExintNumber exint, StandardCallbackFunction callback, InterruptMode mode, CallbackParameter param)
+bool AttachInterrupt(Pin pin, ExintNumber exint, StandardCallbackFunction callback, InterruptMode mode, CallbackParameter param) noexcept
 {
 	if (exint >= 16)
 	{
@@ -122,7 +122,7 @@ bool AttachInterrupt(Pin pin, ExintNumber exint, StandardCallbackFunction callba
 	return true;
 }
 
-void DetachInterrupt(Pin pin, ExintNumber exint)
+void DetachInterrupt(Pin pin, ExintNumber exint) noexcept
 {
 	if (exint < 16)
 	{
@@ -157,7 +157,7 @@ void DetachInterrupt(Pin pin, ExintNumber exint)
 #if SAME5x
 
 // Common EXINT handler
-static inline void CommonExintHandler(size_t exintNumber)
+static inline void CommonExintHandler(size_t exintNumber) noexcept
 {
 	EIC->INTFLAG.reg = 1ul << exintNumber;				// clear the interrupt
 	const InterruptCallback& cb = exintCallbacks[exintNumber];
@@ -167,89 +167,89 @@ static inline void CommonExintHandler(size_t exintNumber)
 	}
 }
 
-extern "C" void EIC_0_Handler(void)
+extern "C" void EIC_0_Handler() noexcept
 {
 	CommonExintHandler(0);
 }
 
-extern "C" void EIC_1_Handler(void)
+extern "C" void EIC_1_Handler() noexcept
 {
 	CommonExintHandler(1);
 }
 
-extern "C" void EIC_2_Handler(void)
+extern "C" void EIC_2_Handler() noexcept
 {
 	CommonExintHandler(2);
 }
 
-extern "C" void EIC_3_Handler(void)
+extern "C" void EIC_3_Handler() noexcept
 {
 	CommonExintHandler(3);
 }
 
-extern "C" void EIC_4_Handler(void)
+extern "C" void EIC_4_Handler() noexcept
 {
 	CommonExintHandler(4);
 }
 
-extern "C" void EIC_5_Handler(void)
+extern "C" void EIC_5_Handler() noexcept
 {
 	CommonExintHandler(5);
 }
 
-extern "C" void EIC_6_Handler(void)
+extern "C" void EIC_6_Handler() noexcept
 {
 	CommonExintHandler(6);
 }
 
-extern "C" void EIC_7_Handler(void)
+extern "C" void EIC_7_Handler() noexcept
 {
 	CommonExintHandler(7);
 }
 
-extern "C" void EIC_8_Handler(void)
+extern "C" void EIC_8_Handler() noexcept
 {
 	CommonExintHandler(8);
 }
 
-extern "C" void EIC_9_Handler(void)
+extern "C" void EIC_9_Handler() noexcept
 {
 	CommonExintHandler(9);
 }
 
-extern "C" void EIC_10_Handler(void)
+extern "C" void EIC_10_Handler() noexcept
 {
 	CommonExintHandler(10);
 }
 
-extern "C" void EIC_11_Handler(void)
+extern "C" void EIC_11_Handler() noexcept
 {
 	CommonExintHandler(11);
 }
 
-extern "C" void EIC_12_Handler(void)
+extern "C" void EIC_12_Handler() noexcept
 {
 	CommonExintHandler(12);
 }
 
-extern "C" void EIC_13_Handler(void)
+extern "C" void EIC_13_Handler() noexcept
 {
 	CommonExintHandler(13);
 }
 
-extern "C" void EIC_14_Handler(void)
+extern "C" void EIC_14_Handler() noexcept
 {
 	CommonExintHandler(14);
 }
 
-extern "C" void EIC_15_Handler(void)
+extern "C" void EIC_15_Handler() noexcept
 {
 	CommonExintHandler(15);
 }
 
 #elif SAMC21
 
-extern "C" void EIC_Handler(void)
+extern "C" void EIC_Handler() noexcept
 {
 	uint16_t intflag;
 	while ((intflag = EIC->INTFLAG.reg) != 0)

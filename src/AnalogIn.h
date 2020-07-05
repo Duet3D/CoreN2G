@@ -10,7 +10,7 @@
 
 #include <CoreIO.h>
 
-typedef void (*AnalogInCallbackFunction)(CallbackParameter p, uint16_t reading);
+typedef void (*AnalogInCallbackFunction)(CallbackParameter p, uint16_t reading) noexcept;
 
 namespace AnalogIn
 {
@@ -23,37 +23,41 @@ namespace AnalogIn
 
 	// Initialise the analog input subsystem. Call this just once.
 	// For the SAME5x we need 4 DMA channels. For the SAMC21 we need 1 DMA channel, or 2 if supporting the SDADC.
-	void Init(DmaChannel dmaChan);
+	void Init(DmaChannel dmaChan) noexcept;
 
 	// Enable analog input on a pin.
 	// Readings will be taken and about every 'ticksPerCall' milliseconds the callback function will be called with the specified parameter and ADC reading.
 	// Set ticksPerCall to 0 to get a callback on every reading.
 	// Warning! there is nothing to stop you enabling a channel twice, in which case in the SAME51 configuration, it will be read twice in the sequence.
-	bool EnableChannel(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall, bool useAlternateAdc);
+	bool EnableChannel(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall, bool useAlternateAdc) noexcept;
 
 	// Readings will be taken and about every 'ticksPerCall' milliseconds the callback function will be called with the specified parameter and ADC reading.
 	// Set ticksPerCall to 0 to get a callback on every reading.
-	bool SetCallback(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall, bool useAlternateAdc);
+	bool SetCallback(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall, bool useAlternateAdc) noexcept;
 
 	// Return whether or not the channel is enabled
-	bool IsChannelEnabled(AdcInput adcin, bool useAlternateAdc = false);
+	bool IsChannelEnabled(AdcInput adcin, bool useAlternateAdc = false) noexcept;
 
 	// Disable a previously-enabled channel
-	void DisableChannel(AdcInput adcin, bool useAlternateAdc);
+	void DisableChannel(AdcInput adcin, bool useAlternateAdc) noexcept;
 
 	// Get the latest result from a channel. the channel must have been enabled first.
-	uint16_t ReadChannel(AdcInput adcin);
+	uint16_t ReadChannel(AdcInput adcin) noexcept;
 
 	// Get the number of conversions that were started
-	void GetDebugInfo(uint32_t &convsStarted, uint32_t &convsCompleted, uint32_t &convTimeouts);
+	void GetDebugInfo(uint32_t &convsStarted, uint32_t &convsCompleted, uint32_t &convTimeouts) noexcept;
 
 #if SAME5x
 	// Enable an on-chip MCU temperature sensor. We don't use this on the SAMC21 because that chip has a separate TSENS peripheral.
-	bool EnableTemperatureSensor(unsigned int sensorNumber, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall, unsigned int adcnum);
+	bool EnableTemperatureSensor(unsigned int sensorNumber, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall, unsigned int adcnum) noexcept;
 #endif
 
 #if SAMC21
-	void EnableTemperatureSensor(AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall);
+	void EnableTemperatureSensor(AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall) noexcept;
+#endif
+
+#ifdef RTOS
+	[[noreturn]] void TaskLoop(void*) noexcept;
 #endif
 }
 

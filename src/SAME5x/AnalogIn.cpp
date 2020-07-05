@@ -7,6 +7,10 @@
 
 #include <CoreIO.h>
 
+#if !SAME5x
+# error Wrong processor!
+#endif
+
 #include "AnalogIn.h"
 #include <RTOSIface/RTOSIface.h>
 #include <DmacManager.h>
@@ -44,26 +48,27 @@ public:
 		ready
 	};
 
-	AdcClass(Adc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaTrigSource p_trigSrc);
+	AdcClass(Adc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaTrigSource p_trigSrc) noexcept;
 
-	State GetState() const { return state; }
-	bool EnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall);
-	bool SetCallback(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall);
-	bool IsChannelEnabled(unsigned int chan) const;
+	State GetState() const noexcept { return state; }
+	bool EnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
+	bool SetCallback(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
+	bool IsChannelEnabled(unsigned int chan) const noexcept;
 #ifdef RTOS
-	bool StartConversion(TaskBase *p_taskToWake);
+	bool StartConversion(TaskHandle p_taskToWake) noexcept;
 #endif
-	uint16_t ReadChannel(unsigned int chan) const { return resultsByChannel[chan]; }
-	bool EnableTemperatureSensor(unsigned int sensorNumber, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall);
+	uint16_t ReadChannel(unsigned int chan) const noexcept { return resultsByChannel[chan]; }
+	bool EnableTemperatureSensor(unsigned int sensorNumber, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall) noexcept;
 
-	void ResultReadyCallback(DmaCallbackReason reason);
-	void ExecuteCallbacks();
+	void ResultReadyCallback(DmaCallbackReason reason) noexcept;
+	void ExecuteCallbacks() noexcept;
 
 private:
-	bool InternalEnableChannel(unsigned int chan, uint8_t ctrlB, uint8_t refCtrl, uint8_t avgCtrl, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall);
-	size_t GetChannel(size_t slot) { return inputRegisters[DmaDwordsPerChannel * slot] & 0x1F; }
+	bool InternalEnableChannel(unsigned int chan, uint8_t ctrlB, uint8_t refCtrl, uint8_t avgCtrl,
+								AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
+	size_t GetChannel(size_t slot) noexcept { return inputRegisters[DmaDwordsPerChannel * slot] & 0x1F; }
 
-	static void DmaCompleteCallback(CallbackParameter cp, DmaCallbackReason reason);
+	static void DmaCompleteCallback(CallbackParameter cp, DmaCallbackReason reason) noexcept;
 
 	static constexpr size_t NumAdcChannels = 32;			// number of channels per ADC including temperature sensor inputs etc.
 	static constexpr size_t MaxSequenceLength = 16;			// the maximum length of the read sequence
@@ -77,7 +82,7 @@ private:
 	size_t numChannelsConverting;
 	volatile uint32_t channelsEnabled;
 #ifdef RTOS
-	TaskBase * volatile taskToWake;
+	volatile TaskHandle taskToWake;
 #endif
 	uint32_t whenLastConversionStarted;
 	volatile State state;
@@ -90,7 +95,7 @@ private:
 	volatile uint16_t resultsByChannel[NumAdcChannels];		// must be large enough to handle PTAT and CTAT temperature sensor inputs
 };
 
-AdcClass::AdcClass(Adc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaTrigSource p_trigSrc)
+AdcClass::AdcClass(Adc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaTrigSource p_trigSrc) noexcept
 	: device(p_device), irqn(p_irqn), dmaChan(p_dmaChan), trigSrc(p_trigSrc),
 	  numChannelsEnabled(0), numChannelsConverting(0), channelsEnabled(0),
 #ifdef RTOS
@@ -112,7 +117,7 @@ AdcClass::AdcClass(Adc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaT
 // Try to enable this ADC on the specified pin returning true if successful
 // Only single ended mode with gain x1 is supported
 // There is no check to avoid adding the same channel twice. If you do that it will be converted twice.
-bool AdcClass::EnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall)
+bool AdcClass::EnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept
 {
 	if (numChannelsEnabled == MaxSequenceLength || chan >= NumAdcChannels)
 	{
@@ -122,7 +127,7 @@ bool AdcClass::EnableChannel(unsigned int chan, AnalogInCallbackFunction fn, Cal
 	return InternalEnableChannel(chan, CtrlB, RefCtrl, AvgCtrl, fn, param, p_ticksPerCall);
 }
 
-bool AdcClass::SetCallback(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall)
+bool AdcClass::SetCallback(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept
 {
 	for (size_t i = 0; i < numChannelsEnabled; ++i)
 	{
@@ -140,12 +145,12 @@ bool AdcClass::SetCallback(unsigned int chan, AnalogInCallbackFunction fn, Callb
 	return false;
 }
 
-bool AdcClass::IsChannelEnabled(unsigned int chan) const
+bool AdcClass::IsChannelEnabled(unsigned int chan) const noexcept
 {
 	return (channelsEnabled & (1ul << chan)) != 0;
 }
 
-bool AdcClass::EnableTemperatureSensor(unsigned int sensorNumber, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall)
+bool AdcClass::EnableTemperatureSensor(unsigned int sensorNumber, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept
 {
 	if (numChannelsEnabled == MaxSequenceLength || sensorNumber >= 2)
 	{
@@ -155,7 +160,8 @@ bool AdcClass::EnableTemperatureSensor(unsigned int sensorNumber, AnalogInCallba
 	return InternalEnableChannel(sensorNumber + ADC_INPUTCTRL_MUXPOS_PTAT_Val, CtrlB, RefCtrl, AvgCtrl, fn, param, p_ticksPerCall);
 }
 
-bool AdcClass::InternalEnableChannel(unsigned int chan, uint8_t ctrlB, uint8_t refCtrl, uint8_t avgCtrl, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall)
+bool AdcClass::InternalEnableChannel(unsigned int chan, uint8_t ctrlB, uint8_t refCtrl, uint8_t avgCtrl,
+										AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept
 {
 	if (chan < 32)
 	{
@@ -269,7 +275,7 @@ bool AdcClass::InternalEnableChannel(unsigned int chan, uint8_t ctrlB, uint8_t r
 #ifdef RTOS
 
 // If no conversion is already in progress and there are channels to convert, start a conversion and return true; else return false
-bool AdcClass::StartConversion(TaskBase *p_taskToWake)
+bool AdcClass::StartConversion(TaskHandle p_taskToWake) noexcept
 {
 	numChannelsConverting = numChannelsEnabled;			// capture volatile variable to ensure we use a consistent value
 	if (numChannelsConverting == 0)
@@ -307,8 +313,8 @@ bool AdcClass::StartConversion(TaskBase *p_taskToWake)
 		dmaFinishedReason = DmaCallbackReason::none;
 		DmacManager::EnableCompletedInterrupt(dmaChan + 1);
 
-		DmacManager::EnableChannel(dmaChan + 1, DmacPrioAdcRx);
-		DmacManager::EnableChannel(dmaChan, DmacPrioAdcTx);
+		DmacManager::EnableChannel(dmaChan + 1);
+		DmacManager::EnableChannel(dmaChan);
 
 		state = State::converting;
 		++conversionsStarted;
@@ -318,7 +324,7 @@ bool AdcClass::StartConversion(TaskBase *p_taskToWake)
 	return true;
 }
 
-void AdcClass::ExecuteCallbacks()
+void AdcClass::ExecuteCallbacks() noexcept
 {
 	TaskCriticalSectionLocker lock;
 	const uint32_t now = millis();
@@ -340,7 +346,7 @@ void AdcClass::ExecuteCallbacks()
 #endif
 
 // Indirect callback from the DMA controller ISR
-void AdcClass::ResultReadyCallback(DmaCallbackReason reason)
+void AdcClass::ResultReadyCallback(DmaCallbackReason reason) noexcept
 {
 	dmaFinishedReason = reason;
 	state = State::ready;
@@ -350,13 +356,13 @@ void AdcClass::ResultReadyCallback(DmaCallbackReason reason)
 #ifdef RTOS
 	if (taskToWake != nullptr)
 	{
-		taskToWake->GiveFromISR();
+		TaskBase::GiveFromISR(taskToWake);
 	}
 #endif
 }
 
 // Callback from the DMA controller ISR
-/*static*/ void AdcClass::DmaCompleteCallback(CallbackParameter cp, DmaCallbackReason reason)
+/*static*/ void AdcClass::DmaCompleteCallback(CallbackParameter cp, DmaCallbackReason reason) noexcept
 {
 	static_cast<AdcClass *>(cp.vp)->ResultReadyCallback(reason);
 }
@@ -366,46 +372,39 @@ static AdcClass *adcs[2];
 
 #ifdef RTOS
 
-namespace AnalogIn
+// Main loop executed by the AIN task
+void AnalogIn::TaskLoop(void *) noexcept
 {
-	// Analog input management task
-	constexpr size_t AnalogInTaskStackWords = 200;
-	static Task<AnalogInTaskStackWords> analogInTask;
-
-	// Main loop executed by the AIN task
-	extern "C" void AinLoop(void *)
+	// Loop taking readings and processing them
+	for (;;)
 	{
-		// Loop taking readings and processing them
-		for (;;)
+		// Loop through ADCs
+		bool conversionStarted = false;
+		for (AdcClass* adc : adcs)
 		{
-			// Loop through ADCs
-			bool conversionStarted = false;
-			for (AdcClass& adc : Adcs)
+			if (adc->GetState() == AdcClass::State::ready)
 			{
-				if (adc.GetState() == AdcClass::State::ready)
-				{
-					adc.ExecuteCallbacks();
-				}
-
-				if (adc.StartConversion(&analogInTask))
-				{
-					conversionStarted = true;
-				}
+				adc->ExecuteCallbacks();
 			}
 
-			if (conversionStarted)
+			if (adc->StartConversion(TaskBase::GetCallerTaskHandle()))
 			{
-				if (!TaskBase::Take(500))
-				{
-					//TODO we had a timeout so record an error
-				}
-				delay(2);
+				conversionStarted = true;
 			}
-			else
+		}
+
+		if (conversionStarted)
+		{
+			if (!TaskBase::Take(500))
 			{
-				// No ADCs enabled yet, or all converting
-				delay(10);
+				//TODO we had a timeout so record an error
 			}
+			delay(2);
+		}
+		else
+		{
+			// No ADCs enabled yet, or all converting
+			delay(10);
 		}
 	}
 }
@@ -413,7 +412,7 @@ namespace AnalogIn
 #endif
 
 // Initialise the analog input subsystem. Call this just once.
-void AnalogIn::Init(DmaChannel dmaChan)
+void AnalogIn::Init(DmaChannel dmaChan) noexcept
 {
 	// Enable ADC clocks
 	hri_mclk_set_APBDMASK_ADC0_bit(MCLK);
@@ -424,16 +423,12 @@ void AnalogIn::Init(DmaChannel dmaChan)
 	// Create the device instances
 	adcs[0] = new AdcClass(ADC0, ADC0_0_IRQn, dmaChan, DmaTrigSource::adc0_resrdy);
 	adcs[1] = new AdcClass(ADC1, ADC1_0_IRQn, dmaChan + 2, DmaTrigSource::adc1_resrdy);
-
-#ifdef RTOS
-	analogInTask.Create(AinLoop, "AIN", nullptr, TaskPriority::AinPriority);
-#endif
 }
 
 // Enable analog input on a pin.
 // Readings will be taken and about every 'ticksPerCall' milliseconds the callback function will be called with the specified parameter and ADC reading.
 // Set ticksPerCall to 0 to get a callback on every reading.
-bool AnalogIn::EnableChannel(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall, bool useAlternateAdc)
+bool AnalogIn::EnableChannel(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall, bool useAlternateAdc) noexcept
 {
 	if (adcin != AdcInput::none)
 	{
@@ -444,7 +439,7 @@ bool AnalogIn::EnableChannel(AdcInput adcin, AnalogInCallbackFunction fn, Callba
 
 // Readings will be taken and about every 'ticksPerCall' milliseconds the callback function will be called with the specified parameter and ADC reading.
 // Set ticksPerCall to 0 to get a callback on every reading.
-bool AnalogIn::SetCallback(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall, bool useAlternateAdc)
+bool AnalogIn::SetCallback(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall, bool useAlternateAdc) noexcept
 {
 	if (adcin != AdcInput::none)
 	{
@@ -454,7 +449,7 @@ bool AnalogIn::SetCallback(AdcInput adcin, AnalogInCallbackFunction fn, Callback
 }
 
 // Return whether or not the channel is enabled
-bool AnalogIn::IsChannelEnabled(AdcInput adcin, bool useAlternateAdc)
+bool AnalogIn::IsChannelEnabled(AdcInput adcin, bool useAlternateAdc) noexcept
 {
 	if (adcin != AdcInput::none)
 	{
@@ -465,12 +460,12 @@ bool AnalogIn::IsChannelEnabled(AdcInput adcin, bool useAlternateAdc)
 }
 
 // Disable a previously-enabled channel
-void AnalogIn::DisableChannel(AdcInput adcin, bool useAlternateAdc)
+void AnalogIn::DisableChannel(AdcInput adcin, bool useAlternateAdc) noexcept
 {
 	//TODO not implemented yet (do we need it?)
 }
 
-uint16_t AnalogIn::ReadChannel(AdcInput adcin)
+uint16_t AnalogIn::ReadChannel(AdcInput adcin) noexcept
 {
 	return (adcin != AdcInput::none) ? adcs[GetDeviceNumber(adcin)]->ReadChannel(GetInputNumber(adcin)) : 0;
 }
@@ -481,7 +476,7 @@ uint16_t AnalogIn::ReadChannel(AdcInput adcin)
 // Both internal temperature sensors, TSENSP and TSENSC, are not supported and should not be used.
 // Workaround: None
 // Affected Silicon Revisions: A, D
-bool AnalogIn::EnableTemperatureSensor(unsigned int sensorNumber, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall, unsigned int adcnum)
+bool AnalogIn::EnableTemperatureSensor(unsigned int sensorNumber, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall, unsigned int adcnum) noexcept
 {
 	if (adcnum < ARRAY_SIZE(adcs))
 	{
@@ -494,7 +489,7 @@ bool AnalogIn::EnableTemperatureSensor(unsigned int sensorNumber, AnalogInCallba
 }
 
 // Return debug information
-void AnalogIn::GetDebugInfo(uint32_t &convsStarted, uint32_t &convsCompleted, uint32_t &convTimeouts)
+void AnalogIn::GetDebugInfo(uint32_t &convsStarted, uint32_t &convsCompleted, uint32_t &convTimeouts) noexcept
 {
 	convsStarted = conversionsStarted;
 	convsCompleted = conversionsCompleted;

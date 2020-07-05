@@ -29,7 +29,7 @@ static DmaCallbackFunction dmaChannelCallbackFunctions[NumDmaChannelsUsed];
 static CallbackParameter callbackParams[NumDmaChannelsUsed];
 
 // Initialize the DMA controller
-void DmacManager::Init()
+void DmacManager::Init() noexcept
 {
 	hri_mclk_set_AHBMASK_DMAC_bit(MCLK);
 
@@ -77,22 +77,22 @@ void DmacManager::Init()
 	hri_dmac_set_CTRL_DMAENABLE_bit(DMAC);
 }
 
-void DmacManager::SetBtctrl(const uint8_t channel, const uint16_t val)
+void DmacManager::SetBtctrl(const uint8_t channel, const uint16_t val) noexcept
 {
 	hri_dmacdescriptor_write_BTCTRL_reg(&descriptor_section[channel], val);
 }
 
-void DmacManager::SetDestinationAddress(const uint8_t channel, volatile void *const dst)
+void DmacManager::SetDestinationAddress(const uint8_t channel, volatile void *const dst) noexcept
 {
 	hri_dmacdescriptor_write_DSTADDR_reg(&descriptor_section[channel], reinterpret_cast<uint32_t>(dst));
 }
 
-void DmacManager::SetSourceAddress(const uint8_t channel, const volatile void *const src)
+void DmacManager::SetSourceAddress(const uint8_t channel, const volatile void *const src) noexcept
 {
 	hri_dmacdescriptor_write_SRCADDR_reg(&descriptor_section[channel], reinterpret_cast<uint32_t>(src));
 }
 
-void DmacManager::SetDataLength(const uint8_t channel, const uint32_t amount)
+void DmacManager::SetDataLength(const uint8_t channel, const uint32_t amount) noexcept
 {
 	const uint8_t beat_size = hri_dmacdescriptor_read_BTCTRL_BEATSIZE_bf(&descriptor_section[channel]);
 
@@ -111,7 +111,7 @@ void DmacManager::SetDataLength(const uint8_t channel, const uint32_t amount)
 	hri_dmacdescriptor_write_BTCNT_reg(&descriptor_section[channel], amount);
 }
 
-void DmacManager::SetTriggerSource(uint8_t channel, DmaTrigSource source)
+void DmacManager::SetTriggerSource(uint8_t channel, DmaTrigSource source) noexcept
 {
 #if SAME5x
 	DMAC->Channel[channel].CHCTRLA.reg = DMAC_CHCTRLA_TRIGSRC((uint32_t)source) | DMAC_CHCTRLA_TRIGACT_BURST
@@ -125,7 +125,7 @@ void DmacManager::SetTriggerSource(uint8_t channel, DmaTrigSource source)
 #endif
 }
 
-void DmacManager::SetTriggerSourceSercomRx(uint8_t channel, uint8_t sercomNumber)
+void DmacManager::SetTriggerSourceSercomRx(uint8_t channel, uint8_t sercomNumber) noexcept
 {
 	const uint32_t source = GetSercomRxTrigSource(sercomNumber);
 #if SAME5x
@@ -141,7 +141,7 @@ void DmacManager::SetTriggerSourceSercomRx(uint8_t channel, uint8_t sercomNumber
 }
 
 // Transmit
-void DmacManager::SetTriggerSourceSercomTx(uint8_t channel, uint8_t sercomNumber)
+void DmacManager::SetTriggerSourceSercomTx(uint8_t channel, uint8_t sercomNumber) noexcept
 {
 	const uint32_t source = GetSercomTxTrigSource(sercomNumber);
 #if SAME5x
@@ -156,7 +156,7 @@ void DmacManager::SetTriggerSourceSercomTx(uint8_t channel, uint8_t sercomNumber
 #endif
 }
 
-void DmacManager::SetArbitrationLevel(uint8_t channel, uint8_t level)
+void DmacManager::SetArbitrationLevel(uint8_t channel, uint8_t level) noexcept
 {
 #if SAME5x
 	DMAC->Channel[channel].CHPRILVL.reg = level;
@@ -169,16 +169,14 @@ void DmacManager::SetArbitrationLevel(uint8_t channel, uint8_t level)
 #endif
 }
 
-void DmacManager::EnableChannel(const uint8_t channel, uint8_t priority)
+void DmacManager::EnableChannel(const uint8_t channel) noexcept
 {
 	hri_dmacdescriptor_set_BTCTRL_VALID_bit(&descriptor_section[channel]);
 #if SAME5x
-	DMAC->Channel[channel].CHPRILVL.reg = priority;
 	DMAC->Channel[channel].CHCTRLA.bit.ENABLE = 1;
 #elif SAMC21
 	AtomicCriticalSectionLocker lock;
 	DMAC->CHID.reg = channel;
-	DMAC->CHCTRLB.bit.LVL = priority;
 	DMAC->CHCTRLA.bit.ENABLE = 1;
 #else
 # error Unsupported processor
@@ -186,7 +184,7 @@ void DmacManager::EnableChannel(const uint8_t channel, uint8_t priority)
 }
 
 // Disable a channel. Also clears its status and disables its interrupts.
-void DmacManager::DisableChannel(const uint8_t channel)
+void DmacManager::DisableChannel(const uint8_t channel) noexcept
 {
 #if SAME5x
 	DMAC->Channel[channel].CHCTRLA.bit.ENABLE = 0;
@@ -201,14 +199,14 @@ void DmacManager::DisableChannel(const uint8_t channel)
 #endif
 }
 
-void DmacManager::SetInterruptCallback(uint8_t channel, DmaCallbackFunction fn, CallbackParameter param)
+void DmacManager::SetInterruptCallback(uint8_t channel, DmaCallbackFunction fn, CallbackParameter param) noexcept
 {
 	AtomicCriticalSectionLocker lock;
 	dmaChannelCallbackFunctions[channel] = fn;
 	callbackParams[channel] = param;
 }
 
-void DmacManager::EnableCompletedInterrupt(const uint8_t channel)
+void DmacManager::EnableCompletedInterrupt(const uint8_t channel) noexcept
 {
 #if SAME5x
 	DMAC->Channel[channel].CHINTFLAG.reg = DMAC_CHINTENCLR_TCMPL | DMAC_CHINTENCLR_TERR | DMAC_CHINTENCLR_SUSP;
@@ -223,7 +221,7 @@ void DmacManager::EnableCompletedInterrupt(const uint8_t channel)
 #endif
 }
 
-void DmacManager::DisableCompletedInterrupt(const uint8_t channel)
+void DmacManager::DisableCompletedInterrupt(const uint8_t channel) noexcept
 {
 #if SAME5x
 	DMAC->Channel[channel].CHINTENCLR.reg = DMAC_CHINTENSET_TCMPL | DMAC_CHINTENSET_TERR;
@@ -236,7 +234,20 @@ void DmacManager::DisableCompletedInterrupt(const uint8_t channel)
 #endif
 }
 
-uint8_t DmacManager::GetChannelStatus(uint8_t channel)
+void DmacManager::SetPriority(DmaChannel channel, DmaPriority priority) noexcept
+{
+#if SAME5x
+	DMAC->Channel[channel].CHPRILVL.reg = priority;
+#elif SAMC21
+	AtomicCriticalSectionLocker lock;
+	DMAC->CHID.reg = channel;
+	DMAC->CHCTRLB.bit.LVL = priority;
+#else
+# error Unsupported processor
+#endif
+}
+
+uint8_t DmacManager::GetChannelStatus(uint8_t channel) noexcept
 {
 #if SAME5x
 	return DMAC->Channel[channel].CHINTFLAG.reg;
@@ -249,7 +260,7 @@ uint8_t DmacManager::GetChannelStatus(uint8_t channel)
 #endif
 }
 
-uint16_t DmacManager::GetBytesTransferred(uint8_t channel)
+uint16_t DmacManager::GetBytesTransferred(uint8_t channel) noexcept
 {
 	return descriptor_section[channel].BTCNT.reg - write_back_section[channel].BTCNT.reg;
 }
@@ -257,7 +268,7 @@ uint16_t DmacManager::GetBytesTransferred(uint8_t channel)
 #if SAME5x
 
 // Internal DMAC interrupt handler
-static inline void CommonDmacHandler(uint8_t channel)
+static inline void CommonDmacHandler(uint8_t channel) noexcept
 {
 	const uint8_t intflag = DMAC->Channel[channel].CHINTFLAG.reg & DMAC->Channel[channel].CHINTENSET.reg & (DMAC_CHINTFLAG_SUSP | DMAC_CHINTFLAG_TCMPL | DMAC_CHINTFLAG_TERR);
 	if (intflag != 0)					// should always be true
@@ -271,27 +282,27 @@ static inline void CommonDmacHandler(uint8_t channel)
 	}
 }
 
-extern "C" void DMAC_0_Handler()
+extern "C" void DMAC_0_Handler() noexcept
 {
 	CommonDmacHandler(0);
 }
 
-extern "C" void DMAC_1_Handler()
+extern "C" void DMAC_1_Handler() noexcept
 {
 	CommonDmacHandler(1);
 }
 
-extern "C" void DMAC_2_Handler()
+extern "C" void DMAC_2_Handler() noexcept
 {
 	CommonDmacHandler(2);
 }
 
-extern "C" void DMAC_3_Handler()
+extern "C" void DMAC_3_Handler() noexcept
 {
 	CommonDmacHandler(3);
 }
 
-extern "C" void DMAC_4_Handler()
+extern "C" void DMAC_4_Handler() noexcept
 {
 	hri_dmac_intpend_reg_t intPend;
 	while ((intPend = DMAC->INTPEND.reg & DMAC_INTPEND_ID_Msk) > 3)
@@ -302,7 +313,7 @@ extern "C" void DMAC_4_Handler()
 
 #elif SAMC21
 
-extern "C" void DMAC_Handler()
+extern "C" void DMAC_Handler() noexcept
 {
 	hri_dmac_intpend_reg_t intPend;
 	while (((intPend = DMAC->INTPEND.reg) & (DMAC_INTPEND_SUSP | DMAC_INTPEND_TCMPL | DMAC_INTPEND_TERR)) != 0)

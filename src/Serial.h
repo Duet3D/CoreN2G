@@ -31,12 +31,12 @@ namespace Serial
 #endif
 	};
 
-	inline Sercom *GetSercom(uint8_t sercomNumber) { return Sercoms[sercomNumber]; }
-	inline IRQn GetSercomIRQn(uint8_t sercomNumber) { return SercomIRQns[sercomNumber]; }
+	inline Sercom *GetSercom(uint8_t sercomNumber) noexcept { return Sercoms[sercomNumber]; }
+	inline IRQn GetSercomIRQn(uint8_t sercomNumber) noexcept { return SercomIRQns[sercomNumber]; }
 
-	void EnableSercomClock(uint8_t sercomNumber);
-	void InitUart(uint8_t SercomNumber, uint32_t baudRate, uint8_t rxPad);
-	void Disable(uint8_t sercomNumber);
+	void EnableSercomClock(uint8_t sercomNumber) noexcept;
+	void InitUart(uint8_t SercomNumber, uint32_t baudRate, uint8_t rxPad) noexcept;
+	void Disable(uint8_t sercomNumber) noexcept;
 }
 
 #endif /* SRC_SERIAL_H_ */

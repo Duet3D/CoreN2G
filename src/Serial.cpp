@@ -20,9 +20,9 @@
 # error Unsupported processor
 #endif
 
-constexpr uint32_t DiagBaudRate = 57600;		// the baud rate we use
+constexpr uint32_t DiagBaudRate = 57600;		// the baud rate we default to
 
-void Serial::EnableSercomClock(uint8_t sercomNumber)
+void Serial::EnableSercomClock(uint8_t sercomNumber) noexcept
 {
 	switch (sercomNumber)
 	{
@@ -124,7 +124,7 @@ void Serial::EnableSercomClock(uint8_t sercomNumber)
 }
 
 // Initialise the serial port. This does not set up the I/O pins.
-void Serial::InitUart(uint8_t sercomNumber, uint32_t baudRate, uint8_t rxPad)
+void Serial::InitUart(uint8_t sercomNumber, uint32_t baudRate, uint8_t rxPad) noexcept
 {
 	EnableSercomClock(sercomNumber);
 	Sercom * const sercom = GetSercom(sercomNumber);
@@ -168,7 +168,7 @@ void Serial::InitUart(uint8_t sercomNumber, uint32_t baudRate, uint8_t rxPad)
 }
 
 // Undo the initialisation, so that when we jump into the main firmware the USART can be initialised again
-void Serial::Disable(uint8_t sercomNumber)
+void Serial::Disable(uint8_t sercomNumber) noexcept
 {
 	Sercom * const sercom = GetSercom(sercomNumber);
 	hri_sercomusart_clear_CTRLA_ENABLE_bit(sercom);
