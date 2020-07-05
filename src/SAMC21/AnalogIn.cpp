@@ -5,6 +5,8 @@
  *      Author: David
  */
 
+#ifdef RTOS
+
 #include <CoreIO.h>
 
 #if !SAMC21
@@ -31,9 +33,7 @@ static AnalogInCallbackFunction tempCallbackFn = nullptr;
 static CallbackParameter tempCallbackParam;
 static uint32_t tempTicksPerCall = 1;
 
-#ifdef RTOS
 static uint32_t tempTicksAtLastCall = 0;
-#endif
 
 class AdcBase
 {
@@ -47,12 +47,10 @@ public:
 		ready
 	};
 
-	AdcBase(IRQn p_irqn, DmaChannel p_dmaChan, DmaTrigSource p_trigSrc) noexcept;
+	AdcBase(IRQn p_irqn, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept;
 
-#ifdef RTOS
 	virtual bool StartConversion(TaskHandle p_taskToWake) noexcept = 0;
 	virtual void ExecuteCallbacks() noexcept = 0;
-#endif
 
 	State GetState() const noexcept { return state; }
 	bool EnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
@@ -74,14 +72,13 @@ protected:
 
 	const IRQn irqn;
 	const DmaChannel dmaChan;
+	const DmaPriority dmaPrio;
 	const DmaTrigSource trigSrc;
 
 	volatile DmaCallbackReason dmaFinishedReason;
 	volatile size_t numChannelsEnabled;
 	volatile uint32_t channelsEnabled;
-#ifdef RTOS
 	volatile TaskHandle taskToWake;
-#endif
 	uint32_t whenLastConversionStarted;
 	volatile State state;
 	bool justStarted;
@@ -93,13 +90,10 @@ protected:
 	volatile uint16_t resultsByChannel[NumAdcChannels];
 };
 
-AdcBase::AdcBase(IRQn p_irqn, DmaChannel p_dmaChan, DmaTrigSource p_trigSrc) noexcept
-	: irqn(p_irqn), dmaChan(p_dmaChan), trigSrc(p_trigSrc),
+AdcBase::AdcBase(IRQn p_irqn, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept
+	: irqn(p_irqn), dmaChan(p_dmaChan), dmaPrio(priority), trigSrc(p_trigSrc),
 	  numChannelsEnabled(0), channelsEnabled(0),
-#ifdef RTOS
-	  taskToWake(nullptr),
-#endif
-	  whenLastConversionStarted(0), state(State::noChannels)
+	  taskToWake(nullptr), whenLastConversionStarted(0), state(State::noChannels)
 {
 	for (size_t i = 0; i < NumAdcChannels; ++i)
 	{
@@ -149,12 +143,10 @@ void AdcBase::ResultReadyCallback(DmaCallbackReason reason) noexcept
 	state = State::ready;
 	++conversionsCompleted;
 	DmacManager::DisableChannel(dmaChan);			// disable the sequencer DMA, just in case it is out of sync
-#ifdef RTOS
 	if (taskToWake != nullptr)
 	{
 		TaskBase::GiveFromISR(taskToWake);
 	}
-#endif
 }
 
 // Callback from the DMA controller ISR
@@ -166,12 +158,10 @@ void AdcBase::ResultReadyCallback(DmaCallbackReason reason) noexcept
 class AdcClass : public AdcBase
 {
 public:
-	AdcClass(Adc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaTrigSource p_trigSrc) noexcept;
+	AdcClass(Adc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept;
 
-#ifdef RTOS
 	bool StartConversion(TaskHandle p_taskToWake) noexcept override;
 	void ExecuteCallbacks() noexcept override;
-#endif
 
 protected:
 	bool InternalEnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept override;
@@ -180,8 +170,8 @@ private:
 	Adc * const device;
 };
 
-AdcClass::AdcClass(Adc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaTrigSource p_trigSrc) noexcept
-	: AdcBase(p_irqn, p_dmaChan, p_trigSrc), device(p_device)
+AdcClass::AdcClass(Adc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept
+	: AdcBase(p_irqn, p_dmaChan, priority, p_trigSrc), device(p_device)
 {
 }
 
@@ -279,8 +269,6 @@ bool AdcClass::InternalEnableChannel(unsigned int chan, AnalogInCallbackFunction
 	return false;
 }
 
-#ifdef RTOS
-
 // Start a conversion if we are not already doing one and have channels to convert, or timeout an existing conversion
 bool AdcClass::StartConversion(TaskHandle p_taskToWake) noexcept
 {
@@ -311,7 +299,7 @@ bool AdcClass::StartConversion(TaskHandle p_taskToWake) noexcept
 	dmaFinishedReason = DmaCallbackReason::none;
 	DmacManager::EnableCompletedInterrupt(dmaChan);
 
-	DmacManager::EnableChannel(dmaChan);
+	DmacManager::EnableChannel(dmaChan, dmaPrio);
 
 	state = State::converting;
 	device->SWTRIG.reg = ADC_SWTRIG_START;
@@ -346,14 +334,12 @@ void AdcClass::ExecuteCallbacks() noexcept
 	}
 }
 
-#endif
-
 #if SUPPORT_SDADC
 
 class SdAdcClass : public AdcBase
 {
 public:
-	SdAdcClass(Sdadc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaTrigSource p_trigSrc) noexcept;
+	SdAdcClass(Sdadc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept;
 
 	bool StartConversion(TaskHandle p_taskToWake) noexcept override;
 	void ExecuteCallbacks() noexcept override;
@@ -368,8 +354,8 @@ private:
 };
 
 SdAdcClass::SdAdcClass(
-	Sdadc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaTrigSource p_trigSrc) noexcept
-	: AdcBase(p_irqn, p_dmaChan, p_trigSrc), device(p_device)
+	Sdadc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept
+	: AdcBase(p_irqn, p_dmaChan, priority, p_trigSrc), device(p_device)
 {
 }
 
@@ -403,7 +389,7 @@ bool SdAdcClass::StartConversion(TaskHandle p_taskToWake) noexcept
 	dmaFinishedReason = DmaCallbackReason::none;
 	DmacManager::EnableCompletedInterrupt(dmaChan);
 
-	DmacManager::EnableChannel(dmaChan, DmacPrioAdcRx);
+	DmacManager::EnableChannel(dmaChan, dmaPrio);
 
 	state = State::converting;
 	device->SWTRIG.reg = SDADC_SWTRIG_START;
@@ -505,8 +491,6 @@ bool SdAdcClass::InternalEnableChannel(unsigned int chan, AnalogInCallbackFuncti
 // ADC instances
 static AdcBase *adcs[1 + SUPPORT_SDADC];
 
-#ifdef RTOS
-
 // Main loop executed by the AIN task
 void AnalogIn::TaskLoop(void*) noexcept
 {
@@ -556,15 +540,13 @@ void AnalogIn::TaskLoop(void*) noexcept
 	}
 }
 
-#endif
-
 // Initialise the analog input subsystem. Call this just once.
-void AnalogIn::Init(DmaChannel dmaChan) noexcept
+void AnalogIn::Init(DmaChannel dmaChan, DmaPriority priority) noexcept
 {
 	// Create the device instances
-	adcs[0] = new AdcClass(ADC0, ADC0_IRQn, dmaChan, DmaTrigSource::adc0_resrdy);
+	adcs[0] = new AdcClass(ADC0, ADC0_IRQn, dmaChan, priority, DmaTrigSource::adc0_resrdy);
 #if SUPPORT_SDADC
-	adcs[1] = new SdAdcClass(SDADC, SDADC_IRQn, dmaChan + 1, DmaTrigSource::sdadc_resrdy);
+	adcs[1] = new SdAdcClass(SDADC, SDADC_IRQn, dmaChan + 1, priority, DmaTrigSource::sdadc_resrdy);
 #endif
 
 	// Enable ADC clocks. SAMC21 has 2 ADCs but we use only the first one
@@ -661,5 +643,7 @@ void AnalogIn::GetDebugInfo(uint32_t &convsStarted, uint32_t &convsCompleted, ui
 	convsCompleted = conversionsCompleted;
 	convTimeouts = conversionTimeouts;
 }
+
+#endif
 
 // End

@@ -21,9 +21,10 @@ namespace AnalogIn
 	constexpr unsigned int AdcBits = 16;
 #endif
 
+#ifdef RTOS
 	// Initialise the analog input subsystem. Call this just once.
 	// For the SAME5x we need 4 DMA channels. For the SAMC21 we need 1 DMA channel, or 2 if supporting the SDADC.
-	void Init(DmaChannel dmaChan) noexcept;
+	void Init(DmaChannel dmaChan, DmaPriority priority) noexcept;
 
 	// Enable analog input on a pin.
 	// Readings will be taken and about every 'ticksPerCall' milliseconds the callback function will be called with the specified parameter and ADC reading.
@@ -56,8 +57,12 @@ namespace AnalogIn
 	void EnableTemperatureSensor(AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall) noexcept;
 #endif
 
-#ifdef RTOS
 	[[noreturn]] void TaskLoop(void*) noexcept;
+
+#else
+
+	//TODO simple analog input function
+
 #endif
 }
 

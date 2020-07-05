@@ -44,6 +44,35 @@ inline void ClearPinFunction(Pin p) noexcept
 	gpio_set_pin_function(p, GPIO_PIN_FUNCTION_OFF);
 }
 
+// GCLK management
+enum class GclkSource : uint8_t
+{
+#if SAME5x
+	xosc0 = 1,
+	xosc1,
+	gclkIn,
+	gclk1,
+	oscUlp32k,
+	xosc32k,
+	dfll,
+	dpll0,
+	dpll1
+#elif SAMC21
+	xosc = 0,
+	gclkIn,
+	gclk1,
+	oscUlp32k,
+	osc32k,
+	xosc32k,
+	osc48m,
+	dpll
+#else
+# error Unsupported processor
+#endif
+};
+
+void EnableGclk(unsigned int index, GclkSource source, uint16_t divisor, bool enableOutput = false) noexcept;
+
 // Atomic section locker, alternative to InterruptCriticalSectionLocker (is safe to call from within an ISR, and may be faster)
 class AtomicCriticalSectionLocker
 {

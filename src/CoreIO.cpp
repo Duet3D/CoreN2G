@@ -131,7 +131,7 @@ static void RandomInit()
 
 #endif
 
-void CoreInit(DmaChannel firstAdcDmaChannel) noexcept
+void CoreInit() noexcept
 {
 	DmacManager::Init();
 
@@ -141,10 +141,6 @@ void CoreInit(DmaChannel firstAdcDmaChannel) noexcept
 
 	// Initialise the I/O subsystem
 	InitialiseExints();
-
-	// Initialise analog in and PWM out
-	AnalogIn::Init(firstAdcDmaChannel);
-	AnalogOut::Init();
 }
 
 void WatchdogInit() noexcept
@@ -171,6 +167,24 @@ void Reset() noexcept
 {
 	SCB->AIRCR = (0x5FA << 16) | (1u << 2);						// reset the processor
 	for (;;) { }
+}
+
+// Enable a GCLK. This function doesn't allow access to some GCLK features, e.g. the DIVSEL or OOV or RUNSTDBY bits.
+// Only GCLK1 can have a divisor greater than 255.
+void EnableGclk(unsigned int index, GclkSource source, uint16_t divisor, bool enableOutput) noexcept
+{
+	uint32_t regVal = GCLK_GENCTRL_DIV(divisor) | (uint32_t)source | (1u << GCLK_GENCTRL_GENEN_Pos);
+	if (divisor & 1u)
+	{
+		regVal |= 1u << GCLK_GENCTRL_IDC_Pos;
+	}
+	if (enableOutput)
+	{
+		regVal |= 1u << GCLK_GENCTRL_OE_Pos;
+	}
+
+	GCLK->GENCTRL[index].reg = regVal;
+	while (GCLK->SYNCBUSY.reg & GCLK_SYNCBUSY_MASK) { }
 }
 
 void EnableTcClock(unsigned int tcNumber, uint32_t gclkVal) noexcept

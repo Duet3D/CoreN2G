@@ -169,14 +169,16 @@ void DmacManager::SetArbitrationLevel(uint8_t channel, uint8_t level) noexcept
 #endif
 }
 
-void DmacManager::EnableChannel(const uint8_t channel) noexcept
+void DmacManager::EnableChannel(const uint8_t channel, DmaPriority priority) noexcept
 {
 	hri_dmacdescriptor_set_BTCTRL_VALID_bit(&descriptor_section[channel]);
 #if SAME5x
+	DMAC->Channel[channel].CHPRILVL.reg = priority;
 	DMAC->Channel[channel].CHCTRLA.bit.ENABLE = 1;
 #elif SAMC21
 	AtomicCriticalSectionLocker lock;
 	DMAC->CHID.reg = channel;
+	DMAC->CHCTRLB.bit.LVL = priority;
 	DMAC->CHCTRLA.bit.ENABLE = 1;
 #else
 # error Unsupported processor
@@ -229,19 +231,6 @@ void DmacManager::DisableCompletedInterrupt(const uint8_t channel) noexcept
 	AtomicCriticalSectionLocker lock;
 	DMAC->CHID.reg = channel;
 	DMAC->CHINTENCLR.reg = DMAC_CHINTENSET_TCMPL | DMAC_CHINTENSET_TERR;
-#else
-# error Unsupported processor
-#endif
-}
-
-void DmacManager::SetPriority(DmaChannel channel, DmaPriority priority) noexcept
-{
-#if SAME5x
-	DMAC->Channel[channel].CHPRILVL.reg = priority;
-#elif SAMC21
-	AtomicCriticalSectionLocker lock;
-	DMAC->CHID.reg = channel;
-	DMAC->CHCTRLB.bit.LVL = priority;
 #else
 # error Unsupported processor
 #endif

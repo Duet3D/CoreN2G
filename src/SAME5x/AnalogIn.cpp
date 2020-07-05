@@ -5,6 +5,8 @@
  *      Author: David
  */
 
+#ifdef RTOS
+
 #include <CoreIO.h>
 
 #if !SAME5x
@@ -48,15 +50,13 @@ public:
 		ready
 	};
 
-	AdcClass(Adc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaTrigSource p_trigSrc) noexcept;
+	AdcClass(Adc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept;
 
 	State GetState() const noexcept { return state; }
 	bool EnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
 	bool SetCallback(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
 	bool IsChannelEnabled(unsigned int chan) const noexcept;
-#ifdef RTOS
 	bool StartConversion(TaskHandle p_taskToWake) noexcept;
-#endif
 	uint16_t ReadChannel(unsigned int chan) const noexcept { return resultsByChannel[chan]; }
 	bool EnableTemperatureSensor(unsigned int sensorNumber, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall) noexcept;
 
@@ -76,14 +76,13 @@ private:
 	Adc * const device;
 	const IRQn irqn;
 	const DmaChannel dmaChan;
+	const DmaPriority dmaPrio;
 	const DmaTrigSource trigSrc;
 	volatile DmaCallbackReason dmaFinishedReason;
 	volatile size_t numChannelsEnabled;						// volatile because multiple tasks access it
 	size_t numChannelsConverting;
 	volatile uint32_t channelsEnabled;
-#ifdef RTOS
 	volatile TaskHandle taskToWake;
-#endif
 	uint32_t whenLastConversionStarted;
 	volatile State state;
 	AnalogInCallbackFunction callbackFunctions[MaxSequenceLength];
@@ -95,13 +94,10 @@ private:
 	volatile uint16_t resultsByChannel[NumAdcChannels];		// must be large enough to handle PTAT and CTAT temperature sensor inputs
 };
 
-AdcClass::AdcClass(Adc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaTrigSource p_trigSrc) noexcept
-	: device(p_device), irqn(p_irqn), dmaChan(p_dmaChan), trigSrc(p_trigSrc),
+AdcClass::AdcClass(Adc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept
+	: device(p_device), irqn(p_irqn), dmaChan(p_dmaChan), dmaPrio(priority), trigSrc(p_trigSrc),
 	  numChannelsEnabled(0), numChannelsConverting(0), channelsEnabled(0),
-#ifdef RTOS
-	  taskToWake(nullptr),
-#endif
-	  whenLastConversionStarted(0), state(State::noChannels)
+	  taskToWake(nullptr), whenLastConversionStarted(0), state(State::noChannels)
 {
 	for (size_t i = 0; i < MaxSequenceLength; ++i)
 	{
@@ -272,8 +268,6 @@ bool AdcClass::InternalEnableChannel(unsigned int chan, uint8_t ctrlB, uint8_t r
 	return false;
 }
 
-#ifdef RTOS
-
 // If no conversion is already in progress and there are channels to convert, start a conversion and return true; else return false
 bool AdcClass::StartConversion(TaskHandle p_taskToWake) noexcept
 {
@@ -313,8 +307,8 @@ bool AdcClass::StartConversion(TaskHandle p_taskToWake) noexcept
 		dmaFinishedReason = DmaCallbackReason::none;
 		DmacManager::EnableCompletedInterrupt(dmaChan + 1);
 
-		DmacManager::EnableChannel(dmaChan + 1);
-		DmacManager::EnableChannel(dmaChan);
+		DmacManager::EnableChannel(dmaChan + 1, dmaPrio);
+		DmacManager::EnableChannel(dmaChan, dmaPrio);
 
 		state = State::converting;
 		++conversionsStarted;
@@ -343,8 +337,6 @@ void AdcClass::ExecuteCallbacks() noexcept
 	}
 }
 
-#endif
-
 // Indirect callback from the DMA controller ISR
 void AdcClass::ResultReadyCallback(DmaCallbackReason reason) noexcept
 {
@@ -353,12 +345,10 @@ void AdcClass::ResultReadyCallback(DmaCallbackReason reason) noexcept
 	++conversionsCompleted;
 	DmacManager::DisableChannel(dmaChan);			// disable the sequencer DMA, just in case it is out of sync
 	DmacManager::DisableChannel(dmaChan + 1);		// disable the reader DMA too
-#ifdef RTOS
 	if (taskToWake != nullptr)
 	{
 		TaskBase::GiveFromISR(taskToWake);
 	}
-#endif
 }
 
 // Callback from the DMA controller ISR
@@ -369,8 +359,6 @@ void AdcClass::ResultReadyCallback(DmaCallbackReason reason) noexcept
 
 // ADC instances
 static AdcClass *adcs[2];
-
-#ifdef RTOS
 
 // Main loop executed by the AIN task
 void AnalogIn::TaskLoop(void *) noexcept
@@ -409,10 +397,8 @@ void AnalogIn::TaskLoop(void *) noexcept
 	}
 }
 
-#endif
-
 // Initialise the analog input subsystem. Call this just once.
-void AnalogIn::Init(DmaChannel dmaChan) noexcept
+void AnalogIn::Init(DmaChannel dmaChan, DmaPriority priority) noexcept
 {
 	// Enable ADC clocks
 	hri_mclk_set_APBDMASK_ADC0_bit(MCLK);
@@ -421,8 +407,8 @@ void AnalogIn::Init(DmaChannel dmaChan) noexcept
 	hri_gclk_write_PCHCTRL_reg(GCLK, ADC1_GCLK_ID, GCLK_PCHCTRL_GEN_GCLK3_Val | (1 << GCLK_PCHCTRL_CHEN_Pos));
 
 	// Create the device instances
-	adcs[0] = new AdcClass(ADC0, ADC0_0_IRQn, dmaChan, DmaTrigSource::adc0_resrdy);
-	adcs[1] = new AdcClass(ADC1, ADC1_0_IRQn, dmaChan + 2, DmaTrigSource::adc1_resrdy);
+	adcs[0] = new AdcClass(ADC0, ADC0_0_IRQn, dmaChan, priority, DmaTrigSource::adc0_resrdy);
+	adcs[1] = new AdcClass(ADC1, ADC1_0_IRQn, dmaChan + 2, priority, DmaTrigSource::adc1_resrdy);
 }
 
 // Enable analog input on a pin.
@@ -495,5 +481,7 @@ void AnalogIn::GetDebugInfo(uint32_t &convsStarted, uint32_t &convsCompleted, ui
 	convsCompleted = conversionsCompleted;
 	convTimeouts = conversionTimeouts;
 }
+
+#endif
 
 // End
