@@ -508,7 +508,7 @@ static AdcBase *adcs[1 + SUPPORT_SDADC];
 #ifdef RTOS
 
 // Main loop executed by the AIN task
-void AnalogIn::TaskLoop() noexcept
+void AnalogIn::TaskLoop(void*) noexcept
 {
 	// Loop taking readings and processing them
 	for (;;)

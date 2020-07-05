@@ -16,7 +16,7 @@ constexpr uint32_t SpiTimeout = 10000;
 
 // SharedSpiDevice members
 
-SharedSpiDevice::SharedSpiDevice(uint8_t sercomNum) : hardware(Serial::Sercoms[sercomNum])
+SharedSpiDevice::SharedSpiDevice(uint8_t sercomNum) noexcept : hardware(Serial::Sercoms[sercomNum])
 {
 	Serial::EnableSercomClock(sercomNum);
 
@@ -68,20 +68,20 @@ SharedSpiDevice::SharedSpiDevice(uint8_t sercomNum) : hardware(Serial::Sercoms[s
 
 // SharedSpiClient members
 
-inline void SharedSpiDevice::Disable() const
+inline void SharedSpiDevice::Disable() const noexcept
 {
 	hardware->SPI.CTRLA.bit.ENABLE = 0;
 	hri_sercomusart_wait_for_sync(hardware, SERCOM_USART_CTRLA_ENABLE);
 }
 
-inline void SharedSpiDevice::Enable() const
+inline void SharedSpiDevice::Enable() const noexcept
 {
 	hardware->SPI.CTRLA.bit.ENABLE = 1;
 	hri_sercomusart_wait_for_sync(hardware, SERCOM_USART_CTRLA_ENABLE);
 }
 
 // Wait for transmitter ready returning true if timed out
-inline bool SharedSpiDevice::waitForTxReady() const
+inline bool SharedSpiDevice::waitForTxReady() const noexcept
 {
 	uint32_t timeout = SpiTimeout;
 	while (!(hardware->SPI.INTFLAG.bit.DRE))
@@ -95,7 +95,7 @@ inline bool SharedSpiDevice::waitForTxReady() const
 }
 
 // Wait for transmitter empty returning true if timed out
-inline bool SharedSpiDevice::waitForTxEmpty() const
+inline bool SharedSpiDevice::waitForTxEmpty() const noexcept
 {
 	uint32_t timeout = SpiTimeout;
 	while (!(hardware->SPI.INTFLAG.bit.TXC))
@@ -109,7 +109,7 @@ inline bool SharedSpiDevice::waitForTxEmpty() const
 }
 
 // Wait for receive data available returning true if timed out
-inline bool SharedSpiDevice::waitForRxReady() const
+inline bool SharedSpiDevice::waitForRxReady() const noexcept
 {
 	uint32_t timeout = SpiTimeout;
 	while (!(hardware->SPI.INTFLAG.bit.RXC))
@@ -122,7 +122,7 @@ inline bool SharedSpiDevice::waitForRxReady() const
 	return false;
 }
 
-void SharedSpiDevice::SetClockFrequencyAndMode(uint32_t freq, SpiMode mode) const
+void SharedSpiDevice::SetClockFrequencyAndMode(uint32_t freq, SpiMode mode) const noexcept
 {
 	// We have to disable SPI device in order to change the baud rate and mode
 	Disable();
@@ -141,7 +141,7 @@ void SharedSpiDevice::SetClockFrequencyAndMode(uint32_t freq, SpiMode mode) cons
 	Enable();
 }
 
-bool SharedSpiDevice::TransceivePacket(const uint8_t* tx_data, uint8_t* rx_data, size_t len) const
+bool SharedSpiDevice::TransceivePacket(const uint8_t* tx_data, uint8_t* rx_data, size_t len) const noexcept
 {
 	for (uint32_t i = 0; i < len; ++i)
 	{
@@ -181,18 +181,18 @@ bool SharedSpiDevice::TransceivePacket(const uint8_t* tx_data, uint8_t* rx_data,
 
 
 // SharedSpiDevice class members
-SharedSpiClient::SharedSpiClient(SharedSpiDevice& dev, uint32_t clockFreq, SpiMode m, bool polarity)
+SharedSpiClient::SharedSpiClient(SharedSpiDevice& dev, uint32_t clockFreq, SpiMode m, bool polarity) noexcept
 	: device(dev), clockFrequency(clockFreq), csPin(NoPin), mode(m), csActivePolarity(polarity)
 {
 }
 
-void SharedSpiClient::InitMaster()
+void SharedSpiClient::InitMaster() noexcept
 {
 	pinMode(csPin, (csActivePolarity) ? OUTPUT_LOW : OUTPUT_HIGH);
 }
 
 // Get ownership of this SPI, return true if successful
-bool SharedSpiClient::Select(uint32_t timeout) const
+bool SharedSpiClient::Select(uint32_t timeout) const noexcept
 {
 	const bool ok = device.Take(timeout);
 	if (ok)
@@ -203,14 +203,14 @@ bool SharedSpiClient::Select(uint32_t timeout) const
 	return ok;
 }
 
-void SharedSpiClient::Deselect() const
+void SharedSpiClient::Deselect() const noexcept
 {
 	digitalWrite(csPin, !csActivePolarity);
 	device.Disable();
 	device.Release();
 }
 
-bool SharedSpiClient::TransceivePacket(const uint8_t* tx_data, uint8_t* rx_data, size_t len) const
+bool SharedSpiClient::TransceivePacket(const uint8_t* tx_data, uint8_t* rx_data, size_t len) const noexcept
 {
 	return device.TransceivePacket(tx_data, rx_data, len);
 }

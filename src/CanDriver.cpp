@@ -80,7 +80,7 @@ static _can_async_device *_can1_dev = nullptr; /*!< Pointer to hpl device */
 /**
  * \brief Initialize CAN.
  */
-static int32_t _can_async_init(_can_async_device *const dev, Can *const hw, const CanTiming& timing)
+static int32_t _can_async_init(_can_async_device *const dev, Can *const hw, const CanTiming& timing) noexcept
 {
 	dev->hw = hw;
 	hri_can_set_CCCR_INIT_bit(dev->hw);
@@ -171,7 +171,7 @@ static int32_t _can_async_init(_can_async_device *const dev, Can *const hw, cons
 /**
  * \brief De-initialize CAN.
  */
-static int32_t _can_async_deinit(_can_async_device *const dev)
+static int32_t _can_async_deinit(_can_async_device *const dev) noexcept
 {
 	hri_can_set_CCCR_INIT_bit(dev->hw);
 	dev->hw = NULL;
@@ -181,7 +181,7 @@ static int32_t _can_async_deinit(_can_async_device *const dev)
 /**
  * \brief Enable CAN
  */
-static int32_t _can_async_enable(_can_async_device *const dev)
+static int32_t _can_async_enable(_can_async_device *const dev) noexcept
 {
 	hri_can_clear_CCCR_INIT_bit(dev->hw);
 	return ERR_NONE;
@@ -190,7 +190,7 @@ static int32_t _can_async_enable(_can_async_device *const dev)
 /**
  * \brief Disable CAN
  */
-static int32_t _can_async_disable(_can_async_device *const dev)
+static int32_t _can_async_disable(_can_async_device *const dev) noexcept
 {
 	hri_can_set_CCCR_INIT_bit(dev->hw);
 	return ERR_NONE;
@@ -199,7 +199,7 @@ static int32_t _can_async_disable(_can_async_device *const dev)
 /**
  * \brief Read a CAN message
  */
-static int32_t _can_async_read(_can_async_device *const dev, can_message *msg)
+static int32_t _can_async_read(_can_async_device *const dev, can_message *msg) noexcept
 {
 	if (!hri_can_read_RXF0S_F0FL_bf(dev->hw))
 	{
@@ -256,7 +256,7 @@ static int32_t _can_async_read(_can_async_device *const dev, can_message *msg)
 /**
  * \brief Write a CAN message
  */
-static int32_t _can_async_write(_can_async_device *const dev, struct can_message *msg)
+static int32_t _can_async_write(_can_async_device *const dev, struct can_message *msg) noexcept
 {
 	if (hri_can_get_TXFQS_TFQF_bit(dev->hw))
 	{
@@ -324,7 +324,7 @@ static int32_t _can_async_write(_can_async_device *const dev, struct can_message
 /**
  * \brief Set CAN Interrupt State
  */
-static void _can_async_set_irq_state(_can_async_device *const dev, enum can_async_callback_type type, bool state)
+static void _can_async_set_irq_state(_can_async_device *const dev, enum can_async_callback_type type, bool state) noexcept
 {
 	if (type == CAN_ASYNC_RX_CB)
 	{
@@ -345,7 +345,7 @@ static void _can_async_set_irq_state(_can_async_device *const dev, enum can_asyn
 /**
  * \brief Return number of read errors
  */
-static uint8_t _can_async_get_rxerr(_can_async_device *const dev)
+static uint8_t _can_async_get_rxerr(_can_async_device *const dev) noexcept
 {
 	return hri_can_read_ECR_REC_bf(dev->hw);
 }
@@ -353,7 +353,7 @@ static uint8_t _can_async_get_rxerr(_can_async_device *const dev)
 /**
  * \brief Return number of write errors
  */
-static uint8_t _can_async_get_txerr(_can_async_device *const dev)
+static uint8_t _can_async_get_txerr(_can_async_device *const dev) noexcept
 {
 	return hri_can_read_ECR_TEC_bf(dev->hw);
 }
@@ -361,7 +361,7 @@ static uint8_t _can_async_get_txerr(_can_async_device *const dev)
 /**
  * \brief Set CAN to the specified mode
  */
-static int32_t _can_async_set_mode(_can_async_device *const dev, enum can_mode mode)
+static int32_t _can_async_set_mode(_can_async_device *const dev, enum can_mode mode) noexcept
 {
 	hri_can_set_CCCR_INIT_bit(dev->hw);
 	while (hri_can_get_CCCR_INIT_bit(dev->hw) == 0) { }
@@ -387,7 +387,7 @@ static int32_t _can_async_set_mode(_can_async_device *const dev, enum can_mode m
 /**
  * \brief Set CAN to the specified mode
  */
-static int32_t _can_async_set_filter(_can_async_device *const dev, uint8_t index, enum can_format fmt, struct can_filter *filter)
+static int32_t _can_async_set_filter(_can_async_device *const dev, uint8_t index, enum can_format fmt, struct can_filter *filter) noexcept
 {
 	struct _can_standard_message_filter_element *sf = &((struct _can_context *)dev->context)->rx_std_filter[index];
 	struct _can_extended_message_filter_element *ef = &((struct _can_context *)dev->context)->rx_ext_filter[index];
@@ -426,7 +426,7 @@ static int32_t _can_async_set_filter(_can_async_device *const dev, uint8_t index
 
 #ifdef CONF_CAN0_ENABLED
 
-void CAN0_Handler(void)
+void CAN0_Handler(void) noexcept
 {
 	struct _can_async_device *dev = _can0_dev;
 	uint32_t                  ir;
@@ -479,7 +479,7 @@ void CAN0_Handler(void)
 
 #ifdef CONF_CAN1_ENABLED
 
-void CAN1_Handler(void)
+void CAN1_Handler(void) noexcept
 {
 	struct _can_async_device *dev = _can1_dev;
 	uint32_t                  ir;
@@ -531,25 +531,25 @@ void CAN1_Handler(void)
  *
  * \param[in] dev The pointer to CAN device structure
  */
-static void can_tx_done(_can_async_device *dev);
+static void can_tx_done(_can_async_device *dev) noexcept;
 /**
  * \internal Callback of CAN Message Read finished
  *
  * \param[in] dev The pointer to CAN device structure
  */
-static void can_rx_done(_can_async_device *dev);
+static void can_rx_done(_can_async_device *dev) noexcept;
 /**
  * \internal Callback of CAN Interrupt
  *
  * \param[in] dev  The pointer to CAN device structure
  * \param[in] type Interrupt source type
  */
-static void can_irq_handler(_can_async_device *dev, enum can_async_interrupt_type type);
+static void can_irq_handler(_can_async_device *dev, enum can_async_interrupt_type type) noexcept;
 
 /**
  * \brief Initialize CAN.
  */
-int32_t can_async_init(can_async_descriptor *descr, Can *hw, const CanTiming& timing)
+int32_t can_async_init(can_async_descriptor *descr, Can *hw, const CanTiming& timing) noexcept
 {
 	const int32_t rc = _can_async_init(&descr->dev, hw, timing);
 	if (rc)
@@ -566,7 +566,7 @@ int32_t can_async_init(can_async_descriptor *descr, Can *hw, const CanTiming& ti
 /**
  * \brief Deinitialize CAN.
  */
-int32_t can_async_deinit(can_async_descriptor *const descr)
+int32_t can_async_deinit(can_async_descriptor *const descr) noexcept
 {
 	return _can_async_deinit(&descr->dev);
 }
@@ -574,7 +574,7 @@ int32_t can_async_deinit(can_async_descriptor *const descr)
 /**
  * \brief Enable CAN
  */
-int32_t can_async_enable(can_async_descriptor *const descr)
+int32_t can_async_enable(can_async_descriptor *const descr) noexcept
 {
 	return _can_async_enable(&descr->dev);
 }
@@ -582,7 +582,7 @@ int32_t can_async_enable(can_async_descriptor *const descr)
 /**
  * \brief Disable CAN
  */
-int32_t can_async_disable(can_async_descriptor *const descr)
+int32_t can_async_disable(can_async_descriptor *const descr) noexcept
 {
 	return _can_async_disable(&descr->dev);
 }
@@ -590,7 +590,7 @@ int32_t can_async_disable(can_async_descriptor *const descr)
 /**
  * \brief Read a CAN message
  */
-int32_t can_async_read(can_async_descriptor *const descr, struct can_message *msg)
+int32_t can_async_read(can_async_descriptor *const descr, struct can_message *msg) noexcept
 {
 	return _can_async_read(&descr->dev, msg);
 }
@@ -598,7 +598,7 @@ int32_t can_async_read(can_async_descriptor *const descr, struct can_message *ms
 /**
  * \brief Write a CAN message
  */
-int32_t can_async_write(can_async_descriptor *const descr, struct can_message *msg)
+int32_t can_async_write(can_async_descriptor *const descr, struct can_message *msg) noexcept
 {
 	return _can_async_write(&descr->dev, msg);
 }
@@ -606,7 +606,7 @@ int32_t can_async_write(can_async_descriptor *const descr, struct can_message *m
 /**
  * \brief Register CAN callback function to interrupt
  */
-int32_t can_async_register_callback(can_async_descriptor *const descr, enum can_async_callback_type type, FUNC_PTR cb)
+int32_t can_async_register_callback(can_async_descriptor *const descr, enum can_async_callback_type type, FUNC_PTR cb) noexcept
 {
 	switch (type) {
 	case CAN_ASYNC_RX_CB:
@@ -617,7 +617,7 @@ int32_t can_async_register_callback(can_async_descriptor *const descr, enum can_
 		break;
 	case CAN_ASYNC_IRQ_CB:
 		descr->cb.irq_handler
-		    = (cb != NULL) ? (void (*)(can_async_descriptor *const, enum can_async_interrupt_type))cb : NULL;
+		    = (cb != NULL) ? (void (*)(can_async_descriptor *const, enum can_async_interrupt_type) noexcept)cb : NULL;
 		break;
 	default:
 		return ERR_INVALID_ARG;
@@ -631,7 +631,7 @@ int32_t can_async_register_callback(can_async_descriptor *const descr, enum can_
 /**
  * \brief Return number of read errors
  */
-uint8_t can_async_get_rxerr(can_async_descriptor *const descr)
+uint8_t can_async_get_rxerr(can_async_descriptor *const descr) noexcept
 {
 	return _can_async_get_rxerr(&descr->dev);
 }
@@ -639,7 +639,7 @@ uint8_t can_async_get_rxerr(can_async_descriptor *const descr)
 /**
  * \brief Return number of write errors
  */
-uint8_t can_async_get_txerr(can_async_descriptor *const descr)
+uint8_t can_async_get_txerr(can_async_descriptor *const descr) noexcept
 {
 	return _can_async_get_txerr(&descr->dev);
 }
@@ -647,7 +647,7 @@ uint8_t can_async_get_txerr(can_async_descriptor *const descr)
 /**
  * \brief Set CAN to the specified mode
  */
-int32_t can_async_set_mode(can_async_descriptor *const descr, enum can_mode mode)
+int32_t can_async_set_mode(can_async_descriptor *const descr, enum can_mode mode) noexcept
 {
 	return _can_async_set_mode(&descr->dev, mode);
 }
@@ -655,7 +655,7 @@ int32_t can_async_set_mode(can_async_descriptor *const descr, enum can_mode mode
 /**
  * \brief Set CAN filter
  */
-int32_t can_async_set_filter(can_async_descriptor *const descr, uint8_t index, enum can_format fmt, struct can_filter *filter)
+int32_t can_async_set_filter(can_async_descriptor *const descr, uint8_t index, enum can_format fmt, struct can_filter *filter) noexcept
 {
 	return _can_async_set_filter(&descr->dev, index, fmt, filter);
 }
@@ -663,12 +663,12 @@ int32_t can_async_set_filter(can_async_descriptor *const descr, uint8_t index, e
 /**
  * \brief Retrieve the current driver version
  */
-uint32_t can_async_get_version(void)
+uint32_t can_async_get_version() noexcept
 {
 	return DRIVER_VERSION;
 }
 
-void GetLocalCanTiming(const can_async_descriptor *descr, CanTiming& timing)
+void GetLocalCanTiming(const can_async_descriptor *descr, CanTiming& timing) noexcept
 {
 	const uint32_t nbtp = descr->dev.hw->NBTP.reg;
 	const uint32_t tseg1 = (nbtp & CAN_NBTP_NTSEG1_Msk) >> CAN_NBTP_NTSEG1_Pos;
@@ -683,7 +683,7 @@ void GetLocalCanTiming(const can_async_descriptor *descr, CanTiming& timing)
 /**
  * \internal Callback of CAN Message Write finished
  */
-static void can_tx_done(struct _can_async_device *dev)
+static void can_tx_done(struct _can_async_device *dev) noexcept
 {
 	struct can_async_descriptor *const descr = CONTAINER_OF(dev, struct can_async_descriptor, dev);
 
@@ -695,7 +695,7 @@ static void can_tx_done(struct _can_async_device *dev)
 /**
  * \internal Callback of CAN Message Read finished
  */
-static void can_rx_done(struct _can_async_device *dev)
+static void can_rx_done(struct _can_async_device *dev) noexcept
 {
 	struct can_async_descriptor *const descr = CONTAINER_OF(dev, struct can_async_descriptor, dev);
 
@@ -707,7 +707,7 @@ static void can_rx_done(struct _can_async_device *dev)
 /**
  * \internal Callback of CAN Interrupt
  */
-static void can_irq_handler(struct _can_async_device *dev, enum can_async_interrupt_type type)
+static void can_irq_handler(struct _can_async_device *dev, enum can_async_interrupt_type type) noexcept
 {
 	struct can_async_descriptor *const descr = CONTAINER_OF(dev, struct can_async_descriptor, dev);
 

@@ -168,7 +168,7 @@ extern "C" {
 /**
  * \brief Pointer to function
  */
-typedef void (*FUNC_PTR)(void);
+typedef void (*FUNC_PTR)(void) noexcept;
 
 #define LE_BYTE0(a) ((uint8_t)(a))
 #define LE_BYTE1(a) ((uint8_t)((a) >> 8))

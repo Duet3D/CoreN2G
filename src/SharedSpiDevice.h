@@ -22,19 +22,19 @@ enum class SpiMode : uint8_t
 class SharedSpiDevice
 {
 public:
-	SharedSpiDevice(uint8_t sercomNum);
+	SharedSpiDevice(uint8_t sercomNum) noexcept;
 
-	void Disable() const;
-	void Enable() const;
-	void SetClockFrequencyAndMode(uint32_t freq, SpiMode mode) const;
-	bool TransceivePacket(const uint8_t *tx_data, uint8_t *rx_data, size_t len) const;
-	bool Take(uint32_t timeout) const { return mutex.Take(timeout); }					// get ownership of this SPI, return true if successful
-	void Release() const { mutex.Release(); }
+	void Disable() const noexcept;
+	void Enable() const noexcept;
+	void SetClockFrequencyAndMode(uint32_t freq, SpiMode mode) const noexcept;
+	bool TransceivePacket(const uint8_t *tx_data, uint8_t *rx_data, size_t len) const noexcept;
+	bool Take(uint32_t timeout) const noexcept { return mutex.Take(timeout); }			// get ownership of this SPI, return true if successful
+	void Release() const noexcept { mutex.Release(); }
 
 private:
-	bool waitForTxReady() const;
-	bool waitForTxEmpty() const;
-	bool waitForRxReady() const;
+	bool waitForTxReady() const noexcept;
+	bool waitForTxEmpty() const noexcept;
+	bool waitForRxReady() const noexcept;
 
 	Sercom * const hardware;
 	Mutex mutex;
@@ -43,13 +43,13 @@ private:
 class SharedSpiClient
 {
 public:
-	SharedSpiClient(SharedSpiDevice& dev, uint32_t clockFreq, SpiMode m, bool polarity);
+	SharedSpiClient(SharedSpiDevice& dev, uint32_t clockFreq, SpiMode m, bool polarity) noexcept;
 
-	void InitMaster();
-	bool Select(uint32_t timeout) const;												// get SPI ownership and select the device, return true if successful
-	void Deselect() const;
-	bool TransceivePacket(const uint8_t *tx_data, uint8_t *rx_data, size_t len) const;
-	void SetCsPin(Pin p) { csPin = p; }
+	void InitMaster() noexcept;
+	bool Select(uint32_t timeout) const noexcept;										// get SPI ownership and select the device, return true if successful
+	void Deselect() const noexcept;
+	bool TransceivePacket(const uint8_t *tx_data, uint8_t *rx_data, size_t len) const noexcept;
+	void SetCsPin(Pin p) noexcept { csPin = p; }
 
 private:
 	SharedSpiDevice& device;
