@@ -9,7 +9,6 @@
 
 #include <peripheral_clk_config.h>
 #include <hal_gpio.h>
-#include <atmel_start_pins.h>
 #include <RTOSIface/RTOSIface.h>
 
 #if SAME5x
