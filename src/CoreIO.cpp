@@ -12,7 +12,6 @@
 #include "Interrupts.h"
 #include "AnalogIn.h"
 #include "AnalogOut.h"
-#include <peripheral_clk_config.h>
 
 // IoPort::SetPinMode calls this
 extern "C" void pinMode(Pin pin, enum PinMode mode) noexcept

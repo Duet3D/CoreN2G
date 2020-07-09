@@ -20,7 +20,7 @@ struct InterruptCallback
 // The pin table ensures that only one pin is flagged as able to use each EXINT.
 static InterruptCallback exintCallbacks[16];
 
-void InitialisePinChangeInterrupts() noexcept
+void InitialiseExints() noexcept
 {
 	hri_gclk_write_PCHCTRL_reg(GCLK, EIC_GCLK_ID, GCLK_PCHCTRL_GEN_GCLK0_Val | (1 << GCLK_PCHCTRL_CHEN_Pos));
 	hri_mclk_set_APBAMASK_EIC_bit(MCLK);
@@ -64,11 +64,18 @@ void InitialisePinChangeInterrupts() noexcept
 }
 
 // Attach an interrupt to the specified pin returning true if successful
-bool AttachInterrupt(Pin pin, ExintNumber exint, StandardCallbackFunction callback, InterruptMode mode, CallbackParameter param) noexcept
+bool attachInterrupt(Pin pin, StandardCallbackFunction callback, InterruptMode mode, CallbackParameter param) noexcept
 {
+	const PinDescriptionBase * const pinDesc = GetPinDescription(pin);
+	if (pinDesc == nullptr)
+	{
+		return false;
+	}
+
+	const ExintNumber exint = pinDesc->exintNumber;
 	if (exint >= 16)
 	{
-		return false;			// no EXINT available on this pin (only occurs for PA8 which is NMI)
+		return false;
 	}
 
 	// Configure the interrupt mode
@@ -122,35 +129,40 @@ bool AttachInterrupt(Pin pin, ExintNumber exint, StandardCallbackFunction callba
 	return true;
 }
 
-void DetachInterrupt(Pin pin, ExintNumber exint) noexcept
+void detachInterrupt(Pin pin) noexcept
 {
-	if (exint < 16)
+	const PinDescriptionBase * const pinDesc = GetPinDescription(pin);
+	if (pinDesc != nullptr)
 	{
-		const unsigned int shift = (exint & 7u) << 2u;
-		const uint32_t mask = ~(0x0000000F << shift);
-
-		hri_eic_clear_CTRLA_ENABLE_bit(EIC);
-		hri_eic_wait_for_sync(EIC, EIC_SYNCBUSY_ENABLE);
-
-		if (exint < 8)
+		const ExintNumber exint = pinDesc->exintNumber;
+		if (exint < 16)
 		{
-			EIC->CONFIG[0].reg &= mask;
+			const unsigned int shift = (exint & 7u) << 2u;
+			const uint32_t mask = ~(0x0000000F << shift);
+
+			hri_eic_clear_CTRLA_ENABLE_bit(EIC);
+			hri_eic_wait_for_sync(EIC, EIC_SYNCBUSY_ENABLE);
+
+			if (exint < 8)
+			{
+				EIC->CONFIG[0].reg &= mask;
+			}
+			else
+			{
+				EIC->CONFIG[1].reg &= mask;
+			}
+
+			hri_eic_set_CTRLA_ENABLE_bit(EIC);
+
+			// Disable the interrupt
+			hri_eic_clear_INTEN_reg(EIC, 1ul << exint);
+			hri_eic_clear_INTFLAG_reg(EIC, 1ul << exint);
+
+			// Switch the pin out of EIC mode
+			ClearPinFunction(pin);
+
+			exintCallbacks[exint].func = nullptr;
 		}
-		else
-		{
-			EIC->CONFIG[1].reg &= mask;
-		}
-
-		hri_eic_set_CTRLA_ENABLE_bit(EIC);
-
-		// Disable the interrupt
-		hri_eic_clear_INTEN_reg(EIC, 1ul << exint);
-		hri_eic_clear_INTFLAG_reg(EIC, 1ul << exint);
-
-		// Switch the pin out of EIC mode
-		ClearPinFunction(pin);
-
-		exintCallbacks[exint].func = nullptr;
 	}
 }
 

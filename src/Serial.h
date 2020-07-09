@@ -32,10 +32,14 @@ namespace Serial
 	};
 
 	inline Sercom *GetSercom(uint8_t sercomNumber) noexcept { return Sercoms[sercomNumber]; }
-	inline IRQn GetSercomIRQn(uint8_t sercomNumber) noexcept { return SercomIRQns[sercomNumber]; }
+	inline constexpr IRQn GetSercomIRQn(uint8_t sercomNumber) noexcept { return SercomIRQns[sercomNumber]; }
 
 	void EnableSercomClock(uint8_t sercomNumber) noexcept;
-	void InitUart(uint8_t SercomNumber, uint32_t baudRate, uint8_t rxPad) noexcept;
+	void InitUart(uint8_t sercomNumber, uint32_t baudRate, uint8_t rxPad
+#if SAME5x
+		, bool use32bitMode = false
+#endif
+		) noexcept;
 	void Disable(uint8_t sercomNumber) noexcept;
 }
 

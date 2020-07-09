@@ -20,13 +20,8 @@
 #ifndef Print_h
 #define Print_h
 
-#include "Core.h"
+#include <CoreIO.h>
 #include <cstring>
-
-#define DEC 10
-#define HEX 16
-#define OCT 8
-#define BIN 2
 
 class Print
 {
@@ -53,12 +48,12 @@ public:
 
     size_t print(const char[]) noexcept;
     size_t print(char) noexcept;
-    size_t print(unsigned char, int = DEC) noexcept;
-    size_t print(int, int = DEC) noexcept;
-    size_t print(unsigned int, int = DEC) noexcept;
-    size_t print(long, int = DEC) noexcept;
-    size_t print(unsigned long, int = DEC) noexcept;
-    size_t print(double, int = 2) noexcept;
+    size_t print(unsigned char, int base = 10) noexcept;
+    size_t print(int, int base = 10) noexcept;
+    size_t print(unsigned int, int base = 10) noexcept;
+    size_t print(long, int base = 10) noexcept;
+    size_t print(unsigned long, int base = 10) noexcept;
+    size_t print(double, int digits = 2) noexcept;
 };
 
 #endif
