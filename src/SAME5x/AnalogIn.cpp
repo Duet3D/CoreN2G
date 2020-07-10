@@ -50,7 +50,7 @@ public:
 		ready
 	};
 
-	AdcClass(Adc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept;
+	AdcClass(Adc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaPriority txPriority, DmaPriority rxPriority, DmaTrigSource p_trigSrc) noexcept;
 
 	State GetState() const noexcept { return state; }
 	bool EnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
@@ -76,7 +76,7 @@ private:
 	Adc * const device;
 	const IRQn irqn;
 	const DmaChannel dmaChan;
-	const DmaPriority dmaPrio;
+	const DmaPriority dmaTxPrio, dmaRxPrio;
 	const DmaTrigSource trigSrc;
 	volatile DmaCallbackReason dmaFinishedReason;
 	volatile size_t numChannelsEnabled;						// volatile because multiple tasks access it
@@ -94,8 +94,8 @@ private:
 	volatile uint16_t resultsByChannel[NumAdcChannels];		// must be large enough to handle PTAT and CTAT temperature sensor inputs
 };
 
-AdcClass::AdcClass(Adc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept
-	: device(p_device), irqn(p_irqn), dmaChan(p_dmaChan), dmaPrio(priority), trigSrc(p_trigSrc),
+AdcClass::AdcClass(Adc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaPriority txPriority, DmaPriority rxPriority, DmaTrigSource p_trigSrc) noexcept
+	: device(p_device), irqn(p_irqn), dmaChan(p_dmaChan), dmaTxPrio(txPriority), dmaRxPrio(rxPriority), trigSrc(p_trigSrc),
 	  numChannelsEnabled(0), numChannelsConverting(0), channelsEnabled(0),
 	  taskToWake(nullptr), whenLastConversionStarted(0), state(State::noChannels)
 {
@@ -307,8 +307,8 @@ bool AdcClass::StartConversion(TaskHandle p_taskToWake) noexcept
 		dmaFinishedReason = DmaCallbackReason::none;
 		DmacManager::EnableCompletedInterrupt(dmaChan + 1);
 
-		DmacManager::EnableChannel(dmaChan + 1, dmaPrio);
-		DmacManager::EnableChannel(dmaChan, dmaPrio);
+		DmacManager::EnableChannel(dmaChan + 1, dmaRxPrio);
+		DmacManager::EnableChannel(dmaChan, dmaTxPrio);
 
 		state = State::converting;
 		++conversionsStarted;
@@ -398,7 +398,7 @@ void AnalogIn::TaskLoop(void *) noexcept
 }
 
 // Initialise the analog input subsystem. Call this just once.
-void AnalogIn::Init(DmaChannel dmaChan, DmaPriority priority) noexcept
+void AnalogIn::Init(DmaChannel dmaChan, DmaPriority txPriority, DmaPriority rxPriority) noexcept
 {
 	// Enable ADC clocks
 	hri_mclk_set_APBDMASK_ADC0_bit(MCLK);
@@ -407,8 +407,8 @@ void AnalogIn::Init(DmaChannel dmaChan, DmaPriority priority) noexcept
 	hri_gclk_write_PCHCTRL_reg(GCLK, ADC1_GCLK_ID, GCLK_PCHCTRL_GEN_GCLK3_Val | (1 << GCLK_PCHCTRL_CHEN_Pos));
 
 	// Create the device instances
-	adcs[0] = new AdcClass(ADC0, ADC0_0_IRQn, dmaChan, priority, DmaTrigSource::adc0_resrdy);
-	adcs[1] = new AdcClass(ADC1, ADC1_0_IRQn, dmaChan + 2, priority, DmaTrigSource::adc1_resrdy);
+	adcs[0] = new AdcClass(ADC0, ADC0_0_IRQn, dmaChan, txPriority, rxPriority, DmaTrigSource::adc0_resrdy);
+	adcs[1] = new AdcClass(ADC1, ADC1_0_IRQn, dmaChan + 2, txPriority, rxPriority, DmaTrigSource::adc1_resrdy);
 }
 
 // Enable analog input on a pin.

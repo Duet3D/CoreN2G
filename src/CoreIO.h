@@ -110,9 +110,13 @@ extern "C" uint32_t SystemPeripheralClock;		// in system_samxxx.c
 void WatchdogInit() noexcept;
 void watchdogReset() noexcept;
 void CoreSysTick() noexcept;
-void CoreInit(DmaChannel firstAdcDmaChannel) noexcept;
+void CoreInit() noexcept;
 
-int32_t random(uint32_t howbig) noexcept;
+// Random number generator
+static inline int32_t random(uint32_t howbig) noexcept
+{
+	return (howbig == 0) ? 0 : random32() % howbig;
+}
 
 static inline uint32_t random(uint32_t howsmall, uint32_t howbig) noexcept
 {

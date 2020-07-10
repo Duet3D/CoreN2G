@@ -33,8 +33,8 @@
 #ifndef USBDF_CDC_ACM_SER_H_
 #define USBDF_CDC_ACM_SER_H_
 
-#include "usbdc.h"
-#include "usb_protocol_cdc.h"
+#include <usb/device/usbdc.h>
+#include <usb/class/cdc/usb_protocol_cdc.h>
 
 /** CDC ACM Class Callback Type */
 enum cdcdf_acm_cb_type { CDCDF_ACM_CB_READ, CDCDF_ACM_CB_WRITE, CDCDF_ACM_CB_LINE_CODING_C, CDCDF_ACM_CB_STATE_C };

@@ -33,9 +33,9 @@
 #ifndef USBDF_CDC_ACM_DESC_H_
 #define USBDF_CDC_ACM_DESC_H_
 
-#include "usb_protocol.h"
-#include "usb_protocol_cdc.h"
-#include "usbd_config.h"
+#include <usb/usb_protocol.h>
+#include <usb/class/cdc/usb_protocol_cdc.h>
+#include <usbd_config.h>
 
 #define CDCD_ACM_DEV_DESC                                                                                              \
 	USB_DEV_DESC_BYTES(CONF_USB_CDCD_ACM_BCDUSB,                                                                       \

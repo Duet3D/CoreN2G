@@ -138,7 +138,6 @@ void CoreInit() noexcept
 	RandomInit();
 #endif
 
-	// Initialise the I/O subsystem
 	InitialiseExints();
 }
 
@@ -251,18 +250,21 @@ void EnableTccClock(unsigned int tccNumber, uint32_t gclkVal) noexcept
 	}
 }
 
-// Random number generator
-int32_t random(uint32_t howbig) noexcept
+// Get the analog input channel that a pin uses
+AnalogChannelNumber PinToAdcChannel(Pin p) noexcept
 {
-	if (howbig == 0)
-	{
-		return 0;
-	}
+	const PinDescriptionBase * const pinDesc = GetPinDescription(p);
+	return (pinDesc == nullptr) ? AdcInput::none : pinDesc->adc;
+}
 
+// Core random number generator
+extern "C" uint32_t random32() noexcept
+{
 #if SAME5x
 
+	// Use the true random number generator peripheral
 	while (!hri_trng_get_INTFLAG_reg(TRNG, TRNG_INTFLAG_DATARDY)) { }		// Wait until data ready
-	return hri_trng_read_DATA_reg(TRNG) % howbig;
+	return hri_trng_read_DATA_reg(TRNG);
 
 #else
 	static bool isInitialised = false;
@@ -273,8 +275,9 @@ int32_t random(uint32_t howbig) noexcept
 		isInitialised = true;
 	}
 
-	return rand() % (uint32_t)howbig;
+	return rand();
 #endif
+
 }
 
 // End

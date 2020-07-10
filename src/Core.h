@@ -97,9 +97,7 @@ void pinMode(Pin pin, enum PinMode mode) noexcept;
 bool digitalRead(Pin pin) noexcept;
 void digitalWrite(Pin pin, bool high) noexcept;
 
-#if SAME5x
-uint32_t trueRandom() noexcept;
-#endif
+uint32_t random32(void) noexcept;		// needed by lwip
 
 static inline void delayMicroseconds(uint32_t) noexcept __attribute__((always_inline, unused));
 static inline void delayMicroseconds(uint32_t usec) noexcept

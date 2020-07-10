@@ -34,8 +34,7 @@
 #ifndef _HPL_MCI_H_INCLUDED
 #define _HPL_MCI_H_INCLUDED
 
-#include <compiler.h>
-#include <utils.h>
+#include <Core.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -33,8 +33,8 @@
 #ifndef _USB_USBDC_H_
 #define _USB_USBDC_H_
 
-#include "usb_includes.h"
-#include "usb_protocol.h"
+#include <usb/usb_includes.h>
+#include <usb/usb_protocol.h>
 #include "hal_usb_device.h"
 #include "usbd_config.h"
 

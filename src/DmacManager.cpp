@@ -19,14 +19,14 @@
 #include <RTOSIface/RTOSIface.h>
 
 // Descriptors for all used DMAC channels
-alignas(16) static DmacDescriptor descriptor_section[NumDmaChannelsUsed];
+alignas(16) static DmacDescriptor descriptor_section[NumDmaChannelsSupported];
 
 // Write back descriptors for all used DMAC channels
-alignas(16) static DmacDescriptor write_back_section[NumDmaChannelsUsed];
+alignas(16) static DmacDescriptor write_back_section[NumDmaChannelsSupported];
 
 // Array containing callbacks for DMAC channels
-static DmaCallbackFunction dmaChannelCallbackFunctions[NumDmaChannelsUsed];
-static CallbackParameter callbackParams[NumDmaChannelsUsed];
+static DmaCallbackFunction dmaChannelCallbackFunctions[NumDmaChannelsSupported];
+static CallbackParameter callbackParams[NumDmaChannelsSupported];
 
 // Initialize the DMA controller
 void DmacManager::Init() noexcept

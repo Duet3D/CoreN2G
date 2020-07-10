@@ -11,9 +11,9 @@
 #include <CoreIO.h>
 
 #if SAME5x
-constexpr unsigned int NumDmaChannelsUsed = 15;		// max is 32
+constexpr unsigned int NumDmaChannelsSupported = 15;		// max is 32
 #elif SAMC21
-constexpr unsigned int NumDmaChannelsUsed = 6;		// max is 12
+constexpr unsigned int NumDmaChannelsSupported = 8;		// max is 12
 #endif
 
 // Status code indicating why a DMAC callback is happening
