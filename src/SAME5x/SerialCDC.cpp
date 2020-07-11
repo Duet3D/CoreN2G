@@ -7,6 +7,10 @@
 
 #include "SerialCDC.h"
 
+#ifdef RTOS
+# include <RTOSIface/RTOSIface.h>
+#endif
+
 extern "C" {
 #include "usb/class/cdc/device/cdcdf_acm.h"
 #include "usb/class/cdc/device/cdcdf_acm_desc.h"
@@ -163,9 +167,13 @@ size_t SerialCDC::write(uint8_t c) noexcept
 			StartSending();
 			break;
 		}
+#ifdef RTOS
 		txWaitingTask = RTOSIface::GetCurrentTask();
+#endif
 		StartSending();
+#ifdef RTOS
 		TaskBase::Take(50);
+#endif
 	}
 	return 1;
 }
@@ -182,9 +190,13 @@ size_t SerialCDC::write(const uint8_t *buffer, size_t buflen) noexcept
 			StartSending();
 			break;
 		}
+#ifdef RTOS
 		txWaitingTask = RTOSIface::GetCurrentTask();
+#endif
 		StartSending();
+#ifdef RTOS
 		TaskBase::Take(50);
+#endif
 	}
 	return ret;
 }
@@ -204,6 +216,15 @@ void SerialCDC::StartSending() noexcept
 			cdcdf_acm_write(txTempBuffer, count);
 		}
 	}
+
+#ifdef RTOS
+	const TaskHandle t = txWaitingTask;
+	if (t != nullptr)
+	{
+		txWaitingTask = nullptr;
+		TaskBase::GiveFromISR(t);
+	}
+#endif
 }
 
 void SerialCDC::StartReceiving() noexcept

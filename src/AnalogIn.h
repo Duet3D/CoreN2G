@@ -70,6 +70,8 @@ namespace AnalogIn
 #endif
 }
 
+#ifdef RTOS
+
 // This function is for backwards compatibility with CoreNG
 inline uint16_t AnalogInReadChannel(AdcInput adcin)
 {
@@ -91,5 +93,7 @@ inline void AnalogInEnableChannel(AdcInput adcin, bool enable)
 		AnalogIn::DisableChannel(adcin);
 	}
 }
+
+#endif
 
 #endif /* SRC_HARDWARE_ANALOGIN_H_ */
