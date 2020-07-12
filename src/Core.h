@@ -124,7 +124,7 @@ static inline void delayMicroseconds(uint32_t usec) noexcept
     // Based on Paul Stoffregen's implementation for Teensy 3.0 (http://www.pjrc.com/)
     if (usec != 0)
     {
-		uint32_t n = usec * (SystemCoreClock / 3000000);
+		uint32_t n = usec * (SystemCoreClockFreq / 3000000);
 		asm volatile
 		(
 			".syntax unified"				"\n\t"
