@@ -47,13 +47,35 @@
 #include <inttypes.h>				// for PRIu32 etc.
 #include <ctype.h>
 
+// Types
 typedef uint8_t DmaChannel;
 typedef uint8_t DmaPriority;
 typedef uint8_t Pin;
 typedef uint8_t ExintNumber;
-typedef uint16_t PwmFrequency;
+typedef uint16_t PwmFrequency;		// type used to represent a PWM frequency. 0 sometimes means "default".
+typedef uint32_t NvicPriority;
 
 static const Pin NoPin = 0xFF;
+
+// Standard GCLK numbers
+#if SAME5x
+
+static const uint32_t SystemCoreClockFreq = 120000000;
+
+static const unsigned int GclkNum120MHz = 0;
+static const unsigned int GclkNum32KHz = 1;		// frequency is approx. 32768Hz
+static const unsigned int GclkNum25MHz = 2;		// only on 5LC board
+static const unsigned int GclkNum60MHz = 3;
+static const unsigned int GclkNum48MHz = 4;
+
+#elif SAMC21
+
+static const uint32_t SystemCoreClockFreq = 48000000;
+
+static const unsigned int GclkNum48MHz = 0;
+static const unsigned int GclkNum32KHz = 3;		// frequency is approx. 32768Hz
+
+#endif
 
 // Pin mode enumeration. Would ideally be a C++ scoped enum, but we need to use it from C library functions.
 enum PinMode
@@ -85,9 +107,6 @@ enum PinMode
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-extern uint32_t SystemCoreClock;
-extern uint32_t SystemPeripheralClock;
 
 uint32_t millis() noexcept;
 uint64_t millis64() noexcept;

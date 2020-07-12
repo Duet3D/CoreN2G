@@ -17,6 +17,7 @@
 #include <RTOSIface/RTOSIface.h>
 #include <DmacManager.h>
 
+constexpr unsigned int AdcGclkNum = GclkNum60MHz;
 constexpr uint32_t AdcConversionTimeout = 5;		// milliseconds
 
 static uint32_t conversionsStarted = 0;
@@ -50,13 +51,13 @@ public:
 		ready
 	};
 
-	AdcClass(Adc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaPriority txPriority, DmaPriority rxPriority, DmaTrigSource p_trigSrc) noexcept;
+	AdcClass(Adc * const p_device, DmaChannel p_dmaChan, DmaPriority txPriority, DmaPriority rxPriority, DmaTrigSource p_trigSrc) noexcept;
 
 	State GetState() const noexcept { return state; }
 	bool EnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
 	bool SetCallback(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
 	bool IsChannelEnabled(unsigned int chan) const noexcept;
-	bool StartConversion(TaskHandle p_taskToWake) noexcept;
+	bool StartConversion() noexcept;
 	uint16_t ReadChannel(unsigned int chan) const noexcept { return resultsByChannel[chan]; }
 	bool EnableTemperatureSensor(unsigned int sensorNumber, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall) noexcept;
 
@@ -74,7 +75,6 @@ private:
 	static constexpr size_t MaxSequenceLength = 16;			// the maximum length of the read sequence
 
 	Adc * const device;
-	const IRQn irqn;
 	const DmaChannel dmaChan;
 	const DmaPriority dmaTxPrio, dmaRxPrio;
 	const DmaTrigSource trigSrc;
@@ -94,8 +94,8 @@ private:
 	volatile uint16_t resultsByChannel[NumAdcChannels];		// must be large enough to handle PTAT and CTAT temperature sensor inputs
 };
 
-AdcClass::AdcClass(Adc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaPriority txPriority, DmaPriority rxPriority, DmaTrigSource p_trigSrc) noexcept
-	: device(p_device), irqn(p_irqn), dmaChan(p_dmaChan), dmaTxPrio(txPriority), dmaRxPrio(rxPriority), trigSrc(p_trigSrc),
+AdcClass::AdcClass(Adc * const p_device, DmaChannel p_dmaChan, DmaPriority txPriority, DmaPriority rxPriority, DmaTrigSource p_trigSrc) noexcept
+	: device(p_device), dmaChan(p_dmaChan), dmaTxPrio(txPriority), dmaRxPrio(rxPriority), trigSrc(p_trigSrc),
 	  numChannelsEnabled(0), numChannelsConverting(0), channelsEnabled(0),
 	  taskToWake(nullptr), whenLastConversionStarted(0), state(State::noChannels)
 {
@@ -110,7 +110,7 @@ AdcClass::AdcClass(Adc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaP
 	}
 }
 
-// Try to enable this ADC on the specified pin returning true if successful
+// Try to enable this ADC on the specified channel returning true if successful
 // Only single ended mode with gain x1 is supported
 // There is no check to avoid adding the same channel twice. If you do that it will be converted twice.
 bool AdcClass::EnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept
@@ -159,7 +159,7 @@ bool AdcClass::EnableTemperatureSensor(unsigned int sensorNumber, AnalogInCallba
 bool AdcClass::InternalEnableChannel(unsigned int chan, uint8_t ctrlB, uint8_t refCtrl, uint8_t avgCtrl,
 										AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept
 {
-	if (chan < 32)
+	if (chan < NumAdcChannels)
 	{
 		TaskCriticalSectionLocker lock;
 
@@ -269,7 +269,7 @@ bool AdcClass::InternalEnableChannel(unsigned int chan, uint8_t ctrlB, uint8_t r
 }
 
 // If no conversion is already in progress and there are channels to convert, start a conversion and return true; else return false
-bool AdcClass::StartConversion(TaskHandle p_taskToWake) noexcept
+bool AdcClass::StartConversion() noexcept
 {
 	numChannelsConverting = numChannelsEnabled;			// capture volatile variable to ensure we use a consistent value
 	if (numChannelsConverting == 0)
@@ -287,7 +287,7 @@ bool AdcClass::StartConversion(TaskHandle p_taskToWake) noexcept
 		//TODO should we reset the ADC here?
 	}
 
-	taskToWake = p_taskToWake;
+	taskToWake = TaskBase::GetCallerTaskHandle();
 
 	// Set up DMA sequencing of the ADC
 	DmacManager::DisableChannel(dmaChan + 1);
@@ -375,7 +375,7 @@ void AnalogIn::TaskLoop(void *) noexcept
 				adc->ExecuteCallbacks();
 			}
 
-			if (adc->StartConversion(TaskBase::GetCallerTaskHandle()))
+			if (adc->StartConversion())
 			{
 				conversionStarted = true;
 			}
@@ -402,13 +402,13 @@ void AnalogIn::Init(DmaChannel dmaChan, DmaPriority txPriority, DmaPriority rxPr
 {
 	// Enable ADC clocks
 	hri_mclk_set_APBDMASK_ADC0_bit(MCLK);
-	hri_gclk_write_PCHCTRL_reg(GCLK, ADC0_GCLK_ID, GCLK_PCHCTRL_GEN_GCLK3_Val | (1 << GCLK_PCHCTRL_CHEN_Pos));
+	hri_gclk_write_PCHCTRL_reg(GCLK, ADC0_GCLK_ID, GCLK_PCHCTRL_GEN(AdcGclkNum) | GCLK_PCHCTRL_CHEN);
 	hri_mclk_set_APBDMASK_ADC1_bit(MCLK);
-	hri_gclk_write_PCHCTRL_reg(GCLK, ADC1_GCLK_ID, GCLK_PCHCTRL_GEN_GCLK3_Val | (1 << GCLK_PCHCTRL_CHEN_Pos));
+	hri_gclk_write_PCHCTRL_reg(GCLK, ADC1_GCLK_ID, GCLK_PCHCTRL_GEN(AdcGclkNum) | GCLK_PCHCTRL_CHEN);
 
 	// Create the device instances
-	adcs[0] = new AdcClass(ADC0, ADC0_0_IRQn, dmaChan, txPriority, rxPriority, DmaTrigSource::adc0_resrdy);
-	adcs[1] = new AdcClass(ADC1, ADC1_0_IRQn, dmaChan + 2, txPriority, rxPriority, DmaTrigSource::adc1_resrdy);
+	adcs[0] = new AdcClass(ADC0, dmaChan, txPriority, rxPriority, DmaTrigSource::adc0_resrdy);
+	adcs[1] = new AdcClass(ADC1, dmaChan + 2, txPriority, rxPriority, DmaTrigSource::adc1_resrdy);
 }
 
 // Enable analog input on a pin.

@@ -21,14 +21,6 @@
 
 constexpr uint32_t DiagBaudRate = 57600;		// the baud rate we default to
 
-#if SAME5x
-constexpr uint32_t SercomFastClock = GCLK_PCHCTRL_GEN_GCLK3;
-constexpr uint32_t SercomSlowClock = GCLK_PCHCTRL_GEN_GCLK1;
-#else
-constexpr uint32_t SercomFastClock = GCLK_PCHCTRL_GEN_GCLK0;
-constexpr uint32_t SercomSlowClock = GCLK_PCHCTRL_GEN_GCLK3;
-#endif
-
 void Serial::EnableSercomClock(uint8_t sercomNumber) noexcept
 {
 	switch (sercomNumber)
@@ -38,86 +30,86 @@ void Serial::EnableSercomClock(uint8_t sercomNumber) noexcept
 
 	case 0:
 		MCLK->APBAMASK.reg |= MCLK_APBAMASK_SERCOM0;
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM0_GCLK_ID_CORE, SercomFastClock | GCLK_PCHCTRL_CHEN);
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM0_GCLK_ID_SLOW, SercomSlowClock | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM0_GCLK_ID_CORE, GCLK_PCHCTRL_GEN(SercomFastGclkNum) | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM0_GCLK_ID_SLOW, GCLK_PCHCTRL_GEN(SercomSlowGclkNum) | GCLK_PCHCTRL_CHEN);
 		break;
 
 	case 1:
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM1_GCLK_ID_CORE, SercomFastClock | GCLK_PCHCTRL_CHEN);
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM1_GCLK_ID_SLOW, SercomSlowClock | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM1_GCLK_ID_CORE, GCLK_PCHCTRL_GEN(SercomFastGclkNum) | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM1_GCLK_ID_SLOW, GCLK_PCHCTRL_GEN(SercomSlowGclkNum) | GCLK_PCHCTRL_CHEN);
 		MCLK->APBAMASK.reg |= MCLK_APBAMASK_SERCOM1;
 		break;
 
 	case 2:
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM2_GCLK_ID_CORE, SercomFastClock | GCLK_PCHCTRL_CHEN);
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM2_GCLK_ID_SLOW, SercomSlowClock | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM2_GCLK_ID_CORE, GCLK_PCHCTRL_GEN(SercomFastGclkNum) | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM2_GCLK_ID_SLOW, GCLK_PCHCTRL_GEN(SercomSlowGclkNum) | GCLK_PCHCTRL_CHEN);
 		MCLK->APBBMASK.reg |= MCLK_APBBMASK_SERCOM2;
 		break;
 
 	case 3:
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM3_GCLK_ID_CORE, SercomFastClock | GCLK_PCHCTRL_CHEN);
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM3_GCLK_ID_SLOW, SercomSlowClock | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM3_GCLK_ID_CORE, GCLK_PCHCTRL_GEN(SercomFastGclkNum) | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM3_GCLK_ID_SLOW, GCLK_PCHCTRL_GEN(SercomSlowGclkNum) | GCLK_PCHCTRL_CHEN);
 		MCLK->APBBMASK.reg |= MCLK_APBBMASK_SERCOM3;
 		break;
 
 	case 4:
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM4_GCLK_ID_CORE, SercomFastClock | GCLK_PCHCTRL_CHEN);
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM4_GCLK_ID_SLOW, SercomSlowClock | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM4_GCLK_ID_CORE, GCLK_PCHCTRL_GEN(SercomFastGclkNum) | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM4_GCLK_ID_SLOW, GCLK_PCHCTRL_GEN(SercomSlowGclkNum) | GCLK_PCHCTRL_CHEN);
 		MCLK->APBDMASK.reg |= MCLK_APBDMASK_SERCOM4;
 		break;
 
 	case 5:
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM5_GCLK_ID_CORE, SercomFastClock | GCLK_PCHCTRL_CHEN);
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM5_GCLK_ID_SLOW, SercomSlowClock | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM5_GCLK_ID_CORE, GCLK_PCHCTRL_GEN(SercomFastGclkNum) | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM5_GCLK_ID_SLOW, GCLK_PCHCTRL_GEN(SercomSlowGclkNum) | GCLK_PCHCTRL_CHEN);
 		MCLK->APBDMASK.reg |= MCLK_APBDMASK_SERCOM5;
 		break;
 
 	case 6:
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM6_GCLK_ID_CORE, SercomFastClock | GCLK_PCHCTRL_CHEN);
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM6_GCLK_ID_SLOW, SercomSlowClock | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM6_GCLK_ID_CORE, GCLK_PCHCTRL_GEN(SercomFastGclkNum) | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM6_GCLK_ID_SLOW, GCLK_PCHCTRL_GEN(SercomSlowGclkNum) | GCLK_PCHCTRL_CHEN);
 		MCLK->APBDMASK.reg |= MCLK_APBDMASK_SERCOM6;
 		break;
 	case 7:
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM7_GCLK_ID_CORE, SercomFastClock | GCLK_PCHCTRL_CHEN);
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM7_GCLK_ID_SLOW, SercomSlowClock | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM7_GCLK_ID_CORE, GCLK_PCHCTRL_GEN(SercomFastGclkNum) | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM7_GCLK_ID_SLOW, GCLK_PCHCTRL_GEN(SercomSlowGclkNum) | GCLK_PCHCTRL_CHEN);
 		MCLK->APBDMASK.reg |= MCLK_APBDMASK_SERCOM7;
 		break;
 
 #elif SAMC21
 
 	case 0:
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM0_GCLK_ID_CORE, SercomFastClock | GCLK_PCHCTRL_CHEN);
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM0_GCLK_ID_SLOW, SercomSlowClock | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM0_GCLK_ID_CORE, GCLK_PCHCTRL_GEN(SercomFastGclkNum) | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM0_GCLK_ID_SLOW, GCLK_PCHCTRL_GEN(SercomSlowGclkNum) | GCLK_PCHCTRL_CHEN);
 		MCLK->APBCMASK.reg |= MCLK_APBCMASK_SERCOM0;
 		break;
 
 	case 1:
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM1_GCLK_ID_CORE, SercomFastClock | GCLK_PCHCTRL_CHEN);
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM1_GCLK_ID_SLOW, SercomSlowClock | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM1_GCLK_ID_CORE, GCLK_PCHCTRL_GEN(SercomFastGclkNum) | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM1_GCLK_ID_SLOW, GCLK_PCHCTRL_GEN(SercomSlowGclkNum) | GCLK_PCHCTRL_CHEN);
 		MCLK->APBCMASK.reg |= MCLK_APBCMASK_SERCOM1;
 		break;
 
 	case 2:
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM2_GCLK_ID_CORE, SercomFastClock | GCLK_PCHCTRL_CHEN);
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM2_GCLK_ID_SLOW, SercomSlowClock | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM2_GCLK_ID_CORE, GCLK_PCHCTRL_GEN(SercomFastGclkNum) | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM2_GCLK_ID_SLOW, GCLK_PCHCTRL_GEN(SercomSlowGclkNum) | GCLK_PCHCTRL_CHEN);
 		MCLK->APBCMASK.reg |= MCLK_APBCMASK_SERCOM2;
 		break;
 
 	case 3:
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM3_GCLK_ID_CORE, SercomFastClock | GCLK_PCHCTRL_CHEN);
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM3_GCLK_ID_SLOW, SercomSlowClock | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM3_GCLK_ID_CORE, GCLK_PCHCTRL_GEN(SercomFastGclkNum) | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM3_GCLK_ID_SLOW, GCLK_PCHCTRL_GEN(SercomSlowGclkNum) | GCLK_PCHCTRL_CHEN);
 		MCLK->APBCMASK.reg |= MCLK_APBCMASK_SERCOM3;
 		break;
 
 	case 4:
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM4_GCLK_ID_CORE, SercomFastClock | GCLK_PCHCTRL_CHEN);
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM4_GCLK_ID_SLOW, SercomSlowClock | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM4_GCLK_ID_CORE, GCLK_PCHCTRL_GEN(SercomFastGclkNum) | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM4_GCLK_ID_SLOW, GCLK_PCHCTRL_GEN(SercomSlowGclkNum) | GCLK_PCHCTRL_CHEN);
 		MCLK->APBCMASK.reg |= MCLK_APBCMASK_SERCOM4;
 		break;
 
 	case 5:
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM5_GCLK_ID_CORE, SercomFastClock | GCLK_PCHCTRL_CHEN);
-		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM5_GCLK_ID_SLOW, SercomSlowClock | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM5_GCLK_ID_CORE, GCLK_PCHCTRL_GEN(SercomFastGclkNum) | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM5_GCLK_ID_SLOW, GCLK_PCHCTRL_GEN(SercomSlowGclkNum) | GCLK_PCHCTRL_CHEN);
 		MCLK->APBCMASK.reg |= MCLK_APBCMASK_SERCOM5;
 		break;
 
@@ -176,7 +168,7 @@ void Serial::InitUart(uint8_t sercomNumber, uint32_t baudRate, uint8_t rxPad
 #else
 	sercom->USART.CTRLC.reg = 0u;
 #endif
-	const uint32_t baudReg = 65536u - (((uint64_t)65536 * 16 * baudRate)/SystemPeripheralClock);
+	const uint32_t baudReg = 65536u - (((uint64_t)65536 * 16 * baudRate)/SercomFastGclkFreq);
 	sercom->USART.BAUD.reg = baudReg;
 	hri_sercomusart_set_CTRLA_ENABLE_bit(sercom);
 	hri_sercomusart_wait_for_sync(sercom, SERCOM_USART_SYNCBUSY_ENABLE);

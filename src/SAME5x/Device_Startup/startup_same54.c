@@ -41,10 +41,8 @@ extern uint32_t _ezero;
 extern uint32_t _estack;
 extern uint32_t _firmware_crc;
 
-/** \cond DOXYGEN_SHOULD_SKIP_THIS */
-int main(void);
-/** \endcond */
-
+extern void AppInit(void);
+extern void AppMain(void);
 void __libc_init_array(void);
 
 /* Default empty handler */
@@ -537,7 +535,8 @@ void Reset_Handler(void)
         __libc_init_array();
 
         /* Branch to main function */
-        main();
+        AppInit();
+        AppMain();
 
         /* Infinite loop */
         while (1);

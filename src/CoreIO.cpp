@@ -169,9 +169,9 @@ void Reset() noexcept
 
 // Enable a GCLK. This function doesn't allow access to some GCLK features, e.g. the DIVSEL or OOV or RUNSTDBY bits.
 // Only GCLK1 can have a divisor greater than 255.
-void EnableGclk(unsigned int index, GclkSource source, uint16_t divisor, bool enableOutput) noexcept
+void EnableGclk(unsigned int index, unsigned int gclkNum, uint16_t divisor, bool enableOutput) noexcept
 {
-	uint32_t regVal = GCLK_GENCTRL_DIV(divisor) | (uint32_t)source | (1u << GCLK_GENCTRL_GENEN_Pos);
+	uint32_t regVal = GCLK_GENCTRL_DIV(divisor) | GCLK_PCHCTRL_GEN(gclkNum) | GCLK_GENCTRL_GENEN;
 	if (divisor & 1u)
 	{
 		regVal |= 1u << GCLK_GENCTRL_IDC_Pos;
@@ -185,7 +185,7 @@ void EnableGclk(unsigned int index, GclkSource source, uint16_t divisor, bool en
 	while (GCLK->SYNCBUSY.reg & GCLK_SYNCBUSY_MASK) { }
 }
 
-void EnableTcClock(unsigned int tcNumber, uint32_t gclkVal) noexcept
+void EnableTcClock(unsigned int tcNumber, unsigned int gclkNum) noexcept
 {
 	static constexpr uint8_t TcClockIDs[] =
 	{
@@ -195,7 +195,7 @@ void EnableTcClock(unsigned int tcNumber, uint32_t gclkVal) noexcept
 #endif
 	};
 
-	hri_gclk_write_PCHCTRL_reg(GCLK, TcClockIDs[tcNumber], gclkVal | (1 << GCLK_PCHCTRL_CHEN_Pos));
+	hri_gclk_write_PCHCTRL_reg(GCLK, TcClockIDs[tcNumber], GCLK_PCHCTRL_GEN(gclkNum) | GCLK_PCHCTRL_CHEN);
 
 	switch (tcNumber)
 	{
@@ -220,7 +220,7 @@ void EnableTcClock(unsigned int tcNumber, uint32_t gclkVal) noexcept
 	}
 }
 
-void EnableTccClock(unsigned int tccNumber, uint32_t gclkVal) noexcept
+void EnableTccClock(unsigned int tccNumber, unsigned int gclkNum) noexcept
 {
 	static constexpr uint8_t TccClockIDs[] =
 	{
@@ -230,7 +230,7 @@ void EnableTccClock(unsigned int tccNumber, uint32_t gclkVal) noexcept
 #endif
 	};
 
-	hri_gclk_write_PCHCTRL_reg(GCLK, TccClockIDs[tccNumber], gclkVal | (1 << GCLK_PCHCTRL_CHEN_Pos));
+	hri_gclk_write_PCHCTRL_reg(GCLK, TccClockIDs[tccNumber], GCLK_PCHCTRL_GEN(gclkNum) | GCLK_PCHCTRL_CHEN);
 
 	switch (tccNumber)
 	{

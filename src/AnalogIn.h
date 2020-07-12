@@ -61,7 +61,7 @@ namespace AnalogIn
 	void EnableTemperatureSensor(AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall) noexcept;
 #endif
 
-	[[noreturn]] void TaskLoop(void*) noexcept;
+	extern "C" [[noreturn]] void TaskLoop(void*) noexcept;
 
 #else
 

@@ -14,6 +14,16 @@
 
 namespace Serial
 {
+#if SAME5x
+	constexpr uint32_t SercomFastGclkNum = GclkNum60MHz;
+	constexpr uint32_t SercomFastGclkFreq = 60000000;
+	constexpr uint32_t SercomSlowGclkNum = GclkNum32KHz;
+#else
+	constexpr uint32_t SercomFastGclkNum = GclkNum48MHz;
+	constexpr uint32_t SercomFastGclkFreq = 48000000;
+	constexpr uint32_t SercomSlowGclkNum = GclkNum32KHz;
+#endif
+
 	static Sercom * const Sercoms[] =
 	{
 		SERCOM0, SERCOM1, SERCOM2, SERCOM3, SERCOM4, SERCOM5,

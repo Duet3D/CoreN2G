@@ -159,8 +159,8 @@ static inline constexpr unsigned int GetDeviceNumber(TcOutput tc) noexcept { ret
 static inline constexpr unsigned int GetOutputNumber(TcOutput tc) noexcept { return (uint8_t)tc & 1; }
 
 // Initialise a TC clock
-void EnableTcClock(unsigned int tcNumber, uint32_t gclkVal) noexcept;
-void EnableTccClock(unsigned int tccNumber, uint32_t gclkVal) noexcept;
+void EnableTcClock(unsigned int tcNumber, unsigned int gclkNum) noexcept;
+void EnableTccClock(unsigned int tccNumber, unsigned int gclkNum) noexcept;
 
 enum class TccOutput : uint8_t
 {

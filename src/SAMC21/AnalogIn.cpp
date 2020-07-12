@@ -23,6 +23,7 @@
 # define SUPPORT_SDADC	0
 #endif
 
+constexpr unsigned int AdcGclkNum = GclkNum48MHz;
 constexpr uint32_t AdcConversionTimeout = 5;		// milliseconds
 
 static uint32_t conversionsStarted = 0;
@@ -47,9 +48,9 @@ public:
 		ready
 	};
 
-	AdcBase(IRQn p_irqn, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept;
+	AdcBase(DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept;
 
-	virtual bool StartConversion(TaskHandle p_taskToWake) noexcept = 0;
+	virtual bool StartConversion() noexcept = 0;
 	virtual void ExecuteCallbacks() noexcept = 0;
 
 	State GetState() const noexcept { return state; }
@@ -70,7 +71,6 @@ protected:
 	static constexpr size_t NumAdcChannels = 12;		// number of channels per ADC
 	static constexpr size_t MaxSequenceLength = 12;		// the maximum length of the read sequence
 
-	const IRQn irqn;
 	const DmaChannel dmaChan;
 	const DmaPriority dmaPrio;
 	const DmaTrigSource trigSrc;
@@ -90,8 +90,8 @@ protected:
 	volatile uint16_t resultsByChannel[NumAdcChannels];
 };
 
-AdcBase::AdcBase(IRQn p_irqn, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept
-	: irqn(p_irqn), dmaChan(p_dmaChan), dmaPrio(priority), trigSrc(p_trigSrc),
+AdcBase::AdcBase(DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept
+	: dmaChan(p_dmaChan), dmaPrio(priority), trigSrc(p_trigSrc),
 	  numChannelsEnabled(0), channelsEnabled(0),
 	  taskToWake(nullptr), whenLastConversionStarted(0), state(State::noChannels)
 {
@@ -158,9 +158,9 @@ void AdcBase::ResultReadyCallback(DmaCallbackReason reason) noexcept
 class AdcClass : public AdcBase
 {
 public:
-	AdcClass(Adc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept;
+	AdcClass(Adc * const p_device, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept;
 
-	bool StartConversion(TaskHandle p_taskToWake) noexcept override;
+	bool StartConversion() noexcept override;
 	void ExecuteCallbacks() noexcept override;
 
 protected:
@@ -170,8 +170,8 @@ private:
 	Adc * const device;
 };
 
-AdcClass::AdcClass(Adc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept
-	: AdcBase(p_irqn, p_dmaChan, priority, p_trigSrc), device(p_device)
+AdcClass::AdcClass(Adc * const p_device, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept
+	: AdcBase(p_dmaChan, priority, p_trigSrc), device(p_device)
 {
 }
 
@@ -270,7 +270,7 @@ bool AdcClass::InternalEnableChannel(unsigned int chan, AnalogInCallbackFunction
 }
 
 // Start a conversion if we are not already doing one and have channels to convert, or timeout an existing conversion
-bool AdcClass::StartConversion(TaskHandle p_taskToWake) noexcept
+bool AdcClass::StartConversion() noexcept
 {
 	const size_t numChannelsConverting = numChannelsEnabled;			// capture volatile variable to ensure we use a consistent value
 	if (numChannelsConverting == 0)
@@ -288,7 +288,7 @@ bool AdcClass::StartConversion(TaskHandle p_taskToWake) noexcept
 		//TODO should we reset the ADC here?
 	}
 
-	taskToWake = p_taskToWake;
+	taskToWake = TaskBase::GetCallerTaskHandle();
 	(void)device->RESULT.reg;			// make sure no result pending
 	device->SEQCTRL.reg = channelsEnabled;
 
@@ -341,7 +341,7 @@ class SdAdcClass : public AdcBase
 public:
 	SdAdcClass(Sdadc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept;
 
-	bool StartConversion(TaskHandle p_taskToWake) noexcept override;
+	bool StartConversion() noexcept override;
 	void ExecuteCallbacks() noexcept override;
 
 protected:
@@ -360,7 +360,7 @@ SdAdcClass::SdAdcClass(
 }
 
 // Start a conversion if we are not already doing one and have channels to convert, or timeout an existing conversion
-bool SdAdcClass::StartConversion(TaskHandle p_taskToWake) noexcept
+bool SdAdcClass::StartConversion() noexcept
 {
 	const size_t numChannelsConverting = numChannelsEnabled;			// capture volatile variable to ensure we use a consistent value
 	if (numChannelsConverting == 0)
@@ -378,7 +378,7 @@ bool SdAdcClass::StartConversion(TaskHandle p_taskToWake) noexcept
 		//TODO should we reset the SDADC here?
 	}
 
-	taskToWake = p_taskToWake;
+	taskToWake = TaskBase::GetCallerTaskHandle();
 	(void)device->RESULT.reg;			// make sure no result pending
 	device->SEQCTRL.reg = channelsEnabled;
 
@@ -505,7 +505,7 @@ void AnalogIn::TaskLoop(void*) noexcept
 			{
 				adc->ExecuteCallbacks();
 			}
-			if (adc->StartConversion(TaskBase::GetCallerTaskHandle()))
+			if (adc->StartConversion())
 			{
 				conversionStarted = true;
 			}
@@ -544,19 +544,19 @@ void AnalogIn::TaskLoop(void*) noexcept
 void AnalogIn::Init(DmaChannel dmaChan, DmaPriority priority) noexcept
 {
 	// Create the device instances
-	adcs[0] = new AdcClass(ADC0, ADC0_IRQn, dmaChan, priority, DmaTrigSource::adc0_resrdy);
+	adcs[0] = new AdcClass(ADC0, dmaChan, priority, DmaTrigSource::adc0_resrdy);
 #if SUPPORT_SDADC
-	adcs[1] = new SdAdcClass(SDADC, SDADC_IRQn, dmaChan + 1, priority, DmaTrigSource::sdadc_resrdy);
+	adcs[1] = new SdAdcClass(SDADC, dmaChan + 1, priority, DmaTrigSource::sdadc_resrdy);
 #endif
 
 	// Enable ADC clocks. SAMC21 has 2 ADCs but we use only the first one
 	hri_mclk_set_APBCMASK_ADC0_bit(MCLK);
-	hri_gclk_write_PCHCTRL_reg(GCLK, ADC0_GCLK_ID, GCLK_PCHCTRL_GEN_GCLK0_Val | (1 << GCLK_PCHCTRL_CHEN_Pos));
+	hri_gclk_write_PCHCTRL_reg(GCLK, ADC0_GCLK_ID, GCLK_PCHCTRL_GEN(AdcGclkNum) | GCLK_PCHCTRL_CHEN);
 
 #if SUPPORT_SDADC
 	// SAMC21 also has a SDADC
 	hri_mclk_set_APBCMASK_SDADC_bit(MCLK);
-	hri_gclk_write_PCHCTRL_reg(GCLK, SDADC_GCLK_ID, GCLK_PCHCTRL_GEN_GCLK0_Val | (1 << GCLK_PCHCTRL_CHEN_Pos));
+	hri_gclk_write_PCHCTRL_reg(GCLK, SDADC_GCLK_ID, GCLK_PCHCTRL_GEN(AdcGclkNum) | GCLK_PCHCTRL_CHEN);
 #endif
 }
 
@@ -596,7 +596,7 @@ bool AnalogIn::IsChannelEnabled(AdcInput adcin, bool useAlternateAdc) noexcept
 
 #if 0
 // Disable a previously-enabled channel
-bool AnalogIn::DisableChannel(Pin pin) noexcept
+bool AnalogIn::DisableChannel(AdcInput adcin, bool useAlternateAdc) noexcept
 {
 	//TODO not implemented yet (do we need it?)
 	return false;

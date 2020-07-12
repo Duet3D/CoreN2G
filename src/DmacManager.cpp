@@ -18,6 +18,8 @@
 #include <DmacManager.h>
 #include <RTOSIface/RTOSIface.h>
 
+constexpr NvicPriority TempNvicPriorityDMA = 4;			// temporary DMA interrupt priority, low enough to allow FreeRTOS system calls
+
 // Descriptors for all used DMAC channels
 alignas(16) static DmacDescriptor descriptor_section[NumDmaChannelsSupported];
 
@@ -64,11 +66,13 @@ void DmacManager::Init() noexcept
 	{
 		NVIC_DisableIRQ((IRQn)(DMAC_0_IRQn + i));
 		NVIC_ClearPendingIRQ((IRQn)(DMAC_0_IRQn + i));
+		NVIC_SetPriority((IRQn)(DMAC_0_IRQn + i), TempNvicPriorityDMA);
 		NVIC_EnableIRQ((IRQn)(DMAC_0_IRQn + i));
 	}
 #elif SAMC21
 	NVIC_DisableIRQ(DMAC_IRQn);
 	NVIC_ClearPendingIRQ(DMAC_IRQn);
+	NVIC_SetPriority(DMAC_IRQn, TempNvicPriorityDMA);
 	NVIC_EnableIRQ(DMAC_IRQn);
 #else
 # error Unsupported processor

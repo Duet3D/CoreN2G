@@ -7,6 +7,12 @@
 
 #include "Interrupts.h"
 
+#if SAME5x
+constexpr unsigned int ExintGclkNum = GclkNum120MHz;
+#elif SAMC21
+constexpr unsigned int ExintGclkNum = GclkNum48MHz;
+#endif
+
 struct InterruptCallback
 {
 	StandardCallbackFunction func;
@@ -22,7 +28,7 @@ static InterruptCallback exintCallbacks[16];
 
 void InitialiseExints() noexcept
 {
-	hri_gclk_write_PCHCTRL_reg(GCLK, EIC_GCLK_ID, GCLK_PCHCTRL_GEN_GCLK0_Val | (1 << GCLK_PCHCTRL_CHEN_Pos));
+	hri_gclk_write_PCHCTRL_reg(GCLK, EIC_GCLK_ID, GCLK_PCHCTRL_GEN(ExintGclkNum) | GCLK_PCHCTRL_CHEN);
 	hri_mclk_set_APBAMASK_EIC_bit(MCLK);
 
 	if (!hri_eic_is_syncing(EIC, EIC_SYNCBUSY_SWRST)) {

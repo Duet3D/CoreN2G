@@ -8,13 +8,23 @@
 #include "AnalogOut.h"
 
 #if SAME5x
+
 # include "hri_tc_e54.h"
 # include "hri_tcc_e54.h"
 # include "hri_mclk_e54.h"
+
+constexpr unsigned int TcGclkNum = GclkNum60MHz;
+constexpr uint32_t TcGclkFreq = 60000000;
+
 #elif SAMC21
+
 # include "hri_tc_c21.h"
 # include "hri_tcc_c21.h"
 # include "hri_mclk_c21.h"
+
+constexpr unsigned int TcGclkNum = GclkNum48MHz;
+constexpr uint32_t TcGclkFreq = 48000000;
+
 #else
 # error Unsupported processor
 #endif
@@ -39,9 +49,9 @@ namespace AnalogOut
 		static const unsigned int PrescalerShifts[] = { 0, 1, 2, 3, 4, 6, 8, 10 };		// available prescalers are 1 2 4 8 16 64 256 1024
 		for (uint32_t i = 0; i < ARRAY_SIZE(PrescalerShifts); ++i)
 		{
-			if ((SystemPeripheralClock >> (PrescalerShifts[i] + counterBits)) <= (uint32_t)freq)
+			if ((TcGclkFreq >> (PrescalerShifts[i] + counterBits)) <= (uint32_t)freq)
 			{
-				top = ((SystemPeripheralClock >> PrescalerShifts[i])/(uint32_t)freq) - 1;
+				top = ((TcGclkFreq >> PrescalerShifts[i])/(uint32_t)freq) - 1;
 				return i;
 			}
 		}
@@ -85,13 +95,7 @@ namespace AnalogOut
 
 				if (tcFreq[device] == 0)
 				{
-					EnableTcClock(device,
-#if defined(SAME51)
-						GCLK_PCHCTRL_GEN_GCLK1_Val
-#elif defined(SAMC21)
-						GCLK_PCHCTRL_GEN_GCLK0_Val
-#endif
-						);
+					EnableTcClock(device, TcGclkNum);
 
 					// Initialise the TC
 					hri_tc_clear_CTRLA_ENABLE_bit(tcdev);
@@ -171,13 +175,7 @@ namespace AnalogOut
 
 				if (tccFreq[device] == 0)
 				{
-					EnableTccClock(device,
-#if defined(SAME51)
-						GCLK_PCHCTRL_GEN_GCLK1_Val
-#elif defined(SAMC21)
-						GCLK_PCHCTRL_GEN_GCLK0_Val
-#endif
-						);
+					EnableTccClock(device, TcGclkNum);
 
 					// Initialise the TCC
 					hri_tcc_clear_CTRLA_ENABLE_bit(tccdev);
