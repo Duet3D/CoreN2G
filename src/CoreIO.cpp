@@ -155,7 +155,7 @@ void WatchdogInit() noexcept
 void watchdogReset() noexcept
 {
 	// If we kick the watchdog too often, sometimes it resets us. It uses a 1024Hz nominal clock, so presumably it has to be reset less often than that.
-	if ((((uint32_t)g_ms_ticks) & 0x07) == 0)
+	if ((((uint32_t)g_ms_ticks) & 0x07) == 0 && (WDT->SYNCBUSY.reg & WDT_SYNCBUSY_CLEAR) == 0)
 	{
 		WDT->CLEAR.reg = 0xA5;
 	}
