@@ -240,14 +240,18 @@ void DmacManager::DisableCompletedInterrupt(const uint8_t channel) noexcept
 #endif
 }
 
-uint8_t DmacManager::GetChannelStatus(uint8_t channel) noexcept
+uint8_t DmacManager::GetAndClearChannelStatus(uint8_t channel) noexcept
 {
 #if SAME5x
-	return DMAC->Channel[channel].CHINTFLAG.reg;
+	const uint8_t ret = DMAC->Channel[channel].CHINTFLAG.reg;
+	DMAC->Channel[channel].CHINTFLAG.reg = ret;
+	return ret;
 #elif SAMC21
 	AtomicCriticalSectionLocker lock;
 	DMAC->CHID.reg = channel;
-	return DMAC->CHINTFLAG.reg;
+	const uint8_t ret = DMAC->CHINTFLAG.reg;
+	DMAC->CHINTFLAG.reg = ret;
+	return ret;
 #else
 # error Unsupported processor
 #endif

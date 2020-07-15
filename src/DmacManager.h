@@ -215,7 +215,7 @@ namespace DmacManager
 	void SetInterruptCallback(DmaChannel channel, DmaCallbackFunction fn, CallbackParameter param) noexcept;
 	void EnableCompletedInterrupt(DmaChannel channel) noexcept;
 	void DisableCompletedInterrupt(DmaChannel channel) noexcept;
-	uint8_t GetChannelStatus(DmaChannel channel) noexcept;
+	uint8_t GetAndClearChannelStatus(DmaChannel channel) noexcept;
 	uint16_t GetBytesTransferred(DmaChannel channel) noexcept;
 }
 
