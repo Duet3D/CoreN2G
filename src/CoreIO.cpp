@@ -13,6 +13,56 @@
 #include "AnalogIn.h"
 #include "AnalogOut.h"
 
+// Delay for a specified number of CPU clock cycles from the starting time. Return the time at which we actually stopped waiting.
+extern "C" uint32_t DelayCycles(uint32_t start, uint32_t cycles) noexcept
+{
+	const uint32_t reload = (SysTick->LOAD & 0x00FFFFFF) + 1;
+	uint32_t now = start;
+
+	// Wait for the systick counter to cycle round until we need to wait less than the reload value
+	while (cycles >= reload)
+	{
+		const uint32_t last = now;
+		now = SysTick->VAL & 0x00FFFFFF;
+		if (now > last)
+		{
+			cycles -= reload;
+		}
+	}
+
+	uint32_t when;
+	if (start >= cycles)
+	{
+		when = start - cycles;
+	}
+	else
+	{
+		when = start + reload - cycles;
+
+		// Wait for the counter to cycle again
+		while (true)
+		{
+			const uint32_t last = now;
+			now = SysTick->VAL & 0x00FFFFFF;
+			if (now > last)
+			{
+				break;
+			}
+		}
+	}
+
+	// Wait until the counter counts down to 'when' or below, or cycles again
+	while (true)
+	{
+		const uint32_t last = now;
+		now = SysTick->VAL & 0x00FFFFFF;
+		if (now <= when || now > last)
+		{
+			return now;
+		}
+	}
+}
+
 // IoPort::SetPinMode calls this
 extern "C" void pinMode(Pin pin, enum PinMode mode) noexcept
 {

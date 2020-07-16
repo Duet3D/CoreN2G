@@ -118,22 +118,13 @@ void digitalWrite(Pin pin, bool high) noexcept;
 
 uint32_t random32(void) noexcept;		// needed by lwip
 
+// Delay for a specified number of CPU clock cycles from the starting time. Return the time at which we actually stopped waiting.
+uint32_t DelayCycles(uint32_t start, uint32_t cycles) noexcept;
+
 static inline void delayMicroseconds(uint32_t) noexcept __attribute__((always_inline, unused));
 static inline void delayMicroseconds(uint32_t usec) noexcept
 {
-    // Based on Paul Stoffregen's implementation for Teensy 3.0 (http://www.pjrc.com/)
-    if (usec != 0)
-    {
-		uint32_t n = usec * (SystemCoreClockFreq / 3000000);
-		asm volatile
-		(
-			".syntax unified"				"\n\t"
-			"L_%=_delayMicroseconds:"       "\n\t"
-			"subs   %0, #1"   				"\n\t"
-			"bne    L_%=_delayMicroseconds" "\n"
-			: "+r" (n) :
-		);
-    }
+	(void)DelayCycles(SysTick->VAL & 0x00FFFFFF, usec * (SystemCoreClockFreq/1000000));
 }
 
 // Functions and macros to enable/disable interrupts
