@@ -345,10 +345,7 @@ void AdcClass::ResultReadyCallback(DmaCallbackReason reason) noexcept
 	++conversionsCompleted;
 	DmacManager::DisableChannel(dmaChan);			// disable the sequencer DMA, just in case it is out of sync
 	DmacManager::DisableChannel(dmaChan + 1);		// disable the reader DMA too
-	if (taskToWake != nullptr)
-	{
-		TaskBase::GiveFromISR(taskToWake);
-	}
+	TaskBase::GiveFromISR(taskToWake);
 }
 
 // Callback from the DMA controller ISR
