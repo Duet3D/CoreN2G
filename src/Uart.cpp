@@ -69,7 +69,7 @@ void Uart::flush() noexcept
 	}
 }
 
-size_t Uart::canWrite() const noexcept
+size_t Uart::canWrite() noexcept
 {
 	return txBuffer.SpaceLeft();
 }

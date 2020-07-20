@@ -41,8 +41,6 @@ static struct usbd_descriptors single_desc[]
 
 static SerialCDC *device;
 static bool sending = false, receiving = false;
-static usb_cdc_control_signal_t cdcState;
-
 /** Ctrl endpoint buffer */
 static uint8_t ctrl_buffer[64];
 
@@ -69,27 +67,7 @@ static bool usb_device_cb_bulk_tx(const uint8_t ep, const enum usb_xfer_code rc,
 	return false;						// no error
 }
 
-/**
- * \brief Callback invoked when Line State Change
- */
-static bool usb_device_cb_state_c(usb_cdc_control_signal_t state)
-{
-	cdcState = state;
-	if (state.rs232.DTR)
-	{
-		// Callbacks must be registered after endpoint allocation
-		cdcdf_acm_register_callback(CDCDF_ACM_CB_READ, (FUNC_PTR)usb_device_cb_bulk_rx);
-		cdcdf_acm_register_callback(CDCDF_ACM_CB_WRITE, (FUNC_PTR)usb_device_cb_bulk_tx);
-
-		// Start receive
-		device->StartReceiving();
-	}
-
-	/* No error. */
-	return false;
-}
-
-SerialCDC::SerialCDC(Pin p, size_t numTxSlots, size_t numRxSlots) noexcept : vbusPin(p)
+SerialCDC::SerialCDC(Pin p, size_t numTxSlots, size_t numRxSlots) noexcept : vbusPin(p), hasConnected(false)
 {
 	txBuffer.Init(numTxSlots);
 	rxBuffer.Init(numRxSlots);
@@ -106,14 +84,7 @@ void SerialCDC::Start() noexcept
 	usbdc_start(single_desc);
 	usbdc_attach();
 
-	//TODO not sure whether this just waits for installation to complete or waits for a connection
-	while (!cdcdf_acm_is_enabled())
-	{
-		// wait cdc acm to be installed
-	}
-
 	device = this;
-	cdcdf_acm_register_callback(CDCDF_ACM_CB_STATE_C, (FUNC_PTR)usb_device_cb_state_c);
 }
 
 void SerialCDC::end() noexcept
@@ -122,9 +93,26 @@ void SerialCDC::end() noexcept
 	usbdc_deinit();
 }
 
+void SerialCDC::CheckIfJustConnected() noexcept
+{
+	AtomicCriticalSectionLocker lock;
+
+	if (!hasConnected && cdcdf_acm_is_enabled())
+	{
+		hasConnected = true;
+
+		// Callbacks must be registered after endpoint allocation
+		cdcdf_acm_register_callback(CDCDF_ACM_CB_READ, (FUNC_PTR)usb_device_cb_bulk_rx);
+		cdcdf_acm_register_callback(CDCDF_ACM_CB_WRITE, (FUNC_PTR)usb_device_cb_bulk_tx);
+
+		// Start receive
+		StartReceiving();
+	}
+}
+
 bool SerialCDC::IsConnected() const noexcept
 {
-	return cdcState.rs232.DTR;
+	return cdcdf_acm_is_enabled();
 }
 
 // Overridden virtual functions
@@ -132,48 +120,64 @@ bool SerialCDC::IsConnected() const noexcept
 // Non-blocking read, return 0 if no character available
 int SerialCDC::read() noexcept
 {
-	uint8_t c;
-	if (rxBuffer.GetItem(c))
+	if (hasConnected)
 	{
-		StartReceiving();
-		return c;
+		uint8_t c;
+		if (rxBuffer.GetItem(c))
+		{
+			StartReceiving();
+			return c;
+		}
+	}
+	else
+	{
+		CheckIfJustConnected();
 	}
 	return -1;
 }
 
 int SerialCDC::available() noexcept
 {
+	CheckIfJustConnected();
 	return rxBuffer.ItemsPresent();
 }
 
 void SerialCDC::flush() noexcept
 {
-	while (!txBuffer.IsEmpty()) { }
+	if (hasConnected)
+	{
+		while (!txBuffer.IsEmpty()) { }
+	}
 	//TODO wait until no data in the USB buffer
 }
 
-size_t SerialCDC::canWrite() const noexcept
+size_t SerialCDC::canWrite() noexcept
 {
-	return txBuffer.SpaceLeft();
+	CheckIfJustConnected();
+	return (hasConnected) ? txBuffer.SpaceLeft() : 0;
 }
 
 // Write single character, blocking
 size_t SerialCDC::write(uint8_t c) noexcept
 {
-	for (;;)
+	CheckIfJustConnected();
+	if (hasConnected)
 	{
-		if (txBuffer.PutItem(c))
+		for (;;)
 		{
+			if (txBuffer.PutItem(c))
+			{
+				StartSending();
+				break;
+			}
+#ifdef RTOS
+			txWaitingTask = RTOSIface::GetCurrentTask();
+#endif
 			StartSending();
-			break;
+#ifdef RTOS
+			TaskBase::Take(50);
+#endif
 		}
-#ifdef RTOS
-		txWaitingTask = RTOSIface::GetCurrentTask();
-#endif
-		StartSending();
-#ifdef RTOS
-		TaskBase::Take(50);
-#endif
 	}
 	return 1;
 }
@@ -181,22 +185,26 @@ size_t SerialCDC::write(uint8_t c) noexcept
 // Blocking write block
 size_t SerialCDC::write(const uint8_t *buffer, size_t buflen) noexcept
 {
+	CheckIfJustConnected();
 	const size_t ret = buflen;
-	for (;;)
+	if (hasConnected)
 	{
-		buflen -= txBuffer.PutBlock(buffer, buflen);
-		if (buflen == 0)
+		for (;;)
 		{
+			buflen -= txBuffer.PutBlock(buffer, buflen);
+			if (buflen == 0)
+			{
+				StartSending();
+				break;
+			}
+#ifdef RTOS
+			txWaitingTask = RTOSIface::GetCurrentTask();
+#endif
 			StartSending();
-			break;
+#ifdef RTOS
+			TaskBase::Take(50);
+#endif
 		}
-#ifdef RTOS
-		txWaitingTask = RTOSIface::GetCurrentTask();
-#endif
-		StartSending();
-#ifdef RTOS
-		TaskBase::Take(50);
-#endif
 	}
 	return ret;
 }

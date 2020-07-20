@@ -21,11 +21,11 @@ public:
 	int available() noexcept override;
 	int read() noexcept override;
 	void flush() noexcept override;
-	size_t canWrite() const noexcept override;
+	size_t canWrite() noexcept override;
     size_t write(uint8_t) noexcept override;
     size_t write(const uint8_t *buffer, size_t size) noexcept override;		// this has a default implementation, but can be overridden for efficiency
 
-    using Print::write; // pull in write(str) and write(buf, size) from Print
+    using Print::write;		// pull in write(str) and write(buf, size) from Print
 
     void Start() noexcept;
     bool IsConnected() const noexcept;
@@ -39,11 +39,13 @@ public:
 	void DataReceived(uint32_t count) noexcept;
 
 private:
+	void CheckIfJustConnected() noexcept;
 
 	RingBuffer<uint8_t> txBuffer;
 	RingBuffer<uint8_t> rxBuffer;
 	volatile TaskHandle txWaitingTask;
 	const Pin vbusPin;
+	bool hasConnected;
 };
 
 #endif /* SRC_HARDWARE_SAME5X_SERIALCDC_H_ */
