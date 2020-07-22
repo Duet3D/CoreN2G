@@ -65,7 +65,7 @@ namespace AnalogOut
 		static volatile Tc* const TcDevices[] =
 		{
 			TC0, TC1, TC2, TC3, TC4,
-#ifdef SAME51
+#if SAME5x
 			TC5		// TC6 and TC7 exist but are reserved for the step clock
 #endif
 		};
@@ -145,14 +145,14 @@ namespace AnalogOut
 		static volatile Tcc* const TccDevices[] =
 		{
 			TCC0, TCC1, TCC2,
-#ifdef SAME51
+#if SAME5x
 			TCC3, TCC4
 #endif
 		};
 		static constexpr unsigned int TccCounterBits[ARRAY_SIZE(TccDevices)] =
 		{
 			24, 24, 16,
-#ifdef SAME51
+#if SAME5x
 			16, 16
 #endif
 		};
