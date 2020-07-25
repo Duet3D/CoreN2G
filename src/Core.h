@@ -52,16 +52,18 @@ typedef uint32_t NvicPriority;
 
 static const Pin NoPin = 0xFF;
 
-// Standard GCLK numbers
+// Standard GCLK numbers and frequencies
 #if SAME5x
 
 static const uint32_t SystemCoreClockFreq = 120000000;
 
 static const unsigned int GclkNum120MHz = 0;
 static const unsigned int GclkNum32KHz = 1;		// frequency is approx. 32768Hz
-static const unsigned int GclkNum25MHz = 2;		// only on 5LC board
 static const unsigned int GclkNum60MHz = 3;
 static const unsigned int GclkNum48MHz = 4;
+// There may be other GCLKs defined by the client application, e.g. on Duet 3 Mini:
+//static const unsigned int GclkNum25MHz = 2;	// for Ethernet PHY
+//static const unsigned int GclkNum90MHz = 5;	// for SDHC
 
 #elif SAMC21
 

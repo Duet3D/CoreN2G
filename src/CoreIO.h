@@ -270,6 +270,9 @@ struct PinDescriptionBase
 };
 
 // External function to get a pin table entry. This must be provided by the client project.
-const PinDescriptionBase *GetPinDescription(Pin p) noexcept;
+extern const PinDescriptionBase *GetPinDescription(Pin p) noexcept;
+
+// External function to get the SDHC peripheral clock speed. This must be provided by the client project if using SDHC.
+extern uint32_t GetSdhcClockSpeed() noexcept;
 
 #endif /* SRC_HARDWARE_SAME5X_COREIO_H_ */

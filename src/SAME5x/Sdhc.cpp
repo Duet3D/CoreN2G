@@ -42,8 +42,6 @@ Sdhc* const hw = SDHC1;
 constexpr IRQn SDHC_IRQn = SDHC1_IRQn;
 #define SDHC_ISR	SDHC1_Handler
 
-constexpr uint32_t CONF_BASE_FREQUENCY = 120000000;
-
 #define HSMCI_SLOT_0_SIZE 		4
 #define CONF_SDHC_CLK_GEN_SEL	0
 
@@ -103,7 +101,6 @@ static void hsmci_reset() noexcept
  */
 static void hsmci_set_speed(uint32_t speed, uint8_t prog_clock_mode) noexcept
 {
-#if 0	//dc42
 	// The following is based on the code from Harmony
 	uint32_t baseclk_frq = 0;
 	uint16_t divider = 0;
@@ -119,7 +116,7 @@ static void hsmci_set_speed(uint32_t speed, uint8_t prog_clock_mode) noexcept
 	}
 
 	// Get the base clock frequency
-	baseclk_frq = CONF_BASE_FREQUENCY/2;
+	baseclk_frq = GetSdhcClockSpeed()/2;
 
 	// Use programmable clock mode if it is supported
 	clkmul = hri_sdhc_read_CA1R_CLKMULT_bf(hw);
@@ -175,65 +172,6 @@ static void hsmci_set_speed(uint32_t speed, uint8_t prog_clock_mode) noexcept
 
 	// Enable the SDCLK
 	hri_sdhc_set_CCR_SDCLKEN_bit(hw);
-#else
-	uint32_t div;
-	uint32_t clkbase;
-	uint32_t clkmul;
-
-	if (hri_sdhc_get_CCR_SDCLKEN_bit(hw))
-	{
-		while (hri_sdhc_read_PSR_reg(hw) & (SDHC_PSR_CMDINHC_CANNOT | SDHC_PSR_CMDINHD_CANNOT)) { }
-		hri_sdhc_clear_CCR_SDCLKEN_bit(hw);
-	}
-	//	clkbase = hri_sdhc_read_CA0R_BASECLKF_bf(hw);
-	clkbase = CONF_BASE_FREQUENCY;
-	clkmul  = hri_sdhc_read_CA1R_CLKMULT_bf(hw);
-
-	/* If programmable clock mode is supported, baseclk is divided by 2 */
-	if (clkmul > 0)
-	{
-		clkbase = clkbase / 2;
-	}
-
-	// Calculate required divider, rounded up
-
-	if (prog_clock_mode == 0)
-	{
-		// Divided clock mode, speed = (div == 0) ? BaseClock : BaseClock/(2 * div)
-		hri_sdhc_clear_CCR_CLKGSEL_bit(hw);
-		div = (clkbase + speed - 1)/speed;
-		div = (div == 1) ? 0 : (div + 1)/2;
-	}
-	else
-	{
-		// Programmable clock mode, speed = BaseClock * (clkmul + 1) / (div+1)
-		hri_sdhc_set_CCR_CLKGSEL_bit(hw);
-		clkbase *= clkmul + 1;
-		div = (clkbase + speed - 1)/speed;
-		if (div != 0)
-		{
-			div = div - 1;
-		}
-	}
-
-	/* Specific constraint for SDHC/SDMMC IP
-	The clock divider (DIV) in SDMMC_CCR must be set to a value different from 0 when HSEN is 1. */
-	if ((hri_sdhc_get_HC1R_HSEN_bit(hw)) && (div == 0))
-	{
-		div = 1;
-	}
-
-	/* Set clock divider */
-	hri_sdhc_write_CCR_SDCLKFSEL_bf(hw, div & 0xFF);
-	hri_sdhc_write_CCR_USDCLKFSEL_bf(hw, div >> 8);
-
-	hri_sdhc_set_CCR_INTCLKEN_bit(hw);
-	/* Repeat this step until Clock Stable is 1 */
-	while (hri_sdhc_get_CCR_INTCLKS_bit(hw) == 0) { }
-
-	/* Output the clock to the card -- Set SD Clock Enable */
-	hri_sdhc_set_CCR_SDCLKEN_bit(hw);
-#endif
 }
 
 // Setup the DMA transfer.
@@ -301,8 +239,8 @@ static bool WaitForDmaComplete() noexcept
 
 static uint32_t hsmci_get_clock_speed() noexcept
 {
-	uint32_t clkbase = CONF_BASE_FREQUENCY;
-	uint32_t clkmul = hri_sdhc_read_CA1R_CLKMULT_bf(hw);
+	uint32_t clkbase = GetSdhcClockSpeed();
+	const uint32_t clkmul = hri_sdhc_read_CA1R_CLKMULT_bf(hw);
 
 	// If programmable clock mode is supported, baseclk is divided by 2
 	if (clkmul > 0)
