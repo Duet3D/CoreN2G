@@ -24,17 +24,12 @@
 # define __ARM_ARCH_7EM__	1
 # define SAME5x				1
 # define SAMC21				0
-# ifndef SUPPORT_CAN
-#  define SUPPORT_CAN		0
-# endif
 #elif defined(__SAMC21G18A__)
 # include <samc21.h>
 # define __ARM_ARCH_6M__	1
 # define SAME5x				0
 # define SAMC21				1
-# ifndef SUPPORT_CAN
-#  define SUPPORT_CAN		1		// we only use the SAMC21 on CAN-connected expansion boards
-# endif
+# define SUPPORT_SDHC		0			// SAMC21 doesn't support SDHC
 #else
 # error unsupported processor
 #endif

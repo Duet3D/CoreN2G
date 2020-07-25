@@ -32,10 +32,16 @@
  */
 
 #include <Sdhc.h>
+
+#if SUPPORT_SDHC
+
 #include <CoreIO.h>
 
 // Define which SDHC controller we are using
 Sdhc* const hw = SDHC1;
+constexpr IRQn SDHC_IRQn = SDHC1_IRQn;
+#define SDHC_ISR	SDHC1_Handler
+
 constexpr uint32_t CONF_BASE_FREQUENCY = 120000000;
 
 #define HSMCI_SLOT_0_SIZE 		4
@@ -46,6 +52,13 @@ constexpr uint32_t CONF_BASE_FREQUENCY = 120000000;
 static uint64_t mci_sync_trans_pos;
 static uint16_t mci_sync_block_size;
 static uint16_t mci_sync_nb_block;
+
+#ifdef RTOS
+
+#include <RTOSIface/RTOSIface.h>
+static TaskHandle sdhcWaitingTask;
+
+#endif
 
 typedef struct
 {
@@ -66,17 +79,17 @@ typedef struct
 
 __attribute__((aligned(32))) static SDHC_ADMA_DESCR sdhc1DmaDescrTable[1];
 
-static void hsmci_reset();
-static void hsmci_set_speed(uint32_t speed, uint8_t prog_clock_mode);
-static bool hsmci_wait_busy();
-static bool hsmci_send_cmd_execute(uint32_t cmdr, uint32_t cmd, uint32_t arg);
+static void hsmci_reset() noexcept;
+static void hsmci_set_speed(uint32_t speed, uint8_t prog_clock_mode) noexcept;
+static bool hsmci_wait_busy() noexcept;
+static bool hsmci_send_cmd_execute(uint32_t cmdr, uint32_t cmd, uint32_t arg) noexcept;
 
 /**
  * \brief Reset the SDHC interface
  *
  * \param hw The pointer to MCI hardware instance
  */
-static void hsmci_reset()
+static void hsmci_reset() noexcept
 {
 	hri_sdhc_set_SRR_SWRSTCMD_bit(hw);
 }
@@ -88,7 +101,7 @@ static void hsmci_reset()
  * \param speed    SDHC clock speed in Hz.
  * \param prog_clock_mode     Use programmable clock mode
  */
-static void hsmci_set_speed(uint32_t speed, uint8_t prog_clock_mode)
+static void hsmci_set_speed(uint32_t speed, uint8_t prog_clock_mode) noexcept
 {
 #if 0	//dc42
 	// The following is based on the code from Harmony
@@ -226,7 +239,7 @@ static void hsmci_set_speed(uint32_t speed, uint8_t prog_clock_mode)
 // Setup the DMA transfer.
 // Each ADMA2 descriptor can transfer 65536 bytes (or 128 blocks) of data.
 // For simplicity we use only one descriptor, so numBytes must not exceed 65536.
-static void hsmci_dma_setup (const void* buffer, uint32_t numBytes)
+static void hsmci_dma_setup (const void* buffer, uint32_t numBytes) noexcept
 {
 	hri_sdhc_set_HC1R_DMASEL_bf(hw, SDHC_HC1R_DMASEL_32BIT_Val);
 
@@ -240,17 +253,27 @@ static void hsmci_dma_setup (const void* buffer, uint32_t numBytes)
 }
 
 // Wait for a transfer to complete, returning true if OK, false if it failed
-static bool WaitForDmaComplete()
+static bool WaitForDmaComplete() noexcept
 {
-	// TODO use the interrupt
-	// Note, a read transaction sets the TRFC bit, but a write transaction using DMA doesn't appear to. So use the DMA interrupt bit too.
 	while (true)
 	{
 		uint16_t nistr;
-		do
+		while (true)
 		{
 			nistr = hw->NISTR.reg;
-		} while ((nistr & (SDHC_NISTR_TRFC | SDHC_NISTR_ERRINT)) == 0);
+			if ((nistr & (SDHC_NISTR_TRFC | SDHC_NISTR_ERRINT)) != 0)
+			{
+				break;
+			}
+#ifdef RTOS
+			__disable_irq();
+			sdhcWaitingTask = TaskBase::GetCallerTaskHandle();
+			hw->NISIER.reg = SDHC_NISIER_TRFC;
+			hw->EISIER.reg = SDHC_EISIER_DATTEO | SDHC_EISIER_DATCRC | SDHC_EISIER_DATEND | SDHC_EISIER_ADMA;
+			__enable_irq();
+			TaskBase::Take();
+#endif
+		}
 
 		uint16_t eistr = hw->EISTR.reg;
 		hw->NISTR.reg = nistr;					// clear the interrupt(s)
@@ -276,7 +299,7 @@ static bool WaitForDmaComplete()
 	}
 }
 
-static uint32_t hsmci_get_clock_speed()
+static uint32_t hsmci_get_clock_speed() noexcept
 {
 	uint32_t clkbase = CONF_BASE_FREQUENCY;
 	uint32_t clkmul = hri_sdhc_read_CA1R_CLKMULT_bf(hw);
@@ -304,7 +327,7 @@ static uint32_t hsmci_get_clock_speed()
  * \param hw       The pointer to MCI hardware instance
  * \return true if success, otherwise false
  */
-static bool hsmci_wait_busy()
+static bool hsmci_wait_busy() noexcept
 {
 	uint32_t busy_wait = 0xFFFFFFFF;
 	uint32_t psr;
@@ -332,7 +355,7 @@ static bool hsmci_wait_busy()
  *
  * \return true if success, otherwise false
  */
-static bool hsmci_send_cmd_execute(uint32_t cmdr, uint32_t cmd, uint32_t arg)
+static bool hsmci_send_cmd_execute(uint32_t cmdr, uint32_t cmd, uint32_t arg) noexcept
 {
 	uint32_t sr;
 	ASSERT(hw);
@@ -401,8 +424,9 @@ static bool hsmci_send_cmd_execute(uint32_t cmdr, uint32_t cmd, uint32_t arg)
 
 /**
  *  \brief Initialize MCI low level driver.
+ *  If using RTOS then the client must also set the SVIC interrupt priority during initialisation to a value low enough to allow the ISR to make FreeRTOS calls
  */
-int32_t hsmci_init()
+int32_t hsmci_init() noexcept
 {
 	hri_sdhc_set_SRR_SWRSTALL_bit(hw);
 	while (hri_sdhc_get_SRR_SWRSTALL_bit(hw)) { }
@@ -419,13 +443,21 @@ int32_t hsmci_init()
 	// dc42 The clock divider defaults to 0. Set it to 1 so that M122 doesn't report a too-high interface speed when no card is present.
 	hri_sdhc_write_CCR_SDCLKFSEL_bf(hw, 1);
 
+#ifdef RTOS
+	hw->NISIER.reg = 0;					// disable normal interrupts
+	hw->EISIER.reg = 0;					// disable error interrupts
+	NVIC_ClearPendingIRQ(SDHC_IRQn);
+	NVIC_EnableIRQ(SDHC_IRQn);
+#endif
+
 	return ERR_NONE;
 }
+
 
 /**
  *  \brief Select a device and initialize it
  */
-void hsmci_select_device(uint8_t slot, uint32_t clock, uint8_t bus_width, bool high_speed)
+void hsmci_select_device(uint8_t slot, uint32_t clock, uint8_t bus_width, bool high_speed) noexcept
 {
 	(void)(slot);
 
@@ -455,7 +487,7 @@ void hsmci_select_device(uint8_t slot, uint32_t clock, uint8_t bus_width, bool h
 /**
  *  \brief Deselect a device by an assigned slot
  */
-void hsmci_deselect_device(uint8_t slot)
+void hsmci_deselect_device(uint8_t slot) noexcept
 {
 	/* Nothing to do */
 	(void)(slot);
@@ -465,7 +497,7 @@ void hsmci_deselect_device(uint8_t slot)
  *  \brief Get the maximum bus width of a device
  *         by a selected slot
  */
-uint8_t hsmci_get_bus_width(uint8_t slot)
+uint8_t hsmci_get_bus_width(uint8_t slot) noexcept
 {
 	switch (slot) {
 	case 0:
@@ -480,13 +512,13 @@ uint8_t hsmci_get_bus_width(uint8_t slot)
 /**
  *  \brief Get the high speed capability of the device.
  */
-bool hsmci_is_high_speed_capable()
+bool hsmci_is_high_speed_capable() noexcept
 {
 	return hri_sdhc_get_CA0R_HSSUP_bit(hw);
 }
 
 // Get the transfer rate in bytes/sec
-uint32_t hsmci_get_speed()
+uint32_t hsmci_get_speed() noexcept
 {
 	return hsmci_get_clock_speed()/(8/HSMCI_SLOT_0_SIZE);
 }
@@ -495,7 +527,7 @@ uint32_t hsmci_get_speed()
  *  \brief Send 74 clock cycles on the line.
  *   Note: It is required after card plug and before card install.
  */
-void hsmci_send_clock()
+void hsmci_send_clock() noexcept
 {
 	volatile uint32_t i;
 	for (i = 0; i < 5000; i++)
@@ -505,7 +537,7 @@ void hsmci_send_clock()
 /**
  *  \brief Send a command on the selected slot
  */
-bool hsmci_send_cmd(uint32_t cmd, uint32_t arg)
+bool hsmci_send_cmd(uint32_t cmd, uint32_t arg) noexcept
 {
 	/* Check Command Inhibit (CMD) in the Present State register */
 	if (hri_sdhc_get_PSR_CMDINHC_bit(hw)) {
@@ -518,7 +550,7 @@ bool hsmci_send_cmd(uint32_t cmd, uint32_t arg)
 /**
  *  \brief Get 32 bits response of the last command.
  */
-uint32_t hsmci_get_response()
+uint32_t hsmci_get_response() noexcept
 {
 	return hri_sdhc_read_RR_reg(hw, 0);
 }
@@ -526,7 +558,7 @@ uint32_t hsmci_get_response()
 /**
  *  \brief Get 128 bits response of the last command.
  */
-void hsmci_get_response_128(uint8_t *response)
+void hsmci_get_response_128(uint8_t *response) noexcept
 {
 	uint32_t response_32;
 
@@ -550,7 +582,7 @@ void hsmci_get_response_128(uint8_t *response)
  *         An ADTC (Addressed Data Transfer Commands)
  *         command is used for read/write access.
  */
-bool hsmci_adtc_start(uint32_t cmd, uint32_t arg, uint16_t block_size, uint16_t nb_block, const void *dmaAddr)
+bool hsmci_adtc_start(uint32_t cmd, uint32_t arg, uint16_t block_size, uint16_t nb_block, const void *dmaAddr) noexcept
 {
 	/* Check Command Inhibit (CMD/DAT) in the Present State register */
 	if (hri_sdhc_get_PSR_CMDINHC_bit(hw) || hri_sdhc_get_PSR_CMDINHD_bit(hw)) {
@@ -593,7 +625,7 @@ bool hsmci_adtc_start(uint32_t cmd, uint32_t arg, uint16_t block_size, uint16_t 
 /**
  *  \brief Send a command to stop an ADTC command on the selected slot.
  */
-bool hsmci_adtc_stop(uint32_t cmd, uint32_t arg)
+bool hsmci_adtc_stop(uint32_t cmd, uint32_t arg) noexcept
 {
 	/* Nothing to do */
 	(void)(cmd);
@@ -605,7 +637,7 @@ bool hsmci_adtc_stop(uint32_t cmd, uint32_t arg)
 /**
  *  \brief Read a word on the line.
  */
-bool hsmci_read_word(uint32_t *value)
+bool hsmci_read_word(uint32_t *value) noexcept
 {
 	uint32_t sr;
 	uint8_t  nbytes;
@@ -675,7 +707,7 @@ bool hsmci_read_word(uint32_t *value)
 /**
  *  \brief Write a word on the line
  */
-bool hsmci_write_word(uint32_t value)
+bool hsmci_write_word(uint32_t value) noexcept
 {
 	uint32_t sr;
 	uint8_t  nbytes;
@@ -720,7 +752,7 @@ bool hsmci_write_word(uint32_t value)
  *  \brief Start a read blocks transfer on the line
  *  Note: The driver will use the DMA available to speed up the transfer.
  */
-bool hsmci_start_read_blocks(void *dst, uint16_t nb_block)
+bool hsmci_start_read_blocks(void *dst, uint16_t nb_block) noexcept
 {
 	if (nb_block != 0)
 	{
@@ -739,7 +771,7 @@ bool hsmci_start_read_blocks(void *dst, uint16_t nb_block)
  *  \brief Start a write blocks transfer on the line
  *  Note: The driver will use the DMA available to speed up the transfer.
  */
-bool hsmci_start_write_blocks(const void *src, uint16_t nb_block)
+bool hsmci_start_write_blocks(const void *src, uint16_t nb_block) noexcept
 {
 	if (nb_block != 0)
 	{
@@ -757,7 +789,7 @@ bool hsmci_start_write_blocks(const void *src, uint16_t nb_block)
 /**
  *  \brief Wait the end of transfer initiated by mci_start_read_blocks()
  */
-bool hsmci_wait_end_of_read_blocks()
+bool hsmci_wait_end_of_read_blocks() noexcept
 {
 	/* Always return true for sync read blocks */
 	return true;
@@ -766,8 +798,25 @@ bool hsmci_wait_end_of_read_blocks()
 /**
  *  \brief Wait the end of transfer initiated by mci_start_write_blocks()
  */
-bool hsmci_wait_end_of_write_blocks()
+bool hsmci_wait_end_of_write_blocks() noexcept
 {
 	/* Always return true for sync write blocks */
 	return true;
 }
+
+#ifdef RTOS
+
+void SDHC_ISR() noexcept
+{
+	hw->NISIER.reg = 0;					// disable normal interrupts
+	hw->EISIER.reg = 0;					// disable error interrupts
+	if (sdhcWaitingTask != nullptr)
+	{
+		TaskBase::GiveFromISR(sdhcWaitingTask);
+		sdhcWaitingTask = nullptr;
+	}
+}
+
+#endif
+
+#endif	// SUPPORT_SDHC

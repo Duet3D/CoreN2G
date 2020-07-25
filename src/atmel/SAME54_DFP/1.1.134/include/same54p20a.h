@@ -547,7 +547,7 @@ void ICM_Handler                 ( void );
 void PUKCC_Handler               ( void );
 void QSPI_Handler                ( void );
 void SDHC0_Handler               ( void );
-void SDHC1_Handler               ( void );
+void SDHC1_Handler               ( void ) noexcept;
 
 /*
  * \brief Configuration of the Cortex-M4 Processor and Core Peripherals

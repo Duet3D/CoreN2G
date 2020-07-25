@@ -36,6 +36,8 @@
 
 #include <Core.h>
 
+#if SUPPORT_SDHC
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -73,7 +75,7 @@ extern "C" {
  *  \retval 0 Success.
  *  \retval <0 Error code.
  */
-int32_t hsmci_init();
+int32_t hsmci_init() noexcept;
 
 /**
  *  \brief Select a device and initialize it
@@ -83,14 +85,14 @@ int32_t hsmci_init();
  *  \param[in] bus_width  Bus width to use (1, 4 or 8)
  *  \param[in] high_speed true, to enable high speed mode
  */
-void hsmci_select_device(uint8_t slot, uint32_t clock, uint8_t bus_width, bool high_speed);
+void hsmci_select_device(uint8_t slot, uint32_t clock, uint8_t bus_width, bool high_speed) noexcept;
 
 /**
  *  \brief Deselect a device by an assigned slot
  *
  *  \param[in] slot    Selected slot
  */
-void hsmci_deselect_device(uint8_t slot);
+void hsmci_deselect_device(uint8_t slot) noexcept;
 
 /**
  *  \brief Get the maximum bus width of a device
@@ -99,20 +101,20 @@ void hsmci_deselect_device(uint8_t slot);
  *  \param[in] slot    Selected slot
  *  \return bus width.
  */
-uint8_t hsmci_get_bus_width(uint8_t slot);
+uint8_t hsmci_get_bus_width(uint8_t slot) noexcept;
 
 /**
  *  \brief Get the high speed capability of the device.
  *
  *  \return true, if the high speed is supported.
  */
-bool hsmci_is_high_speed_capable();
+bool hsmci_is_high_speed_capable() noexcept;
 
 /**
  *  \brief Send 74 clock cycles on the line.
  *   Note: It is required after card plug and before card install.
  */
-void hsmci_send_clock();
+void hsmci_send_clock() noexcept;
 
 /**
  *  \brief Send a command on the selected slot
@@ -121,14 +123,14 @@ void hsmci_send_clock();
  *  \param[in] arg        Argument of the command
  *  \return true if success, otherwise false
  */
-bool hsmci_send_cmd(uint32_t cmd, uint32_t arg);
+bool hsmci_send_cmd(uint32_t cmd, uint32_t arg) noexcept;
 
 /**
  *  \brief Get 32 bits response of the last command.
  *
  *  \return 32 bits response.
  */
-uint32_t hsmci_get_response();
+uint32_t hsmci_get_response() noexcept;
 
 /**
  *  \brief Get 128 bits response of the last command.
@@ -136,7 +138,7 @@ uint32_t hsmci_get_response();
  *  \param[in] response   Pointer on the array to fill
  *                        with the 128 bits response.
  */
-void hsmci_get_response_128(uint8_t *response);
+void hsmci_get_response_128(uint8_t *response) noexcept;
 
 /**
  *  \brief Send an ADTC command on the selected slot
@@ -154,7 +156,7 @@ void hsmci_get_response_128(uint8_t *response);
  *
  * \return true if success, otherwise false
  */
-bool hsmci_adtc_start(uint32_t cmd, uint32_t arg, uint16_t block_size, uint16_t nb_block, const void *dmaAddr);
+bool hsmci_adtc_start(uint32_t cmd, uint32_t arg, uint16_t block_size, uint16_t nb_block, const void *dmaAddr) noexcept;
 
 /**
  *  \brief Send a command to stop an ADTC command on the selected slot.
@@ -164,7 +166,7 @@ bool hsmci_adtc_start(uint32_t cmd, uint32_t arg, uint16_t block_size, uint16_t 
  *
  * \return true if success, otherwise false
  */
-bool hsmci_adtc_stop(uint32_t cmd, uint32_t arg);
+bool hsmci_adtc_stop(uint32_t cmd, uint32_t arg) noexcept;
 
 /**
  *  \brief Read a word on the line.
@@ -173,7 +175,7 @@ bool hsmci_adtc_stop(uint32_t cmd, uint32_t arg);
  *
  *  \return true if success, otherwise false
  */
-bool hsmci_read_word(uint32_t *value);
+bool hsmci_read_word(uint32_t *value) noexcept;
 
 /**
  *  \brief Write a word on the line
@@ -182,7 +184,7 @@ bool hsmci_read_word(uint32_t *value);
  *
  *  \return true if success, otherwise false
  */
-bool hsmci_write_word(uint32_t value);
+bool hsmci_write_word(uint32_t value) noexcept;
 
 /**
  *  \brief Start a read blocks transfer on the line
@@ -193,7 +195,7 @@ bool hsmci_write_word(uint32_t value);
  *
  *  \return true if started, otherwise false
  */
-bool hsmci_start_read_blocks(void *dst, uint16_t nb_block);
+bool hsmci_start_read_blocks(void *dst, uint16_t nb_block) noexcept;
 
 /**
  *  \brief Start a write blocks transfer on the line
@@ -204,26 +206,28 @@ bool hsmci_start_read_blocks(void *dst, uint16_t nb_block);
  *
  *  \return true if started, otherwise false
  */
-bool hsmci_start_write_blocks(const void *src, uint16_t nb_block);
+bool hsmci_start_write_blocks(const void *src, uint16_t nb_block) noexcept;
 
 /**
  *  \brief Wait the end of transfer initiated by mci_start_read_blocks()
  *
  *  \return true if success, otherwise false
  */
-bool hsmci_wait_end_of_read_blocks();
+bool hsmci_wait_end_of_read_blocks() noexcept;
 
 /**
  *  \brief Wait the end of transfer initiated by mci_start_write_blocks()
  *
  *  \return true if success, otherwise false
  */
-bool hsmci_wait_end_of_write_blocks();
+bool hsmci_wait_end_of_write_blocks() noexcept;
 
-uint32_t hsmci_get_speed();
+uint32_t hsmci_get_speed() noexcept;
 
 #ifdef __cplusplus
 }
 #endif
+
+#endif	// SUPPORT_SDHC
 
 #endif /* _HPL_MCI_H_INCLUDED */

@@ -230,7 +230,7 @@ void QSPI_Handler            ( void ) __attribute__ ((weak, alias("Dummy_Handler
 void SDHC0_Handler           ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
 #endif
 #ifdef ID_SDHC1
-void SDHC1_Handler           ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
+void SDHC1_Handler           ( void ) noexcept __attribute__ ((weak, alias("Dummy_Handler")));
 #endif
 
 /* Exception Table */
