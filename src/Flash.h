@@ -21,6 +21,9 @@ namespace Flash
 	uint32_t GetPageSize() noexcept;
 	uint32_t GetLockRegionSize() noexcept;
 	uint32_t GetEraseRegionSize() noexcept;
+	uint32_t GetFlashSize() noexcept;
 }
+
+extern "C" uint32_t GetFlashSize_C() noexcept;
 
 #endif /* SRC_FLASH_H_ */

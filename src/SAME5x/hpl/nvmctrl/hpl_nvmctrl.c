@@ -39,6 +39,13 @@
 #include <utils.h>
 #include <hpl_nvmctrl_config.h>
 
+#if 1	//dc42
+// Change to allow this file to work with different flash memory sizes
+# undef FLASH_SIZE
+extern uint32_t GetFlashSize_C() noexcept;
+# define FLASH_SIZE		(GetFlashSize_C())
+#endif
+
 #define NVM_MEMORY ((volatile uint32_t *)FLASH_ADDR)
 #define NVMCTRL_BLOCK_PAGES (NVMCTRL_BLOCK_SIZE / NVMCTRL_PAGE_SIZE)
 #define NVMCTRL_REGIONS_NUM 32

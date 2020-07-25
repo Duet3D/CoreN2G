@@ -29,7 +29,7 @@ bool Flash::Init() noexcept
 bool Flash::Unlock(uint32_t start, uint32_t length) noexcept
 {
 	// The flash_unlock command only works if the number of pages passed is exactly 1 lock region. So we need to loop calling it.
-	const uint32_t pagesPerRegion = FLASH_SIZE / (NVMCTRL_REGIONS_NUM * NVMCTRL_PAGE_SIZE);
+	const uint32_t pagesPerRegion = GetFlashSize() / (NVMCTRL_REGIONS_NUM * NVMCTRL_PAGE_SIZE);
 	for (uint32_t lengthDone = 0; lengthDone < length; )
 	{
 		if (flash_unlock(&flash, start, pagesPerRegion) != (int32_t)pagesPerRegion)
@@ -52,7 +52,7 @@ bool Flash::Erase(uint32_t start, uint32_t length) noexcept
 bool Flash::Lock(uint32_t start, uint32_t length) noexcept
 {
 	// The flash_lock command only works if the number of pages passed is exactly 1 lock region. So we need to loop calling it.
-	const uint32_t pagesPerRegion = FLASH_SIZE / (NVMCTRL_REGIONS_NUM * NVMCTRL_PAGE_SIZE);
+	const uint32_t pagesPerRegion = GetFlashSize() / (NVMCTRL_REGIONS_NUM * NVMCTRL_PAGE_SIZE);
 	for (uint32_t lengthDone = 0; lengthDone < length; )
 	{
 		if (flash_lock(&flash, start, pagesPerRegion) != (int32_t)pagesPerRegion)
@@ -80,7 +80,7 @@ uint32_t Flash::GetPageSize() noexcept
 
 uint32_t Flash::GetLockRegionSize() noexcept
 {
-	return FLASH_SIZE/NVMCTRL_REGIONS_NUM;
+	return GetFlashSize()/NVMCTRL_REGIONS_NUM;
 }
 
 uint32_t Flash::GetEraseRegionSize() noexcept
@@ -90,6 +90,52 @@ uint32_t Flash::GetEraseRegionSize() noexcept
 #elif SAME5x
 	return NVMCTRL_BLOCK_SIZE;		// 8Kb on SAMD5x.SAME5x, see SAMD5x/E5x datasheet section 25.6.2
 #endif
+}
+
+uint32_t Flash::GetFlashSize() noexcept
+{
+#if SAMC21
+	// We only support the SAMC21 members with 256Kb flash and 32Kb RAM
+	return 256 * 1024;
+#endif
+
+#if SAME5x
+	const uint32_t deviceId = DSU->DID.reg;
+	const uint32_t family = deviceId >> 16;
+	const uint32_t member = deviceId & 0x000000FF;
+
+	switch (family)
+	{
+	case 0x6006:	// SAMD51
+	case 0x6183:	// SAME53
+	case 0x6184:	// SAME54
+		if (member <= 8)
+		{
+			const uint32_t sizeTable[] = { 1024, 512, 1024, 512, 1024, 512, 256, 512, 256 };
+			return sizeTable[member] * 1024;
+		}
+		break;
+
+	case 0x6181:	// SAME51
+		if (member <= 6)
+		{
+			const uint32_t sizeTable[] = { 1024, 512, 512, 256, 1024, 512, 256 };
+			return sizeTable[member] * 1024;
+		}
+		break;
+
+	default:
+		break;
+	}
+
+	// Unknown device
+	while (true) { }
+#endif
+}
+
+extern "C" uint32_t GetFlashSize_C() noexcept
+{
+	return Flash::GetFlashSize();
 }
 
 // End
