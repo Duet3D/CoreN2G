@@ -25,7 +25,7 @@ An unsigned type that represents an interrupt priority. Ranges from 0 to 7 on mo
 #### enum PinMode
 An enumeration that descibes the desired mode of a pin. One of: INPUT, INPUT_PULLUP, INPUT_PULLDOWN, OUTPUT_LOW, OUTPUT_HIGH, AIN, OUTPUT_PWM_LOW, OUTPUT_PWM_HIGH.
 
-### irqflags_t
+#### irqflags_t
 A type representing whether or not interrupts were or should be enabled.
 
 ### Constants
