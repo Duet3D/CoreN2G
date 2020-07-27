@@ -11,7 +11,9 @@ This is a hardware abstraction layer for SAMD5x, SAME5x and SAMC21 processors. I
 
 5. Tables of pin functions are application-dependent; therefore they live in the application. The client application should derive the pin table entry struct from struct PinDescriptionBase provided by this project. The client must provide function GetPinDescription(Pin p) so that functions in CoreN2G can retrieve the details of a pin. It should return nullptr if the pin is out of range or otherwise not available.
 
-6. Analog input is managed by a separate task, which must be created by the client. Currently, analog input is not available in non-RTOS builds.
+6. CoreN2G is FreeRTOS-aware. There are separate build configurations using RTOS (use for running firmware) and not using RTOS (used for IAP and bootloaders).
+
+7. Analog input is managed by a separate task, which must be created by the client. Currently, analog input is not available in non-RTOS builds.
 
 The SAME5x builds are also suitable for use on SAMD processors, provided that the client does not try to use any features that are not available on the target processor, such as Ethernet or CAN.
 
