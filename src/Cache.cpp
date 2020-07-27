@@ -7,10 +7,12 @@
 
 #include <Cache.h>
 
-#if !SAMC21
+#if !SAMC21 && !SAM4S && !SAM3XA
 
 #if SAME70
 # include <core_cm7.h>
+
+#define USE_MPU		1
 
 extern uint32_t _nocache_ram_start;
 extern uint32_t _nocache_ram_end;
@@ -252,7 +254,7 @@ uint32_t Cache::GetHitCount() noexcept
 
 #endif
 
-#endif	// !SAMC21
+#endif	// !SAMC21 && !SAM4S && !SAM3XA
 
 // Entry points that can be called from ASF C code
 void CacheFlushBeforeDMAReceive(const volatile void *start, size_t length) noexcept { Cache::FlushBeforeDMAReceive(start, length); }

@@ -32,18 +32,16 @@ extern "C" void CacheFlushBeforeDMAReceive(const volatile void *start, size_t le
 extern "C" void CacheInvalidateAfterDMAReceive(const volatile void *start, size_t length) noexcept;
 extern "C" void CacheFlushBeforeDMASend(const volatile void *start, size_t length) noexcept;
 
-#if SAMC21
+#if SAM4S || SAMC21
 
-// SAMC21 has no cache
+// These processors have no cache
 inline void Cache::Init() noexcept { __DSB(); }
 inline void Cache::Enable() noexcept { }
 inline void Cache::Disable() noexcept { }
 inline void Cache::Flush(const volatile void *start, size_t length) noexcept { __DSB(); }
 inline void Cache::Invalidate(const volatile void *start, size_t length) noexcept { __DSB(); }
 
-#endif
-
-#if SAM4E || SAME5x
+#elif SAM4E || SAME5x
 
 // The SAM4E and SAME5x cache is write-through, so no need to flush it
 inline void Cache::Flush(const volatile void *start, size_t length) noexcept { __DSB(); }

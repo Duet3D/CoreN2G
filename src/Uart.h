@@ -47,10 +47,16 @@ public:
 	size_t TryPutBlock(const uint8_t *buffer, size_t buflen) noexcept;
 #endif
 
-	// ISRs, must be called by the ISRs for the SERCOM. We don't use interrupt 1.
+	// ISRs, must be called by the ISRs for the SERCOM
+
+#if SAME5x
 	void Interrupt0() noexcept;
+	// We don't use interrupt 1
 	void Interrupt2() noexcept;
 	void Interrupt3() noexcept;
+#elif SAMC21
+	void Interrupt() noexcept;
+#endif
 
 	// Get and clear the errors
 	ErrorFlags GetAndClearErrors() noexcept;

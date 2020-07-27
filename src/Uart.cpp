@@ -145,6 +145,8 @@ Uart::ErrorFlags Uart::GetAndClearErrors() noexcept
 	return errs;
 }
 
+#if SAME5x
+
 // Interrupts from the SERCOM arrive here
 // Interrupt 0 means transmit data register empty
 void Uart::Interrupt0() noexcept
@@ -163,7 +165,7 @@ void Uart::Interrupt0() noexcept
 	}
 	else
 	{
-		sercom->USART.INTENCLR.reg = SERCOM_USART_INTENSET_DRE;
+		sercom->USART.INTENCLR.reg = SERCOM_USART_INTENCLR_DRE;
 #ifdef RTOS
 		if (txWaitingTask != nullptr)
 		{
@@ -217,6 +219,86 @@ void Uart::Interrupt3() noexcept
 	sercom->USART.STATUS.reg = stat2;
 	sercom->USART.INTFLAG.reg = SERCOM_USART_INTFLAG_ERROR;			// clear the error
 }
+
+#elif SAMC21
+
+void Uart::Interrupt() noexcept
+{
+	const uint8_t status = sercom->USART.INTFLAG.reg;
+
+	// Check for received character
+	if (status & SERCOM_USART_INTFLAG_RXC)
+	{
+		const char c = sercom->USART.DATA.reg;
+		if (c == interruptSeq[numInterruptBytesMatched])
+		{
+			++numInterruptBytesMatched;
+			if (numInterruptBytesMatched == ARRAY_SIZE(interruptSeq))
+			{
+				numInterruptBytesMatched = 0;
+				if (interruptCallback != nullptr)
+				{
+					interruptCallback(this);
+				}
+			}
+		}
+		else
+		{
+			numInterruptBytesMatched = 0;
+		}
+
+		if (!rxBuffer.PutItem(c))
+		{
+			errors.overrun = true;
+		}
+	}
+
+	// Check for transmit buffer empty
+	if (status & SERCOM_USART_INTFLAG_DRE)
+	{
+		uint8_t c;
+		if (txBuffer.GetItem(c))
+		{
+			sercom->USART.DATA.reg = c;
+#ifdef RTOS
+			if (txWaitingTask != nullptr && txBuffer.SpaceLeft() >= txBuffer.GetCapacity()/2)
+			{
+				TaskBase::GiveFromISR(txWaitingTask);
+				txWaitingTask = nullptr;
+			}
+#endif
+		}
+		else
+		{
+			sercom->USART.INTENCLR.reg = SERCOM_USART_INTENCLR_DRE;
+#ifdef RTOS
+			if (txWaitingTask != nullptr)
+			{
+				TaskBase::GiveFromISR(txWaitingTask);
+				txWaitingTask = nullptr;
+			}
+#endif
+		}
+	}
+
+	// Check for error
+	if (status & SERCOM_USART_INTFLAG_ERROR)
+	{
+		const uint16_t stat2 = sercom->USART.STATUS.reg;
+		if (stat2 & SERCOM_USART_STATUS_BUFOVF)
+		{
+			errors.overrun = true;
+		}
+		if (stat2 & SERCOM_USART_STATUS_FERR)
+		{
+			errors.framing = true;
+		}
+		sercom->USART.STATUS.reg = stat2;
+		sercom->USART.INTFLAG.reg = SERCOM_USART_INTFLAG_ERROR;			// clear the error
+	}
+}
+
+#endif
 
 Uart::InterruptCallbackFn Uart::SetInterruptCallback(InterruptCallbackFn f) noexcept
 {
