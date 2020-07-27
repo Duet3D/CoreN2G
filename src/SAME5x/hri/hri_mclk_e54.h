@@ -31,7 +31,8 @@
  *
  */
 
-#ifdef _SAME54_MCLK_COMPONENT_
+//#ifdef _SAME54_MCLK_COMPONENT_
+#if defined(_SAME54_MCLK_COMPONENT_) || defined(_SAME51_MCLK_COMPONENT_)	// dc42 same54 and same51 versions were identical except for this line and GMAC-related functions
 #ifndef _HRI_MCLK_E54_H_INCLUDED_
 #define _HRI_MCLK_E54_H_INCLUDED_
 
@@ -823,6 +824,8 @@ static inline void hri_mclk_toggle_AHBMASK_QSPI_bit(const void *const hw)
 	MCLK_CRITICAL_SECTION_LEAVE();
 }
 
+#ifdef _SAME54_MCLK_COMPONENT_		// SAME54 only
+
 static inline void hri_mclk_set_AHBMASK_GMAC_bit(const void *const hw)
 {
 	MCLK_CRITICAL_SECTION_ENTER();
@@ -862,6 +865,8 @@ static inline void hri_mclk_toggle_AHBMASK_GMAC_bit(const void *const hw)
 	((Mclk *)hw)->AHBMASK.reg ^= MCLK_AHBMASK_GMAC;
 	MCLK_CRITICAL_SECTION_LEAVE();
 }
+
+#endif
 
 static inline void hri_mclk_set_AHBMASK_SDHC0_bit(const void *const hw)
 {
@@ -903,6 +908,8 @@ static inline void hri_mclk_toggle_AHBMASK_SDHC0_bit(const void *const hw)
 	MCLK_CRITICAL_SECTION_LEAVE();
 }
 
+#ifdef _SAME54_MCLK_COMPONENT_		// SAME54 only
+
 static inline void hri_mclk_set_AHBMASK_SDHC1_bit(const void *const hw)
 {
 	MCLK_CRITICAL_SECTION_ENTER();
@@ -942,6 +949,8 @@ static inline void hri_mclk_toggle_AHBMASK_SDHC1_bit(const void *const hw)
 	((Mclk *)hw)->AHBMASK.reg ^= MCLK_AHBMASK_SDHC1;
 	MCLK_CRITICAL_SECTION_LEAVE();
 }
+
+#endif
 
 static inline void hri_mclk_set_AHBMASK_CAN0_bit(const void *const hw)
 {
@@ -2506,6 +2515,8 @@ static inline hri_mclk_apbbmask_reg_t hri_mclk_read_APBBMASK_reg(const void *con
 	return ((Mclk *)hw)->APBBMASK.reg;
 }
 
+#ifdef _SAME54_MCLK_COMPONENT_		// SAME54 only
+
 static inline void hri_mclk_set_APBCMASK_GMAC_bit(const void *const hw)
 {
 	MCLK_CRITICAL_SECTION_ENTER();
@@ -2545,6 +2556,8 @@ static inline void hri_mclk_toggle_APBCMASK_GMAC_bit(const void *const hw)
 	((Mclk *)hw)->APBCMASK.reg ^= MCLK_APBCMASK_GMAC;
 	MCLK_CRITICAL_SECTION_LEAVE();
 }
+
+#endif
 
 static inline void hri_mclk_set_APBCMASK_TCC2_bit(const void *const hw)
 {

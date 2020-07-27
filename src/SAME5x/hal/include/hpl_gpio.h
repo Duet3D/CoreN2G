@@ -175,7 +175,7 @@ static inline void _gpio_set_pin_pull_mode(const enum gpio_port port, const uint
  */
 static inline void _gpio_set_pin_function(const uint32_t gpio, const uint32_t function);
 
-#include "../hpl/port/hpl_gpio_base.h"
+#include "../../hpl/port/hpl_gpio_base.h"
 //@}
 
 #ifdef __cplusplus

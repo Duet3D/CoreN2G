@@ -31,7 +31,8 @@
  *
  */
 
-#ifdef _SAME54_NVMCTRL_COMPONENT_
+//#ifdef _SAME54_NVMCTRL_COMPONENT_
+#if defined(_SAME54_NVMCTRL_COMPONENT_) || defined(_SAME51_NVMCTRL_COMPONENT_)	// dc42 same54 and same51 versions were identical except for this line
 #ifndef _HRI_NVMCTRL_E54_H_INCLUDED_
 #define _HRI_NVMCTRL_E54_H_INCLUDED_
 

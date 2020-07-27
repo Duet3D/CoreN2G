@@ -9,18 +9,18 @@
 
 #if SAME5x
 
-# include "hri_tc_e54.h"
-# include "hri_tcc_e54.h"
-# include "hri_mclk_e54.h"
+# include <hri_tc_e54.h>
+# include <hri_tcc_e54.h>
+# include <hri_mclk_e54.h>
 
 constexpr unsigned int TcGclkNum = GclkNum60MHz;
 constexpr uint32_t TcGclkFreq = 60000000;
 
 #elif SAMC21
 
-# include "hri_tc_c21.h"
-# include "hri_tcc_c21.h"
-# include "hri_mclk_c21.h"
+# include <hri_tc_c21.h>
+# include <hri_tcc_c21.h>
+# include <hri_mclk_c21.h>
 
 constexpr unsigned int TcGclkNum = GclkNum48MHz;
 constexpr uint32_t TcGclkFreq = 48000000;

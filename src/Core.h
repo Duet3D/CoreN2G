@@ -21,14 +21,19 @@
 #undef result
 #undef value
 
-#if defined(__SAME54P20A__) || defined(__SAMD51N19A__)
-# include <same54.h>
+#if defined(__SAME54P20A__) || defined(__SAME51P20A__)
 # define __ARM_ARCH_7EM__	1
+# include <same54.h>
+# define SAME5x				1
+# define SAMC21				0
+#elif defined(__SAME51N19A__)
+# define __ARM_ARCH_7EM__	1
+# include <same51.h>
 # define SAME5x				1
 # define SAMC21				0
 #elif defined(__SAMC21G18A__)
-# include <samc21.h>
 # define __ARM_ARCH_6M__	1
+# include <samc21.h>
 # define SAME5x				0
 # define SAMC21				1
 # define SUPPORT_SDHC		0			// SAMC21 doesn't support SDHC

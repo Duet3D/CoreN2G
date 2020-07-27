@@ -16,8 +16,10 @@
 // Define NumTotalPins as pin number at and beyond which it is not safe to access the corresponding port registers on this processor family.
 // This may be greater than the number of I/O pins actually on the particular device we are running on.
 #if SAME5x
+#include <hri_port_e54.h>
 constexpr unsigned int NumTotalPins = (3 * 32) + 22;	// SAME54P20A goes up to PD21
 #elif SAMC21
+#include <hri_port_c21.h>
 constexpr unsigned int NumTotalPins = 2 * 32;			// SAMC21J goes up to PB31. We don't support the SAMC21N.
 #else
 # error Unsupported processor
@@ -90,6 +92,32 @@ private:
 	irqflags_t flags;
 };
 
+#if SAME5x
+
+// Functions to change the base priority, to shut out interrupts up to a priority level
+
+// Get the base priority and shut out interrupts lower than or equal to a specified priority
+inline uint32_t ChangeBasePriority(uint32_t prio)
+{
+	const uint32_t oldPrio = __get_BASEPRI();
+	__set_BASEPRI_MAX(prio << (8 - __NVIC_PRIO_BITS));
+	return oldPrio;
+}
+
+// Restore the base priority following a call to ChangeBasePriority
+inline void RestoreBasePriority(uint32_t prio)
+{
+	__set_BASEPRI(prio);
+}
+
+// Set the base priority when we are not interested in the existing value i.e. definitely in non-interrupt code
+inline void SetBasePriority(uint32_t prio)
+{
+	__set_BASEPRI(prio << (8 - __NVIC_PRIO_BITS));
+}
+
+#endif
+
 union CallbackParameter
 {
 	void *vp;
@@ -98,7 +126,9 @@ union CallbackParameter
 
 	CallbackParameter(void *pp) noexcept : vp(pp) { }
 	CallbackParameter(uint32_t pp) noexcept : u32(pp) { }
+	CallbackParameter(unsigned int p) noexcept { u32 = p; }
 	CallbackParameter(int32_t pp) noexcept : i32(pp) { }
+	CallbackParameter(int p) noexcept { i32 = p; }
 	CallbackParameter() noexcept : u32(0) { }
 };
 

@@ -1,5 +1,5 @@
 /*
- * PinInterrupts.h
+ * Interrupts.h
  *
  *  Created on: 6 Jul 2019
  *      Author: David
