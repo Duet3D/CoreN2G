@@ -41,10 +41,8 @@ extern uint32_t _ezero;
 extern uint32_t _estack;
 extern uint32_t _firmware_crc;
 
-/** \cond DOXYGEN_SHOULD_SKIP_THIS */
-int main(void);
-/** \endcond */
-
+extern void AppInit(void);
+extern void AppMain(void);
 void __libc_init_array(void);
 
 /* Default empty handler */
@@ -235,35 +233,37 @@ const DeviceVectors exception_table = {
  */
 void Reset_Handler(void)
 {
-        uint32_t *pSrc, *pDest;
+	/* Initialize the relocate segment */
+	uint32_t *pSrc = &_etext;
+	uint32_t *pDest = &_srelocate;
 
-        /* Initialize the relocate segment */
-        pSrc = &_etext;
-        pDest = &_srelocate;
+	if (pSrc != pDest)
+	{
+		for (; pDest < &_erelocate; )
+		{
+			*pDest++ = *pSrc++;
+		}
+	}
 
-        if (pSrc != pDest) {
-                for (; pDest < &_erelocate;) {
-                        *pDest++ = *pSrc++;
-                }
-        }
+	/* Clear the zero segment */
+	for (pDest = &_szero; pDest < &_ezero; )
+	{
+		*pDest++ = 0;
+	}
 
-        /* Clear the zero segment */
-        for (pDest = &_szero; pDest < &_ezero;) {
-                *pDest++ = 0;
-        }
+	/* Set the vector table base address */
+	pSrc = (uint32_t *) & _sfixed;
+	SCB->VTOR = ((uint32_t) pSrc & SCB_VTOR_TBLOFF_Msk);
 
-        /* Set the vector table base address */
-        pSrc = (uint32_t *) & _sfixed;
-        SCB->VTOR = ((uint32_t) pSrc & SCB_VTOR_TBLOFF_Msk);
+	/* Initialize the C library */
+	__libc_init_array();
 
-        /* Initialize the C library */
-        __libc_init_array();
+	/* Branch to main function */
+	AppInit();
+	AppMain();
 
-        /* Branch to main function */
-        main();
-
-        /* Infinite loop */
-        while (1);
+	/* Infinite loop */
+	while (1) { }
 }
 
 /**
@@ -271,6 +271,5 @@ void Reset_Handler(void)
  */
 void Dummy_Handler(void)
 {
-        while (1) {
-        }
+	while (1) { }
 }
