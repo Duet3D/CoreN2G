@@ -110,7 +110,8 @@ static int32_t _can_async_init(_can_async_device *const dev, Can *const hw, cons
 	const uint32_t nbtp = CAN_NBTP_NBRP(prescaler - 1) | CAN_NBTP_NTSEG1(tseg1 - 1) | CAN_NBTP_NTSEG2(tseg2 - 1) | CAN_NBTP_NSJW(jumpWidth - 1);
 
 #ifdef CONF_CAN0_ENABLED
-	if (hw == CAN0) {
+	if (hw == CAN0)
+	{
 		_can0_dev    = dev;
 		dev->context = (void *)&_can0_context;
 		hri_can_set_CCCR_reg(dev->hw, CONF_CAN0_CCCR_REG);
@@ -136,7 +137,8 @@ static int32_t _can_async_init(_can_async_device *const dev, Can *const hw, cons
 #endif
 
 #ifdef CONF_CAN1_ENABLED
-	if (hw == CAN1) {
+	if (hw == CAN1)
+	{
 		_can1_dev    = dev;
 		dev->context = (void *)&_can1_context;
 		hri_can_set_CCCR_reg(dev->hw, CONF_CAN1_CCCR_REG);

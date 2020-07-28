@@ -594,14 +594,11 @@ bool AnalogIn::IsChannelEnabled(AdcInput adcin, bool useAlternateAdc) noexcept
 	return false;
 }
 
-#if 0
 // Disable a previously-enabled channel
-bool AnalogIn::DisableChannel(AdcInput adcin, bool useAlternateAdc) noexcept
+void AnalogIn::DisableChannel(AdcInput adcin, bool useAlternateAdc) noexcept
 {
 	//TODO not implemented yet (do we need it?)
-	return false;
 }
-#endif
 
 uint16_t AnalogIn::ReadChannel(AdcInput adcin) noexcept
 {
