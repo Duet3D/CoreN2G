@@ -8,6 +8,8 @@
 #ifndef SRC_HARDWARE_SAME5X_SERIALCDC_H_
 #define SRC_HARDWARE_SAME5X_SERIALCDC_H_
 
+#if SUPPORT_USB
+
 #include "Stream.h"
 #include <General/RingBuffer.h>
 #include <RTOSIface/RTOSIface.h>
@@ -47,5 +49,7 @@ private:
 	const Pin vbusPin;
 	bool hasConnected;
 };
+
+#endif
 
 #endif /* SRC_HARDWARE_SAME5X_SERIALCDC_H_ */

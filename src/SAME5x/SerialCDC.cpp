@@ -5,6 +5,8 @@
  *      Author: David
  */
 
+#if SUPPORT_USB
+
 #include "SerialCDC.h"
 
 #ifdef RTOS
@@ -250,5 +252,7 @@ void SerialCDC::DataReceived(uint32_t count) noexcept
 	receiving = false;
 	StartReceiving();
 }
+
+#endif
 
 // End
