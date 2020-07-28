@@ -36,6 +36,5 @@
 #define __SYSTEM_CLOCK    (4000000)
 
 uint32_t SystemCoreClock = __SYSTEM_CLOCK;/*!< System Clock Frequency (Core Clock)*/
-uint32_t SystemPeripheralClock = __SYSTEM_CLOCK;
 
 // End

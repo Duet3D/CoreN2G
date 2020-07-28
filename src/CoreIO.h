@@ -135,7 +135,6 @@ union CallbackParameter
 typedef void (*StandardCallbackFunction)(CallbackParameter) noexcept;
 
 extern "C" uint32_t SystemCoreClock;			// in system_samxxx.c
-extern "C" uint32_t SystemPeripheralClock;		// in system_samxxx.c
 
 void WatchdogInit() noexcept;
 void watchdogReset() noexcept;
