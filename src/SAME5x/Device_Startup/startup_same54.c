@@ -28,6 +28,7 @@
  */
 
 #include "same54.h"
+#include <Core.h>
 
 /* Initialize segments */
 extern uint32_t _sfixed;
@@ -512,18 +513,18 @@ void Reset_Handler(void)
 		}
 	}
 
-	/* Clear the zero segment */
+	// Clear the zero segment
 	for (pDest = &_szero; pDest < &_ezero; )
 	{
 		*pDest++ = 0;
 	}
 
-	/* Set the vector table base address */
+	// Set the vector table base address
 	pSrc = (uint32_t *) & _sfixed;
 	SCB->VTOR = ((uint32_t) pSrc & SCB_VTOR_TBLOFF_Msk);
 
 #if __FPU_USED
-	/* Enable FPU */
+	// Enable FPU
 	SCB->CPACR |=  (0xFu << 20);
 	__DSB();
 	__ISB();
@@ -531,14 +532,19 @@ void Reset_Handler(void)
 # error FPU not used
 #endif
 
-	/* Initialize the C library */
+	// Initialize the C library
 	__libc_init_array();
 
-	/* Branch to main function */
+	// Initialise application, which includes setting up the clocks
 	AppInit();
+
+	// Temporarily set up systick so that delayMicroseconds works
+	SysTick->LOAD = ((SystemCoreClockFreq/1000) - 1) << SysTick_LOAD_RELOAD_Pos;
+	SysTick->CTRL = (1 << SysTick_CTRL_ENABLE_Pos) | (1 << SysTick_CTRL_CLKSOURCE_Pos);
+
+	// Run the application
 	AppMain();
 
-	/* Infinite loop */
 	while (1) { }
 }
 

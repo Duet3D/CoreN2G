@@ -28,6 +28,7 @@
  */
 
 #include "samc21.h"
+#include <Core.h>
 
 /* Initialize segments */
 extern uint32_t _sfixed;
@@ -233,7 +234,7 @@ const DeviceVectors exception_table = {
  */
 void Reset_Handler(void)
 {
-	/* Initialize the relocate segment */
+	// Initialize the relocate segment
 	uint32_t *pSrc = &_etext;
 	uint32_t *pDest = &_srelocate;
 
@@ -245,24 +246,28 @@ void Reset_Handler(void)
 		}
 	}
 
-	/* Clear the zero segment */
+	// Clear the zero segment
 	for (pDest = &_szero; pDest < &_ezero; )
 	{
 		*pDest++ = 0;
 	}
 
-	/* Set the vector table base address */
+	// Set the vector table base address
 	pSrc = (uint32_t *) & _sfixed;
 	SCB->VTOR = ((uint32_t) pSrc & SCB_VTOR_TBLOFF_Msk);
 
-	/* Initialize the C library */
+	// Initialize the C library
 	__libc_init_array();
 
-	/* Branch to main function */
+	// Initialise the application, which includes setting up the clocks
 	AppInit();
+
+	// Temporarily set up systick so that delayMicroseconds works
+	SysTick->LOAD = ((SystemCoreClockFreq/1000) - 1) << SysTick_LOAD_RELOAD_Pos;
+	SysTick->CTRL = (1 << SysTick_CTRL_ENABLE_Pos) | (1 << SysTick_CTRL_CLKSOURCE_Pos);
+
 	AppMain();
 
-	/* Infinite loop */
 	while (1) { }
 }
 
