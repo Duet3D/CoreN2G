@@ -47,19 +47,6 @@
 #define SAM3XA	0
 #define SAME70	0
 
-#if SAME5x
-# ifndef SUPPORT_SDHC
-#  error SUPPORT_SDHC must be defined as 0 or 1 in the project settings
-# endif
-# ifndef SUPPORT_USB
-#  error SUPPORT_USB must be defined as 0 or 1 in the project settings
-# endif
-#endif
-
-#ifndef SUPPORT_CAN
-# error SUPPORT_CAN must be defined as 0 or 1 in the project settings
-#endif
-
 #include <inttypes.h>				// for PRIu32 etc.
 #include <ctype.h>
 
