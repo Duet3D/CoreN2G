@@ -13,6 +13,11 @@
 #include "AnalogIn.h"
 #include "AnalogOut.h"
 
+#ifdef RTOS
+# include <FreeRTOS.h>
+# include <task.h>
+#endif
+
 // Delay for a specified number of CPU clock cycles from the starting time. Return the time at which we actually stopped waiting.
 extern "C" uint32_t DelayCycles(uint32_t start, uint32_t cycles) noexcept
 {
@@ -162,6 +167,16 @@ uint64_t millis64() noexcept
 	const uint64_t ret = g_ms_ticks;			// take a copy with interrupts disabled to guard against rollover while we read it
 	atomic_leave_critical(&flags);
 	return ret;
+}
+
+void delay(uint32_t ms) noexcept
+{
+#ifdef RTOS
+	vTaskDelay(ms);
+#else
+	const uint32_t start = millis();
+	while (millis() - start < ms) { }
+#endif
 }
 
 void CoreSysTick() noexcept

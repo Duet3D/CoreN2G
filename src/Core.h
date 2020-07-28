@@ -132,7 +132,7 @@ uint64_t millis64() noexcept;
  * @brief Delay for a number of 1ms clock ticks.
  * @param millis Number of 1ms system ticks to delay for. The actual delay may be up to 1 millisecond less than this, or arbitrarily greater.
  */
-void delay(uint32_t millis) noexcept;
+void delay(uint32_t ms) noexcept;
 
 /**
  * @brief Set the required mode fore an I/O pin for
