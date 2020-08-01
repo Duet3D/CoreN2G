@@ -42,6 +42,11 @@ extern uint32_t _ezero;
 extern uint32_t _estack;
 extern uint32_t _firmware_crc;
 
+#if SUPPORT_CAN
+extern uint32_t _sCanMessage;
+extern uint32_t _eCanMessage;
+#endif
+
 extern void AppInit(void);
 extern void AppMain(void);
 void __libc_init_array(void);
@@ -518,6 +523,14 @@ void Reset_Handler(void)
 	{
 		*pDest++ = 0;
 	}
+
+#if SUPPORT_CAN
+	// Clear the CAN message buffer segment
+	for (pDest = &_sCanMessage; pDest < &_eCanMessage; )
+	{
+		*pDest++ = 0;
+	}
+#endif
 
 	// Set the vector table base address
 	pSrc = (uint32_t *) & _sfixed;

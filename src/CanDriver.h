@@ -46,7 +46,8 @@ typedef void (*FUNC_PTR)(void) noexcept;
 /**
  * \brief CAN Message Format
  */
-enum can_format {
+enum can_format
+{
 	CAN_FMT_STDID, /*!< Standard Format, 11 bits identifier */
 	CAN_FMT_EXTID  /*!< Extended Format, 29 bits identifier */
 };
@@ -54,7 +55,8 @@ enum can_format {
 /**
  * \brief CAN Message Type
  */
-enum can_type {
+enum can_type
+{
 	CAN_TYPE_DATA,  /*!< A DATA FRAME carries data from a transmitter to the
 	                    receivers.*/
 	CAN_TYPE_REMOTE /*!< A REMOTE FRAME is transmitted by a bus unit to request
@@ -65,7 +67,8 @@ enum can_type {
 /**
  * \brief CAN Bus Mode
  */
-enum can_mode {
+enum can_mode
+{
 	/** Normal operation Mode */
 	CAN_MODE_NORMAL,
 	/** In Bus Monitoring mode (see ISO11898-1, 10.12 Bus monitoring), the CAN
@@ -84,7 +87,8 @@ enum can_mode {
 /**
  * \brief CAN Message
  */
-struct can_message {
+struct can_message
+{
 	uint32_t        id;   /* Message identifier */
 	enum can_type   type; /* Message Type */
 	uint8_t *       data; /* Pointer to Message Data */
@@ -95,7 +99,8 @@ struct can_message {
 /**
  * \brief CAN Filter
  */
-struct can_filter {
+struct can_filter
+{
 	uint32_t id;   /* Message identifier */
 	uint32_t mask; /* The mask applied to the id */
 };
@@ -104,9 +109,12 @@ struct can_filter {
 /**
  * \brief CAN receive FIFO element.
  */
-struct _can_rx_fifo_entry {
-	__IO union {
-		struct {
+struct _can_rx_fifo_entry
+{
+	__IO union
+	{
+		struct
+		{
 			uint32_t ID : 29; /*!< Identifier */
 			uint32_t RTR : 1; /*!< Remote Transmission Request */
 			uint32_t XTD : 1; /*!< Extended Identifier */
@@ -114,8 +122,10 @@ struct _can_rx_fifo_entry {
 		} bit;
 		uint32_t val; /*!< Type used for register access */
 	} R0;
-	__IO union {
-		struct {
+	__IO union
+	{
+		struct
+		{
 			uint32_t RXTS : 16; /*!< Rx Timestamp */
 			uint32_t DLC : 4;   /*!< Data Length Code */
 			uint32_t BRS : 1;   /*!< Bit Rate Switch */
@@ -132,9 +142,12 @@ struct _can_rx_fifo_entry {
 /**
  * \brief CAN transmit FIFO element.
  */
-struct _can_tx_fifo_entry {
-	__IO union {
-		struct {
+struct _can_tx_fifo_entry
+{
+	__IO union
+	{
+		struct
+		{
 			uint32_t ID : 29; /*!< Identifier */
 			uint32_t RTR : 1; /*!< Remote Transmission Request */
 			uint32_t XTD : 1; /*!< Extended Identifier */
@@ -142,8 +155,10 @@ struct _can_tx_fifo_entry {
 		} bit;
 		uint32_t val; /*!< Type used for register access */
 	} T0;
-	__IO union {
-		struct {
+	__IO union
+	{
+		struct
+		{
 			uint32_t : 16;    /*!< Reserved */
 			uint32_t DLC : 4; /*!< Data Length Code */
 			uint32_t BRS : 1; /*!< Bit Rate Switch */
@@ -160,9 +175,12 @@ struct _can_tx_fifo_entry {
 /**
  * \brief CAN transmit Event element.
  */
-struct _can_tx_event_entry {
-	__IO union {
-		struct {
+struct _can_tx_event_entry
+{
+	__IO union
+	{
+		struct
+		{
 			uint32_t ID : 29; /*!< Identifier */
 			uint32_t RTR : 1; /*!< Remote Transmission Request */
 			uint32_t XTD : 1; /*!< Extended Identifier */
@@ -170,8 +188,10 @@ struct _can_tx_event_entry {
 		} bit;
 		uint32_t val; /*!< Type used for register access */
 	} R0;
-	__IO union {
-		struct {
+	__IO union
+	{
+		struct
+		{
 			uint32_t TXTS : 16; /*!< Tx Timestamp */
 			uint32_t DLC : 4;   /*!< Data Length Code */
 			uint32_t BRS : 1;   /*!< Bit Rate Switch */
@@ -188,9 +208,12 @@ struct _can_tx_event_entry {
  *
  *  Common element structure for standard message ID filter element.
  */
-struct _can_standard_message_filter_element {
-	__IO union {
-		struct {
+struct _can_standard_message_filter_element
+{
+	__IO union
+	{
+		struct
+		{
 			uint32_t SFID2 : 11; /*!< Standard Filter ID 2 */
 			uint32_t : 5;        /*!< Reserved */
 			uint32_t SFID1 : 11; /*!< Standard Filter ID 1 */
@@ -229,16 +252,21 @@ struct _can_standard_message_filter_element {
  *
  *  Common element structure for extended message ID filter element.
  */
-struct _can_extended_message_filter_element {
-	__IO union {
-		struct {
+struct _can_extended_message_filter_element
+{
+	__IO union
+	{
+		struct
+		{
 			uint32_t EFID1 : 29; /*!< bit: Extended Filter ID 1 */
 			uint32_t EFEC : 3;   /*!< bit: Extended Filter Configuration */
 		} bit;
 		uint32_t val; /*!< Type used for register access */
 	} F0;
-	__IO union {
-		struct {
+	__IO union
+	{
+		struct
+		{
 			uint32_t EFID2 : 29; /*!< bit: Extended Filter ID 2 */
 			uint32_t : 1;        /*!< bit: Reserved */
 			uint32_t EFT : 2;    /*!< bit: Extended Filter Type */
@@ -247,7 +275,8 @@ struct _can_extended_message_filter_element {
 	} F1;
 };
 
-struct _can_context {
+struct _can_context
+{
 	volatile uint8_t *                   rx_fifo;  /*!< receive message fifo */
 	volatile uint8_t *                   tx_fifo;  /*!< transfer message fifo */
 	volatile struct _can_tx_event_entry *tx_event; /*!< transfer event fifo */
@@ -265,13 +294,15 @@ struct _can_async_device;
 /**
  * \brief CAN callback types
  */
-enum can_async_callback_type {
+enum can_async_callback_type
+{
 	CAN_ASYNC_RX_CB, /*!< A new message arrived */
 	CAN_ASYNC_TX_CB, /*!< A message transmitted */
 	CAN_ASYNC_IRQ_CB /*!< Message error of some kind on the CAN bus IRQ */
 };
 
-enum can_async_interrupt_type {
+enum can_async_interrupt_type
+{
 	CAN_IRQ_EW, /*!< Error warning, Error counter has reached the
 	              error warning limit of 96, An error count value
 	              greater than about 96 indicates a heavily disturbed
@@ -307,7 +338,7 @@ struct _can_async_callback
 {
 	void (*tx_done)(struct _can_async_device *dev) noexcept;
 	void (*rx_done)(struct _can_async_device *dev) noexcept;
-	void (*irq_handler)(struct _can_async_device *dev, enum can_async_interrupt_type type) noexcept;
+	void (*irq_handler)(struct _can_async_device *dev, can_async_interrupt_type type) noexcept;
 };
 
 /**
@@ -340,7 +371,7 @@ struct can_callbacks
 {
 	can_cb_t tx_done;
 	can_cb_t rx_done;
-	void (*irq_handler)(can_async_descriptor *const descr, enum can_async_interrupt_type type) noexcept;
+	void (*irq_handler)(can_async_descriptor *const descr, can_async_interrupt_type type) noexcept;
 };
 
 /**
@@ -405,7 +436,7 @@ int32_t can_async_disable(can_async_descriptor *const descr) noexcept;
  *
  * \return The status of read message.
  */
-int32_t can_async_read(can_async_descriptor *const descr, struct can_message *msg) noexcept;
+int32_t can_async_read(can_async_descriptor *const descr, can_message *msg) noexcept;
 
 /**
  * \brief Write a CAN message
@@ -415,7 +446,7 @@ int32_t can_async_read(can_async_descriptor *const descr, struct can_message *ms
  *
  * \return The status of write message.
  */
-int32_t can_async_write(can_async_descriptor *const descr, struct can_message *msg) noexcept;
+int32_t can_async_write(can_async_descriptor *const descr, can_message *msg) noexcept;
 
 /**
  * \brief Register CAN callback function to interrupt
@@ -427,7 +458,7 @@ int32_t can_async_write(can_async_descriptor *const descr, struct can_message *m
  *
  * \return The status of callback assignment.
  */
-int32_t can_async_register_callback(can_async_descriptor *const descr, enum can_async_callback_type type, FUNC_PTR cb) noexcept;
+int32_t can_async_register_callback(can_async_descriptor *const descr, can_async_callback_type type, FUNC_PTR cb) noexcept;
 
 /**
  * \brief Return number of read errors
@@ -461,7 +492,7 @@ uint8_t can_async_get_txerr(can_async_descriptor *const descr) noexcept;
  *
  * \return Status of the operation.
  */
-int32_t can_async_set_mode(can_async_descriptor *const descr, enum can_mode mode) noexcept;
+int32_t can_async_set_mode(can_async_descriptor *const descr, can_mode mode) noexcept;
 
 /**
  * \brief Set CAN Filter
@@ -475,14 +506,7 @@ int32_t can_async_set_mode(can_async_descriptor *const descr, enum can_mode mode
  *
  * \return Status of the operation.
  */
-int32_t can_async_set_filter(can_async_descriptor *const descr, uint8_t index, enum can_format fmt, struct can_filter *filter) noexcept;
-
-/**
- * \brief Retrieve the current driver version
- *
- * \return The current driver version.
- */
-uint32_t can_async_get_version(void) noexcept;
+int32_t can_async_set_filter(can_async_descriptor *const descr, uint8_t index, can_format fmt, can_filter *filter) noexcept;
 
 void GetLocalCanTiming(const can_async_descriptor *descr, CanTiming& timing) noexcept;
 
