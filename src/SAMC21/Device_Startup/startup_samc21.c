@@ -29,6 +29,7 @@
 
 #include "samc21.h"
 #include <Core.h>
+#include <hpl_div.h>
 
 /* Initialize segments */
 extern uint32_t _sfixed;
@@ -255,6 +256,9 @@ void Reset_Handler(void)
 	// Set the vector table base address
 	pSrc = (uint32_t *) & _sfixed;
 	SCB->VTOR = ((uint32_t) pSrc & SCB_VTOR_TBLOFF_Msk);
+
+	// Initialise the divide and square root accelerator
+	_div_init();
 
 	// Initialize the C library
 	__libc_init_array();
