@@ -182,11 +182,13 @@ static int32_t _can_async_init(_can_async_device *const dev, Can *const hw, cons
 /**
  * \brief De-initialize CAN.
  */
-static int32_t _can_async_deinit(_can_async_device *const dev) noexcept
+static void _can_async_deinit(_can_async_device *const dev) noexcept
 {
-	hri_can_set_CCCR_INIT_bit(dev->hw);
-	dev->hw = NULL;
-	return ERR_NONE;
+	if (dev->hw != nullptr)
+	{
+		hri_can_set_CCCR_INIT_bit(dev->hw);
+		dev->hw = nullptr;
+	}
 }
 
 /**
@@ -596,9 +598,9 @@ int32_t can_async_init(can_async_descriptor *descr, Can *hw, const CanTiming& ti
 /**
  * \brief Deinitialize CAN.
  */
-int32_t can_async_deinit(can_async_descriptor *const descr) noexcept
+void can_async_deinit(can_async_descriptor *const descr) noexcept
 {
-	return _can_async_deinit(&descr->dev);
+	_can_async_deinit(&descr->dev);
 }
 
 /**

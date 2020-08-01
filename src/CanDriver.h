@@ -404,7 +404,7 @@ int32_t can_async_init(can_async_descriptor *const descr, Can *const hw, const C
  *
  * \return De-initialization status.
  */
-int32_t can_async_deinit(can_async_descriptor *const descr) noexcept;
+void can_async_deinit(can_async_descriptor *const descr) noexcept;
 
 /**
  * \brief Enable CAN
