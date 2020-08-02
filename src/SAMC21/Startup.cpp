@@ -82,10 +82,12 @@ static void InitClocks() noexcept
 	// So instead we reset the clock configuration.
 	// First reset the generic clock generator. This sets all clock generators to default values and the CPU clock to the 48MHz DFLL output.
 #if 1
-	// 2020-06-03: on the SammyC21 board the software reset of GCLK never completed, so reset it manually
+	// 2020-06-03: on the SammyC21 board the software reset of GCLK never completes, so reset it manually
 	OSCCTRL->OSC48MCTRL.reg = OSCCTRL_OSC48MCTRL_ENABLE;				// make sure OSC48M is enabled, clear the on-demand bit
+	OSCCTRL->OSC48MDIV.reg = 11;										// set divider to 12
 	while ((OSCCTRL->STATUS.reg & OSCCTRL_STATUS_OSC48MRDY) == 0) { }	// wait for it to become ready
 	GCLK->GENCTRL[0].reg = 0x00000106;									// this is the reset default
+	GCLK->GENCTRL[1].reg = 0;											// this is the reset default
 	OSCCTRL->OSC48MCTRL.reg = OSCCTRL_OSC48MCTRL_ENABLE | OSCCTRL_OSC48MCTRL_ONDEMAND;		// back to reset default
 #else
 	// The following code works on Duet3D boards, but it hangs on the SammyC21
@@ -104,9 +106,93 @@ static void InitClocks() noexcept
 	hri_osc32kctrl_write_RTCCTRL_reg(OSC32KCTRL, OSC32KCTRL_RTCCTRL_RTCSEL(OSC32KCTRL_RTCCTRL_RTCSEL_ULP32K_Val));
 
 	// Get the XOSC details from the application
-	const unsigned int xoscFrequency = AppGetXoscFrequency();
+	unsigned int xoscFrequency = AppGetXoscFrequency();
 
 	// Crystal oscillator
+	// First, disable it so that we can disable the event control
+	hri_oscctrl_write_XOSCCTRL_reg(OSCCTRL,
+	    	  OSCCTRL_XOSCCTRL_STARTUP(0)
+			| (0 << OSCCTRL_XOSCCTRL_AMPGC_Pos)
+	        | OSCCTRL_XOSCCTRL_GAIN(4)
+			| (1 << OSCCTRL_XOSCCTRL_RUNSTDBY_Pos)
+	        | (0 << OSCCTRL_XOSCCTRL_SWBEN_Pos)
+			| (0 << OSCCTRL_XOSCCTRL_CFDEN_Pos)
+	        | (1 << OSCCTRL_XOSCCTRL_XTALEN_Pos)
+			| (0 << OSCCTRL_XOSCCTRL_ENABLE_Pos));
+
+	// Now it is safe to disable events
+	hri_oscctrl_write_EVCTRL_reg(OSCCTRL, (0 << OSCCTRL_EVCTRL_CFDEO_Pos));
+
+	if (xoscFrequency == 0)
+	{
+		// Start up the crystal oscillator with high gain to guaranteed operation, so that we can measure its frequency
+		hri_oscctrl_write_XOSCCTRL_reg(OSCCTRL,
+		    	  OSCCTRL_XOSCCTRL_STARTUP(0)
+				| (0 << OSCCTRL_XOSCCTRL_AMPGC_Pos)
+		        | OSCCTRL_XOSCCTRL_GAIN(4)
+				| (1 << OSCCTRL_XOSCCTRL_RUNSTDBY_Pos)
+		        | (0 << OSCCTRL_XOSCCTRL_SWBEN_Pos)
+				| (0 << OSCCTRL_XOSCCTRL_CFDEN_Pos)
+		        | (1 << OSCCTRL_XOSCCTRL_XTALEN_Pos)
+				| (1 << OSCCTRL_XOSCCTRL_ENABLE_Pos));
+
+		while (!hri_oscctrl_get_STATUS_XOSCRDY_bit(OSCCTRL)) { }
+
+		// Set the 48MHz oscillator calibration. We use the 5V values which are in bits 19 to 40 of the calibration data.
+		OSCCTRL->CAL48M.reg = (uint32_t)(*reinterpret_cast<const uint64_t*>(NVMCTRL_OTP5) >> 19) & ((1ul << 21) - 1u);
+
+		// Set up clocks for the frequency meter. GCLK0 is already driven from the 48MHz RC oscillator divided by 12.
+		MCLK->APBAMASK.reg |= MCLK_APBAMASK_FREQM;
+		hri_gclk_write_PCHCTRL_reg(GCLK, FREQM_GCLK_ID_REF, 0 | GCLK_PCHCTRL_CHEN);
+
+		// Set up GCLK 2 to be driven from the crystal oscillator
+		hri_gclk_write_GENCTRL_reg(GCLK, 2,
+				  GCLK_GENCTRL_DIV(1) | (0 << GCLK_GENCTRL_RUNSTDBY_Pos)
+				| (0 << GCLK_GENCTRL_DIVSEL_Pos) | (0 << GCLK_GENCTRL_OE_Pos)
+				| (0 << GCLK_GENCTRL_OOV_Pos) | (0 << GCLK_GENCTRL_IDC_Pos)
+				| GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC_XOSC);
+		hri_gclk_write_PCHCTRL_reg(GCLK, FREQM_GCLK_ID_MSR, 2 | GCLK_PCHCTRL_CHEN);
+
+		FREQM->CTRLA.reg = FREQM_CTRLA_SWRST;
+		while (FREQM->SYNCBUSY.bit.SWRST) { }
+
+		FREQM->CFGA.reg = 40;									// count for 40 cycles of the 4MHz reference clock i.e. 10us
+		FREQM->CTRLA.reg = FREQM_CTRLA_ENABLE;
+		while (FREQM->SYNCBUSY.bit.ENABLE) { }
+
+		FREQM->STATUS.reg = FREQM_STATUS_OVF;					// clear overflow status
+		FREQM->CTRLB.reg = FREQM_CTRLB_START;					// start counting
+		while (FREQM->STATUS.bit.BUSY) { }						// wait until finished
+
+		const uint32_t freq = FREQM->VALUE.reg & 0x00FFFFFF;	// get the number of crystal oscillator cycles in 10us
+		const bool overflowed = FREQM->STATUS.bit.OVF;
+
+		// Turn off the temporary GCLK and the frequency meter to save power
+		GCLK->GENCTRL[2].reg = 0;
+		FREQM->CTRLA.reg = 0;
+		MCLK->APBAMASK.reg &= ~(MCLK_APBAMASK_FREQM);
+		hri_gclk_write_PCHCTRL_reg(GCLK, FREQM_GCLK_ID_REF, 0);
+		hri_gclk_write_PCHCTRL_reg(GCLK, FREQM_GCLK_ID_MSR, 0);
+
+		// Expected frequencies are 12, 16 and 25MHz. We allow a +/-12% tolerance for the 48MHz oscillator so that the 12 and 16MHz bands don't overlap.
+		if (!overflowed && freq >= 105 && freq <= 135)
+		{
+			xoscFrequency = 12;
+		}
+		else if (!overflowed && freq >= 141 && freq <= 179)
+		{
+			xoscFrequency = 16;
+		}
+		else if (!overflowed && freq >= 220 && freq <= 280)
+		{
+			xoscFrequency = 25;
+		}
+		else
+		{
+			Reset();
+		}
+	}
+
 	const int32_t gain = (xoscFrequency > 16) ? 4 : 3;		// we are assuming that the frequency is >8MHz so we always need gain at least 3
 	hri_oscctrl_write_XOSCCTRL_reg(OSCCTRL,
 	    	  OSCCTRL_XOSCCTRL_STARTUP(0)
@@ -118,9 +204,8 @@ static void InitClocks() noexcept
 	        | (1 << OSCCTRL_XOSCCTRL_XTALEN_Pos)
 			| (1 << OSCCTRL_XOSCCTRL_ENABLE_Pos));
 
-	hri_oscctrl_write_EVCTRL_reg(OSCCTRL, (0 << OSCCTRL_EVCTRL_CFDEO_Pos));
-
 	while (!hri_oscctrl_get_STATUS_XOSCRDY_bit(OSCCTRL)) { }
+
 	hri_oscctrl_set_XOSCCTRL_AMPGC_bit(OSCCTRL);
 
 	// DPLL
