@@ -1,13 +1,78 @@
 /*
- * Clocks.cpp
+ * Startup.cpp
  *
- *  Created on: 1 Aug 2020
+ *  Created on: 2 Aug 2020
  *      Author: David
  */
 
-#include <Clocks.h>
+#include <CoreIO.h>
+#include <hpl_div.h>
 
-void InitStandardClocks(unsigned int xoscFrequency) noexcept
+// Symbols defined by the linker
+extern uint32_t _sfixed;
+//extern uint32_t _efixed;
+extern uint32_t _etext;
+extern uint32_t _srelocate;
+extern uint32_t _erelocate;
+extern uint32_t _szero;
+extern uint32_t _ezero;
+
+extern "C" void __libc_init_array() noexcept;
+
+// Forward declaration
+static void InitClocks() noexcept;
+
+/**
+ * \brief This is the code that gets called on processor reset.
+ * To initialize the device, and call the main() routine.
+ */
+void Reset_Handler() noexcept
+{
+	// Initialize the relocate segment
+	uint32_t *pSrc = &_etext;
+	uint32_t *pDest = &_srelocate;
+
+	if (pSrc != pDest)
+	{
+		for (; pDest < &_erelocate; )
+		{
+			*pDest++ = *pSrc++;
+		}
+	}
+
+	// Clear the zero segment
+	for (pDest = &_szero; pDest < &_ezero; )
+	{
+		*pDest++ = 0;
+	}
+
+	// Set the vector table base address
+	pSrc = (uint32_t *) & _sfixed;
+	SCB->VTOR = ((uint32_t) pSrc & SCB_VTOR_TBLOFF_Msk);
+
+	// Initialise the divide and square root accelerator
+	_div_init();
+
+	// Initialize the C library
+	__libc_init_array();
+
+	// Set up the standard clocks
+	InitClocks();
+
+	// Temporarily set up systick so that delayMicroseconds works
+	SysTick->LOAD = ((SystemCoreClockFreq/1000) - 1) << SysTick_LOAD_RELOAD_Pos;
+	SysTick->CTRL = (1 << SysTick_CTRL_ENABLE_Pos) | (1 << SysTick_CTRL_CLKSOURCE_Pos);
+
+	// Initialise application, which includes setting up any additional clocks
+	AppInit();
+
+	// Run the application
+	AppMain();
+
+	while (1) { }
+}
+
+static void InitClocks() noexcept
 {
 	// Set the number of flash wait states
 	hri_nvmctrl_set_CTRLB_RWS_bf(NVMCTRL, 2);				// 2 wait states needed at clock frequencies >38MHz
@@ -16,6 +81,9 @@ void InitStandardClocks(unsigned int xoscFrequency) noexcept
 	const uint16_t calib = hri_osc32kctrl_read_OSCULP32K_CALIB_bf(OSC32KCTRL);
 	hri_osc32kctrl_write_OSCULP32K_reg(OSC32KCTRL, OSC32KCTRL_OSCULP32K_CALIB(calib));
 	hri_osc32kctrl_write_RTCCTRL_reg(OSC32KCTRL, OSC32KCTRL_RTCCTRL_RTCSEL(OSC32KCTRL_RTCCTRL_RTCSEL_ULP32K_Val));
+
+	// Get the XOSC details from the application
+	const unsigned int xoscFrequency = AppGetXoscFrequency();
 
 	// Crystal oscillator
 	const int32_t gain = (xoscFrequency > 16) ? 4 : 3;		// we are assuming that the frequency is >8MHz so we always need gain at least 3
@@ -62,12 +130,15 @@ void InitStandardClocks(unsigned int xoscFrequency) noexcept
 			| (0 << GCLK_GENCTRL_OOV_Pos) | (0 << GCLK_GENCTRL_IDC_Pos)
 			| GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC_DPLL96M);
 
-	// GCLK 1: 32258Hz (1MHz divided by 31)
+	// GCLK 1: 31250Hz (1MHz divided by 32)
 	hri_gclk_write_GENCTRL_reg(GCLK, 1,
-		GCLK_GENCTRL_DIV(31 * xoscFrequency) | (0 << GCLK_GENCTRL_RUNSTDBY_Pos)
+		GCLK_GENCTRL_DIV(32 * xoscFrequency) | (0 << GCLK_GENCTRL_RUNSTDBY_Pos)
 			| (0 << GCLK_GENCTRL_DIVSEL_Pos) | (0 << GCLK_GENCTRL_OE_Pos)
 			| (0 << GCLK_GENCTRL_OOV_Pos) | (0 << GCLK_GENCTRL_IDC_Pos)
 			| GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC_XOSC);
+
+	// Set up system clock frequency variable for FreeRTOS
+	SystemCoreClock = SystemCoreClockFreq;
 }
 
 // End

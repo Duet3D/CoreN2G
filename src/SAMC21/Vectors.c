@@ -29,23 +29,16 @@
 
 #include "samc21.h"
 #include <Core.h>
-#include <hpl_div.h>
 
-/* Initialize segments */
-extern uint32_t _sfixed;
-//extern uint32_t _efixed;
-extern uint32_t _etext;
-extern uint32_t _srelocate;
-extern uint32_t _erelocate;
-extern uint32_t _szero;
-extern uint32_t _ezero;
 //extern uint32_t _sstack;
 extern uint32_t _estack;
 extern uint32_t _firmware_crc;
 
-extern void AppInit(void);
-extern void AppMain(void);
-void __libc_init_array(void);
+// SystemCoreClock is needed by FreeRTOS. Declaring this here also ensures that the linker includes this object file.
+uint32_t SystemCoreClock = 4000000;
+
+// Forward declaration
+void Reset_Handler(void);
 
 /* Default empty handler */
 void Dummy_Handler(void);
@@ -228,52 +221,6 @@ const DeviceVectors exception_table = {
         .pvReserved30           = (void*) (0UL)                   /* 30 Reserved */
 #endif
 };
-
-/**
- * \brief This is the code that gets called on processor reset.
- * To initialize the device, and call the main() routine.
- */
-void Reset_Handler(void)
-{
-	// Initialize the relocate segment
-	uint32_t *pSrc = &_etext;
-	uint32_t *pDest = &_srelocate;
-
-	if (pSrc != pDest)
-	{
-		for (; pDest < &_erelocate; )
-		{
-			*pDest++ = *pSrc++;
-		}
-	}
-
-	// Clear the zero segment
-	for (pDest = &_szero; pDest < &_ezero; )
-	{
-		*pDest++ = 0;
-	}
-
-	// Set the vector table base address
-	pSrc = (uint32_t *) & _sfixed;
-	SCB->VTOR = ((uint32_t) pSrc & SCB_VTOR_TBLOFF_Msk);
-
-	// Initialise the divide and square root accelerator
-	_div_init();
-
-	// Initialize the C library
-	__libc_init_array();
-
-	// Initialise the application, which includes setting up the clocks
-	AppInit();
-
-	// Temporarily set up systick so that delayMicroseconds works
-	SysTick->LOAD = ((SystemCoreClockFreq/1000) - 1) << SysTick_LOAD_RELOAD_Pos;
-	SysTick->CTRL = (1 << SysTick_CTRL_ENABLE_Pos) | (1 << SysTick_CTRL_CLKSOURCE_Pos);
-
-	AppMain();
-
-	while (1) { }
-}
 
 /**
  * \brief Default interrupt handler for unused IRQs.

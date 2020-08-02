@@ -55,7 +55,6 @@
 typedef uint8_t DmaChannel;			///< A type that represents a DMA channel number
 typedef uint8_t DmaPriority;		///< A type that represents a DMA priority
 typedef uint8_t Pin;				///< A type that represents an I/O pin on the microcontroller
-typedef uint8_t ExintNumber;		///< A type that represents an EXINT number. Used in pin tables.
 typedef uint16_t PwmFrequency;		///< A type that represents a PWM frequency. 0 sometimes means "default".
 typedef uint32_t NvicPriority;		///< A type that represents an interrupt priority
 

@@ -30,26 +30,15 @@
 #include "same54.h"
 #include <Core.h>
 
-/* Initialize segments */
-extern uint32_t _sfixed;
-//extern uint32_t _efixed;
-extern uint32_t _etext;
-extern uint32_t _srelocate;
-extern uint32_t _erelocate;
-extern uint32_t _szero;
-extern uint32_t _ezero;
-//extern uint32_t _sstack;
+// Symbols defined by the linker script
 extern uint32_t _estack;
 extern uint32_t _firmware_crc;
 
-#if SUPPORT_CAN
-extern uint32_t _sCanMessage;
-extern uint32_t _eCanMessage;
-#endif
+// SystemCoreClock is needed by FreeRTOS. Declaring this here also ensures that the linker includes this object file.
+uint32_t SystemCoreClock = 48000000;
 
-extern void AppInit(void);
-extern void AppMain(void);
-void __libc_init_array(void);
+// Forward declaration
+void Reset_Handler(void);
 
 /* Default empty handler */
 void Dummy_Handler(void);
@@ -192,7 +181,7 @@ void TCC4_2_Handler          ( void ) __attribute__ ((weak, alias("Dummy_Handler
 #endif
 void TC0_Handler             ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
 void TC1_Handler             ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
-void TC2_Handler             ( void ) noexcept __attribute__ ((weak, alias("Dummy_Handler")));
+void TC2_Handler             ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
 void TC3_Handler             ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
 #ifdef ID_TC4
 void TC4_Handler             ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
@@ -236,7 +225,7 @@ void QSPI_Handler            ( void ) __attribute__ ((weak, alias("Dummy_Handler
 void SDHC0_Handler           ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
 #endif
 #ifdef ID_SDHC1
-void SDHC1_Handler           ( void ) noexcept __attribute__ ((weak, alias("Dummy_Handler")));
+void SDHC1_Handler           ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
 #endif
 
 /* Exception Table */
@@ -502,69 +491,11 @@ const DeviceVectors exception_table = {
 };
 
 /**
- * \brief This is the code that gets called on processor reset.
- * To initialize the device, and call the main() routine.
- */
-void Reset_Handler(void)
-{
-	uint32_t *pSrc = &_etext;
-	uint32_t *pDest = &_srelocate;
-
-	if (pSrc != pDest)
-	{
-		for (; pDest < &_erelocate; )
-		{
-			*pDest++ = *pSrc++;
-		}
-	}
-
-	// Clear the zero segment
-	for (pDest = &_szero; pDest < &_ezero; )
-	{
-		*pDest++ = 0;
-	}
-
-#if SUPPORT_CAN
-	// Clear the CAN message buffer segment
-	for (pDest = &_sCanMessage; pDest < &_eCanMessage; )
-	{
-		*pDest++ = 0;
-	}
-#endif
-
-	// Set the vector table base address
-	pSrc = (uint32_t *) & _sfixed;
-	SCB->VTOR = ((uint32_t) pSrc & SCB_VTOR_TBLOFF_Msk);
-
-#if __FPU_USED
-	// Enable FPU
-	SCB->CPACR |=  (0xFu << 20);
-	__DSB();
-	__ISB();
-#else
-# error FPU not used
-#endif
-
-	// Initialize the C library
-	__libc_init_array();
-
-	// Initialise application, which includes setting up the clocks
-	AppInit();
-
-	// Temporarily set up systick so that delayMicroseconds works
-	SysTick->LOAD = ((SystemCoreClockFreq/1000) - 1) << SysTick_LOAD_RELOAD_Pos;
-	SysTick->CTRL = (1 << SysTick_CTRL_ENABLE_Pos) | (1 << SysTick_CTRL_CLKSOURCE_Pos);
-
-	// Run the application
-	AppMain();
-
-	while (1) { }
-}
-
-/**
  * \brief Default interrupt handler for unused IRQs.
  */
 void Dummy_Handler(void)
 {
 	while (1) { }
 }
+
+// End

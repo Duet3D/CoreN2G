@@ -1,13 +1,96 @@
 /*
- * Clocks.cpp
+ * Startup.cpp
  *
- *  Created on: 1 Aug 2020
+ *  Created on: 2 Aug 2020
  *      Author: David
  */
 
-#include <Clocks.h>
+#include <CoreIO.h>
 
-void InitStandardClocks(unsigned int xoscFrequency, unsigned int xoscNumber) noexcept
+// Symbols defined by the linker
+extern uint32_t _sfixed;
+//extern uint32_t _efixed;
+extern uint32_t _etext;
+extern uint32_t _srelocate;
+extern uint32_t _erelocate;
+extern uint32_t _szero;
+extern uint32_t _ezero;
+//extern uint32_t _sstack;
+
+#if SUPPORT_CAN
+extern uint32_t _sCanMessage;
+extern uint32_t _eCanMessage;
+#endif
+
+extern "C" void __libc_init_array() noexcept;
+
+// Forward declaration
+static void InitClocks() noexcept;
+
+/**
+ * \brief This is the code that gets called on processor reset.
+ * To initialize the device, and call the main() routine.
+ */
+extern "C" void Reset_Handler() noexcept
+{
+	uint32_t *pSrc = &_etext;
+	uint32_t *pDest = &_srelocate;
+
+	if (pSrc != pDest)
+	{
+		for (; pDest < &_erelocate; )
+		{
+			*pDest++ = *pSrc++;
+		}
+	}
+
+	// Clear the zero segment
+	for (pDest = &_szero; pDest < &_ezero; )
+	{
+		*pDest++ = 0;
+	}
+
+#if SUPPORT_CAN
+	// Clear the CAN message buffer segment
+	for (pDest = &_sCanMessage; pDest < &_eCanMessage; )
+	{
+		*pDest++ = 0;
+	}
+#endif
+
+	// Set the vector table base address
+	pSrc = (uint32_t *) & _sfixed;
+	SCB->VTOR = ((uint32_t) pSrc & SCB_VTOR_TBLOFF_Msk);
+
+#if __FPU_USED
+	// Enable FPU
+	SCB->CPACR |=  (0xFu << 20);
+	__DSB();
+	__ISB();
+#else
+# error FPU not used
+#endif
+
+	// Initialize the C library
+	__libc_init_array();
+
+	// Set up the standard clocks
+	InitClocks();
+
+	// Temporarily set up systick so that delayMicroseconds works
+	SysTick->LOAD = ((SystemCoreClockFreq/1000) - 1) << SysTick_LOAD_RELOAD_Pos;
+	SysTick->CTRL = (1 << SysTick_CTRL_ENABLE_Pos) | (1 << SysTick_CTRL_CLKSOURCE_Pos);
+
+	// Initialise application, which includes setting up any additional clocks
+	AppInit();
+
+	// Run the application
+	AppMain();
+
+	while (1) { }
+}
+
+static void InitClocks() noexcept
 {
 #if 1
 	hri_nvmctrl_set_CTRLA_RWS_bf(NVMCTRL, 0);				// rely on the AUTOWS bit
@@ -16,9 +99,27 @@ void InitStandardClocks(unsigned int xoscFrequency, unsigned int xoscNumber) noe
 	hri_nvmctrl_clear_CTRLA_AUTOWS_bit(NVMCTRL);			// clear the auto WS bit
 #endif
 
+	// We don't know which bootloader we entered from, and they use different clocks, so configure the clocks.
+	// First reset the generic clock generator. This sets all clock generators to default values and the CPU clock to the 48MHz DFLL output.
+	GCLK->CTRLA.reg = GCLK_CTRLA_SWRST;
+	while ((GCLK->CTRLA.reg & GCLK_CTRLA_SWRST) != 0) { }
+
+	// Disable DPLL0 so that we can reprogram it
+	OSCCTRL->Dpll[0].DPLLCTRLA.bit.ENABLE = 0;
+	while (OSCCTRL->Dpll[0].DPLLSYNCBUSY.bit.ENABLE) { }
+
+	// Also disable DPLL1 in case it was used by the bootloader
+	OSCCTRL->Dpll[1].DPLLCTRLA.bit.ENABLE = 0;
+	while (OSCCTRL->Dpll[1].DPLLSYNCBUSY.bit.ENABLE) { }
+
+	// Now it's safe to configure the clocks
 	// Initialise 32kHz oscillator
 	const uint16_t calib = hri_osc32kctrl_read_OSCULP32K_CALIB_bf(OSC32KCTRL);
 	hri_osc32kctrl_write_OSCULP32K_reg(OSC32KCTRL, OSC32KCTRL_OSCULP32K_CALIB(calib));
+
+	// Get the XOSC details from the application
+	const unsigned int xoscFrequency = AppGetXoscFrequency();
+	const unsigned int xoscNumber = AppGetXoscNumber();
 
 	// Initialise the XOSC
 	const uint32_t imult = (xoscFrequency > 24) ? 6
@@ -95,9 +196,9 @@ void InitStandardClocks(unsigned int xoscFrequency, unsigned int xoscNumber) noe
 			| (0 << GCLK_GENCTRL_OOV_Pos) | (0 << GCLK_GENCTRL_IDC_Pos)
 			| GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC_DPLL0);
 
-	// GCLK1: XOSC0 divided by 31 * frequency_in_MHz to give 32258Hz
+	// GCLK1: XOSC0 divided by 32 * frequency_in_MHz to give 31250Hz
 	hri_gclk_write_GENCTRL_reg(GCLK, 1,
-			  GCLK_GENCTRL_DIV(31 * xoscFrequency) | (0 << GCLK_GENCTRL_RUNSTDBY_Pos)
+			  GCLK_GENCTRL_DIV(32 * xoscFrequency) | (0 << GCLK_GENCTRL_RUNSTDBY_Pos)
 			| (0 << GCLK_GENCTRL_DIVSEL_Pos) | (0 << GCLK_GENCTRL_OE_Pos)
 			| (0 << GCLK_GENCTRL_OOV_Pos) | (0 << GCLK_GENCTRL_IDC_Pos)
 			| GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC(GCLK_GENCTRL_SRC_XOSC0_Val + xoscNumber));
@@ -106,7 +207,7 @@ void InitStandardClocks(unsigned int xoscFrequency, unsigned int xoscNumber) noe
 	hri_gclk_write_PCHCTRL_reg(GCLK, OSCCTRL_GCLK_ID_DFLL48, GCLK_PCHCTRL_GEN_GCLK1_Val | GCLK_PCHCTRL_CHEN);		// set GCLK1 as DFLL reference
 	hri_oscctrl_write_DFLLCTRLA_reg(OSCCTRL, 0);
 
-	hri_oscctrl_write_DFLLMUL_reg(OSCCTRL, OSCCTRL_DFLLMUL_CSTEP(4) | OSCCTRL_DFLLMUL_FSTEP(4) | OSCCTRL_DFLLMUL_MUL(48 * 31));
+	hri_oscctrl_write_DFLLMUL_reg(OSCCTRL, OSCCTRL_DFLLMUL_CSTEP(4) | OSCCTRL_DFLLMUL_FSTEP(4) | OSCCTRL_DFLLMUL_MUL(48 * 32));
 	while (hri_oscctrl_get_DFLLSYNC_DFLLMUL_bit(OSCCTRL)) { }
 
 	hri_oscctrl_write_DFLLCTRLB_reg(OSCCTRL, 0);
@@ -139,6 +240,9 @@ void InitStandardClocks(unsigned int xoscFrequency, unsigned int xoscNumber) noe
 			| (0 << GCLK_GENCTRL_DIVSEL_Pos) | (0 << GCLK_GENCTRL_OE_Pos)
 			| (0 << GCLK_GENCTRL_OOV_Pos) | (0 << GCLK_GENCTRL_IDC_Pos)
 			| GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC_DFLL_Val);
+
+	// Set up system clock frequency variable for FreeRTOS
+	SystemCoreClock = SystemCoreClockFreq;
 }
 
 // End

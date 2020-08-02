@@ -72,7 +72,7 @@ void InitialiseExints() noexcept
 // Attach an interrupt to the specified pin returning true if successful
 bool attachInterrupt(Pin pin, StandardCallbackFunction callback, InterruptMode mode, CallbackParameter param) noexcept
 {
-	const PinDescriptionBase * const pinDesc = GetPinDescription(pin);
+	const PinDescriptionBase * const pinDesc = AppGetPinDescription(pin);
 	if (pinDesc == nullptr)
 	{
 		return false;
@@ -137,7 +137,7 @@ bool attachInterrupt(Pin pin, StandardCallbackFunction callback, InterruptMode m
 
 void detachInterrupt(Pin pin) noexcept
 {
-	const PinDescriptionBase * const pinDesc = GetPinDescription(pin);
+	const PinDescriptionBase * const pinDesc = AppGetPinDescription(pin);
 	if (pinDesc != nullptr)
 	{
 		const ExintNumber exint = pinDesc->exintNumber;

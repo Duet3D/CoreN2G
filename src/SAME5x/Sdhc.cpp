@@ -116,7 +116,7 @@ static void hsmci_set_speed(uint32_t speed, uint8_t prog_clock_mode) noexcept
 	}
 
 	// Get the base clock frequency
-	baseclk_frq = GetSdhcClockSpeed()/2;
+	baseclk_frq = AppGetSdhcClockSpeed()/2;
 
 	// Use programmable clock mode if it is supported
 	clkmul = hri_sdhc_read_CA1R_CLKMULT_bf(hw);
@@ -239,7 +239,7 @@ static bool WaitForDmaComplete() noexcept
 
 static uint32_t hsmci_get_clock_speed() noexcept
 {
-	uint32_t clkbase = GetSdhcClockSpeed();
+	uint32_t clkbase = AppGetSdhcClockSpeed();
 	const uint32_t clkmul = hri_sdhc_read_CA1R_CLKMULT_bf(hw);
 
 	// If programmable clock mode is supported, baseclk is divided by 2

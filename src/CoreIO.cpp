@@ -234,9 +234,9 @@ void Reset() noexcept
 
 // Enable a GCLK. This function doesn't allow access to some GCLK features, e.g. the DIVSEL or OOV or RUNSTDBY bits.
 // Only GCLK1 can have a divisor greater than 255.
-void EnableGclk(unsigned int index, unsigned int gclkNum, uint16_t divisor, bool enableOutput) noexcept
+void ConfigureGclk(unsigned int index, GclkSource source, uint16_t divisor, bool enableOutput) noexcept
 {
-	uint32_t regVal = GCLK_GENCTRL_DIV(divisor) | GCLK_PCHCTRL_GEN(gclkNum) | GCLK_GENCTRL_GENEN;
+	uint32_t regVal = GCLK_GENCTRL_DIV(divisor) | GCLK_GENCTRL_SRC((uint32_t)source) | GCLK_GENCTRL_GENEN;
 	if (divisor & 1u)
 	{
 		regVal |= 1u << GCLK_GENCTRL_IDC_Pos;
@@ -318,7 +318,7 @@ void EnableTccClock(unsigned int tccNumber, unsigned int gclkNum) noexcept
 // Get the analog input channel that a pin uses
 AnalogChannelNumber PinToAdcChannel(Pin p) noexcept
 {
-	const PinDescriptionBase * const pinDesc = GetPinDescription(p);
+	const PinDescriptionBase * const pinDesc = AppGetPinDescription(p);
 	return (pinDesc == nullptr) ? AdcInput::none : pinDesc->adc;
 }
 

@@ -224,7 +224,7 @@ void AnalogOut::Init() noexcept
 // will re-initialise it. The pinMode function relies on this.
 void AnalogOut::Write(Pin pin, float val, PwmFrequency freq) noexcept
 {
-	const PinDescriptionBase * const pd = GetPinDescription(pin);
+	const PinDescriptionBase * const pd = AppGetPinDescription(pin);
 	if (pd == nullptr || std::isnan(val))
 	{
 		return;

@@ -73,7 +73,7 @@ enum class GclkSource : uint8_t
 #endif
 };
 
-void EnableGclk(unsigned int index, GclkSource source, uint16_t divisor, bool enableOutput = false) noexcept;
+void ConfigureGclk(unsigned int index, GclkSource source, uint16_t divisor, bool enableOutput = false) noexcept;
 
 // Atomic section locker, alternative to InterruptCriticalSectionLocker (is safe to call from within an ISR, and may be faster)
 class AtomicCriticalSectionLocker
@@ -283,25 +283,71 @@ constexpr uint32_t SerialNumberAddresses[4] = { 0x008061FC, 0x00806010, 0x008060
 constexpr uint32_t SerialNumberAddresses[4] = { 0x0080A00C, 0x0080A040, 0x0080A044, 0x0080A048 };
 #endif
 
-// Pin table format. A client of this library may inherit it in order to define additional fields at the end.
-//TODO check that we can still brace-initialise such an inherited strict
+/**
+ * @section AppInterface Functions that must be provided by the application project
+ */
+
+typedef uint8_t ExintNumber;		///< A type that represents an EXINT number. Used in pin tables.
+constexpr ExintNumber Nx = 0xFF;	///< A value that represents no available EXINT number
+
+/**
+ * @brief Layout of an entry in the pin table. The client project may add additional fields by deriving from this.
+ */
 struct PinDescriptionBase
 {
-	TcOutput tc;
-	TccOutput tcc;
-	AdcInput adc;
+	TcOutput tc;					///< The TC output that is connected to this pin and available for PWM generation, or TcOutput::none
+	TccOutput tcc;					///< The TCC output that is connected to this pin and available for PWM generation, or TccOutput::none
+	AdcInput adc;					///< The ADC input that is connected to this pin and available, or AdcInput::none
 #if SAMC21
-	AdcInput sdadc;
+	AdcInput sdadc;					///< The SDADC input that is connected to this pin and available, or AdcInput::none
 #endif
-	SercomIo sercomIn;
-	SercomIo sercomOut;
-	uint8_t exintNumber;
+	SercomIo sercomIn;				///< The Sercom input that is connected to this pin and available, or SercomIo::none
+	SercomIo sercomOut;				///< The Sercom output that is connected to this pin and available, or SercomIo::none
+	uint8_t exintNumber;			///< The EXINT number that is allocated exclusively for use by this pin, or Nx if none available
 };
 
-// External function to get a pin table entry. This must be provided by the client project.
-extern const PinDescriptionBase *GetPinDescription(Pin p) noexcept;
+/**
+ * @brief Initialise the application. Called after the main clocks have been set up.
+ * You can use delayMicroseconds() in this function but not delay().
+ */
+extern void AppInit() noexcept;
 
-// External function to get the SDHC peripheral clock speed. This must be provided by the client project if using SDHC.
-extern uint32_t GetSdhcClockSpeed() noexcept;
+/**
+ * @brief Run the application. Must not return.
+ */
+[[noreturn]] extern void AppMain() noexcept;
+
+/**
+ * @brief Get the frequency in MHz of the crystal connected to the MCU. Should be 12, 16 or 25.
+ * @return Frequency in MHz
+ */
+extern unsigned int AppGetXoscFrequency() noexcept;
+
+#if SAME5x
+
+/**
+ * @brief Get the MCU oscillator number whose pins the crystal is connected to
+ * @return XOSC number, 0 or 1
+ */
+extern unsigned int AppGetXoscNumber() noexcept;
+
+#endif
+
+/**
+ * @brief Get a pin table entry
+ * @param p Pin number
+ * @return Pointer to the pin table entry for that pin, or nullptr if the pin does not exist
+ */
+extern const PinDescriptionBase *AppGetPinDescription(Pin p) noexcept;
+
+#if SAME5x
+
+/**
+ * @brief Return the frequency of the SDHC peripheral clock. Only needs to be provided if the SDHC subsystem is used.
+ * @return Frequency in Hz
+ */
+extern uint32_t AppGetSdhcClockSpeed() noexcept;
+
+#endif
 
 #endif /* SRC_HARDWARE_SAME5X_COREIO_H_ */
