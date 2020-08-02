@@ -75,8 +75,29 @@ void Reset_Handler() noexcept
 static void InitClocks() noexcept
 {
 	// Set the number of flash wait states
-	hri_nvmctrl_set_CTRLB_RWS_bf(NVMCTRL, 2);				// 2 wait states needed at clock frequencies >38MHz
+	hri_nvmctrl_set_CTRLB_RWS_bf(NVMCTRL, 2);							// 2 wait states needed at clock frequencies >38MHz
 
+	// If we have entered via the bootloader then we have already configured the clocks.
+	// We could just leave them alone, but only if we definitely want to use the same clock configuration.
+	// So instead we reset the clock configuration.
+	// First reset the generic clock generator. This sets all clock generators to default values and the CPU clock to the 48MHz DFLL output.
+#if 1
+	// 2020-06-03: on the SammyC21 board the software reset of GCLK never completed, so reset it manually
+	OSCCTRL->OSC48MCTRL.reg = OSCCTRL_OSC48MCTRL_ENABLE;				// make sure OSC48M is enabled, clear the on-demand bit
+	while ((OSCCTRL->STATUS.reg & OSCCTRL_STATUS_OSC48MRDY) == 0) { }	// wait for it to become ready
+	GCLK->GENCTRL[0].reg = 0x00000106;									// this is the reset default
+	OSCCTRL->OSC48MCTRL.reg = OSCCTRL_OSC48MCTRL_ENABLE | OSCCTRL_OSC48MCTRL_ONDEMAND;		// back to reset default
+#else
+	// The following code works on Duet3D boards, but it hangs on the SammyC21
+	GCLK->CTRLA.reg = GCLK_CTRLA_SWRST;
+	while ((GCLK->CTRLA.reg & GCLK_CTRLA_SWRST) != 0) { }
+#endif
+
+	// If we don't disable DPLL0 here then programming it later fails in a release build
+	OSCCTRL->DPLLCTRLA.bit.ENABLE = 0;
+	while (OSCCTRL->DPLLSYNCBUSY.bit.ENABLE) { }
+
+	// Now it's safe to configure the clocks
 	// 32kHz oscillators
 	const uint16_t calib = hri_osc32kctrl_read_OSCULP32K_CALIB_bf(OSC32KCTRL);
 	hri_osc32kctrl_write_OSCULP32K_reg(OSC32KCTRL, OSC32KCTRL_OSCULP32K_CALIB(calib));

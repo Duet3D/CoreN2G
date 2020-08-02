@@ -1,5 +1,5 @@
 /*
- * Core_C.cpp
+ * CoreIO.cpp
  *
  *  Created on: 16 Jun 2020
  *      Author: David
@@ -217,7 +217,7 @@ void WatchdogInit() noexcept
 	hri_wdt_write_CTRLA_reg(WDT, WDT_CTRLA_ENABLE);
 }
 
-void watchdogReset() noexcept
+void WatchdogReset() noexcept
 {
 	// If we kick the watchdog too often, sometimes it resets us. It uses a 1024Hz nominal clock, so presumably it has to be reset less often than that.
 	if ((((uint32_t)g_ms_ticks) & 0x07) == 0 && (WDT->SYNCBUSY.reg & WDT_SYNCBUSY_CLEAR) == 0)

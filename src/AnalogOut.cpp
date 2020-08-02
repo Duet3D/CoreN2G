@@ -60,7 +60,7 @@ namespace AnalogOut
 	}
 
 	// Write PWM to the specified TC device. 'output' may be 0 or 1.
-	static bool AnalogWriteTc(Pin pin, unsigned int device, unsigned int output, float val, PwmFrequency freq) noexcept
+	static bool AnalogWriteTc(Pin pin, unsigned int device, unsigned int output, GpioPinFunction peri, float val, PwmFrequency freq) noexcept
 	{
 		static volatile Tc* const TcDevices[] =
 		{
@@ -133,7 +133,7 @@ namespace AnalogOut
 				hri_tccount16_write_CCBUF_CCBUF_bf(tcdev, output, cc);
 			}
 
-			SetPinFunction(pin, GpioPinFunction::E);			// TCs are all on peripheral select E
+			SetPinFunction(pin, peri);
 			return true;
 		}
 		return false;
@@ -237,7 +237,7 @@ void AnalogOut::Write(Pin pin, float val, PwmFrequency freq) noexcept
 			const TcOutput tc = pd->tc;
 			if (tc != TcOutput::none)
 			{
-				if (AnalogWriteTc(pin, GetDeviceNumber(tc), GetOutputNumber(tc), val, freq))
+				if (AnalogWriteTc(pin, GetDeviceNumber(tc), GetOutputNumber(tc), GetPeriNumber(tc), val, freq))
 				{
 					return;
 				}

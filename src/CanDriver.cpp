@@ -133,6 +133,9 @@ static int32_t _can_async_init(_can_async_device *const dev, Can *const hw, cons
 		hri_can_write_XIDFC_reg(dev->hw, CONF_CAN0_XIDFC_REG | CAN_XIDFC_FLESA((uint32_t)can0_rx_ext_filter));
 		hri_can_write_XIDAM_reg(dev->hw, CONF_CAN0_XIDAM_REG);
 
+		hw->IR.reg = 0xFFFFFFFF;										// clear all interrupt sources
+		hw->ILE.reg = 0;
+
 		NVIC_DisableIRQ(CAN0_IRQn);
 		NVIC_ClearPendingIRQ(CAN0_IRQn);
 		NVIC_EnableIRQ(CAN0_IRQn);
@@ -163,6 +166,9 @@ static int32_t _can_async_init(_can_async_device *const dev, Can *const hw, cons
 		hri_can_write_SIDFC_reg(dev->hw, CONF_CAN1_SIDFC_REG | CAN_SIDFC_FLSSA((uint32_t)can1_rx_std_filter));
 		hri_can_write_XIDFC_reg(dev->hw, CONF_CAN1_XIDFC_REG | CAN_XIDFC_FLESA((uint32_t)can1_rx_ext_filter));
 		hri_can_write_XIDAM_reg(dev->hw, CONF_CAN1_XIDAM_REG);
+
+		hw->IR.reg = 0xFFFFFFFF;										// clear all interrupt sources
+		hw->ILE.reg = 0;
 
 		NVIC_DisableIRQ(CAN1_IRQn);
 		NVIC_ClearPendingIRQ(CAN1_IRQn);
