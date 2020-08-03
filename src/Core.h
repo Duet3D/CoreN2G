@@ -63,22 +63,21 @@ static const Pin NoPin = 0xFF;		///< A number that represents no I/O pin
 // Standard GCLK numbers and frequencies
 #if SAME5x
 
-static const uint32_t SystemCoreClockFreq = 120000000;		///< The processor clock frequency after initialisation
+static const uint32_t SystemCoreClockFreq = 120000000;	///< The processor clock frequency after initialisation
 
 static const unsigned int GclkNum120MHz = 0;
-static const unsigned int GclkNum32KHz = 1;		// frequency is approx. 32768Hz
+static const unsigned int GclkNum31KHz = 1;				// frequency is 31250Hz
 static const unsigned int GclkNum60MHz = 3;
 static const unsigned int GclkNum48MHz = 4;
-// There may be other GCLKs defined by the client application, e.g. on Duet 3 Mini:
-//static const unsigned int GclkNum25MHz = 2;	// for Ethernet PHY
-//static const unsigned int GclkNum90MHz = 5;	// for SDHC
+// Other GCLKs may be defined by the client application
 
 #elif SAMC21
 
-static const uint32_t SystemCoreClockFreq = 48000000;
+static const uint32_t SystemCoreClockFreq = 48000000;	///< The processor clock frequency after initialisation
 
 static const unsigned int GclkNum48MHz = 0;
-static const unsigned int GclkNum32KHz = 3;		// frequency is approx. 32768Hz
+static const unsigned int GclkNum31KHz = 1;				// frequency is 31250Hz
+// Other GCLKs may be defined by the client application
 
 #endif
 

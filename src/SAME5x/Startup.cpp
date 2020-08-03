@@ -7,6 +7,10 @@
 
 #include <CoreIO.h>
 
+#ifndef FREQM_GCLK_ID_REF
+# define FREQM_GCLK_ID_REF		(6)			// this definition is missing from the DFP
+#endif
+
 // Symbols defined by the linker
 extern uint32_t _sfixed;
 //extern uint32_t _efixed;
@@ -120,6 +124,78 @@ static void InitClocks() noexcept
 	// Get the XOSC details from the application
 	const unsigned int xoscFrequency = AppGetXoscFrequency();
 	const unsigned int xoscNumber = AppGetXoscNumber();
+	const uint32_t xoscReadyBit = 1ul << (OSCCTRL_STATUS_XOSCRDY0_Pos + xoscNumber);	// The XOSCRDY1 bit is one position higher than the XOSCRDY0 bit
+
+	if (xoscFrequency == 0)
+	{
+		// Start up the crystal oscillator with high gain to guaranteed operation, so that we can measure its frequency
+		hri_oscctrl_write_XOSCCTRL_reg(OSCCTRL, xoscNumber,
+				  OSCCTRL_XOSCCTRL_CFDPRESC(3)
+				| OSCCTRL_XOSCCTRL_STARTUP(0)
+				| (0 << OSCCTRL_XOSCCTRL_SWBEN_Pos)
+				| (0 << OSCCTRL_XOSCCTRL_CFDEN_Pos)
+				| (0 << OSCCTRL_XOSCCTRL_ENALC_Pos)
+				| OSCCTRL_XOSCCTRL_IMULT(6)
+				| OSCCTRL_XOSCCTRL_IPTAT(3)
+				| (0 << OSCCTRL_XOSCCTRL_LOWBUFGAIN_Pos)
+				| (0 << OSCCTRL_XOSCCTRL_ONDEMAND_Pos)
+				| (0 << OSCCTRL_XOSCCTRL_RUNSTDBY_Pos)
+				| (1 << OSCCTRL_XOSCCTRL_XTALEN_Pos)
+				| (1 << OSCCTRL_XOSCCTRL_ENABLE_Pos));
+
+		while ((OSCCTRL->STATUS.reg & xoscReadyBit) == 0) { }
+
+		// Set up clocks for the frequency meter. GCLK0 is already driven from the 48MHz RC oscillator.
+		MCLK->APBAMASK.reg |= MCLK_APBAMASK_FREQM;
+		hri_gclk_write_PCHCTRL_reg(GCLK, FREQM_GCLK_ID_REF, 0 | GCLK_PCHCTRL_CHEN);
+
+		// Set up GCLK 1 to be driven from the crystal oscillator
+		hri_gclk_write_GENCTRL_reg(GCLK, 1,
+				  GCLK_GENCTRL_DIV(1) | (0 << GCLK_GENCTRL_RUNSTDBY_Pos)
+				| (0 << GCLK_GENCTRL_DIVSEL_Pos) | (0 << GCLK_GENCTRL_OE_Pos)
+				| (0 << GCLK_GENCTRL_OOV_Pos) | (0 << GCLK_GENCTRL_IDC_Pos)
+				| GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC(GCLK_GENCTRL_SRC_XOSC0_Val + xoscNumber));
+		hri_gclk_write_PCHCTRL_reg(GCLK, FREQM_GCLK_ID_MSR, 1 | GCLK_PCHCTRL_CHEN);
+
+		FREQM->CTRLA.reg = FREQM_CTRLA_SWRST;
+		while (FREQM->SYNCBUSY.bit.SWRST) { }
+
+		FREQM->CFGA.reg = 240;									// count for 240 cycles of the 48MHz reference clock i.e. 5us
+		FREQM->CTRLA.reg = FREQM_CTRLA_ENABLE;
+		while (FREQM->SYNCBUSY.bit.ENABLE) { }
+
+		FREQM->STATUS.reg = FREQM_STATUS_OVF;					// clear overflow status
+		FREQM->CTRLB.reg = FREQM_CTRLB_START;					// start counting
+		while (FREQM->STATUS.bit.BUSY) { }						// wait until finished
+
+		const uint32_t freq = FREQM->VALUE.reg & 0x00FFFFFF;	// get the number of crystal oscillator cycles in 10us
+		const bool overflowed = FREQM->STATUS.bit.OVF;
+
+		// Turn off the temporary GCLK and the frequency meter to save power
+		GCLK->GENCTRL[1].reg = 0;
+		FREQM->CTRLA.reg = 0;
+		MCLK->APBAMASK.reg &= ~(MCLK_APBAMASK_FREQM);
+		hri_gclk_write_PCHCTRL_reg(GCLK, FREQM_GCLK_ID_REF, 0);
+		hri_gclk_write_PCHCTRL_reg(GCLK, FREQM_GCLK_ID_MSR, 0);
+
+		// Expected frequencies are 12, 16 and 25MHz. We allow a +/-12% tolerance for the 48MHz oscillator so that the 12 and 16MHz bands don't overlap.
+		if (!overflowed && freq >= 52 && freq <= 68)
+		{
+			xoscFrequency = 12;
+		}
+		else if (!overflowed && freq >= 70 && freq <= 90)
+		{
+			xoscFrequency = 16;
+		}
+		else if (!overflowed && freq >= 110 && freq <= 140)
+		{
+			xoscFrequency = 25;
+		}
+		else
+		{
+			Reset();
+		}
+	}
 
 	// Initialise the XOSC
 	const uint32_t imult = (xoscFrequency > 24) ? 6
@@ -140,7 +216,6 @@ static void InitClocks() noexcept
 			| (1 << OSCCTRL_XOSCCTRL_XTALEN_Pos)
 			| (1 << OSCCTRL_XOSCCTRL_ENABLE_Pos));
 
-	const uint32_t xoscReadyBit = 1ul << (OSCCTRL_STATUS_XOSCRDY0_Pos + xoscNumber);	// The XOSCRDY1 bit is one position higher than the XOSCRDY0 bit
 	while ((OSCCTRL->STATUS.reg & xoscReadyBit) == 0) { }
 
 	// Initialise MCLK

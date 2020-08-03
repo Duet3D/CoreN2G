@@ -313,43 +313,28 @@ static int32_t _can_async_write(_can_async_device *const dev, struct can_message
 		f->T0.val = msg->id << 18;
 	}
 
+	memcpy(const_cast<uint8_t*>(f->data), msg->data, msg->len);
+
 	if (msg->len <= 8)
 	{
 		f->T1.bit.DLC = msg->len;
 	}
-	else if (msg->len <= 12)
+	else
 	{
-		f->T1.bit.DLC = 0x9;
-	}
-	else if (msg->len <= 16)
-	{
-		f->T1.bit.DLC = 0xA;
-	}
-	else if (msg->len <= 20)
-	{
-		f->T1.bit.DLC = 0xB;
-	}
-	else if (msg->len <= 24)
-	{
-		f->T1.bit.DLC = 0xC;
-	}
-	else if (msg->len <= 32)
-	{
-		f->T1.bit.DLC = 0xD;
-	}
-	else if (msg->len <= 48)
-	{
-		f->T1.bit.DLC = 0xE;
-	}
-	else if (msg->len <= 64)
-	{
-		f->T1.bit.DLC = 0xF;
+		constexpr size_t MessageLengths[] = { 12, 16, 20, 24, 32, 48, 64 };
+		size_t i;
+		for (i = 0; i < ARRAY_SIZE(MessageLengths) && msg->len > MessageLengths[i]; ++i) { }
+		f->T1.bit.DLC = 0x09 + i;
+
+		// Set any additional bytes we will be sending to zero
+		if (msg->len < MessageLengths[i])
+		{
+			memset(const_cast<uint8_t*>(f->data) + msg->len, 0, MessageLengths[i] - msg->len);
+		}
 	}
 
 	f->T1.bit.FDF = hri_can_get_CCCR_FDOE_bit(dev->hw);
 	f->T1.bit.BRS = hri_can_get_CCCR_BRSE_bit(dev->hw);
-
-	memcpy(const_cast<uint8_t*>(f->data), msg->data, msg->len);
 
 	hri_can_write_TXBAR_reg(dev->hw, 1 << put_index);
 	return ERR_NONE;

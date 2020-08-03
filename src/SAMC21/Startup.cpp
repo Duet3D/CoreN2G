@@ -17,6 +17,11 @@ extern uint32_t _erelocate;
 extern uint32_t _szero;
 extern uint32_t _ezero;
 
+#if SUPPORT_CAN
+extern uint32_t _sCanMessage;
+extern uint32_t _eCanMessage;
+#endif
+
 extern "C" void __libc_init_array() noexcept;
 
 // Forward declaration
@@ -45,6 +50,14 @@ void Reset_Handler() noexcept
 	{
 		*pDest++ = 0;
 	}
+
+#if SUPPORT_CAN
+	// Clear the CAN message buffer segment
+	for (pDest = &_sCanMessage; pDest < &_eCanMessage; )
+	{
+		*pDest++ = 0;
+	}
+#endif
 
 	// Set the vector table base address
 	pSrc = (uint32_t *) & _sfixed;
@@ -145,13 +158,13 @@ static void InitClocks() noexcept
 		MCLK->APBAMASK.reg |= MCLK_APBAMASK_FREQM;
 		hri_gclk_write_PCHCTRL_reg(GCLK, FREQM_GCLK_ID_REF, 0 | GCLK_PCHCTRL_CHEN);
 
-		// Set up GCLK 2 to be driven from the crystal oscillator
-		hri_gclk_write_GENCTRL_reg(GCLK, 2,
+		// Set up GCLK 1 to be driven from the crystal oscillator
+		hri_gclk_write_GENCTRL_reg(GCLK, 1,
 				  GCLK_GENCTRL_DIV(1) | (0 << GCLK_GENCTRL_RUNSTDBY_Pos)
 				| (0 << GCLK_GENCTRL_DIVSEL_Pos) | (0 << GCLK_GENCTRL_OE_Pos)
 				| (0 << GCLK_GENCTRL_OOV_Pos) | (0 << GCLK_GENCTRL_IDC_Pos)
 				| GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC_XOSC);
-		hri_gclk_write_PCHCTRL_reg(GCLK, FREQM_GCLK_ID_MSR, 2 | GCLK_PCHCTRL_CHEN);
+		hri_gclk_write_PCHCTRL_reg(GCLK, FREQM_GCLK_ID_MSR, 1 | GCLK_PCHCTRL_CHEN);
 
 		FREQM->CTRLA.reg = FREQM_CTRLA_SWRST;
 		while (FREQM->SYNCBUSY.bit.SWRST) { }
@@ -168,7 +181,7 @@ static void InitClocks() noexcept
 		const bool overflowed = FREQM->STATUS.bit.OVF;
 
 		// Turn off the temporary GCLK and the frequency meter to save power
-		GCLK->GENCTRL[2].reg = 0;
+		GCLK->GENCTRL[1].reg = 0;
 		FREQM->CTRLA.reg = 0;
 		MCLK->APBAMASK.reg &= ~(MCLK_APBAMASK_FREQM);
 		hri_gclk_write_PCHCTRL_reg(GCLK, FREQM_GCLK_ID_REF, 0);
