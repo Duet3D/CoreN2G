@@ -122,7 +122,7 @@ static void InitClocks() noexcept
 	hri_osc32kctrl_write_OSCULP32K_reg(OSC32KCTRL, OSC32KCTRL_OSCULP32K_CALIB(calib));
 
 	// Get the XOSC details from the application
-	const unsigned int xoscFrequency = AppGetXoscFrequency();
+	unsigned int xoscFrequency = AppGetXoscFrequency();
 	const unsigned int xoscNumber = AppGetXoscNumber();
 	const uint32_t xoscReadyBit = 1ul << (OSCCTRL_STATUS_XOSCRDY0_Pos + xoscNumber);	// The XOSCRDY1 bit is one position higher than the XOSCRDY0 bit
 
