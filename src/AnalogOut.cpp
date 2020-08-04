@@ -66,7 +66,7 @@ namespace AnalogOut
 		{
 			TC0, TC1, TC2, TC3, TC4,
 #if SAME5x
-			TC5		// TC6 and TC7 exist but are reserved for the step clock
+			TC5, TC6, TC7
 #endif
 		};
 		static uint16_t tcFreq[ARRAY_SIZE(TcDevices)] = { 0 };
