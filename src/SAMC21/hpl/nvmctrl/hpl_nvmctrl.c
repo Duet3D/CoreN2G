@@ -461,8 +461,9 @@ The NVM User Row can be read at address 0x804000.
 #ifndef _NVM_USER_ROW_BASE
 #define _NVM_USER_ROW_BASE 0x804000
 #endif
-#if 1	//dc42 user row is 256 bytes
-#define _NVM_USER_ROW_N_BITS 2048
+#if 1	//dc42
+// The user row is 256 bytes, divided into 4 pages of 64 bytes each. The original code supports only the first 64 bits. My replacement code supports the whole row.
+#define _NVM_USER_ROW_N_BITS (NVMCTRL_ROW_SIZE * 8)
 #else
 #define _NVM_USER_ROW_N_BITS 64
 #endif
@@ -580,7 +581,7 @@ static int32_t _user_row_write_exec(const uint32_t *_row)
 	Nvmctrl *hw    = NVMCTRL;
 	uint32_t ctrlb = hri_nvmctrl_read_CTRLB_reg(NVMCTRL);
 
-	/* Denie if Security Bit is set */
+	/* Deny if Security Bit is set */
 	if (hri_nvmctrl_get_STATUS_reg(hw, NVMCTRL_STATUS_SB)) {
 		return ERR_DENIED;
 	}
@@ -601,22 +602,19 @@ static int32_t _user_row_write_exec(const uint32_t *_row)
 		/* Wait until this module isn't busy */
 	}
 
-#if 1	//DC42 write entire row
-	for (unsigned int i = 0; i < 16; i++) 	/* 16 Quad words for User row: 32 * (4 bytes * 4) = 512 bytes */
+#if 1	//dc42
+	// No need to clear the page buffer because we are going to write all of it
+	for (unsigned int pageOffset = 0; pageOffset < NVMCTRL_ROW_SIZE; pageOffset += NVMCTRL_PAGE_SIZE)
 	{
-		/* - Page buffer clear & write. */
-		hri_nvmctrl_write_CTRLB_reg(hw, NVMCTRL_CTRLA_CMD_PBC | NVMCTRL_CTRLA_CMDEX_KEY);
-		while (!hri_nvmctrl_get_INTFLAG_reg(hw, NVMCTRL_INTFLAG_READY)) {
-			/* Wait until this module isn't busy */
+		// We must do 32-bit writes to the page buffer, so don't use memcpy here
+		for (unsigned int i = 0; i < NVMCTRL_PAGE_SIZE/4; ++i)
+		{
+			*(((uint32_t *)NVMCTRL_USER) + (pageOffset/4) + i) = _row[(pageOffset/4) + i];
 		}
-		*(((uint32_t *)NVMCTRL_USER) + i * 4)     = _row[i * 4];
-		*(((uint32_t *)NVMCTRL_USER) + i * 4 + 1) = _row[i * 4 + 1];
-		*(((uint32_t *)NVMCTRL_USER) + i * 4 + 2) = _row[i * 4 + 2];
-		*(((uint32_t *)NVMCTRL_USER) + i * 4 + 3) = _row[i * 4 + 3];
 
 		/* - Write AUX row. */
-		hri_nvmctrl_write_ADDR_reg(hw, (hri_nvmctrl_addr_reg_t)(_NVM_USER_ROW_BASE + i * 16));
-		hri_nvmctrl_write_CTRLB_reg(hw, NVMCTRL_CTRLA_CMD_WAP | NVMCTRL_CTRLA_CMDEX_KEY);
+		hri_nvmctrl_write_ADDR_reg(hw, (hri_nvmctrl_addr_reg_t)((_NVM_USER_ROW_BASE + pageOffset) / 2));
+		hri_nvmctrl_write_CTRLA_reg(hw, NVMCTRL_CTRLA_CMD_WAP | NVMCTRL_CTRLA_CMDEX_KEY);
 		while (!hri_nvmctrl_get_INTFLAG_reg(hw, NVMCTRL_INTFLAG_READY)) {
 			/* Wait until this module isn't busy */
 		}
@@ -637,6 +635,7 @@ static int32_t _user_row_write_exec(const uint32_t *_row)
 	while (!hri_nvmctrl_get_INTFLAG_reg(hw, NVMCTRL_INTFLAG_READY)) {
 		/* Wait until this module isn't busy */
 	}
+
 #endif
 
 	/* Restore CTRLB */
@@ -648,10 +647,17 @@ static int32_t _user_row_write_exec(const uint32_t *_row)
 int32_t _user_area_write(void *base, const uint32_t offset, const uint8_t *buf, const uint32_t size)
 {
 #if 1	//dc42
-	uint32_t _row[NVMCTRL_PAGE_SIZE / 4]; /* Copy of user row. */
+	uint32_t _row[NVMCTRL_ROW_SIZE / 4]; /* Copy of first page of user row. */
+
+	/** Parameter check. */
+	if ((uint32_t)base != _NVM_USER_ROW_BASE || offset + size > NVMCTRL_ROW_SIZE)
+	{
+		return ERR_INVALID_ARG;
+	}
+
+	memcpy(_row, base, NVMCTRL_ROW_SIZE);       /* Store previous data. */
 #else
 	uint32_t _row[2]; /* Copy of user row. */
-#endif
 
 	/** Parameter check. */
 	if (_IS_NVM_USER_ROW(base)) {
@@ -665,8 +671,8 @@ int32_t _user_area_write(void *base, const uint32_t offset, const uint8_t *buf, 
 	} else {
 		return ERR_UNSUPPORTED_OP;
 	}
-
 	memcpy(_row, base, 8);                       /* Store previous data. */
+#endif
 	memcpy((uint8_t *)_row + offset, buf, size); /* Modify with buf data. */
 
 	return _user_row_write_exec(_row);
