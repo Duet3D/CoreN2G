@@ -89,6 +89,8 @@ uint32_t Flash::GetEraseRegionSize() noexcept
 	return NVMCTRL_ROW_PAGES * NVMCTRL_PAGE_SIZE;
 #elif SAME5x
 	return NVMCTRL_BLOCK_SIZE;		// 8Kb on SAMD5x.SAME5x, see SAMD5x/E5x datasheet section 25.6.2
+#else
+# error Unsupported processor
 #endif
 }
 

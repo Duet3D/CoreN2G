@@ -77,15 +77,25 @@ static _can_async_device *_can1_dev = nullptr; /*!< Pointer to hpl device */
 
 #endif /* CONF_CAN1_ENABLED */
 
+static uint32_t messagesLost = 0;		// number of messages lost due to overflow of FIFO 0
+
+uint32_t GetAndClearCanMessagesLost() noexcept
+{
+	const uint32_t ret = messagesLost;
+	messagesLost = 0;
+	return ret;
+}
+
 /**
  * \brief Initialize CAN.
  */
 static int32_t _can_async_init(_can_async_device *const dev, Can *const hw, const CanTiming& timing) noexcept
 {
 	dev->hw = hw;
-	hri_can_set_CCCR_INIT_bit(dev->hw);
-	while (hri_can_get_CCCR_INIT_bit(dev->hw) == 0) { }
-	hri_can_set_CCCR_CCE_bit(dev->hw);
+
+	hw->CCCR.reg |= CAN_CCCR_INIT;
+	while ((hw->CCCR.reg & CAN_CCCR_INIT) == 0) { }
+	hw->CCCR.reg |= CAN_CCCR_CCE;
 
 	// Sort out the bit timing
 	uint32_t period = timing.period;
@@ -114,32 +124,43 @@ static int32_t _can_async_init(_can_async_device *const dev, Can *const hw, cons
 	{
 		_can0_dev    = dev;
 		dev->context = (void *)&_can0_context;
-		hri_can_set_CCCR_reg(dev->hw, CONF_CAN0_CCCR_REG);
+		dev->hw->CCCR.reg |= (1 << CAN_CCCR_FDOE_Pos) | (CONF_CAN0_CCCR_BRSE << CAN_CCCR_BRSE_Pos);
 		hri_can_write_MRCFG_reg(dev->hw, CONF_CAN0_MRCFG_REG);
 		hri_can_write_NBTP_reg(dev->hw, nbtp);
 		hri_can_write_DBTP_reg(dev->hw, CONF_CAN0_DBTP_REG);
 		hri_can_write_TDCR_reg(dev->hw, 0);								// use just the measured transceiver delay
-		hri_can_write_RXF0C_reg(dev->hw,
-			  (CONF_CAN0_RXF0C_F0OM << CAN_RXF0C_F0OM_Pos)
-			| CAN_RXF0C_F0WM(CONF_CAN0_RXF0C_F0WM)
-			| CAN_RXF0C_F0S(CONF_CAN0_RXF0C_F0S)
-			| CAN_RXF0C_F0SA((uint32_t)can0_rx_fifo));
-		hri_can_write_RXESC_reg(dev->hw, CONF_CAN0_RXESC_REG);
-		hri_can_write_TXESC_reg(dev->hw, CONF_CAN0_TXESC_REG);
-		hri_can_write_TXBC_reg(dev->hw, CAN_TXBC_TFQS(CONF_CAN0_TXBC_TFQS) | CAN_TXBC_TBSA((uint32_t)can0_tx_fifo));
-		hri_can_write_TXEFC_reg(dev->hw, CONF_CAN0_TXEFC_REG | CAN_TXEFC_EFSA((uint32_t)can0_tx_event_fifo));
-		hri_can_write_GFC_reg(dev->hw, CONF_CAN0_GFC_REG);
-		hri_can_write_SIDFC_reg(dev->hw, CONF_CAN0_SIDFC_REG | CAN_SIDFC_FLSSA((uint32_t)can0_rx_std_filter));
-		hri_can_write_XIDFC_reg(dev->hw, CONF_CAN0_XIDFC_REG | CAN_XIDFC_FLESA((uint32_t)can0_rx_ext_filter));
-		hri_can_write_XIDAM_reg(dev->hw, CONF_CAN0_XIDAM_REG);
+		hri_can_write_RXF0C_reg(dev->hw,								// configure receive FIFO 0
+			  (0 << CAN_RXF0C_F0OM_Pos)									// blocking mode
+			| CAN_RXF0C_F0WM(0)											// no watermark set
+			| CAN_RXF0C_F0S(CONF_CAN0_RXF0C_F0S)						// number of entries
+			| CAN_RXF0C_F0SA((uint32_t)can0_rx_fifo));					// address
+		hri_can_write_RXESC_reg(dev->hw, CAN_RXESC_F0DS_DATA64);		// receive fifo 0 element size
+		hri_can_write_TXESC_reg(dev->hw, CAN_TXESC_TBDS_DATA64);		// transmit element size
+		hri_can_write_TXBC_reg(dev->hw,									// configure transmit buffers
+			  CAN_TXBC_TFQS(CONF_CAN0_TXBC_TFQS)						// number of Tx fifo entries
+			| CAN_TXBC_TBSA((uint32_t)can0_tx_fifo));					// address
+		hri_can_write_TXEFC_reg(dev->hw, 								// configure Tx event fifo
+			  CAN_TXEFC_EFWM(CONF_CAN0_TXEFC_EFWM)
+			| CAN_TXEFC_EFS(CONF_CAN0_TXEFC_EFS)
+			| CAN_TXEFC_EFSA((uint32_t)can0_tx_event_fifo));			// address
+		hw->GFC.reg =
+			  CAN_GFC_ANFS(CONF_CAN0_GFC_ANFS)
+			| CAN_GFC_ANFE(CONF_CAN0_GFC_ANFE)
+			| (CONF_CAN0_GFC_RRFS << CAN_GFC_RRFS_Pos)
+		    | (CONF_CAN0_GFC_RRFE << CAN_GFC_RRFE_Pos);
+		hw->SIDFC.reg = CAN_SIDFC_LSS(CONF_CAN0_SIDFC_LSS) | CAN_SIDFC_FLSSA((uint32_t)can0_rx_std_filter);
+		hw->XIDFC.reg = CAN_XIDFC_LSE(CONF_CAN0_XIDFC_LSS) | CAN_XIDFC_FLESA((uint32_t)can0_rx_ext_filter);
+		hw->XIDAM.reg = CAN_XIDAM_EIDM(0x1FFFFFFF);
 
+		hw->IR.reg = 0;													// disable all interrupt sources
 		hw->IR.reg = 0xFFFFFFFF;										// clear all interrupt sources
+		hw->ILS.reg = 0;												// all interrupt sources assigned to interrupt line 0 for now
 		hw->ILE.reg = 0;
 
 		NVIC_DisableIRQ(CAN0_IRQn);
 		NVIC_ClearPendingIRQ(CAN0_IRQn);
 		NVIC_EnableIRQ(CAN0_IRQn);
-		hri_can_write_ILE_reg(dev->hw, CAN_ILE_EINT0);
+		hw->ILE.reg = CAN_ILE_EINT0;									// enable interrupt line 0
 	}
 #endif
 
@@ -348,6 +369,7 @@ static void _can_async_set_irq_state(_can_async_device *const dev, enum can_asyn
 	if (type == CAN_ASYNC_RX_CB)
 	{
 		hri_can_write_IE_RF0NE_bit(dev->hw, state);
+		hri_can_write_IE_RF0LE_bit(dev->hw, state);
 	}
 	else if (type == CAN_ASYNC_TX_CB)
 	{
@@ -484,6 +506,7 @@ void CAN0_Handler() noexcept
 
 		if (ir & CAN_IR_RF0L)
 		{
+			++messagesLost;
 			dev->cb.irq_handler(dev, CAN_IRQ_DO);
 		}
 

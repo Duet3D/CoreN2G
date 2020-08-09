@@ -510,6 +510,8 @@ int32_t can_async_set_filter(can_async_descriptor *const descr, uint8_t index, c
 
 void GetLocalCanTiming(const can_async_descriptor *descr, CanTiming& timing) noexcept;
 
+uint32_t GetAndClearCanMessagesLost() noexcept;
+
 #endif	// SUPPORT_CAN
 
 #endif /* SRC_CAN_CANDRIVER_H_ */
