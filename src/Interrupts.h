@@ -46,5 +46,7 @@ constexpr InterruptMode INTERRUPT_MODE_RISING = InterruptMode::rising;
 void InitialiseExints() noexcept;
 bool attachInterrupt(Pin pin, StandardCallbackFunction callback, InterruptMode mode, CallbackParameter param) noexcept;
 void detachInterrupt(Pin pin) noexcept;
+ExintNumber AttachEvent(Pin pin, InterruptMode mode, bool enableFilter) noexcept;
+void DetachEvent(Pin pin) noexcept;
 
 #endif /* SRC_HARDWARE_PININTERRUPTS_H_ */

@@ -509,9 +509,6 @@ constexpr uint32_t SerialNumberAddresses[4] = { 0x0080A00C, 0x0080A040, 0x0080A0
  * @section AppInterface Functions that must be provided by the application project
  */
 
-typedef uint8_t ExintNumber;		///< A type that represents an EXINT number. Used in pin tables.
-constexpr ExintNumber Nx = 0xFF;	///< A value that represents no available EXINT number
-
 /**
  * @brief Layout of an entry in the pin table. The client project may add additional fields by deriving from this.
  */
@@ -525,7 +522,7 @@ struct PinDescriptionBase
 #endif
 	SercomIo sercomIn;				///< The Sercom input that is connected to this pin and available, or SercomIo::none
 	SercomIo sercomOut;				///< The Sercom output that is connected to this pin and available, or SercomIo::none
-	uint8_t exintNumber;			///< The EXINT number that is allocated exclusively for use by this pin, or Nx if none available
+	ExintNumber exintNumber;		///< The EXINT number that is allocated exclusively for use by this pin, or Nx if none available
 };
 
 /**

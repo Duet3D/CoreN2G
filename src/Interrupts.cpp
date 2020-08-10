@@ -96,33 +96,36 @@ bool attachInterrupt(Pin pin, StandardCallbackFunction callback, InterruptMode m
 	default:						modeWord = EIC_CONFIG_SENSE0_NONE_Val; break;
 	}
 
-	const irqflags_t flags = cpu_irq_save();
-	exintCallbacks[exint].func = callback;
-	exintCallbacks[exint].param = param;
-
-	// Switch the pin into EIC mode
-	SetPinFunction(pin, GpioPinFunction::A);		// EIC is always on peripheral A
-
-	const unsigned int shift = (exint & 7u) << 2u;
-	const uint32_t mask = ~(0x0000000F << shift);
-
-	hri_eic_clear_CTRLA_ENABLE_bit(EIC);
-	hri_eic_wait_for_sync(EIC, EIC_SYNCBUSY_ENABLE);
-
-	if (exint < 8)
 	{
-		EIC->CONFIG[0].reg = (EIC->CONFIG[0].reg & mask) | (modeWord << shift);
-	}
-	else
-	{
-		EIC->CONFIG[1].reg = (EIC->CONFIG[1].reg & mask) | (modeWord << shift);
-	}
+		AtomicCriticalSectionLocker lock;
 
-	hri_eic_set_CTRLA_ENABLE_bit(EIC);
+		exintCallbacks[exint].func = callback;
+		exintCallbacks[exint].param = param;
 
-	// Enable interrupt
-	hri_eic_set_INTEN_reg(EIC, 1ul << exint);
-	cpu_irq_restore(flags);
+		// Switch the pin into EIC mode
+		SetPinFunction(pin, GpioPinFunction::A);		// EIC is always on peripheral A
+
+		const unsigned int shift = (exint & 7u) << 2u;
+		const uint32_t mask = ~(0x0000000F << shift);
+
+		EIC->CTRLA.reg &= ~EIC_CTRLA_ENABLE;
+		hri_eic_wait_for_sync(EIC, EIC_SYNCBUSY_ENABLE);
+
+		if (exint < 8)
+		{
+			EIC->CONFIG[0].reg = (EIC->CONFIG[0].reg & mask) | (modeWord << shift);
+		}
+		else
+		{
+			EIC->CONFIG[1].reg = (EIC->CONFIG[1].reg & mask) | (modeWord << shift);
+		}
+
+		EIC->CTRLA.reg |= EIC_CTRLA_ENABLE;
+		hri_eic_wait_for_sync(EIC, EIC_SYNCBUSY_ENABLE);
+
+		// Enable interrupt
+		EIC->INTENSET.reg = 1ul << exint;
+	}
 
 #if SAME5x
 	NVIC_EnableIRQ((IRQn)(EIC_0_IRQn + exint));
@@ -144,9 +147,9 @@ void detachInterrupt(Pin pin) noexcept
 		if (exint < 16)
 		{
 			const unsigned int shift = (exint & 7u) << 2u;
-			const uint32_t mask = ~(0x0000000F << shift);
+			const uint32_t mask = ~((uint32_t)0x0000000F << shift);
 
-			hri_eic_clear_CTRLA_ENABLE_bit(EIC);
+			EIC->CTRLA.reg &= ~EIC_CTRLA_ENABLE;
 			hri_eic_wait_for_sync(EIC, EIC_SYNCBUSY_ENABLE);
 
 			if (exint < 8)
@@ -158,11 +161,12 @@ void detachInterrupt(Pin pin) noexcept
 				EIC->CONFIG[1].reg &= mask;
 			}
 
-			hri_eic_set_CTRLA_ENABLE_bit(EIC);
+			EIC->CTRLA.reg |= EIC_CTRLA_ENABLE;
+			hri_eic_wait_for_sync(EIC, EIC_SYNCBUSY_ENABLE);
 
 			// Disable the interrupt
-			hri_eic_clear_INTEN_reg(EIC, 1ul << exint);
-			hri_eic_clear_INTFLAG_reg(EIC, 1ul << exint);
+			EIC->INTENCLR.reg = 1ul << exint;
+			EIC->INTFLAG.reg = 1ul << exint;
 
 			// Switch the pin out of EIC mode
 			ClearPinFunction(pin);
@@ -171,6 +175,115 @@ void detachInterrupt(Pin pin) noexcept
 		}
 	}
 }
+
+ExintNumber AttachEvent(Pin pin, InterruptMode mode, bool enableFilter) noexcept
+{
+	const PinDescriptionBase * const pinDesc = AppGetPinDescription(pin);
+	if (pinDesc == nullptr)
+	{
+		return Nx;
+	}
+
+	const ExintNumber exint = pinDesc->exintNumber;
+	if (exint >= 16)
+	{
+		return Nx;
+	}
+
+	// Configure the interrupt mode
+	uint32_t modeWord;
+	switch (mode)
+	{
+	case InterruptMode::low:		modeWord = EIC_CONFIG_SENSE0_LOW_Val; break;
+	case InterruptMode::high:		modeWord = EIC_CONFIG_SENSE0_HIGH_Val; break;
+	case InterruptMode::falling:	modeWord = EIC_CONFIG_SENSE0_FALL_Val; break;
+	case InterruptMode::rising:		modeWord = EIC_CONFIG_SENSE0_RISE_Val; break;
+	case InterruptMode::change:		modeWord = EIC_CONFIG_SENSE0_BOTH_Val; break;
+	default:						modeWord = EIC_CONFIG_SENSE0_NONE_Val; break;
+	}
+
+	if (enableFilter)
+	{
+		modeWord |= EIC_CONFIG_FILTEN0;
+	}
+
+	{
+		AtomicCriticalSectionLocker lock;
+
+		// Ensure that the interrupt is disabled
+		EIC->INTENCLR.reg = 1ul << exint;
+		EIC->INTFLAG.reg = 1ul << exint;
+
+		// Switch the pin into EIC mode
+		SetPinFunction(pin, GpioPinFunction::A);		// EIC is always on peripheral A
+
+		const unsigned int shift = (exint & 7u) << 2u;
+		const uint32_t mask = ~(0x0000000F << shift);
+
+		EIC->CTRLA.reg &= ~EIC_CTRLA_ENABLE;
+		hri_eic_wait_for_sync(EIC, EIC_SYNCBUSY_ENABLE);
+
+		if (exint < 8)
+		{
+			EIC->CONFIG[0].reg = (EIC->CONFIG[0].reg & mask) | (modeWord << shift);
+		}
+		else
+		{
+			EIC->CONFIG[1].reg = (EIC->CONFIG[1].reg & mask) | (modeWord << shift);
+		}
+
+		if (enableFilter)
+		{
+			EIC->ASYNCH.reg &= ~(1ul << exint);
+		}
+		else
+		{
+			EIC->ASYNCH.reg |= 1ul << exint;
+		}
+		EIC->EVCTRL.reg |= 1ul << exint;					// enable the event
+		EIC->CTRLA.reg |= EIC_CTRLA_ENABLE;
+		hri_eic_wait_for_sync(EIC, EIC_SYNCBUSY_ENABLE);
+	}
+
+	return exint;
+}
+
+void DetachEvent(Pin pin) noexcept
+{
+	const PinDescriptionBase * const pinDesc = AppGetPinDescription(pin);
+	if (pinDesc != nullptr)
+	{
+		const ExintNumber exint = pinDesc->exintNumber;
+		if (exint < 16)
+		{
+			const unsigned int shift = (exint & 7u) << 2u;
+			const uint32_t mask = ~(0x0000000F << shift);
+
+			EIC->CTRLA.reg &= ~EIC_CTRLA_ENABLE;
+			hri_eic_wait_for_sync(EIC, EIC_SYNCBUSY_ENABLE);
+
+			if (exint < 8)
+			{
+				EIC->CONFIG[0].reg &= mask;
+			}
+			else
+			{
+				EIC->CONFIG[1].reg &= mask;
+			}
+
+			EIC->CTRLA.reg |= EIC_CTRLA_ENABLE;
+			hri_eic_wait_for_sync(EIC, EIC_SYNCBUSY_ENABLE);
+
+			// Disable the interrupt
+			EIC->INTENCLR.reg = 1ul << exint;
+			EIC->INTFLAG.reg = 1ul << exint;
+
+			// Switch the pin out of EIC mode
+			ClearPinFunction(pin);
+		}
+	}
+}
+
 
 #if SAME5x
 

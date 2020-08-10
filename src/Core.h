@@ -57,8 +57,11 @@ typedef uint8_t DmaPriority;		///< A type that represents a DMA priority
 typedef uint8_t Pin;				///< A type that represents an I/O pin on the microcontroller
 typedef uint16_t PwmFrequency;		///< A type that represents a PWM frequency. 0 sometimes means "default".
 typedef uint32_t NvicPriority;		///< A type that represents an interrupt priority
+typedef uint8_t ExintNumber;		///< A type that represents an EXINT number
+typedef uint8_t EventNumber;		///< A type that represents an event number
 
 static const Pin NoPin = 0xFF;		///< A number that represents no I/O pin
+static const Pin Nx = 0xFF;			///< A number that represents no I/O EXINT number
 
 // Standard GCLK numbers and frequencies
 #if SAME5x
