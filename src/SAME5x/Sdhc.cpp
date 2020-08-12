@@ -362,7 +362,7 @@ static bool hsmci_send_cmd_execute(uint32_t cmdr, uint32_t cmd, uint32_t arg) no
 
 /**
  *  \brief Initialize MCI low level driver.
- *  If using RTOS then the client must also set the SVIC interrupt priority during initialisation to a value low enough to allow the ISR to make FreeRTOS calls
+ *  If using RTOS then the client must also set the NVIC interrupt priority during initialisation to a value low enough to allow the ISR to make FreeRTOS calls
  */
 int32_t hsmci_init() noexcept
 {
