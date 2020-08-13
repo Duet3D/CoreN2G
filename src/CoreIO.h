@@ -278,6 +278,16 @@ inline void fastDigitalWriteLow(uint32_t pin) noexcept
 }
 
 /**
+ * @brief Read a pin with no error checking
+ *
+ * @param pin The pin to read
+ */
+inline bool fastDigitalRead(uint32_t pin) noexcept
+{
+	return (PORT->Group[GPIO_PORT(pin)].IN.reg & (1ul << GPIO_PIN(pin))) != 0;
+}
+
+/**
  * @brief Reset the microcontroller
  *
  */
