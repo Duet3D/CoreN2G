@@ -29,9 +29,9 @@ void Serial::EnableSercomClock(uint8_t sercomNumber) noexcept
 #if SAME5x
 
 	case 0:
-		MCLK->APBAMASK.reg |= MCLK_APBAMASK_SERCOM0;
 		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM0_GCLK_ID_CORE, GCLK_PCHCTRL_GEN(SercomFastGclkNum) | GCLK_PCHCTRL_CHEN);
 		hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM0_GCLK_ID_SLOW, GCLK_PCHCTRL_GEN(SercomSlowGclkNum) | GCLK_PCHCTRL_CHEN);
+		MCLK->APBAMASK.reg |= MCLK_APBAMASK_SERCOM0;
 		break;
 
 	case 1:

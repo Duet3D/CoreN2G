@@ -173,6 +173,16 @@ uint32_t random32(void) noexcept;		// needed by lwip
 uint32_t DelayCycles(uint32_t start, uint32_t cycles) noexcept;
 
 /**
+ * @brief Get the current cycle counter, for subsequent use as the start time in a call to DelayCycles
+ *
+ * @return The cycle counter
+ */
+inline uint32_t GetCurrentCycles() noexcept
+{
+	return SysTick->VAL & 0x00FFFFFF;
+}
+
+/**
  * @brief Delay or at least the specified number of microseconds
  *
  * @param How many microseconds to delay for
@@ -180,7 +190,7 @@ uint32_t DelayCycles(uint32_t start, uint32_t cycles) noexcept;
 static inline void delayMicroseconds(uint32_t) noexcept __attribute__((always_inline, unused));
 static inline void delayMicroseconds(uint32_t usec) noexcept
 {
-	(void)DelayCycles(SysTick->VAL & 0x00FFFFFF, usec * (SystemCoreClockFreq/1000000));
+	(void)DelayCycles(GetCurrentCycles(), usec * (SystemCoreClockFreq/1000000));
 }
 
 // Functions and macros to enable/disable interrupts
