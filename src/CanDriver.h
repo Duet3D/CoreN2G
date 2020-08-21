@@ -105,104 +105,6 @@ struct can_filter
 	uint32_t mask; /* The mask applied to the id */
 };
 
-/**@}*/
-/**
- * \brief CAN receive FIFO element.
- */
-struct _can_rx_fifo_entry
-{
-	__IO union
-	{
-		struct
-		{
-			uint32_t ID : 29; /*!< Identifier */
-			uint32_t RTR : 1; /*!< Remote Transmission Request */
-			uint32_t XTD : 1; /*!< Extended Identifier */
-			uint32_t ESI : 1; /*!< Error State Indicator */
-		} bit;
-		uint32_t val; /*!< Type used for register access */
-	} R0;
-	__IO union
-	{
-		struct
-		{
-			uint32_t RXTS : 16; /*!< Rx Timestamp */
-			uint32_t DLC : 4;   /*!< Data Length Code */
-			uint32_t BRS : 1;   /*!< Bit Rate Switch */
-			uint32_t FDF : 1;   /*!< FD Format */
-			uint32_t : 2;       /*!< Reserved */
-			uint32_t FIDX : 7;  /*!< Filter Index */
-			uint32_t ANMF : 1;  /*!< Accepted Non-matching Frame */
-		} bit;
-		uint32_t val; /*!< Type used for register access */
-	} R1;
-	uint8_t data[];
-};
-
-/**
- * \brief CAN transmit FIFO element.
- */
-struct _can_tx_fifo_entry
-{
-	__IO union
-	{
-		struct
-		{
-			uint32_t ID : 29; /*!< Identifier */
-			uint32_t RTR : 1; /*!< Remote Transmission Request */
-			uint32_t XTD : 1; /*!< Extended Identifier */
-			uint32_t ESI : 1; /*!< Error State Indicator */
-		} bit;
-		uint32_t val; /*!< Type used for register access */
-	} T0;
-	__IO union
-	{
-		struct
-		{
-			uint32_t : 16;    /*!< Reserved */
-			uint32_t DLC : 4; /*!< Data Length Code */
-			uint32_t BRS : 1; /*!< Bit Rate Switch */
-			uint32_t FDF : 1; /*!< FD Format */
-			uint32_t : 1;     /*!< Reserved */
-			uint32_t EFC : 1; /*!< Event FIFO Control */
-			uint32_t MM : 8;  /*!< Message Marker */
-		} bit;
-		uint32_t val; /*!< Type used for register access */
-	} T1;
-	uint8_t data[];
-};
-
-/**
- * \brief CAN transmit Event element.
- */
-struct _can_tx_event_entry
-{
-	__IO union
-	{
-		struct
-		{
-			uint32_t ID : 29; /*!< Identifier */
-			uint32_t RTR : 1; /*!< Remote Transmission Request */
-			uint32_t XTD : 1; /*!< Extended Identifier */
-			uint32_t ESI : 1; /*!< Error State Indicator */
-		} bit;
-		uint32_t val; /*!< Type used for register access */
-	} R0;
-	__IO union
-	{
-		struct
-		{
-			uint32_t TXTS : 16; /*!< Tx Timestamp */
-			uint32_t DLC : 4;   /*!< Data Length Code */
-			uint32_t BRS : 1;   /*!< Bit Rate Switch */
-			uint32_t FDF : 1;   /*!< FD Format */
-			uint32_t ET : 2;    /*!< Event Type */
-			uint32_t MM : 8;    /*!< Message Marker */
-		} bit;
-		uint32_t val; /*!< Type used for register access */
-	} R1;
-};
-
 /**
  * \brief CAN standard message ID filter element structure.
  *
@@ -247,6 +149,7 @@ struct _can_standard_message_filter_element
 #define _CAN_EFEC_PRIF0M 5   /*!< Set priority and store in FIFO 0 if filter matches */
 #define _CAN_EFEC_PRIF1M 6   /*!< Set priority and store in FIFO 1 if filter matches. */
 #define _CAN_EFEC_STRXBUF 7  /*!< Store into Rx Buffer or as debug message, configuration of SFT[1:0] ignored. */
+
 /**
  * \brief CAN extended message ID filter element structure.
  *
@@ -277,13 +180,11 @@ struct _can_extended_message_filter_element
 
 struct _can_context
 {
-	volatile uint8_t *                   rx_fifo;  /*!< receive message fifo */
-	volatile uint8_t *                   tx_fifo;  /*!< transfer message fifo */
-	volatile struct _can_tx_event_entry *tx_event; /*!< transfer event fifo */
-	/* Standard filter List */
-	struct _can_standard_message_filter_element *rx_std_filter;
-	/* Extended filter List */
-	struct _can_extended_message_filter_element *rx_ext_filter;
+	volatile uint8_t *rx_fifo;								/*!< receive message fifo */
+	volatile uint8_t *tx_fifo;								/*!< transfer message fifo */
+	volatile struct _can_tx_event_entry *tx_event;			/*!< transfer event fifo */
+	_can_standard_message_filter_element *rx_std_filter;	/*!< Standard filter List */
+	_can_extended_message_filter_element *rx_ext_filter;	/*!< Extended filter List */
 };
 
 /**
@@ -346,10 +247,9 @@ struct _can_async_callback
  */
 struct _can_async_device
 {
-	Can *             hw;				/*!< CAN hardware pointer */
-	struct _can_async_callback cb;      /*!< CAN interrupt handler */
-	struct _irq_descriptor     irq;     /*!< Interrupt descriptor */
-	void *                     context; /*!< CAN hardware context */
+	Can *hw;						/*!< CAN hardware pointer */
+	_can_async_callback cb;      	/*!< CAN interrupt handler */
+	_can_context *context; 			/*!< CAN hardware context */
 };
 
 /**
@@ -379,8 +279,8 @@ struct can_callbacks
  */
 struct can_async_descriptor
 {
-	struct _can_async_device dev; /*!< CAN HPL device descriptor */
-	struct can_callbacks     cb;  /*!< CAN Interrupt Callbacks handler */
+	_can_async_device dev;		/*!< CAN HPL device descriptor */
+	can_callbacks cb;			/*!< CAN Interrupt Callbacks handler */
 };
 
 /**
@@ -390,10 +290,8 @@ struct can_async_descriptor
  *
  * \param[in, out] descr A CAN descriptor to initialize.
  * \param[in]      hw    The pointer to hardware instance.
- *
- * \return Initialization status.
  */
-int32_t can_async_init(can_async_descriptor *const descr, Can *const hw, const CanTiming& timing) noexcept;
+void can_async_init(can_async_descriptor *const descr, Can *const hw, const CanTiming& timing) noexcept;
 
 /**
  * \brief Deinitialize CAN.
@@ -412,10 +310,8 @@ void can_async_deinit(can_async_descriptor *const descr) noexcept;
  * This function enables CAN by the given can descriptor.
  *
  * \param[in] descr The CAN descriptor to enable.
- *
- * \return Enabling status.
  */
-int32_t can_async_enable(can_async_descriptor *const descr) noexcept;
+void can_async_enable(can_async_descriptor *const descr) noexcept;
 
 /**
  * \brief Disable CAN
@@ -423,10 +319,8 @@ int32_t can_async_enable(can_async_descriptor *const descr) noexcept;
  * This function disables CAN by the given can descriptor.
  *
  * \param[in] descr The CAN descriptor to disable.
- *
- * \return Disabling status.
  */
-int32_t can_async_disable(can_async_descriptor *const descr) noexcept;
+void can_async_disable(can_async_descriptor *const descr) noexcept;
 
 /**
  * \brief Read a CAN message
@@ -455,10 +349,8 @@ int32_t can_async_write(can_async_descriptor *const descr, can_message *msg) noe
  * \param[in] type  Callback type
  * \param[in] cb    A callback function, passing NULL will de-register any
  *                  registered callback
- *
- * \return The status of callback assignment.
  */
-int32_t can_async_register_callback(can_async_descriptor *const descr, can_async_callback_type type, FUNC_PTR cb) noexcept;
+void can_async_register_callback(can_async_descriptor *const descr, can_async_callback_type type, FUNC_PTR cb) noexcept;
 
 /**
  * \brief Return number of read errors
@@ -489,10 +381,8 @@ uint8_t can_async_get_txerr(can_async_descriptor *const descr) noexcept;
  *
  * \param[in] descr The CAN descriptor pointer
  * \param[in] mode  The CAN operation mode
- *
- * \return Status of the operation.
  */
-int32_t can_async_set_mode(can_async_descriptor *const descr, can_mode mode) noexcept;
+void can_async_set_mode(can_async_descriptor *const descr, can_mode mode) noexcept;
 
 /**
  * \brief Set CAN Filter
@@ -503,10 +393,8 @@ int32_t can_async_set_mode(can_async_descriptor *const descr, can_mode mode) noe
  * \param[in] index   Index of Filter list
  * \param[in] fmt     CAN Indentify Type
  * \param[in] filter  CAN Filter struct, NULL for clear filter
- *
- * \return Status of the operation.
  */
-int32_t can_async_set_filter(can_async_descriptor *const descr, uint8_t index, can_format fmt, can_filter *filter) noexcept;
+void can_async_set_filter(can_async_descriptor *const descr, uint8_t index, can_format fmt, can_filter *filter) noexcept;
 
 void GetLocalCanTiming(const can_async_descriptor *descr, CanTiming& timing) noexcept;
 
