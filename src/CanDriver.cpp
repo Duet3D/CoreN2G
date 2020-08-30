@@ -706,6 +706,37 @@ void GetLocalCanTiming(const can_async_descriptor *descr, CanTiming& timing) noe
 	timing.jumpWidth = (jw + 1) * (brp + 1);
 }
 
+void SetLocalCanTiming(const can_async_descriptor *descr, const CanTiming& timing) noexcept
+{
+	// Sort out the bit timing
+	uint32_t period = timing.period;
+	uint32_t tseg1 = timing.tseg1;
+	uint32_t jumpWidth = timing.jumpWidth;
+	uint32_t prescaler = 1;						// 48MHz main clock
+	uint32_t tseg2;
+
+	for (;;)
+	{
+		tseg2 = period - tseg1 - 1;
+		if (tseg1 <= 32 && tseg2 <= 16 && jumpWidth <= 16)
+		{
+			break;
+		}
+		prescaler <<= 1;
+		period >>= 1;
+		tseg1 >>= 1;
+		jumpWidth >>= 1;
+	}
+
+	//TODO stop transmissions in an orderly fashion
+	descr->dev.hw->CCCR.reg |= CAN_CCCR_CCE | CAN_CCCR_INIT;
+	descr->dev.hw->NBTP.reg = ((tseg1 - 1) << CAN_NBTP_NTSEG1_Pos)
+							| ((tseg2 - 1) << CAN_NBTP_NTSEG2_Pos)
+							| ((jumpWidth - 1) << CAN_NBTP_NSJW_Pos)
+							| ((prescaler - 1) << CAN_NBTP_NBRP_Pos);
+	descr->dev.hw->CCCR.reg &= ~CAN_CCCR_CCE;
+}
+
 /**
  * \internal Callback of CAN Message Write finished
  */
