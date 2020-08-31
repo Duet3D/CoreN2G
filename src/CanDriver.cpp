@@ -335,7 +335,7 @@ void can_async_init(can_async_descriptor *descr, Can *hw, const CanTiming& timin
 	if (hw == CAN0)
 	{
 		_can0_dev    = &dev;
-		dev.context = (void *)&_can0_context;
+		dev.context = &_can0_context;
 		dev.hw->CCCR.reg |= (1 << CAN_CCCR_FDOE_Pos) | (CONF_CAN0_CCCR_BRSE << CAN_CCCR_BRSE_Pos);
 		hri_can_write_MRCFG_reg(dev.hw, CONF_CAN0_MRCFG_REG);
 		hri_can_write_NBTP_reg(dev.hw, nbtp);
