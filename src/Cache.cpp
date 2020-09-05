@@ -179,7 +179,8 @@ void Cache::Enable() noexcept
 	}
 }
 
-void Cache::Disable() noexcept
+// Disable the cache, returning true if it was enabled
+bool Cache::Disable() noexcept
 {
 	if (enabled)
 	{
@@ -193,7 +194,9 @@ void Cache::Disable() noexcept
 		cmcc_disable(CMCC);
 #endif
 		enabled = false;
+		return true;
 	}
+	return false;
 }
 
 #if SAME70
