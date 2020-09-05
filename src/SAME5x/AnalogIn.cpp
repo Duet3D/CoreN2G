@@ -64,6 +64,8 @@ public:
 	void ResultReadyCallback(DmaCallbackReason reason) noexcept;
 	void ExecuteCallbacks() noexcept;
 
+	void Exit() noexcept;
+
 private:
 	bool InternalEnableChannel(unsigned int chan, uint8_t ctrlB, uint8_t refCtrl, uint8_t avgCtrl,
 								AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
@@ -108,6 +110,15 @@ AdcClass::AdcClass(Adc * const p_device, DmaChannel p_dmaChan, DmaPriority txPri
 	{
 		r = 0;
 	}
+}
+
+// Shut down the ADC, making it safe to terminate the AnalogIn task
+void AdcClass::Exit() noexcept
+{
+	taskToWake = nullptr;
+	DmacManager::DisableCompletedInterrupt(dmaChan + 1);		// disable the reader completed interrupt
+	DmacManager::DisableChannel(dmaChan);						// disable the sequencer DMA
+	DmacManager::DisableChannel(dmaChan + 1);					// disable the reader DMA too
 }
 
 // Try to enable this ADC on the specified channel returning true if successful
@@ -406,6 +417,13 @@ void AnalogIn::Init(DmaChannel dmaChan, DmaPriority txPriority, DmaPriority rxPr
 	// Create the device instances
 	adcs[0] = new AdcClass(ADC0, dmaChan, txPriority, rxPriority, DmaTrigSource::adc0_resrdy);
 	adcs[1] = new AdcClass(ADC1, dmaChan + 2, txPriority, rxPriority, DmaTrigSource::adc1_resrdy);
+}
+
+// Shut down the analog system. making it safe to terminate the AnalogIn task
+void AnalogIn::Exit() noexcept
+{
+	adcs[0]->Exit();
+	adcs[1]->Exit();
 }
 
 // Enable analog input on a pin.

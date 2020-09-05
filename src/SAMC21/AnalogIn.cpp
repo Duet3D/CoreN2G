@@ -58,6 +58,7 @@ public:
 	bool SetCallback(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
 	bool IsChannelEnabled(unsigned int chan) const noexcept;
 	uint16_t ReadChannel(unsigned int chan) const noexcept { return resultsByChannel[chan]; }
+	void Exit() noexcept;
 
 	void EnableTemperatureSensor() noexcept;
 
@@ -101,6 +102,14 @@ AdcBase::AdcBase(DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_tri
 		callbackParams[i].u32 = 0;
 		resultsByChannel[i] = 0;
 	}
+}
+
+// Shut down the ADC, making it safe to terminate the AnalogIn task
+void AdcBase::Exit() noexcept
+{
+	taskToWake = nullptr;
+	DmacManager::DisableCompletedInterrupt(dmaChan);		// disable the reader completed interrupt
+	DmacManager::DisableChannel(dmaChan);					// disable the reader DMA
 }
 
 // Try to enable this ADC on the specified pin returning true if successful
@@ -557,6 +566,15 @@ void AnalogIn::Init(DmaChannel dmaChan, DmaPriority priority) noexcept
 	// SAMC21 also has a SDADC
 	hri_mclk_set_APBCMASK_SDADC_bit(MCLK);
 	hri_gclk_write_PCHCTRL_reg(GCLK, SDADC_GCLK_ID, GCLK_PCHCTRL_GEN(AdcGclkNum) | GCLK_PCHCTRL_CHEN);
+#endif
+}
+
+// Shut down the analog system. making it safe to terminate the AnalogIn task
+void AnalogIn::Exit() noexcept
+{
+	adcs[0]->Exit();
+#if SUPPORT_SDADC
+	adcs[1]->Exit();
 #endif
 }
 

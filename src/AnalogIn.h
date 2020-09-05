@@ -30,6 +30,9 @@ namespace AnalogIn
 #endif
 		DmaPriority rxPriority) noexcept;
 
+	// Shut down the analog system. making it safe to terminate the AnalogIn task
+	void Exit() noexcept;
+
 	// Enable analog input on a pin.
 	// Readings will be taken and about every 'ticksPerCall' milliseconds the callback function will be called with the specified parameter and ADC reading.
 	// Set ticksPerCall to 0 to get a callback on every reading.
