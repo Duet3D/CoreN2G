@@ -256,6 +256,14 @@ int32_t _rww_flash_read(struct _flash_device *const device, const uint32_t src_a
  * \return Write status, ERR_NONE for successful write.
  */
 int32_t _rww_flash_write(struct _flash_device *const device, const uint32_t dst_addr, uint8_t *buffer, uint32_t length);
+
+#if 1	//dc42
+
+bool hpl_RwwErase(uint32_t dst_addr, uint32_t length) noexcept;
+bool hpl_RwwWrite(uint32_t dst_addr, uint32_t length, const uint8_t *buffer) noexcept;
+
+#endif
+
 #ifdef __cplusplus
 }
 #endif

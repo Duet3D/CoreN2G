@@ -18,6 +18,11 @@ namespace Flash
 	bool Lock(uint32_t start, uint32_t length) noexcept;
 	bool Write(uint32_t start, uint32_t length, uint8_t *data) noexcept;
 
+#if SAMC21
+	bool RwwErase(uint32_t start, uint32_t length) noexcept;
+	bool RwwWrite(uint32_t start, uint32_t length, const uint8_t *data) noexcept;
+#endif
+
 	uint32_t GetPageSize() noexcept;
 	uint32_t GetLockRegionSize() noexcept;
 	uint32_t GetEraseRegionSize() noexcept;

@@ -826,3 +826,47 @@ int32_t _rww_flash_write(struct _flash_device *const device, const uint32_t dst_
 
 	return ERR_NONE;
 }
+
+#if 1	//dc42
+
+bool hpl_RwwErase(uint32_t dst_addr, uint32_t length) noexcept
+{
+	if ((length & (NVMCTRL_ROW_SIZE - 1)) != 0)
+	{
+		return false;
+	}
+
+	while (length != 0)
+	{
+		_flash_erase_row(NVMCTRL, dst_addr, NVMCTRL_CTRLA_CMD_RWWEEER);
+		dst_addr += NVMCTRL_ROW_SIZE;
+		length -= NVMCTRL_ROW_SIZE;
+	}
+	return true;
+}
+
+bool hpl_RwwWrite(uint32_t dst_addr, uint32_t length, const uint8_t *buffer) noexcept
+{
+	if ((length & (NVMCTRL_ROW_SIZE - 1)) != 0)
+	{
+		return false;
+	}
+
+	while (length != 0)
+	{
+		for (uint32_t i = 0; i < NVMCTRL_ROW_PAGES; i++)
+		{
+			_flash_program(NVMCTRL,
+			               dst_addr,
+						   buffer,
+			               NVMCTRL_PAGE_SIZE,
+			               NVMCTRL_CTRLA_CMD_RWWEEWP);
+			dst_addr += NVMCTRL_PAGE_SIZE;
+			buffer += NVMCTRL_PAGE_SIZE;
+			length -= NVMCTRL_PAGE_SIZE;
+		}
+	}
+	return true;
+}
+
+#endif

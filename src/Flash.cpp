@@ -140,4 +140,18 @@ extern "C" uint32_t GetFlashSize_C() noexcept
 	return Flash::GetFlashSize();
 }
 
+#if SAMC21
+
+bool Flash::RwwErase(uint32_t start, uint32_t length) noexcept
+{
+	return hpl_RwwErase(start, length);
+}
+
+bool Flash::RwwWrite(uint32_t start, uint32_t length, const uint8_t *data) noexcept
+{
+	return hpl_RwwWrite(start, length, data);
+}
+
+#endif
+
 // End
