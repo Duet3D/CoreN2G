@@ -322,6 +322,17 @@ AnalogChannelNumber PinToAdcChannel(Pin p) noexcept
 	return (pinDesc == nullptr) ? AdcInput::none : pinDesc->adc;
 }
 
+#if SAMC21
+
+// Get the SDADC channel that a pin uses
+AnalogChannelNumber PinToSdAdcChannel(Pin p) noexcept
+{
+	const PinDescriptionBase * const pinDesc = AppGetPinDescription(p);
+	return (pinDesc == nullptr) ? AdcInput::none : pinDesc->sdadc;
+}
+
+#endif
+
 // Core random number generator
 extern "C" uint32_t random32() noexcept
 {

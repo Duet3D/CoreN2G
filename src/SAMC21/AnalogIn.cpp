@@ -20,7 +20,7 @@
 #define ADC_INPUTCTRL_MUXNEG_GND   (0x18 << ADC_INPUTCTRL_MUXNEG_Pos)			// this definition is missing from file adc.h for the SAMC21
 
 #ifndef SUPPORT_SDADC
-# define SUPPORT_SDADC	0
+# define SUPPORT_SDADC	1
 #endif
 
 constexpr unsigned int AdcGclkNum = GclkNum48MHz;
@@ -348,7 +348,7 @@ void AdcClass::ExecuteCallbacks() noexcept
 class SdAdcClass : public AdcBase
 {
 public:
-	SdAdcClass(Sdadc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept;
+	SdAdcClass(Sdadc * const p_device, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept;
 
 	bool StartConversion() noexcept override;
 	void ExecuteCallbacks() noexcept override;
@@ -363,8 +363,8 @@ private:
 };
 
 SdAdcClass::SdAdcClass(
-	Sdadc * const p_device, IRQn p_irqn, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept
-	: AdcBase(p_irqn, p_dmaChan, priority, p_trigSrc), device(p_device)
+	Sdadc * const p_device, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept
+	: AdcBase(p_dmaChan, priority, p_trigSrc), device(p_device)
 {
 }
 
@@ -583,9 +583,10 @@ void AnalogIn::Exit() noexcept
 // Set ticksPerCall to 0 to get a callback on every reading.
 bool AnalogIn::EnableChannel(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall, bool useAlternateAdc) noexcept
 {
-	if (adcin != AdcInput::none)
+	const unsigned int deviceNumber = GetDeviceNumber(adcin);
+	if (deviceNumber < ARRAY_SIZE(adcs))				// this test handles AdcInput::none as well as out-of-range ADC numbers
 	{
-		return adcs[GetDeviceNumber(adcin)]->EnableChannel(GetInputNumber(adcin), fn, param, ticksPerCall);
+		return adcs[deviceNumber]->EnableChannel(GetInputNumber(adcin), fn, param, ticksPerCall);
 	}
 	return false;
 }
@@ -594,9 +595,10 @@ bool AnalogIn::EnableChannel(AdcInput adcin, AnalogInCallbackFunction fn, Callba
 // Set ticksPerCall to 0 to get a callback on every reading.
 bool AnalogIn::SetCallback(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall, bool useAlternateAdc) noexcept
 {
-	if (adcin != AdcInput::none)
+	const unsigned int deviceNumber = GetDeviceNumber(adcin);
+	if (deviceNumber < ARRAY_SIZE(adcs))				// this test handles AdcInput::none as well as out-of-range ADC numbers
 	{
-		return adcs[GetDeviceNumber(adcin)]->SetCallback(GetInputNumber(adcin), fn, param, ticksPerCall);
+		return adcs[deviceNumber]->SetCallback(GetInputNumber(adcin), fn, param, ticksPerCall);
 	}
 	return false;
 }
@@ -604,11 +606,11 @@ bool AnalogIn::SetCallback(AdcInput adcin, AnalogInCallbackFunction fn, Callback
 // Return whether or not the channel is enabled
 bool AnalogIn::IsChannelEnabled(AdcInput adcin, bool useAlternateAdc) noexcept
 {
-	if (adcin != AdcInput::none)
+	const unsigned int deviceNumber = GetDeviceNumber(adcin);
+	if (deviceNumber < ARRAY_SIZE(adcs))				// this test handles AdcInput::none as well as out-of-range ADC numbers
 	{
-		return adcs[GetDeviceNumber(adcin)]->IsChannelEnabled(GetInputNumber(adcin));
+		return adcs[deviceNumber]->IsChannelEnabled(GetInputNumber(adcin));
 	}
-
 	return false;
 }
 
@@ -620,7 +622,10 @@ void AnalogIn::DisableChannel(AdcInput adcin, bool useAlternateAdc) noexcept
 
 uint16_t AnalogIn::ReadChannel(AdcInput adcin) noexcept
 {
-	return (adcin != AdcInput::none) ? adcs[GetDeviceNumber(adcin)]->ReadChannel(GetInputNumber(adcin)) : 0;
+	const unsigned int deviceNumber = GetDeviceNumber(adcin);
+	return (deviceNumber < ARRAY_SIZE(adcs))				// this test handles AdcInput::none as well as out-of-range ADC numbers
+			? adcs[deviceNumber]->ReadChannel(GetInputNumber(adcin))
+				: 0;
 }
 
 // Enable an on-chip MCU temperature sensor

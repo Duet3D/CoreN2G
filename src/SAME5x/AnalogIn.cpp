@@ -431,9 +431,10 @@ void AnalogIn::Exit() noexcept
 // Set ticksPerCall to 0 to get a callback on every reading.
 bool AnalogIn::EnableChannel(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall, bool useAlternateAdc) noexcept
 {
-	if (adcin != AdcInput::none)
+	const unsigned int deviceNumber = GetDeviceNumber(adcin);
+	if (deviceNumber < ARRAY_SIZE(adcs))				// this test handles AdcInput::none as well as out-of-range ADC numbers
 	{
-		return adcs[GetDeviceNumber(adcin)]->EnableChannel(GetInputNumber(adcin), fn, param, ticksPerCall);
+		return adcs[deviceNumber]->EnableChannel(GetInputNumber(adcin), fn, param, ticksPerCall);
 	}
 	return false;
 }
@@ -442,9 +443,10 @@ bool AnalogIn::EnableChannel(AdcInput adcin, AnalogInCallbackFunction fn, Callba
 // Set ticksPerCall to 0 to get a callback on every reading.
 bool AnalogIn::SetCallback(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall, bool useAlternateAdc) noexcept
 {
-	if (adcin != AdcInput::none)
+	const unsigned int deviceNumber = GetDeviceNumber(adcin);
+	if (deviceNumber < ARRAY_SIZE(adcs))				// this test handles AdcInput::none as well as out-of-range ADC numbers
 	{
-		return adcs[GetDeviceNumber(adcin)]->SetCallback(GetInputNumber(adcin), fn, param, ticksPerCall);
+		return adcs[deviceNumber]->SetCallback(GetInputNumber(adcin), fn, param, ticksPerCall);
 	}
 	return false;
 }
@@ -452,9 +454,10 @@ bool AnalogIn::SetCallback(AdcInput adcin, AnalogInCallbackFunction fn, Callback
 // Return whether or not the channel is enabled
 bool AnalogIn::IsChannelEnabled(AdcInput adcin, bool useAlternateAdc) noexcept
 {
-	if (adcin != AdcInput::none)
+	const unsigned int deviceNumber = GetDeviceNumber(adcin);
+	if (deviceNumber < ARRAY_SIZE(adcs))				// this test handles AdcInput::none as well as out-of-range ADC numbers
 	{
-		return adcs[GetDeviceNumber(adcin)]->IsChannelEnabled(GetInputNumber(adcin));
+		return adcs[deviceNumber]->IsChannelEnabled(GetInputNumber(adcin));
 	}
 
 	return false;
@@ -468,7 +471,8 @@ void AnalogIn::DisableChannel(AdcInput adcin, bool useAlternateAdc) noexcept
 
 uint16_t AnalogIn::ReadChannel(AdcInput adcin) noexcept
 {
-	return (adcin != AdcInput::none) ? adcs[GetDeviceNumber(adcin)]->ReadChannel(GetInputNumber(adcin)) : 0;
+	const unsigned int deviceNumber = GetDeviceNumber(adcin);
+	return (deviceNumber < ARRAY_SIZE(adcs)) ? adcs[deviceNumber]->ReadChannel(GetInputNumber(adcin)) : 0;
 }
 
 // Enable an on-chip MCU temperature sensor

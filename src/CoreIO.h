@@ -439,7 +439,7 @@ enum class AdcInput : uint8_t
 #elif SAMC21
 	sdadc_0 = 0x10, sdadc_1,
 #endif
-	none = 0xFF
+	none = 0xFF			// this must give an out-of-range device number when passed to GetDeviceNumber
 };
 
 typedef AdcInput AnalogChannelNumber;						///< for backwards compatibility
@@ -449,7 +449,7 @@ constexpr AnalogChannelNumber NO_ADC = AdcInput::none;		///< for backwards compa
  * @brief Get the ADC number that an ADC input is on
  *
  * @param ain The AdcInput value
- * @return The ADC number
+ * @return The ADC number. If the input value was AdcInput::none then an out-of-range ADC number is returned.
  */
 static inline constexpr unsigned int GetDeviceNumber(AdcInput ain) noexcept { return (uint8_t)ain >> 4; }
 
@@ -468,6 +468,18 @@ static inline constexpr unsigned int GetInputNumber(AdcInput ain) noexcept { ret
  * @return The AdcInput, or AdcInput::none
  */
 AdcInput PinToAdcChannel(Pin p) noexcept;
+
+#if SAMC21
+
+/**
+ * @brief Return the SdAdcInput that is attached to a pin
+ *
+ * @param p The pin number
+ * @return The AdcInput, or AdcInput::none
+ */
+AnalogChannelNumber PinToSdAdcChannel(Pin p) noexcept;
+
+#endif
 
 /**
  * @brief SERCOM identifier. This encodes a SERCOM number and the peripheral that it is on.
