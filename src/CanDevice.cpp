@@ -7,7 +7,7 @@
 
 #include "CanDevice.h"
 
-#if 0	// SUPPORT_CAN
+#if 0	//SUPPORT_CAN
 
 #include <CanSettings.h>
 #include <General/Bitmap.h>
@@ -125,8 +125,10 @@ struct CanDevice::CanTxEventEntry
  */
 struct CanDevice::CanStandardMessageFilterElement
 {
-	__IO union {
-		struct {
+	union S0Type
+	{
+		struct
+		{
 			uint32_t SFID2 : 11; /*!< Standard Filter ID 2 */
 			uint32_t : 5;        /*!< Reserved */
 			uint32_t SFID1 : 11; /*!< Standard Filter ID 1 */
@@ -134,7 +136,9 @@ struct CanDevice::CanStandardMessageFilterElement
 			uint32_t SFT : 2;    /*!< Standard Filter Type */
 		} bit;
 		uint32_t val; /*!< Type used for register access */
-	} S0;
+	};
+
+	__IO S0Type S0;
 };
 
 /**
@@ -144,7 +148,7 @@ struct CanDevice::CanStandardMessageFilterElement
  */
 struct CanDevice::CanExtendedMessageFilterElement
 {
-	__IO union
+	union F0Type
 	{
 		struct
 		{
@@ -152,8 +156,9 @@ struct CanDevice::CanExtendedMessageFilterElement
 			uint32_t EFEC : 3;		//!< bit: Extended Filter Configuration
 		} bit;
 		uint32_t val;				//!< Type used for register access
-	} F0;
-	__IO union
+	};
+
+	union F1Type
 	{
 		struct
 		{
@@ -162,7 +167,10 @@ struct CanDevice::CanExtendedMessageFilterElement
 			uint32_t EFT : 2;		//!< bit: Extended Filter Type
 		} bit;
 		uint32_t val;				//!< Type used for register access
-	} F1;
+	};
+
+	__IO union F0Type F0;
+	__IO union F1Type F1;
 };
 
 struct CanDevice::CanContext
@@ -339,13 +347,13 @@ void CanDevice::Disable() noexcept
 }
 
 // Return true if space is available to send using this buffer or FIFO
-bool CanDevice::IsSpaceAvailable(BufferNumber whichBuffer, uint32_t timeout) noexcept
+bool CanDevice::IsSpaceAvailable(TxBufferNumber whichBuffer, uint32_t timeout) noexcept
 {
 	TaskBase::ClearNotifyCount();
 	{
 		AtomicCriticalSectionLocker lock;
 
-		if (whichBuffer == TxFifoBufferIndex)
+		if (whichBuffer == TxBufferNumber::fifo)
 		{
 			if (hw->TXFQS.bit.TFFL != 0)
 			{
@@ -362,33 +370,231 @@ bool CanDevice::IsSpaceAvailable(BufferNumber whichBuffer, uint32_t timeout) noe
 			return false;
 		}
 
-		txTaskWaiting[whichBuffer + 1] = TaskBase::GetCallerTaskHandle();
-		txBuffersWaiting |= (uint32_t)1 << (whichBuffer + 1);
+		txTaskWaiting[(unsigned int)whichBuffer] = TaskBase::GetCallerTaskHandle();
+		txBuffersWaiting |= (uint32_t)1 << (unsigned int)whichBuffer;
 	}
 
 	TaskBase::Take(timeout);
-	return (whichBuffer == TxFifoBufferIndex) ? (hw->TXFQS.bit.TFFL != 0) : ((hw->TXBRP.reg & ((uint32_t)1 << whichBuffer)) == 0);
+	return (whichBuffer == TxBufferNumber::fifo)
+				? (hw->TXFQS.bit.TFFL != 0)
+					: (hw->TXBRP.reg & ((uint32_t)1 << ((unsigned int)whichBuffer - (unsigned int)TxBufferNumber::buffer0))) == 0;
 }
 
-void CanDevice::SendMessage(BufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept
+// Queue a message for sending via a buffer or FIFO. If the buffer isn't free, cancel the previous message (or oldest message in the fifo) and send it anyway.
+void CanDevice::SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept
 {
+#if 1
+	if (hri_can_get_TXFQS_TFQF_bit(dev.hw))
+	{
+		return ERR_NO_RESOURCE;
+	}
+
+	volatile _can_tx_fifo_entry *f = nullptr;
+	hri_can_txfqs_reg_t put_index = hri_can_read_TXFQS_TFQPI_bf(dev.hw);
+
+#ifdef CONF_CAN0_ENABLED
+	if (dev.hw == CAN0)
+	{
+		f = (_can_tx_fifo_entry *)(can0_tx_fifo + put_index * CONF_CAN0_TBDS);
+	}
+#endif
+#ifdef CONF_CAN1_ENABLED
+	if (dev.hw == CAN1)
+	{
+		f = (_can_tx_fifo_entry *)(can1_tx_fifo + put_index * CONF_CAN1_TBDS);
+	}
+#endif
+	if (f == nullptr)
+	{
+		return ERR_NO_RESOURCE;
+	}
+
+	if (msg->fmt == CAN_FMT_EXTID)
+	{
+		f->T0.val     = msg->id;
+		f->T0.bit.XTD = 1;
+	}
+	else
+	{
+		/* A standard identifier is stored into ID[28:18] */
+		f->T0.val = msg->id << 18;
+	}
+
+	memcpy(const_cast<uint8_t*>(f->data), msg->data, msg->len);
+
+	if (msg->len <= 8)
+	{
+		f->T1.bit.DLC = msg->len;
+	}
+	else
+	{
+		constexpr size_t MessageLengths[] = { 12, 16, 20, 24, 32, 48, 64 };
+		size_t i;
+		for (i = 0; i < ARRAY_SIZE(MessageLengths) && msg->len > MessageLengths[i]; ++i) { }
+		f->T1.bit.DLC = 0x09 + i;
+
+		// Set any additional bytes we will be sending to zero
+		if (msg->len < MessageLengths[i])
+		{
+			memset(const_cast<uint8_t*>(f->data) + msg->len, 0, MessageLengths[i] - msg->len);
+		}
+	}
+
+	f->T1.bit.FDF = hri_can_get_CCCR_FDOE_bit(dev.hw);
+	f->T1.bit.BRS = hri_can_get_CCCR_BRSE_bit(dev.hw);
+
+	hri_can_write_TXBAR_reg(dev.hw, 1 << put_index);
+
+#else
 	qq;
+#endif
 }
 
-bool CanDevice::ReceiveMessage(BufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept
+// Receive a message in a buffer or fifo, with timeout. Returns true if successful, false if no message available even after the timeout period.
+bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept
 {
+	const uint32_t timeStarted = millis();
+	switch (whichBuffer)
+	{
+	case RxBufferNumber::fifo0:
+		if (hw->RXF0S.bit.F0FL == 0)
+		{
+
+		}
+	case RxBufferNumber::fifo1:
+		return hw->RXF1S.bit.F1FL != 0;
+	default:
+		// We assume that not more than 32 dedicated receive buffers have been configured, so we only need to look at the NDAT1 register
+		return (hw->NDAT1.reg & (1ul << (unsigned int)whichBuffer)) != 0;
+	}
+	if (!hri_can_read_RXF0S_F0FL_bf(dev.hw))
+	{
+		return ERR_NOT_FOUND;
+	}
+
+	hri_can_rxf0s_reg_t get_index = hri_can_read_RXF0S_F0GI_bf(dev.hw);
+	volatile _can_rx_fifo_entry *f = nullptr;
+
+#ifdef CONF_CAN0_ENABLED
+	if (dev.hw == CAN0)
+	{
+		f = (_can_rx_fifo_entry *)(can0_rx_fifo + get_index * CONF_CAN0_F0DS);
+	}
+#endif
+#ifdef CONF_CAN1_ENABLED
+	if (dev.hw == CAN1)
+	{
+		f = (_can_rx_fifo_entry *)(can1_rx_fifo + get_index * CONF_CAN1_F0DS);
+	}
+#endif
+
+	if (f == nullptr)
+	{
+		return ERR_NO_RESOURCE;
+	}
+
+	if (f->R0.bit.XTD == 1)
+	{
+		msg->fmt = CAN_FMT_EXTID;
+		msg->id  = f->R0.bit.ID;
+	}
+	else
+	{
+		msg->fmt = CAN_FMT_STDID;
+		/* A standard identifier is stored into ID[28:18] */
+		msg->id = f->R0.bit.ID >> 18;
+	}
+
+	if (f->R0.bit.RTR == 1) {
+		msg->type = CAN_TYPE_REMOTE;
+	}
+
+	static constexpr uint8_t dlc2len[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 24, 32, 48, 64};
+	msg->len = dlc2len[f->R1.bit.DLC];
+
+	memcpy(msg->data, const_cast<uint8_t*>(f->data), msg->len);
+
+	hri_can_write_RXF0A_F0AI_bf(dev.hw, get_index);
+
+	return ERR_NONE;
 }
 
-bool CanDevice::IsMessageAvailable(BufferNumber whichBuffer, uint32_t timeout) noexcept
+bool CanDevice::IsMessageAvailable(RxBufferNumber whichBuffer, uint32_t timeout) noexcept
 {
+	switch (whichBuffer)
+	{
+	case RxBufferNumber::fifo0:
+		return hw->RXF0S.bit.F0FL != 0;
+	case RxBufferNumber::fifo1:
+		return hw->RXF1S.bit.F1FL != 0;
+	default:
+		// We assume that not more than 32 dedicated receive buffers have been configured, so we only need to look at the NDAT1 register
+		return (hw->NDAT1.reg & ((uint32_t)1 << ((uint32_t)whichBuffer - (uint32_t)RxBufferNumber::buffer0))) != 0;
+	}
 }
 
-void CanDevice::SetShortFilterElement(unsigned int index, BufferNumber whichBuffer, uint32_t id, uint32_t mask) noexcept
+// Set a short ID field filter element. To disable the filter element, use a zero mask parameter.
+// If whichBuffer is a buffer number not a fifo number, the mask field is ignored except that a zero mask disables the filter element; so only the XIDAM mask filters the ID.
+void CanDevice::SetShortFilterElement(unsigned int index, RxBufferNumber whichBuffer, uint32_t id, uint32_t mask) noexcept
 {
+	CanStandardMessageFilterElement::S0Type s0;
+	s0.val = 0;										// disable filter, clear reserved fields
+	if (mask != 0)
+	{
+		s0.bit.SFID1 = id;
+		s0.bit.SFT = 0x02;							// classic filter
+		switch (whichBuffer)
+		{
+		case RxBufferNumber::fifo0:
+			s0.bit.SFEC = 0x01;						// store in FIFO 0
+			s0.bit.SFID2 = mask;
+			break;
+		case RxBufferNumber::fifo1:
+			s0.bit.SFEC = 0x02;						// store in FIFO 1
+			s0.bit.SFID2 = mask;
+			break;
+		default:
+			s0.bit.SFEC = 0x07;						// store in buffer
+			s0.bit.SFID2 = (uint32_t)whichBuffer - (uint32_t)RxBufferNumber::buffer0;
+			break;
+		}
+	}
+	context->rxStdFilter[index].S0.val = s0.val;
 }
 
-void CanDevice::SetExtendedFilterElement(unsigned int index, BufferNumber whichBuffer, uint32_t id, uint32_t mask) noexcept
+// Set an extended ID field filter element. To disable the filter element, use a zero mask parameter.
+// If whichBuffer is a buffer number not a fifo number, the mask field is ignored except that a zero mask disables the filter element; so only the XIDAM mask filters the ID.
+void CanDevice::SetExtendedFilterElement(unsigned int index, RxBufferNumber whichBuffer, uint32_t id, uint32_t mask) noexcept
 {
+	volatile CanExtendedMessageFilterElement& efp = context->rxExtFilter[index];
+	efp.F0.val = 0;									// disable filter
+	if (mask != 0)
+	{
+		CanExtendedMessageFilterElement::F0Type f0;
+		CanExtendedMessageFilterElement::F1Type f1;
+		f0.val = 0;									// clear all fields
+		f1.val = 0;									// clear all fields
+		f1.bit.EFT  = 0x02;							// classic filter
+		f0.bit.EFID1 = id;
+		switch (whichBuffer)
+		{
+		case RxBufferNumber::fifo0:
+			f0.bit.EFEC = 0x01;						// store in FIFO 0
+			f1.bit.EFID2 = mask;
+			break;
+		case RxBufferNumber::fifo1:
+			f0.bit.EFEC = 0x02;						// store in FIFO 1
+			f1.bit.EFID2 = mask;
+			break;
+		default:
+			f0.bit.EFEC = 0x07;
+			f1.bit.EFID2 = (uint32_t)whichBuffer - (uint32_t)RxBufferNumber::buffer0;
+			break;
+		}
+
+		efp.F1.val = f1.val;						// update second word first while the filter is disabled
+		efp.F0.val = f0.val;						// update first word and enable filter
+	}
 }
 
 void CanDevice::GetLocalCanTiming(CanTiming &timing) noexcept
@@ -448,16 +654,20 @@ void CanDevice::Interrupt() noexcept
 	uint32_t ir;
 	while (((ir = hw->IR.reg) & (CAN_IR_RF0N | CAN_IR_RF1N | CAN_IR_DRX | CAN_IR_TC | CAN_IR_BO | CAN_IR_RF0L | CAN_IR_RF1L)) != 0)
 	{
-		hri_can_write_IR_reg(hw, ir);
+		hw->IR.reg = ir;
 
 		if (ir & CAN_IR_RF0N)
 		{
-			TaskBase::GiveFromISR(rxTaskWaiting[RxFifo0BufferIndex + 2]);
+			constexpr unsigned int waitingIndex = (unsigned int)RxBufferNumber::fifo0;
+			TaskBase::GiveFromISR(rxTaskWaiting[waitingIndex]);
+			rxBuffersWaiting &= ~((uint32_t)1 << waitingIndex);
 		}
 
 		if (ir & CAN_IR_RF1N)
 		{
-			TaskBase::GiveFromISR(rxTaskWaiting[RxFifo1BufferIndex + 2]);
+			constexpr unsigned int waitingIndex = (unsigned int)RxBufferNumber::fifo1;
+			TaskBase::GiveFromISR(rxTaskWaiting[waitingIndex]);
+			rxBuffersWaiting &= ~((uint32_t)1 << waitingIndex);
 		}
 
 		if (ir & CAN_IR_DRX)
@@ -466,11 +676,11 @@ void CanDevice::Interrupt() noexcept
 			if (NumRxBuffers[whichCan] != 0)		// needed to avoid a compiler warning
 			{
 				uint32_t newData;
-				while ((newData= hw->NDAT1.reg & rxBuffersWaiting) != 0)
+				while ((newData = hw->NDAT1.reg & rxBuffersWaiting) != 0)
 				{
-					const unsigned int whichBuffer = LowestSetBit(newData);
-					TaskBase::GiveFromISR(rxTaskWaiting[whichBuffer + 2]);
-					rxBuffersWaiting &= ~((uint32_t)1 << whichBuffer);
+					const unsigned int waitingIndex = LowestSetBit(newData) + (unsigned int)RxBufferNumber::buffer0;
+					TaskBase::GiveFromISR(rxTaskWaiting[waitingIndex]);
+					rxBuffersWaiting &= ~((uint32_t)1 << waitingIndex);
 				}
 			}
 		}
@@ -483,16 +693,18 @@ void CanDevice::Interrupt() noexcept
 				uint32_t transmitDone;
 				while ((transmitDone = (~hw->TXBRP.reg) & (txBuffersWaiting >> 1)) != 0)
 				{
-					const unsigned int whichBuffer = LowestSetBit(transmitDone) + 1;
-					TaskBase::GiveFromISR(txTaskWaiting[whichBuffer]);
-					txBuffersWaiting &= ~((uint32_t)1 << whichBuffer);
+					const unsigned int waitingIndex = LowestSetBit(transmitDone) + (unsigned int)TxBufferNumber::buffer0;
+					TaskBase::GiveFromISR(txTaskWaiting[waitingIndex]);
+					txBuffersWaiting &= ~((uint32_t)1 << waitingIndex);
 				}
 			}
 
 			// Check the tx FIFO
 			if ((txBuffersWaiting & 1u) != 0 && hw->TXFQS.bit.TFFL != 0)
 			{
-				TaskBase::GiveFromISR(txTaskWaiting[TxFifoBufferIndex + 1]);
+				constexpr unsigned int waitingIndex = (unsigned int)TxBufferNumber::fifo;
+				TaskBase::GiveFromISR(txTaskWaiting[waitingIndex]);
+				txBuffersWaiting &= ~((uint32_t)1 << waitingIndex);
 			}
 		}
 

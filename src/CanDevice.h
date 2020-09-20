@@ -35,7 +35,17 @@ static inline constexpr unsigned int MaxElement(const unsigned int arr[], size_t
 class CanDevice
 {
 public:
-	typedef int BufferNumber;
+	enum class RxBufferNumber : uint32_t
+	{
+		fifo0 = 0, fifo1,
+		buffer0, buffer1, buffer2, buffer3,
+	};
+
+	enum class TxBufferNumber : uint32_t
+	{
+		fifo = 0,
+		buffer0, buffer1, buffer2, buffer3,
+	};
 
 	// Initialise one of the CAN interfaces and return a pointer to the corresponding device. Returns null if device is already in use or device number is out of range.
 	static CanDevice *Init(unsigned int whichCan, unsigned int whichPort, bool useFDMode, const CanTiming& timing) noexcept;
@@ -50,27 +60,29 @@ public:
 	void Disable() noexcept;
 
 	// Wait for a transmit buffer to become free, with timeout. Return true if it's free.
-	bool IsSpaceAvailable(BufferNumber whichBuffer, uint32_t timeout) noexcept
+	bool IsSpaceAvailable(TxBufferNumber whichBuffer, uint32_t timeout) noexcept
 		pre(whichBuffer >= -2; whichBuffer < NumTxBuffers);
 
 	// Queue a message for sending via a buffer or FIFO. If the buffer isn't free, cancel the previous message (or oldest message in the fifo) and send it anyway.
-	void SendMessage(BufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept
+	void SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept
 		pre(whichBuffer >= -2; whichBuffer < NumTxBuffers);
 
-	// Receive a message in a buffer or fifo, with timeout. Returns true if successful, false if no message available.
-	bool ReceiveMessage(BufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept
+	// Receive a message in a buffer or fifo, with timeout. Returns true if successful, false if no message available even after the timeout period.
+	bool ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept
 		pre(whichBuffer >= -2; whichBuffer < NumRxBuffers);
 
 	// Check whether a message is available, returning true if it is
-	bool IsMessageAvailable(BufferNumber whichBuffer, uint32_t timeout) noexcept;
+	bool IsMessageAvailable(RxBufferNumber whichBuffer, uint32_t timeout) noexcept;
 		pre(whichBuffer >= -2; whichBuffer < NumRxBuffers);
 
-	// Set a short ID field filter element
-	void SetShortFilterElement(unsigned int index, BufferNumber whichBuffer, uint32_t id, uint32_t mask) noexcept
+	// Set a short ID field filter element. To disable the filter element, use a zero mask parameter.
+	// If whichBuffer is a buffer number not a fifo number, the mask field is ignored except that a zero mask disables the filter element; so only the XIDAM mask filters the ID.
+	void SetShortFilterElement(unsigned int index, RxBufferNumber whichBuffer, uint32_t id, uint32_t mask) noexcept
 		pre(index < NumShortFilterElements; whichBuffer >= -2; whichBuffer < NumRxBuffers);
 
-	// Set an extended ID field filter element
-	void SetExtendedFilterElement(unsigned int index, BufferNumber whichBuffer, uint32_t id, uint32_t mask) noexcept
+	// Set an extended ID field filter element. To disable the filter element, use a zero mask parameter.
+	// If whichBuffer is a buffer number not a fifo number, the mask field is ignored except that a zero mask disables the filter element; so only the XIDAM mask filters the ID.
+	void SetExtendedFilterElement(unsigned int index, RxBufferNumber whichBuffer, uint32_t id, uint32_t mask) noexcept
 		pre(index < NumShortFilterElements; whichBuffer >= -2; whichBuffer < NumRxBuffers);
 
 	void GetLocalCanTiming(CanTiming& timing) noexcept;
@@ -78,11 +90,6 @@ public:
 	void SetLocalCanTiming(const CanTiming& timing) noexcept;
 
 	void Interrupt() noexcept;
-
-	// Values we pass as buffer parameters to use FIFOs instead of buffers
-	static constexpr int TxFifoBufferIndex = -1;
-	static constexpr int RxFifo0BufferIndex = -1;
-	static constexpr int RxFifo1BufferIndex = -2;
 
 	// Configuration constants. Need to be public because they are used to size static data in CanDevice.cpp
 # if SAME70
@@ -94,7 +101,7 @@ public:
 	static constexpr unsigned int RxFifo1Size[NumCanDevices] = { 16, 16 };
 	static constexpr unsigned int NumShortFilterElements[NumCanDevices] = { 0, 0 };
 	static constexpr unsigned int NumExtendedFilterElements[NumCanDevices] = { 3, 3 };
-	static constexpr unsigned int EventFifoSize[NumCanDevices] = { 2, 2 };
+	static constexpr unsigned int TxEventFifoSize[NumCanDevices] = { 2, 2 };
 # elif SAME5x
 	static constexpr unsigned int NumCanDevices = 1;
 	static constexpr unsigned int NumTxBuffers[NumCanDevices] = { 0 };
@@ -104,7 +111,7 @@ public:
 	static constexpr unsigned int RxFifo1Size[NumCanDevices] = { 0 };
 	static constexpr unsigned int NumShortFilterElements[NumCanDevices] = { 0 };
 	static constexpr unsigned int NumExtendedFilterElements[NumCanDevices] = { 2 };
-	static constexpr unsigned int EventFifoSize[NumCanDevices] = { 2 };
+	static constexpr unsigned int TxEventFifoSize[NumCanDevices] = { 2 };
 #elif SAMC21
 	static constexpr unsigned int NumCanDevices = 1;
 	static constexpr unsigned int NumTxBuffers[NumCanDevices] = { 0 };
