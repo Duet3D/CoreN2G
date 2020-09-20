@@ -12,6 +12,8 @@
 
 #if SUPPORT_CAN
 
+# include <General/Bitmap.h>
+
 # ifdef RTOS
 #  include <RTOSIface/RTOSIface.h>
 # endif
@@ -92,6 +94,8 @@ public:
 	void Interrupt() noexcept;
 
 	// Configuration constants. Need to be public because they are used to size static data in CanDevice.cpp
+	static constexpr size_t Can0DataSize = 64;
+
 # if SAME70
 	static constexpr unsigned int NumCanDevices = 2;
 	static constexpr unsigned int NumTxBuffers[NumCanDevices] = { 6, 6 };
@@ -125,13 +129,16 @@ public:
 #endif
 
 	static_assert(NumTxBuffers[0] + TxFifoSize[0] <= 32);		// maximum total Tx buffers supported is 32
-	static_assert(NumRxBuffers[0] <= 31);						// the peripheral supports up to 64 buffers but our code only checks the first 31 in the ISR
+	static_assert(NumTxBuffers[0] + 1 <= 32);					// our code only allows 31 buffers + the FIFO
+	static_assert(NumRxBuffers[0] + 2 <= 32);					// the peripheral supports up to 64 buffers but our code only allows 30 buffers + the two FIFOs
 	static_assert(RxFifo0Size[0] <= 64);						// max 64 entries per receive FIFO
 	static_assert(RxFifo1Size[0] <= 64);						// max 64 entries per receive FIFO
 
 #if SAME70
+	static constexpr size_t Can1DataSize = 64;
 	static_assert(NumTxBuffers[1] + TxFifoSize[1] <= 32);		// maximum total Tx buffers supported is 32
-	static_assert(NumRxBuffers[1] <= 31);						// the peripheral supports up to 64 buffers but our code only checks the first 31 in the ISR
+	static_assert(NumTxBuffers[1] + 1 <= 32);					// our code only allows 31 buffers + the FIFO
+	static_assert(NumRxBuffers[1] + 2 <= 32);					// the peripheral supports up to 64 buffers but our code only allows 30 buffers + the two FIFOs
 	static_assert(RxFifo0Size[1] <= 64);						// max 64 entries per receive FIFO
 	static_assert(RxFifo1Size[1] <= 64);						// max 64 entries per receive FIFO
 #endif
@@ -153,16 +160,18 @@ private:
 
 	Can *hw;													// address of the CAN peripheral we are using
 	const CanContext *context;									// pointer to a struct the points to the buffers and filter elements
+
 # ifdef RTOS
 	TaskHandle txTaskWaiting[MaxElement(NumTxBuffers, ARRAY_SIZE(NumTxBuffers)) + 1];	// tasks waiting for each Tx buffer to become free, first entry is for the Tx FIFO
 	TaskHandle rxTaskWaiting[MaxElement(NumRxBuffers, ARRAY_SIZE(NumRxBuffers)) + 2];	// tasks waiting for each Rx buffer to receive a message, first 2 entries are for the fifos
+	Bitmap<uint32_t> rxBuffersWaiting;							// which Rx FIFOs and buffers tasks are waiting on
+	Bitmap<uint32_t> txBuffersWaiting;							// which Tx FIFOs and buffers tasks are waiting on
 # endif
+
 	unsigned int whichCan;										// which CAN device we are
 	unsigned int whichPort;										// which CAN port number we use, 0 or 1
 	unsigned int messagesLost;									// count of received messages lost because the receive FIFO was full
 	unsigned int busOffCount;									// count of the number of times we have reset due to bus off
-	uint32_t rxBuffersWaiting;									// bitmap of dedicated Rx buffers that tasks are waiting on
-	uint32_t txBuffersWaiting;									// bitmap of dedicated Tx buffers that tasks are waiting on, lowest bit indicates waiting on Tx FIFO
 	bool useFDMode;
 };
 
