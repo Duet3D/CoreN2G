@@ -62,30 +62,26 @@ public:
 	void Disable() noexcept;
 
 	// Wait for a transmit buffer to become free, with timeout. Return true if it's free.
-	bool IsSpaceAvailable(TxBufferNumber whichBuffer, uint32_t timeout) noexcept
-		pre(whichBuffer >= -2; whichBuffer < NumTxBuffers);
+	bool IsSpaceAvailable(TxBufferNumber whichBuffer, uint32_t timeout) noexcept;
 
 	// Queue a message for sending via a buffer or FIFO. If the buffer isn't free, cancel the previous message (or oldest message in the fifo) and send it anyway.
-	void SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept
-		pre(whichBuffer >= -2; whichBuffer < NumTxBuffers);
+	void SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept;
 
 	// Receive a message in a buffer or fifo, with timeout. Returns true if successful, false if no message available even after the timeout period.
-	bool ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept
-		pre(whichBuffer >= -2; whichBuffer < NumRxBuffers);
+	bool ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept;
 
 	// Check whether a message is available, returning true if it is
 	bool IsMessageAvailable(RxBufferNumber whichBuffer, uint32_t timeout) noexcept;
-		pre(whichBuffer >= -2; whichBuffer < NumRxBuffers);
 
 	// Set a short ID field filter element. To disable the filter element, use a zero mask parameter.
 	// If whichBuffer is a buffer number not a fifo number, the mask field is ignored except that a zero mask disables the filter element; so only the XIDAM mask filters the ID.
 	void SetShortFilterElement(unsigned int index, RxBufferNumber whichBuffer, uint32_t id, uint32_t mask) noexcept
-		pre(index < NumShortFilterElements; whichBuffer >= -2; whichBuffer < NumRxBuffers);
+		pre(index < NumShortFilterElements);
 
 	// Set an extended ID field filter element. To disable the filter element, use a zero mask parameter.
 	// If whichBuffer is a buffer number not a fifo number, the mask field is ignored except that a zero mask disables the filter element; so only the XIDAM mask filters the ID.
 	void SetExtendedFilterElement(unsigned int index, RxBufferNumber whichBuffer, uint32_t id, uint32_t mask) noexcept
-		pre(index < NumShortFilterElements; whichBuffer >= -2; whichBuffer < NumRxBuffers);
+		pre(index < NumShortFilterElements);
 
 	void GetLocalCanTiming(CanTiming& timing) noexcept;
 
