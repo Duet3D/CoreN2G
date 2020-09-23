@@ -24,28 +24,40 @@
 #if defined(__SAME54P20A__) || defined(__SAME51P20A__)
 # define __ARM_ARCH_7EM__	1
 # include <same54.h>
-# define SAME5x				1
 # define SAMC21				0
+# define SAM4E				0
+# define SAM4S				0
+# define SAME5x				1
+# define SAME70				0
 #elif defined(__SAME51N19A__)
 # define __ARM_ARCH_7EM__	1
 # include <same51.h>
-# define SAME5x				1
 # define SAMC21				0
+# define SAM4E				0
+# define SAM4S				0
+# define SAME5x				1
+# define SAME70				0
 #elif defined(__SAMC21G18A__)
 # define __ARM_ARCH_6M__	1
 # include <samc21.h>
-# define SAME5x				0
 # define SAMC21				1
+# define SAM4E				0
+# define SAM4S				0
+# define SAME5x				0
+# define SAME70				0
 # define SUPPORT_SDHC		0			// SAMC21 doesn't support SDHC
+#elif defined(__SAME70Q20B__)
+# include <same70q20b.h>
+# define SAMC21				0
+# define SAM4S				0
+# define SAM4E				0
+# define SAME5x				0
+# define SAME70				1
 #else
 # error unsupported processor
 #endif
 
-
-#define SAM4E	0
-#define SAM4S	0
 #define SAM3XA	0
-#define SAME70	0
 
 #include <inttypes.h>				// for PRIu32 etc.
 #include <ctype.h>
@@ -81,6 +93,10 @@ static const uint32_t SystemCoreClockFreq = 48000000;	///< The processor clock f
 static const unsigned int GclkNum48MHz = 0;
 static const unsigned int GclkNum31KHz = 1;				// frequency is 31250Hz
 // Other GCLKs may be defined by the client application
+
+#elif SAME70
+
+static const uint32_t SystemCoreClockFreq = 300000000;	///< The processor clock frequency after initialisation
 
 #endif
 

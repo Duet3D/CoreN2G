@@ -17,16 +17,22 @@
 #include "Core.h"
 
 #include <General/SimpleMath.h>
-#include <hal_gpio.h>
 
 // Define NumTotalPins as pin number at and beyond which it is not safe to access the corresponding port registers on this processor family.
 // This may be greater than the number of I/O pins actually on the particular device we are running on.
 #if SAME5x
+#include <hal_gpio.h>
 #include <hri_port_e54.h>
 constexpr unsigned int NumTotalPins = (3 * 32) + 22;	// SAME54P20A goes up to PD21
 #elif SAMC21
+#include <hal_gpio.h>
 #include <hri_port_c21.h>
 constexpr unsigned int NumTotalPins = 2 * 32;			// SAMC21J goes up to PB31. We don't support the SAMC21N.
+#elif SAME70
+#include <hal_gpio.h>
+inline Pio *GpioPort(Pin p) { return (Pio*)((uint32_t)PIOA + (p >> 5) * 0x200); }
+inline constexpr uint32_t GpioMask(Pin p) { return (uint32_t)1 << (p & 31); }
+constexpr unsigned int NumTotalPins = (4 * 32) + 6;		// SAME70 goes up to PE5
 #else
 # error Unsupported processor
 #endif
@@ -47,7 +53,7 @@ inline constexpr Pin PortAPin(unsigned int n) noexcept { return n; }
  */
 inline constexpr Pin PortBPin(unsigned int n) noexcept { return 32+n; }
 
-#if SAME5x
+#if SAME5x || SAME70
 
 /**
  * @brief Return the global pin number for a Port C pin
@@ -67,11 +73,28 @@ inline constexpr Pin PortDPin(unsigned int n) noexcept { return 96+n; }
 
 #endif
 
+#if SAME70
 /**
- * @brief Pin function numbers for calls to gpio_set_pin_function
+ * @brief Return the global pin number for a Port E pin
+ *
+ * @param n The bit number of the pin on Port E
+ * @return The global pin number
+ */
+inline constexpr Pin PortEPin(unsigned int n) noexcept { return 128+n; }
+
+#endif
+
+/**
+ * @brief Pin function numbers for calls to SetPinFunction
  *
  */
-enum class GpioPinFunction : uint32_t { A = 0, B, C, D, E, F, G, H, I, J, K, L, M, N, off = 0xFFFFFFFF };
+enum class GpioPinFunction : uint8_t
+{
+	A = 0, B, C, D,
+#if SAME5x || SAMC21
+	E, F, G, H, I, J, K, L, M, N
+#endif
+};
 
 /**
  * @brief Set the function of an I/O pin
@@ -81,18 +104,73 @@ enum class GpioPinFunction : uint32_t { A = 0, B, C, D, E, F, G, H, I, J, K, L, 
  */
 inline void SetPinFunction(Pin p, GpioPinFunction f) noexcept
 {
-	gpio_set_pin_function(p, (uint32_t)f);
+#if SAME5x || SAMC21
+	const uint8_t port = p >> 5;
+	const uint8_t pin  = p & 0x1F;
+	uint8_t tmp = PORT->Group[port].PMUX[pin >> 1].reg;
+	if (pin & 1)
+	{
+		// Odd numbered pin
+		tmp &= ~PORT_PMUX_PMUXO_Msk;
+		tmp |= PORT_PMUX_PMUXO((uint8_t)f);
+	}
+	else
+	{
+		// Even numbered pin
+		tmp &= ~PORT_PMUX_PMUXE_Msk;
+		tmp |= PORT_PMUX_PMUXE((uint8_t)f);
+	}
+	PORT->Group[port].PMUX[pin >> 1].reg = tmp;
+	PORT->Group[port].PINCFG[pin].bit.PMUXEN = 1;
+#elif SAME70 || SAM4E || SAM4S
+	Pio * const p_pio = GpioPort(p);
+	const uint32_t mask = (uint32_t)1 << (p & 0x1F);
+	p_pio->PIO_IDR = mask;									// disable interrupts on the pin
+	uint32_t sr0 = p_pio->PIO_ABCDSR[0];
+	uint32_t sr1 = p_pio->PIO_ABCDSR[1];
+	if ((uint8_t)f & 0x01)
+	{
+		sr0 |= mask;
+	}
+	else
+	{
+		sr0 &= ~mask;
+	}
+	if ((uint8_t)f & 0x02)
+	{
+		sr1 |= mask;
+	}
+	else
+	{
+		sr1 &= ~mask;
+	}
+	p_pio->PIO_ABCDSR[0] = sr0;
+	p_pio->PIO_ABCDSR[1] = sr1;
+	p_pio->PIO_PDR = mask;									// remove the pins from under the control of PIO
+#else
+# error Unsupported processor
+#endif
 }
 
 /**
- * @brief Set a pin back top ordinary digital I/O
+ * @brief Set a pin back to ordinary digital I/O
  *
  * @param p The pin number
  */
 inline void ClearPinFunction(Pin p) noexcept
 {
-	gpio_set_pin_function(p, GPIO_PIN_FUNCTION_OFF);
+#if SAME5x || SAMC21 || SAM4E || SAM4S
+	PORT->Group[p >> 5].PINCFG[p & 0x1F].bit.PMUXEN = 0;
+#elif SAME70 || SAM4E || SAM4S
+	Pio * const p_pio = GpioPort(p);
+	const uint32_t mask = (uint32_t)1 << (p & 0x1F);
+	p_pio->PIO_PER = mask;									// put the pins under the control of PIO
+#else
+# error Unsupported processor
+#endif
 }
+
+#if SAME5x || SAMC21
 
 // GCLK management
 
@@ -136,6 +214,8 @@ enum class GclkSource : uint8_t
  */
 void ConfigureGclk(unsigned int index, GclkSource source, uint16_t divisor, bool enableOutput = false) noexcept;
 
+#endif
+
 // Atomic section locker, alternative to InterruptCriticalSectionLocker (is safe to call from within an ISR, and may be faster)
 /**
  * @brief This class is an alternative to InterruptCriticalSectionLocker. It is safe to call from within an ISR, and may be faster.
@@ -157,7 +237,7 @@ private:
 	irqflags_t flags;
 };
 
-#if SAME5x
+#if SAME5x || SAME70
 
 // Functions to change the base priority, to shut out interrupts up to a priority level
 
@@ -264,7 +344,13 @@ static inline uint32_t random(uint32_t howsmall, uint32_t howbig) noexcept
  */
 inline void fastDigitalWriteHigh(uint32_t pin) noexcept
 {
+#if SAME5x || SAMC21
 	PORT->Group[GPIO_PORT(pin)].OUTSET.reg = 1ul << GPIO_PIN(pin);
+#elif SAME70
+	GpioPort(pin)->PIO_SODR = GpioMask(pin);
+#else
+# error Unsupported processor
+#endif
 }
 
 /**
@@ -274,7 +360,13 @@ inline void fastDigitalWriteHigh(uint32_t pin) noexcept
  */
 inline void fastDigitalWriteLow(uint32_t pin) noexcept
 {
+#if SAME5x || SAMC21
 	PORT->Group[GPIO_PORT(pin)].OUTCLR.reg = 1ul << GPIO_PIN(pin);
+#elif SAME70
+	GpioPort(pin)->PIO_CODR = GpioMask(pin);
+#else
+# error Unsupported processor
+#endif
 }
 
 /**
@@ -284,7 +376,13 @@ inline void fastDigitalWriteLow(uint32_t pin) noexcept
  */
 inline bool fastDigitalRead(uint32_t pin) noexcept
 {
+#if SAME5x || SAMC21
 	return (PORT->Group[GPIO_PORT(pin)].IN.reg & (1ul << GPIO_PIN(pin))) != 0;
+#elif SAME70
+	return GpioPort(pin)->PIO_PDSR & GpioMask(pin);
+#else
+# error Unsupported processor
+#endif
 }
 
 /**
@@ -299,16 +397,23 @@ inline bool fastDigitalRead(uint32_t pin) noexcept
  */
 enum class TcOutput : uint8_t
 {
-	// TC devices, on peripheral E for both SAME5x and SAMC21
+#if SAME5x || SAMC21
+	// TC devices, on peripheral E for both SAME5x and SAMC21. Bottom bit is the output number, remaining bits are the TC number.
 	tc0_0 = 0, tc0_1,
 	tc1_0, tc1_1,
 	tc2_0, tc2_1,
 	tc3_0, tc3_1,
 	tc4_0, tc4_1,
-#if SAME5x
+# if SAME5x
 	tc5_0, tc5_1,
 	tc6_0, tc6_1,
 	tc7_0, tc7_1,
+# endif
+#elif SAME70
+	// TIO devices. Bottom bit is the output number, next 4 bits are the TOI number, bits 5 and 6 are the peripheral number
+	tioa0 = 0x20, tiob0, tioa1, tiob1, tioa2, tiob2, tioa3, tiob3, tioa4, tiob4,				// TIO 0-10 are on peripheral B
+	tioa5, tiob5, tioa6, tiob6, tioa7, tiob7, tioa8, tiob8, tioa9, tiob9, tioa10, tiob10,
+	tioa11 = 0x40, tiob11,																		// TIO11 is on peripheral C
 #endif
 
 	none = 0xFF,
@@ -320,7 +425,14 @@ enum class TcOutput : uint8_t
  * @param tc The TcOutput value
  * @return The TC number of tc
  */
-static inline constexpr unsigned int GetDeviceNumber(TcOutput tc) noexcept { return (uint8_t)tc >> 1; }
+static inline constexpr unsigned int GetDeviceNumber(TcOutput tc) noexcept
+{
+#if SAME5x || SAMC21
+	return (uint8_t)tc >> 1;
+#elif SAME70 || SAM4E || SAM4S
+	return ((uint8_t)tc >> 1) & 0x0F;
+#endif
+}
 
 /**
  * @brief Extract the output number
@@ -328,7 +440,10 @@ static inline constexpr unsigned int GetDeviceNumber(TcOutput tc) noexcept { ret
  * @param tc The TcOutput value
  * @return The output number of tc
  */
-static inline constexpr unsigned int GetOutputNumber(TcOutput tc) noexcept { return (uint8_t)tc & 1; }
+static inline constexpr unsigned int GetOutputNumber(TcOutput tc) noexcept
+{
+	return (uint8_t)tc & 1;
+}
 
 /**
  * @brief Get the peripheral function that a TC output is on
@@ -338,7 +453,13 @@ static inline constexpr unsigned int GetOutputNumber(TcOutput tc) noexcept { ret
  */
 static inline constexpr GpioPinFunction GetPeriNumber(TcOutput tc) noexcept
 {
+#if SAME5x || SAMC21
 	return GpioPinFunction::E;		// all TCs are on peripheral E for both the SAME5x and the SAMC21
+#elif SAME70
+	return (GpioPinFunction)((uint8_t)tc >> 5);
+#else
+# error Unsupported processor
+#endif
 }
 
 /**
@@ -348,6 +469,8 @@ static inline constexpr GpioPinFunction GetPeriNumber(TcOutput tc) noexcept
  * @param gclkNum The GCLK number to use
  */
 void EnableTcClock(unsigned int tcNumber, unsigned int gclkNum) noexcept;
+
+#if SAME5x || SAMC21
 
 /**
  * @brief TCC output identifiers used in pin tables
@@ -424,6 +547,68 @@ static inline constexpr GpioPinFunction GetPeriNumber(TccOutput tcc) noexcept
  * @param gclkNumThe GCLK number to use
  */
 void EnableTccClock(unsigned int tccNumber, unsigned int gclkNum) noexcept;
+
+#elif SAME70 || SAM4E || SAM4S
+
+enum class PwmOutput : uint8_t
+{
+	pwm0l0_a = 0x00, pwm0h0_a, pwm0l1_a, pwm0h1_a, pwm0l2_a, pwm0h2_a, pwm0l3_a, pwm0h3_a,
+	pwm0l0_b = 0x20, pwm0h0_b, pwm0l1_b, pwm0h1_b, pwm0l2_b, pwm0h2_b, pwm0l3_b, pwm0h3_b,
+	pwm0l0_c = 0x40, pwm0h0_c, pwm0l1_c, pwm0h1_c, pwm0l2_c, pwm0h2_c, pwm0l3_c, pwm0h3_c,
+	pwm0l0_d = 0x60, pwm0h0_d, pwm0l1_d, pwm0h1_d, pwm0l2_d, pwm0h2_d, pwm0l3_d, pwm0h3_d,
+#if SAME70
+	pwm1l0_a = 0x08, pwm1h0_a, pwm1l1_a, pwm1h1_a, pwm1l2_a, pwm1h2_a, pwm1l3_a, pwm1h3_a,
+	pwm1l0_b = 0x28, pwm1h0_b, pwm1l1_b, pwm1h1_b, pwm1l2_b, pwm1h2_b, pwm1l3_b, pwm1h3_b,
+	pwm1l0_c = 0x48, pwm1h0_c, pwm1l1_c, pwm1h1_c, pwm1l2_c, pwm1h2_c, pwm1l3_c, pwm1h3_c,
+	pwm1l0_d = 0x68, pwm1h0_d, pwm1l1_d, pwm1h1_d, pwm1l2_d, pwm1h2_d, pwm1l3_d, pwm1h3_d,
+#endif
+};
+
+/**
+ * @brief Extract the PWM device number
+ *
+ * @param tcc The PwmOutput value
+ * @return The PWM device number, 0 or 1
+ */
+static inline constexpr unsigned int GetDeviceNumber(PwmOutput pwm) noexcept
+{
+	return ((uint8_t)pwm >> 3) & 0x01;
+}
+
+/**
+ * @brief Extract the PWM channel number
+ *
+ * @param tcc The PwmOutput value
+ * @return The PWM channel number, 0 to 3
+ */
+static inline constexpr unsigned int GetChannelNumber(PwmOutput pwm) noexcept
+{
+	return ((uint8_t)pwm >> 1) & 0x03;
+}
+
+/**
+ * @brief Extract the output number, PWML or PWMH
+ *
+ * @param pwm The PwmOutput value
+ * @return 1 for PWMH, 0 for PWML
+ */
+static inline constexpr unsigned int GetOutputNumber(PwmOutput pwm) noexcept
+{
+	return (uint8_t)pwm & 1;
+}
+
+/**
+ * @brief Get the peripheral function that a PWM output is on
+ *
+ * @param tcc The PwmOutput value
+ * @return The peripheral function identifier
+ */
+static inline constexpr GpioPinFunction GetPeriNumber(PwmOutput pwm) noexcept
+{
+	return (GpioPinFunction)((uint8_t)pwm >> 5);
+}
+
+#endif
 
 /**
  * @brief ADC input identifiers, encoding both the ADC device and the ADC input number within the device.
@@ -536,6 +721,8 @@ constexpr uint32_t SerialNumberAddresses[4] = { 0x0080A00C, 0x0080A040, 0x0080A0
  */
 struct PinDescriptionBase
 {
+#if SAME5x || SAMC21
+
 	TcOutput tc;					///< The TC output that is connected to this pin and available for PWM generation, or TcOutput::none
 	TccOutput tcc;					///< The TCC output that is connected to this pin and available for PWM generation, or TccOutput::none
 	AdcInput adc;					///< The ADC input that is connected to this pin and available, or AdcInput::none
@@ -545,7 +732,16 @@ struct PinDescriptionBase
 	SercomIo sercomIn;				///< The Sercom input that is connected to this pin and available, or SercomIo::none
 	SercomIo sercomOut;				///< The Sercom output that is connected to this pin and available, or SercomIo::none
 	ExintNumber exintNumber;		///< The EXINT number that is allocated exclusively for use by this pin, or Nx if none available
+
+#elif SAME70 || SAM4E || SAM4S
+
+	TcOutput tc;					///< The Timer output that is connected to this pin and available for PWM generation, or TcOutput::none
+	PwmOutput pwm;					///< The PWM output that is connected to this pin and available for PWM generation, or PwmOutput::none
+	AdcInput adc;					///< The ADC input that is connected to this pin and available, or AdcInput::none
+
+#endif
 };
+
 
 /**
  * @brief Initialise the application. Called after the main clocks have been set up.

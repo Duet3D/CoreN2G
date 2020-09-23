@@ -5,7 +5,7 @@
  *      Author: David
  */
 
-#include <Uart.h>
+#include "Uart.h"
 
 Uart::Uart(uint8_t sercomNum, uint8_t rxp, size_t numTxSlots, size_t numRxSlots) noexcept
 	: sercom(Serial::GetSercom(sercomNum)),

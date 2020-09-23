@@ -7,7 +7,7 @@
 
 #include "CanDevice.h"
 
-#if 0	//SUPPORT_CAN
+#if SUPPORT_CAN /*&& !SAME70*/		// this driver doesn't work with SAME70 MCAN definitions
 
 #include <CanSettings.h>
 #include <CanMessageBuffer.h>
@@ -80,7 +80,7 @@ struct CanTxBufferHeader
 			uint32_t BRS : 1; /*!< Bit Rate Switch */
 			uint32_t FDF : 1; /*!< FD Format */
 			uint32_t : 1;     /*!< Reserved */
-			uint32_t EFC : 1; /*!< Event FIFO Control */
+			uint32_t EFCbit : 1; /*!< Event FIFO Control */
 			uint32_t MM : 8;  /*!< Message Marker */
 		} bit;
 		uint32_t val; /*!< Type used for register access */
@@ -209,13 +209,13 @@ alignas(4) static CanDevice::CanStandardMessageFilterElement can0_rx_std_filter[
 alignas(4) static CanDevice::CanExtendedMessageFilterElement can0_rx_ext_filter[CanDevice::NumExtendedFilterElements[0]] __attribute__ ((section (".CanMessage")));
 
 #if SAME70
-alignas(4) static CanRxBufferEntry<Can1DataSize> can1_rx_fifo0[CanDevice::RxFifo0Size[1]] __attribute__ ((section (".CanMessage")));
-alignas(4) static CanRxBufferEntry<Can1DataSize> can1_rx_fifo1[CanDevice::RxFifo1Size[1]] __attribute__ ((section (".CanMessage")));
-alignas(4) static CanRxBufferEntry<Can1DataSize> can1_rx_buffers[CanDevice::NumRxBuffers[1]] __attribute__ ((section (".CanMessage")));
-alignas(4) static CanTxBufferEntry<Can1DataSize> can1_tx_buffers[CanDevice::NumTxBuffers[1] + CanDevice::TxFifoSize[0]] __attribute__ ((section (".CanMessage")));
-alignas(4) static _can_tx_event_entry can1_tx_event_fifo[CanDevice::TxEventFifoSize[1]] __attribute__ ((section (".CanMessage")));
-alignas(4) static _can_standard_message_filter_element can1_rx_std_filter[CanDevice::NumShortFilterElements[1]] __attribute__ ((section (".CanMessage")));
-alignas(4) static _can_extended_message_filter_element can1_rx_ext_filter[CanDevice::NumExtendedFilterElements[1]] __attribute__ ((section (".CanMessage")));
+alignas(4) static CanRxBufferEntry<CanDevice::Can1DataSize> can1_rx_fifo0[CanDevice::RxFifo0Size[1]] __attribute__ ((section (".CanMessage")));
+alignas(4) static CanRxBufferEntry<CanDevice::Can1DataSize> can1_rx_fifo1[CanDevice::RxFifo1Size[1]] __attribute__ ((section (".CanMessage")));
+alignas(4) static CanRxBufferEntry<CanDevice::Can1DataSize> can1_rx_buffers[CanDevice::NumRxBuffers[1]] __attribute__ ((section (".CanMessage")));
+alignas(4) static CanTxBufferEntry<CanDevice::Can1DataSize> can1_tx_buffers[CanDevice::NumTxBuffers[1] + CanDevice::TxFifoSize[0]] __attribute__ ((section (".CanMessage")));
+alignas(4) static CanDevice::CanTxEventEntry can1_tx_event_fifo[CanDevice::TxEventFifoSize[1]] __attribute__ ((section (".CanMessage")));
+alignas(4) static CanDevice::CanStandardMessageFilterElement can1_rx_std_filter[CanDevice::NumShortFilterElements[1]] __attribute__ ((section (".CanMessage")));
+alignas(4) static CanDevice::CanExtendedMessageFilterElement can1_rx_ext_filter[CanDevice::NumExtendedFilterElements[1]] __attribute__ ((section (".CanMessage")));
 #endif
 
 CanDevice::CanContext const CanDevice::CanContexts[CanDevice::NumCanDevices] =
@@ -243,6 +243,13 @@ CanDevice::CanContext const CanDevice::CanContexts[CanDevice::NumCanDevices] =
 	},
 #endif
 };
+
+#if SAME70
+# define CAN0		MCAN0
+# define CAN1		MCAN1
+# define CAN0_IRQn	MCAN0_INT0_IRQn
+# define CAN1_IRQn	MCAN1_INT1_IRQn
+#endif
 
 static Can * const CanPorts[2] = { CAN0, CAN1 };
 static const IRQn IRQnsByPort[2] = { CAN0_IRQn, CAN1_IRQn };
@@ -274,8 +281,10 @@ CanDevice CanDevice::devices[NumCanDevices];
 	dev.context = &CanContexts[whichCan];
 	dev.useFDMode = useFDMode;
 	dev.messagesLost = dev.busOffCount = 0;
+#ifdef RTOS
 	dev.rxBuffersWaiting.Clear();
 	dev.txBuffersWaiting.Clear();
+#endif
 	dev.UpdateLocalCanTiming(timing);									// sets NBTP and DBTP
 	dev.DoHardwareInit();
 	return &dev;
@@ -330,11 +339,13 @@ void CanDevice::DoHardwareInit() noexcept
 	hw->ILS.reg = 0;													// all interrupt sources assigned to interrupt line 0 for now
 	hw->ILE.reg = 0;
 
+#ifdef RTOS
 	const IRQn irqn = IRQnsByPort[whichPort];
 	NVIC_DisableIRQ(irqn);
 	NVIC_ClearPendingIRQ(irqn);
 	NVIC_EnableIRQ(irqn);
 	hw->ILE.reg = CAN_ILE_EINT0;										// enable interrupt line 0
+#endif
 
 	// Disable CCE to prevent Configuration Change
 	hw->CCCR.reg &= ~CAN_CCCR_CCE;
@@ -370,6 +381,7 @@ void CanDevice::Disable() noexcept
 // Caution:
 bool CanDevice::IsSpaceAvailable(TxBufferNumber whichBuffer, uint32_t timeout) noexcept
 {
+#ifdef RTOS
 	if (timeout != 0)
 	{
 		TaskBase::ClearNotifyCount();
@@ -389,6 +401,16 @@ bool CanDevice::IsSpaceAvailable(TxBufferNumber whichBuffer, uint32_t timeout) n
 	}
 
 	txBuffersWaiting.ClearBit((unsigned int)whichBuffer);
+#else
+	const uint32_t start = millis();
+	bool bufferFree;
+	do
+	{
+		bufferFree = (whichBuffer == TxBufferNumber::fifo)
+						? hw->TXFQS.bit.TFQF == 0
+							: (hw->TXBRP.reg & ((uint32_t)1 << ((unsigned int)whichBuffer - (unsigned int)TxBufferNumber::buffer0))) == 0;
+	} while (!bufferFree && millis() - start < timeout);
+#endif
 	return bufferFree;
 }
 
@@ -406,7 +428,7 @@ static void CopyMessageForTransmit(CanMessageBuffer *buffer, volatile CanTxBuffe
 		f->T0.bit.XTD = 0;
 	}
 
-	f->T1.bit.EFC = 0;
+	f->T1.bit.EFCbit = 0;
 	uint32_t dataLength = buffer->dataLength;
 	volatile uint32_t *dataPtr = f->GetDataPointer();
 	if (dataLength <= 8)
@@ -565,11 +587,16 @@ static void CopyReceivedMessage(CanMessageBuffer *buffer, const volatile CanRxBu
 // Receive a message in a buffer or fifo, with timeout. Returns true if successful, false if no message available even after the timeout period.
 bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept
 {
+#ifndef RTOS
+	const uint32_t start = millis();
+#endif
+
 	switch (whichBuffer)
 	{
 	case RxBufferNumber::fifo0:
 		{
 			// Check for a received message and wait if necessary
+#ifdef RTOS
 			if (hw->RXF0S.bit.F0FL == 0)
 			{
 				if (timeout == 0)
@@ -587,7 +614,15 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 					return false;
 				}
 			}
-
+#else
+			while (hw->RXF0S.bit.F0FL == 0)
+			{
+				if (millis() - start >= timeout)
+				{
+					return false;
+				}
+			}
+#endif
 			// Process the received message into the buffer
 			const uint32_t getIndex = (hw->RXF0S.reg & CAN_RXF0S_F0GI_Msk) >> CAN_RXF0S_F0GI_Pos;
 			CopyReceivedMessage(buffer, context->GetRxFifo0Buffer(getIndex));
@@ -600,6 +635,7 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 	case RxBufferNumber::fifo1:
 		// Check for a received message and wait if necessary
 		{
+#ifdef RTOS
 			if (hw->RXF1S.bit.F1FL == 0)
 			{
 				if (timeout == 0)
@@ -617,7 +653,15 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 					return false;
 				}
 			}
-
+#else
+			while (hw->RXF1S.bit.F1FL == 0)
+			{
+				if (millis() - start >= timeout)
+				{
+					return false;
+				}
+			}
+#endif
 			// Process the received message into the buffer
 			const uint32_t getIndex = (hw->RXF1S.reg & CAN_RXF1S_F1GI_Msk) >> CAN_RXF1S_F1GI_Pos;
 			CopyReceivedMessage(buffer, context->GetRxFifo1Buffer(getIndex));
@@ -634,6 +678,7 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 			// We assume that not more than 32 dedicated receive buffers have been configured, so we only need to look at the NDAT1 register
 			const uint32_t bufferNumber = (unsigned int)whichBuffer - (unsigned int)RxBufferNumber::buffer0;
 			const uint32_t ndatMask = (uint32_t)1 << bufferNumber;
+#ifdef RTOS
 			if ((hw->NDAT1.reg & (1ul << (unsigned int)whichBuffer)) == 0)
 			{
 				if (timeout == 0)
@@ -651,7 +696,15 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 					return false;
 				}
 			}
-
+#else
+			while ((hw->NDAT1.reg & (1ul << (unsigned int)whichBuffer)) == 0)
+			{
+				if (millis() - start >= timeout)
+				{
+					return false;
+				}
+			}
+#endif
 			// Process the received message into the buffer
 			CopyReceivedMessage(buffer, context->GetRxBuffer(bufferNumber));
 
@@ -663,7 +716,7 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 	}
 }
 
-bool CanDevice::IsMessageAvailable(RxBufferNumber whichBuffer, uint32_t timeout) noexcept
+bool CanDevice::IsMessageAvailable(RxBufferNumber whichBuffer) noexcept
 {
 	switch (whichBuffer)
 	{
@@ -793,6 +846,8 @@ void CanDevice::UpdateLocalCanTiming(const CanTiming &timing) noexcept
 				| ((prescaler - 1) << CAN_DBTP_DBRP_Pos);
 }
 
+#ifdef RTOS
+
 void CanDevice::Interrupt() noexcept
 {
 	uint32_t ir;
@@ -868,14 +923,25 @@ void CanDevice::Interrupt() noexcept
 }
 
 // Interrupt handlers
+
+#if SAME70
+void MCAN0_IRQ0_Handler() noexcept
+#else
 void CAN0_Handler() noexcept
+#endif
 {
 	devicesByPort[0]->Interrupt();
 }
 
+#if SAME70
+void MCAN1_IRQ0_Handler() noexcept
+#else
 void CAN1_Handler() noexcept
+#endif
 {
 	devicesByPort[1]->Interrupt();
 }
+
+#endif
 
 #endif

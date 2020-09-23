@@ -14,15 +14,21 @@
 constexpr unsigned int NumDmaChannelsSupported = 15;	// max is 32
 #elif SAMC21
 constexpr unsigned int NumDmaChannelsSupported = 8;		// max is 12
+#elif SAME70
+constexpr unsigned int NumDmaChannelsSupported = 10;	// max for SAME70 is 24
 #endif
 
 // Status code indicating why a DMAC callback is happening
 enum class DmaCallbackReason : uint8_t
 {
 	none = 0,
+#if SAME5x || SAMC21
 	error = DMAC_CHINTFLAG_TERR,
 	complete = DMAC_CHINTFLAG_TCMPL,
 	completeAndError = DMAC_CHINTFLAG_TERR | DMAC_CHINTFLAG_TCMPL
+#elif SAME70
+	//TODO
+#endif
 };
 
 typedef void (*DmaCallbackFunction)(CallbackParameter cb, DmaCallbackReason reason) noexcept;
@@ -176,8 +182,10 @@ enum class DmaTrigSource : uint8_t
 	tc7_ovf,
 	tc7_mc0,
 	tc7_mc1
-
 # endif
+
+#elif SAME70
+	//TODO
 #else
 # error Unsupported processor
 #endif
@@ -186,6 +194,8 @@ enum class DmaTrigSource : uint8_t
 #if SAMC21
 static_assert((uint8_t)DmaTrigSource::ptc_seq == 0x30, "Error in DmaTrigSource enumeration");
 #endif
+
+#if SAME5x || SAMC21
 
 // The following works for all sercoms on the SAME51 and sercoms 1 to 5 on the SAMC21. We don't support sercoms 6-7 on the SAMC21 because they only exist on the 100-pin version.
 static inline uint8_t GetSercomTxTrigSource(uint8_t sercomNumber) noexcept
@@ -198,6 +208,8 @@ static inline uint8_t GetSercomRxTrigSource(uint8_t sercomNumber) noexcept
 {
 	return (uint8_t)DmaTrigSource::sercom0_rx + (sercomNumber * 2);
 }
+
+#endif
 
 namespace DmacManager
 {

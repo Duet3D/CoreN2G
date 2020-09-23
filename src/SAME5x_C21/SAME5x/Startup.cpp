@@ -35,7 +35,7 @@ static void InitClocks() noexcept;
  * \brief This is the code that gets called on processor reset.
  * To initialize the device, and call the main() routine.
  */
-extern "C" void Reset_Handler() noexcept
+extern "C" [[noreturn]] void Reset_Handler() noexcept
 {
 	uint32_t *pSrc = &_etext;
 	uint32_t *pDest = &_srelocate;
@@ -68,7 +68,7 @@ extern "C" void Reset_Handler() noexcept
 
 #if __FPU_USED
 	// Enable FPU
-	SCB->CPACR |=  (0xFu << 20);
+	SCB->CPACR |= (0xFu << 20);
 	__DSB();
 	__ISB();
 #else

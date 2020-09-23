@@ -31,7 +31,7 @@ static void InitClocks() noexcept;
  * \brief This is the code that gets called on processor reset.
  * To initialize the device, and call the main() routine.
  */
-void Reset_Handler() noexcept
+extern "C" [[noreturn]] void Reset_Handler() noexcept
 {
 	// Initialize the relocate segment
 	uint32_t *pSrc = &_etext;

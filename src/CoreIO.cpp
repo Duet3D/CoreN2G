@@ -18,6 +18,10 @@
 # include <task.h>
 #endif
 
+#if SAME70 || SAM4E || SAM4S
+# include <hpl/pmc/hpl_pmc.h>
+#endif
+
 // Delay for a specified number of CPU clock cycles from the starting time. Return the time at which we actually stopped waiting.
 extern "C" uint32_t DelayCycles(uint32_t start, uint32_t cycles) noexcept
 {
@@ -112,7 +116,9 @@ extern "C" void pinMode(Pin pin, enum PinMode mode) noexcept
 			// The SAME70 errata says we must disable the pullup resistor before enabling the AFEC channel
 			gpio_set_pin_pull_mode(pin, GPIO_PULL_OFF);
 			gpio_set_pin_direction(pin, GPIO_DIRECTION_OFF);		// disable the data input buffer
+#if SAME5x || SAMC21
 			SetPinFunction(pin, GpioPinFunction::B);				// ADC is always on peripheral B
+#endif
 			break;
 
 		default:
@@ -124,14 +130,7 @@ extern "C" void pinMode(Pin pin, enum PinMode mode) noexcept
 // IoPort::ReadPin calls this
 extern "C" bool digitalRead(Pin pin) noexcept
 {
-	if (pin < NumTotalPins)
-	{
-		const uint8_t port = GPIO_PORT(pin);
-		const uint32_t pinMask = 1U << GPIO_PIN(pin);
-		return (hri_port_read_IN_reg(PORT, port) & pinMask) != 0;
-	}
-
-	return false;
+	return (pin < NumTotalPins) && fastDigitalRead(pin);
 }
 
 // IoPort::WriteDigital calls this
@@ -139,15 +138,13 @@ extern "C" void digitalWrite(Pin pin, bool high) noexcept
 {
 	if (pin < NumTotalPins)
 	{
-		const uint8_t port = GPIO_PORT(pin);
-		const uint32_t pinMask = 1U << GPIO_PIN(pin);
 		if (high)
 		{
-			hri_port_set_OUT_reg(PORT, port, pinMask);
+			fastDigitalWriteHigh(pin);
 		}
 		else
 		{
-			hri_port_clear_OUT_reg(PORT, port, pinMask);
+			fastDigitalWriteLow(pin);
 		}
 	}
 }
@@ -184,13 +181,19 @@ void CoreSysTick() noexcept
 	g_ms_ticks++;
 }
 
-#if SAME5x
+#if SAME5x || SAME70
 
 // Random number generator
 static void RandomInit()
 {
+#if SAME5x
 	hri_mclk_set_APBCMASK_TRNG_bit(MCLK);
 	hri_trng_set_CTRLA_ENABLE_bit(TRNG);
+#elif SAME70
+	_pmc_enable_periph_clock(ID_TRNG);
+	TRNG->TRNG_IDR = TRNG_IDR_DATRDY;							// Disable all interrupts
+	TRNG->TRNG_CR = TRNG_CR_KEY(0x524e47) | TRNG_CR_ENABLE;		// Enable TRNG with security key (required)
+#endif
 }
 
 #endif
@@ -199,7 +202,7 @@ void CoreInit() noexcept
 {
 	DmacManager::Init();
 
-#if SAME5x
+#if SAME5x || SAME70
 	RandomInit();
 #endif
 
@@ -208,6 +211,7 @@ void CoreInit() noexcept
 
 void WatchdogInit() noexcept
 {
+#if SAME5x || SAMC21
 	hri_mclk_set_APBAMASK_WDT_bit(MCLK);
 	delayMicroseconds(5);
 	hri_wdt_write_CTRLA_reg(WDT, 0);
@@ -215,15 +219,24 @@ void WatchdogInit() noexcept
 	hri_wdt_write_EWCTRL_reg(WDT, WDT_EWCTRL_EWOFFSET_CYC512);	// early warning control, about 0.5 second
 	hri_wdt_set_INTEN_EW_bit(WDT);								// enable early earning interrupt
 	hri_wdt_write_CTRLA_reg(WDT, WDT_CTRLA_ENABLE);
+#elif SAME70
+	// This assumes the slow clock is running at 32.768 kHz, watchdog frequency is therefore 32768 / 128 = 256 Hz
+	constexpr uint16_t watchdogTicks = 256;						// about 1 second
+	WDT->WDT_MR = WDT_MR_WDRSTEN | WDT_MR_WDV(watchdogTicks) | WDT_MR_WDD(watchdogTicks);
+#endif
 }
 
 void WatchdogReset() noexcept
 {
+#if SAME5x || SAMC21
 	// If we kick the watchdog too often, sometimes it resets us. It uses a 1024Hz nominal clock, so presumably it has to be reset less often than that.
 	if ((((uint32_t)g_ms_ticks) & 0x07) == 0 && (WDT->SYNCBUSY.reg & WDT_SYNCBUSY_CLEAR) == 0)
 	{
 		WDT->CLEAR.reg = 0xA5;
 	}
+#elif SAME70 || SAM4E || SAM4S
+	WDT->WDT_CR = WDT_CR_KEY_PASSWD | WDT_CR_WDRSTT;
+#endif
 }
 
 void Reset() noexcept
@@ -231,6 +244,8 @@ void Reset() noexcept
 	SCB->AIRCR = (0x5FA << 16) | (1u << 2);						// reset the processor
 	for (;;) { }
 }
+
+#if SAME5x || SAMC21
 
 // Enable a GCLK. This function doesn't allow access to some GCLK features, e.g. the DIVSEL or OOV or RUNSTDBY bits.
 // Only GCLK1 can have a divisor greater than 255.
@@ -250,21 +265,24 @@ void ConfigureGclk(unsigned int index, GclkSource source, uint16_t divisor, bool
 	while (GCLK->SYNCBUSY.reg & GCLK_SYNCBUSY_MASK) { }
 }
 
+#endif
+
 void EnableTcClock(unsigned int tcNumber, unsigned int gclkNum) noexcept
 {
+#if SAME5x || SAMC21
 	static constexpr uint8_t TcClockIDs[] =
 	{
 		TC0_GCLK_ID, TC1_GCLK_ID, TC2_GCLK_ID, TC3_GCLK_ID, TC4_GCLK_ID,
-#if SAME5x
+# if SAME5x
 		TC5_GCLK_ID, TC6_GCLK_ID, TC7_GCLK_ID
-#endif
+# endif
 	};
 
 	hri_gclk_write_PCHCTRL_reg(GCLK, TcClockIDs[tcNumber], GCLK_PCHCTRL_GEN(gclkNum) | GCLK_PCHCTRL_CHEN);
 
 	switch (tcNumber)
 	{
-#if SAME5x
+# if SAME5x
 	case 0:	MCLK->APBAMASK.reg |= MCLK_APBAMASK_TC0; break;
 	case 1:	MCLK->APBAMASK.reg |= MCLK_APBAMASK_TC1; break;
 	case 2:	MCLK->APBBMASK.reg |= MCLK_APBBMASK_TC2; break;
@@ -273,17 +291,40 @@ void EnableTcClock(unsigned int tcNumber, unsigned int gclkNum) noexcept
 	case 5:	MCLK->APBCMASK.reg |= MCLK_APBCMASK_TC5; break;
 	case 6: MCLK->APBDMASK.reg |= MCLK_APBDMASK_TC6; break;
 	case 7: MCLK->APBDMASK.reg |= MCLK_APBDMASK_TC7; break;
-#elif SAMC21
+# elif SAMC21
 	case 0:	MCLK->APBCMASK.reg |= MCLK_APBCMASK_TC0; break;
 	case 1:	MCLK->APBCMASK.reg |= MCLK_APBCMASK_TC1; break;
 	case 2:	MCLK->APBCMASK.reg |= MCLK_APBCMASK_TC2; break;
 	case 3:	MCLK->APBCMASK.reg |= MCLK_APBCMASK_TC3; break;
 	case 4:	MCLK->APBCMASK.reg |= MCLK_APBCMASK_TC4; break;
+# else
+#  error Unsupported processor
+# endif
+	}
+#elif SAME70 || SAM4E || SAM4S
+	// Map from timer channel to TIO ID
+	static const uint8_t ChannelToId[] =
+	{
+		ID_TC0, ID_TC1, ID_TC2,
+		ID_TC3, ID_TC4, ID_TC5,
+#if SAM4E || SAME70
+		ID_TC6, ID_TC7, ID_TC8,
+#endif
+#if SAME70
+		ID_TC9, ID_TC10, ID_TC11
+#endif
+	};
+
+	if (tcNumber < ARRAY_SIZE(ChannelToId))
+	{
+		_pmc_enable_periph_clock(ChannelToId[tcNumber]);
+	}
 #else
 # error Unsupported processor
 #endif
-	}
 }
+
+#if SAME5x || SAMC21
 
 void EnableTccClock(unsigned int tccNumber, unsigned int gclkNum) noexcept
 {
@@ -315,6 +356,8 @@ void EnableTccClock(unsigned int tccNumber, unsigned int gclkNum) noexcept
 	}
 }
 
+#endif
+
 // Get the analog input channel that a pin uses
 AnalogChannelNumber PinToAdcChannel(Pin p) noexcept
 {
@@ -342,7 +385,13 @@ extern "C" uint32_t random32() noexcept
 	while (!hri_trng_get_INTFLAG_reg(TRNG, TRNG_INTFLAG_DATARDY)) { }		// Wait until data ready
 	return hri_trng_read_DATA_reg(TRNG);
 
+#elif SAME70
+
+	while (!(TRNG->TRNG_ISR & TRNG_ISR_DATRDY)) {}
+	return (uint32_t)TRNG->TRNG_ODATA;
+
 #else
+
 	static bool isInitialised = false;
 
 	if (!isInitialised)
@@ -352,8 +401,8 @@ extern "C" uint32_t random32() noexcept
 	}
 
 	return rand();
-#endif
 
+#endif
 }
 
 // End

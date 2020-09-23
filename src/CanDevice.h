@@ -18,11 +18,9 @@
 #  include <RTOSIface/RTOSIface.h>
 # endif
 
-# if SAME5x
-#  include <hri_can_e54.h>
-# elif SAMC21
-#  include <hri_can_c21.h>
-#endif
+# if SAME70
+typedef Mcan Can;
+# endif
 
 class CanMessageBuffer;
 class CanTiming;
@@ -71,7 +69,7 @@ public:
 	bool ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept;
 
 	// Check whether a message is available, returning true if it is
-	bool IsMessageAvailable(RxBufferNumber whichBuffer, uint32_t timeout) noexcept;
+	bool IsMessageAvailable(RxBufferNumber whichBuffer) noexcept;
 
 	// Set a short ID field filter element. To disable the filter element, use a zero mask parameter.
 	// If whichBuffer is a buffer number not a fifo number, the mask field is ignored except that a zero mask disables the filter element; so only the XIDAM mask filters the ID.
@@ -87,7 +85,9 @@ public:
 
 	void SetLocalCanTiming(const CanTiming& timing) noexcept;
 
+#ifdef RTOS
 	void Interrupt() noexcept;
+#endif
 
 	// Configuration constants. Need to be public because they are used to size static data in CanDevice.cpp
 	static constexpr size_t Can0DataSize = 64;
