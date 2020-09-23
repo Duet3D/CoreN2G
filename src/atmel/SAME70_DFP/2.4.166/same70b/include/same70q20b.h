@@ -350,9 +350,9 @@ void I2SC1_Handler                 ( void );
 void ICM_Handler                   ( void );
 void ISI_Handler                   ( void );
 void IXC_Handler                   ( void );
-void MCAN0_INT0_Handler            ( void );
+void MCAN0_INT0_Handler            ( void ) noexcept;
 void MCAN0_INT1_Handler            ( void );
-void MCAN1_INT0_Handler            ( void );
+void MCAN1_INT0_Handler            ( void ) noexcept;
 void MCAN1_INT1_Handler            ( void );
 void PIOA_Handler                  ( void );
 void PIOB_Handler                  ( void );
@@ -937,15 +937,15 @@ void XDMAC_Handler                 ( void );
 /* ************************************************************************** */
 /**  ELECTRICAL DEFINITIONS FOR SAME70Q20B */
 /* ************************************************************************** */
-#define CHIP_FREQ_SLCK_RC_MIN          _UL_(20000)     
+#define CHIP_FREQ_SLCK_RC_MIN          _UL_(20000)
 #define CHIP_FREQ_SLCK_RC              _UL_(32000)     /**< \brief Typical Slow Clock Internal RC frequency*/
-#define CHIP_FREQ_SLCK_RC_MAX          _UL_(44000)     
-#define CHIP_FREQ_MAINCK_RC_4MHZ       _UL_(4000000)   
-#define CHIP_FREQ_MAINCK_RC_8MHZ       _UL_(8000000)   
-#define CHIP_FREQ_MAINCK_RC_12MHZ      _UL_(12000000)  
-#define CHIP_FREQ_CPU_MAX              _UL_(300000000) 
-#define CHIP_FREQ_XTAL_32K             _UL_(32768)     
-#define CHIP_FREQ_XTAL_12M             _UL_(12000000)  
+#define CHIP_FREQ_SLCK_RC_MAX          _UL_(44000)
+#define CHIP_FREQ_MAINCK_RC_4MHZ       _UL_(4000000)
+#define CHIP_FREQ_MAINCK_RC_8MHZ       _UL_(8000000)
+#define CHIP_FREQ_MAINCK_RC_12MHZ      _UL_(12000000)
+#define CHIP_FREQ_CPU_MAX              _UL_(300000000)
+#define CHIP_FREQ_XTAL_32K             _UL_(32768)
+#define CHIP_FREQ_XTAL_12M             _UL_(12000000)
 #define CHIP_FREQ_FWS_0                _UL_(23000000)  /**< \brief Maximum operating frequency when FWS is 0*/
 #define CHIP_FREQ_FWS_1                _UL_(46000000)  /**< \brief Maximum operating frequency when FWS is 1*/
 #define CHIP_FREQ_FWS_2                _UL_(69000000)  /**< \brief Maximum operating frequency when FWS is 2*/

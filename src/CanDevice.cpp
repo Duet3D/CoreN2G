@@ -244,11 +244,28 @@ CanDevice::CanContext const CanDevice::CanContexts[CanDevice::NumCanDevices] =
 #endif
 };
 
-#if SAME70
-# define CAN0		MCAN0
-# define CAN1		MCAN1
-# define CAN0_IRQn	MCAN0_INT0_IRQn
-# define CAN1_IRQn	MCAN1_INT1_IRQn
+// Macros to handle the differing naming of registers and fields between the SAME70 and the SAME5x/C21
+#if SAME5x || SAMC21
+
+# define REG(_x)					_x.reg
+# define CAN_(_x)					CAN_ ## _x
+# define READBITS(_hw,_x,_y)		(hw)->_x.bit._y
+# define WRITEBITS(_hw,_x,_y,_val)	(hw)->_x.bit._y = _val
+
+#elif SAME70
+
+# define REG(_x)					MCAN_ ## _x
+# define CAN_(_x)					MCAN_ ## _x
+# define READBITS(_hw,_x,_y)		((((hw)->MCAN_ ## _x) & (MCAN_ ## _x ## _ ## _y ## _Msk)) >> (MCAN_ ## _x ## _ ## _y ## _Pos))
+# define WRITEBITS(_hw,_x,_y,_val)	(hw)->MCAN_ ## _x = (((hw)->MCAN_ ## _x) & ~(MCAN_ ## _x ## _ ## _y ## _Msk)) | ((_val << (MCAN_ ## _x ## _ ## _y ## _Pos)) & (MCAN_ ## _x ## _ ## _y ## _Msk))
+
+# define CAN0						MCAN0
+# define CAN1						MCAN1
+# define CAN0_IRQn					MCAN0_INT0_IRQn
+# define CAN1_IRQn					MCAN1_INT0_IRQn
+# define CAN0_Handler				MCAN0_INT0_Handler
+# define CAN1_Handler				MCAN1_INT0_Handler
+
 #endif
 
 static Can * const CanPorts[2] = { CAN0, CAN1 };
@@ -289,19 +306,6 @@ CanDevice CanDevice::devices[NumCanDevices];
 	dev.DoHardwareInit();
 	return &dev;
 }
-
-// Macros to handle the differing naming of registers and fields between the SAME70 and the SAME5x/C21
-#if SAME5x || SAMC21
-# define REG(_x)					_x.reg
-# define CAN_(_x)					CAN_ ## _x
-# define READBITS(_hw,_x,_y)		(hw)->_x.bit._y
-# define WRITEBITS(_hw,_x,_y,_val)	(hw)->_x.bit._y = _val
-#elif SAME70
-# define REG(_x)					MCAN_ ## _x
-# define CAN_(_x)					MCAN_ ## _x
-# define READBITS(_hw,_x,_y)		((((hw)->MCAN_ ## _x) & (MCAN_ ## _x ## _ ## _y ## _Msk)) >> (MCAN_ ## _x ## _ ## _y ## _Pos))
-# define WRITEBITS(_hw,_x,_y,_val)	(hw)->MCAN_ ## _x = (((hw)->MCAN_ ## _x) & ~(MCAN_ ## _x ## _ ## _y ## _Msk)) | ((_val << (MCAN_ ## _x ## _ ## _y ## _Pos)) & (MCAN_ ## _x ## _ ## _y ## _Msk))
-#endif
 
 // Do the low level hardware initialisation, excluding the bits relating to timing
 void CanDevice::DoHardwareInit() noexcept
@@ -953,20 +957,12 @@ void CanDevice::Interrupt() noexcept
 
 // Interrupt handlers
 
-#if SAME70
-void MCAN0_IRQ0_Handler() noexcept
-#else
 void CAN0_Handler() noexcept
-#endif
 {
 	devicesByPort[0]->Interrupt();
 }
 
-#if SAME70
-void MCAN1_IRQ0_Handler() noexcept
-#else
 void CAN1_Handler() noexcept
-#endif
 {
 	devicesByPort[1]->Interrupt();
 }
