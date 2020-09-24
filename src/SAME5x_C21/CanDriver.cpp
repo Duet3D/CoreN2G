@@ -39,6 +39,12 @@
 #include <hpl_can_config.h>
 #include <cstring>
 
+#if SAME5x
+# include <hri_can_e54.h>
+#elif SAMC21
+# include <hri_can_c21.h>
+#endif
+
 /**
  * \brief Retrieve pointer to parent structure
  */

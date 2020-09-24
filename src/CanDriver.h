@@ -39,7 +39,6 @@
 #if SUPPORT_CAN
 
 #include <CanSettings.h>
-#include <hpl_irq.h>
 
 typedef void (*FUNC_PTR)(void) noexcept;
 
