@@ -18,9 +18,22 @@
 # include <task.h>
 #endif
 
-#if SAME70 || SAM4E || SAM4S
+#if SAME5x
+# include <hri_wdt_e54.h>
+#elif SAMC21
+# include <hri_wdt_c21.h>
+#elif SAME70
+# include <hri_pmc_e70b.h>
+# include <hpl/pmc/hpl_pmc.h>
+#elif SAM4E
+# include <hri_pmc_4e.h>
+# include <hpl/pmc/hpl_pmc.h>
+#elif SAM4S
+# include <hri_pmc_4s.h>
 # include <hpl/pmc/hpl_pmc.h>
 #endif
+
+#include <hal_gpio.h>
 
 // Delay for a specified number of CPU clock cycles from the starting time. Return the time at which we actually stopped waiting.
 extern "C" uint32_t DelayCycles(uint32_t start, uint32_t cycles) noexcept

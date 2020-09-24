@@ -17,6 +17,9 @@
 #include <RTOSIface/RTOSIface.h>
 #include <DmacManager.h>
 
+#include <hri_adc_c21.h>
+#include <hri_sdadc_c21.h>
+
 #define ADC_INPUTCTRL_MUXNEG_GND   (0x18 << ADC_INPUTCTRL_MUXNEG_Pos)			// this definition is missing from file adc.h for the SAMC21
 
 #ifndef SUPPORT_SDADC

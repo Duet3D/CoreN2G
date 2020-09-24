@@ -36,6 +36,7 @@
 #if SUPPORT_SDHC
 
 #include <CoreIO.h>
+#include <hri_sdhc_e54.h>
 
 // Define which SDHC controller we are using
 Sdhc* const hw = SDHC1;
@@ -270,12 +271,12 @@ static bool hsmci_wait_busy() noexcept
 	uint32_t busy_wait = 0xFFFFFFFF;
 	uint32_t psr;
 
-	ASSERT(hw);
-
-	do {
+	do
+	{
 		psr = hri_sdhc_read_PSR_reg(hw);
 
-		if (busy_wait-- == 0) {
+		if (busy_wait-- == 0)
+		{
 			hsmci_reset();
 			return false;
 		}
@@ -295,17 +296,14 @@ static bool hsmci_wait_busy() noexcept
  */
 static bool hsmci_send_cmd_execute(uint32_t cmdr, uint32_t cmd, uint32_t arg) noexcept
 {
-	uint32_t sr;
-	ASSERT(hw);
-
 	// dc42 clear all bits in NISTR and EISTR before we start
 	((Sdhc*)hw)->NISTR.reg = SDHC_NISTR_MASK & 0x7FFF;
 	((Sdhc*)hw)->EISTR.reg = SDHC_EISTR_MASK;
 
 	cmdr |= SDHC_CR_CMDIDX(cmd) | SDHC_CR_CMDTYP_NORMAL;
 
-	if (cmd & MCI_RESP_PRESENT) {
-
+	if (cmd & MCI_RESP_PRESENT)
+	{
 		if (cmd & MCI_RESP_136) {
 			cmdr |= SDHC_CR_RESPTYP_136_BIT;
 		} else if (cmd & MCI_RESP_BUSY) {
@@ -325,34 +323,39 @@ static bool hsmci_send_cmd_execute(uint32_t cmdr, uint32_t cmd, uint32_t arg) no
 	hri_sdhc_write_CR_reg(hw, cmdr);
 
 	/* Wait end of command */
-	do {
-		sr = hri_sdhc_read_EISTR_reg(hw);
+	do
+	{
+		const uint32_t sr = hri_sdhc_read_EISTR_reg(hw);
 
-		if (cmd & MCI_RESP_CRC) {
-			if (sr
-			    & (SDHC_EISTR_CMDTEO | SDHC_EISTR_CMDEND | SDHC_EISTR_CMDIDX | SDHC_EISTR_DATTEO | SDHC_EISTR_DATEND
-			       | SDHC_EISTR_ADMA)) {
+		if (cmd & MCI_RESP_CRC)
+		{
+			if (sr & (SDHC_EISTR_CMDTEO | SDHC_EISTR_CMDEND | SDHC_EISTR_CMDIDX | SDHC_EISTR_DATTEO | SDHC_EISTR_DATEND | SDHC_EISTR_ADMA))
+			{
 				hsmci_reset();
 				hri_sdhc_set_EISTR_reg(hw, SDHC_EISTR_MASK);
 				return false;
 			}
-		} else {
-			if (sr
-			    & (SDHC_EISTR_CMDTEO | SDHC_EISTR_CMDEND | SDHC_EISTR_CMDIDX | SDHC_EISTR_CMDCRC | SDHC_EISTR_DATCRC
-			       | SDHC_EISTR_DATTEO | SDHC_EISTR_DATEND | SDHC_EISTR_ADMA)) {
+		}
+		else
+		{
+			if (sr & (SDHC_EISTR_CMDTEO | SDHC_EISTR_CMDEND | SDHC_EISTR_CMDIDX | SDHC_EISTR_CMDCRC | SDHC_EISTR_DATCRC | SDHC_EISTR_DATTEO | SDHC_EISTR_DATEND | SDHC_EISTR_ADMA))
+			{
 				hsmci_reset();
 				hri_sdhc_set_EISTR_reg(hw, SDHC_EISTR_MASK);
 				return false;
 			}
 		}
 	} while (!hri_sdhc_get_NISTR_CMDC_bit(hw));
+
 	if (!(cmdr & SDHC_CR_DPSEL_DATA))
 	{
 		// dc42 only clear the CMDC bit! In particular, don't clear TRFC.
 		((Sdhc*)hw)->NISTR.reg = SDHC_NISTR_CMDC;
 	}
-	if (cmd & MCI_RESP_BUSY) {
-		if (!hsmci_wait_busy()) {
+	if (cmd & MCI_RESP_BUSY)
+	{
+		if (!hsmci_wait_busy())
+		{
 			return false;
 		}
 	}
@@ -399,9 +402,12 @@ void hsmci_select_device(uint8_t slot, uint32_t clock, uint8_t bus_width, bool h
 {
 	(void)(slot);
 
-	if (high_speed) {
+	if (high_speed)
+	{
 		hri_sdhc_set_HC1R_HSEN_bit(hw);
-	} else {
+	}
+	else
+	{
 		hri_sdhc_clear_HC1R_HSEN_bit(hw);
 	}
 
@@ -410,7 +416,8 @@ void hsmci_select_device(uint8_t slot, uint32_t clock, uint8_t bus_width, bool h
 		hsmci_set_speed(clock, CONF_SDHC_CLK_GEN_SEL);
 	}
 
-	switch (bus_width) {
+	switch (bus_width)
+	{
 	case 1:
 	default:
 		hri_sdhc_clear_HC1R_DW_bit(hw);
@@ -437,7 +444,8 @@ void hsmci_deselect_device(uint8_t slot) noexcept
  */
 uint8_t hsmci_get_bus_width(uint8_t slot) noexcept
 {
-	switch (slot) {
+	switch (slot)
+	{
 	case 0:
 		return HSMCI_SLOT_0_SIZE;
 
@@ -468,8 +476,8 @@ uint32_t hsmci_get_speed() noexcept
 void hsmci_send_clock() noexcept
 {
 	volatile uint32_t i;
-	for (i = 0; i < 5000; i++)
-		;
+	//TODO use delayMicroseconds instead
+	for (i = 0; i < 5000; i++) { }
 }
 
 /**
@@ -478,7 +486,8 @@ void hsmci_send_clock() noexcept
 bool hsmci_send_cmd(uint32_t cmd, uint32_t arg) noexcept
 {
 	/* Check Command Inhibit (CMD) in the Present State register */
-	if (hri_sdhc_get_PSR_CMDINHC_bit(hw)) {
+	if (hri_sdhc_get_PSR_CMDINHC_bit(hw))
+	{
 		return false;
 	}
 
@@ -500,9 +509,11 @@ void hsmci_get_response_128(uint8_t *response) noexcept
 {
 	uint32_t response_32;
 
-	for (int8_t i = 3; i >= 0; i--) {
+	for (int8_t i = 3; i >= 0; i--)
+	{
 		response_32 = hri_sdhc_read_RR_reg(hw, i);
-		if (i != 3) {
+		if (i != 3)
+		{
 			*response = (response_32 >> 24) & 0xFF;
 			response++;
 		}
@@ -523,22 +534,23 @@ void hsmci_get_response_128(uint8_t *response) noexcept
 bool hsmci_adtc_start(uint32_t cmd, uint32_t arg, uint16_t block_size, uint16_t nb_block, const void *dmaAddr) noexcept
 {
 	/* Check Command Inhibit (CMD/DAT) in the Present State register */
-	if (hri_sdhc_get_PSR_CMDINHC_bit(hw) || hri_sdhc_get_PSR_CMDINHD_bit(hw)) {
+	if (hri_sdhc_get_PSR_CMDINHC_bit(hw) || hri_sdhc_get_PSR_CMDINHD_bit(hw))
+	{
 		return false;
 	}
 
-	uint32_t tmr;
-	if (cmd & MCI_CMD_WRITE) {
-		tmr = SDHC_TMR_DTDSEL_WRITE;
-	} else {
-		tmr = SDHC_TMR_DTDSEL_READ;
-	}
+	uint32_t tmr = (cmd & MCI_CMD_WRITE) ? SDHC_TMR_DTDSEL_WRITE : SDHC_TMR_DTDSEL_READ;
 
-	if (cmd & MCI_CMD_SINGLE_BLOCK) {
+	if (cmd & MCI_CMD_SINGLE_BLOCK)
+	{
 		tmr |= SDHC_TMR_MSBSEL_SINGLE;
-	} else if (cmd & MCI_CMD_MULTI_BLOCK) {
+	}
+	else if (cmd & MCI_CMD_MULTI_BLOCK)
+	{
 		tmr |= SDHC_TMR_BCEN | SDHC_TMR_MSBSEL_MULTIPLE;
-	} else {
+	}
+	else
+	{
 		return false;
 	}
 
@@ -608,7 +620,8 @@ bool hsmci_read_word(uint32_t *value) noexcept
 	else
 	{
 		sr = hri_sdhc_read_BDPR_reg(hw);
-		switch (nbytes) {
+		switch (nbytes)
+		{
 		case 3:
 			value[0] = sr & 0xFFFFFF;
 			break;
@@ -652,11 +665,14 @@ bool hsmci_write_word(uint32_t value) noexcept
 
 	/* Wait data available */
 	nbytes = 4; //( mci_dev->mci_sync_block_size & 0x3 ) ? 1 : 4;
-	if (mci_sync_trans_pos % mci_sync_block_size == 0) {
-		do {
+	if (mci_sync_trans_pos % mci_sync_block_size == 0)
+	{
+		do
+		{
 			sr = hri_sdhc_read_EISTR_reg(hw);
 
-			if (sr & (SDHC_EISTR_DATTEO | SDHC_EISTR_DATCRC | SDHC_EISTR_DATEND)) {
+			if (sr & (SDHC_EISTR_DATTEO | SDHC_EISTR_DATCRC | SDHC_EISTR_DATEND))
+			{
 				hsmci_reset();
 				return false;
 			}
@@ -667,7 +683,8 @@ bool hsmci_write_word(uint32_t value) noexcept
 	hri_sdhc_write_BDPR_reg(hw, value);
 	mci_sync_trans_pos += nbytes;
 
-	if (((uint64_t)mci_sync_block_size * mci_sync_nb_block) > mci_sync_trans_pos) {
+	if (((uint64_t)mci_sync_block_size * mci_sync_nb_block) > mci_sync_trans_pos)
+	{
 		return true;
 	}
 

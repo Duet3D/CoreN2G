@@ -6,6 +6,8 @@
  */
 
 #include <CoreIO.h>
+#include <hri_oscctrl_e54.h>
+#include <hri_nvmctrl_e54.h>
 
 #ifndef FREQM_GCLK_ID_REF
 # define FREQM_GCLK_ID_REF		(6)			// this definition is missing from the DFP

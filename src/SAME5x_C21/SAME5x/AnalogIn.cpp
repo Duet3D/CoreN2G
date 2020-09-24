@@ -16,6 +16,7 @@
 #include "AnalogIn.h"
 #include <RTOSIface/RTOSIface.h>
 #include <DmacManager.h>
+#include <hri_adc_e54.h>
 
 constexpr unsigned int AdcGclkNum = GclkNum60MHz;
 constexpr uint32_t AdcConversionTimeout = 5;		// milliseconds

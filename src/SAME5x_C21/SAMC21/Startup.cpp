@@ -6,6 +6,8 @@
  */
 
 #include <CoreIO.h>
+#include <hri_oscctrl_c21.h>
+#include <hri_nvmctrl_c21.h>
 #include <hpl_div.h>
 
 // Symbols defined by the linker

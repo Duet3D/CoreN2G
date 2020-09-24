@@ -21,20 +21,21 @@
 // Define NumTotalPins as pin number at and beyond which it is not safe to access the corresponding port registers on this processor family.
 // This may be greater than the number of I/O pins actually on the particular device we are running on.
 #if SAME5x
-#include <hal_gpio.h>
-#include <hri_port_e54.h>
 constexpr unsigned int NumTotalPins = (3 * 32) + 22;	// SAME54P20A goes up to PD21
 #elif SAMC21
-#include <hal_gpio.h>
-#include <hri_port_c21.h>
 constexpr unsigned int NumTotalPins = 2 * 32;			// SAMC21J goes up to PB31. We don't support the SAMC21N.
 #elif SAME70
-#include <hal_gpio.h>
-inline Pio *GpioPort(Pin p) { return (Pio*)((uint32_t)PIOA + (p >> 5) * 0x200); }
-inline constexpr uint32_t GpioMask(Pin p) { return (uint32_t)1 << (p & 31); }
 constexpr unsigned int NumTotalPins = (4 * 32) + 6;		// SAME70 goes up to PE5
 #else
 # error Unsupported processor
+#endif
+
+inline uint32_t GpioPortNumber(Pin p) { return p >> 5; }
+inline constexpr uint32_t GpioPinNumber(Pin p) { return p & 0x1F; }
+inline constexpr uint32_t GpioMask(Pin p) { return (uint32_t)1 << GpioPinNumber(p); }
+
+#if SAME70 || SAM4E || SAM4S
+inline Pio *GpioPort(Pin p) { return (Pio*)((uint32_t)PIOA + GpioPortNumber(p) * 0x200); }
 #endif
 
 /**
@@ -345,7 +346,7 @@ static inline uint32_t random(uint32_t howsmall, uint32_t howbig) noexcept
 inline void fastDigitalWriteHigh(uint32_t pin) noexcept
 {
 #if SAME5x || SAMC21
-	PORT->Group[GPIO_PORT(pin)].OUTSET.reg = 1ul << GPIO_PIN(pin);
+	PORT->Group[GpioPortNumber(pin)].OUTSET.reg = GpioMask(pin);
 #elif SAME70
 	GpioPort(pin)->PIO_SODR = GpioMask(pin);
 #else
@@ -361,7 +362,7 @@ inline void fastDigitalWriteHigh(uint32_t pin) noexcept
 inline void fastDigitalWriteLow(uint32_t pin) noexcept
 {
 #if SAME5x || SAMC21
-	PORT->Group[GPIO_PORT(pin)].OUTCLR.reg = 1ul << GPIO_PIN(pin);
+	PORT->Group[GpioPortNumber(pin)].OUTCLR.reg = GpioMask(pin);
 #elif SAME70
 	GpioPort(pin)->PIO_CODR = GpioMask(pin);
 #else
@@ -377,7 +378,7 @@ inline void fastDigitalWriteLow(uint32_t pin) noexcept
 inline bool fastDigitalRead(uint32_t pin) noexcept
 {
 #if SAME5x || SAMC21
-	return (PORT->Group[GPIO_PORT(pin)].IN.reg & (1ul << GPIO_PIN(pin))) != 0;
+	return PORT->Group[GpioPortNumber(pin)].IN.reg & GpioMask(pin);
 #elif SAME70
 	return GpioPort(pin)->PIO_PDSR & GpioMask(pin);
 #else
@@ -620,7 +621,7 @@ enum class AdcInput : uint8_t
 	adc0_0 = 0x00, adc0_1, adc0_2, adc0_3, adc0_4, adc0_5, adc0_6, adc0_7, adc0_8, adc0_9, adc0_10, adc0_11,
 #if SAME5x
 	adc0_12, adc0_13, adc0_14, adc0_15,
-	adc1_0 = 0x10, adc1_1, adc1_2, adc1_3, adc1_4, adc1_5, adc1_6, adc1_7, adc1_8, adc1_9, adc1_10, adc1_11,
+	adc1_0 = 0x10, adc1_1, adc1_2, adc1_3, adc1_4, adc1_5, adc1_6, adc1_7, adc1_8, adc1_9, adc1_10, adc1_11, adc1_12, adc1_13, adc1_14, adc1_15,
 #elif SAMC21
 	sdadc_0 = 0x10, sdadc_1,
 #endif
