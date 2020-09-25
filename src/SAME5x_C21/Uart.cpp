@@ -7,11 +7,12 @@
 
 #include "Uart.h"
 
-Uart::Uart(uint8_t sercomNum, uint8_t rxp, size_t numTxSlots, size_t numRxSlots) noexcept
+Uart::Uart(uint8_t sercomNum, uint8_t rxp, size_t numTxSlots, size_t numRxSlots, OnBeginFn p_onBegin, OnEndFn p_onEnd) noexcept
 	: sercom(Serial::GetSercom(sercomNum)),
 #ifdef RTOS
 	  txWaitingTask(nullptr),
 #endif
+	  interruptCallback(nullptr), onBegin(p_onBegin), onEnd(p_onEnd),
 	  sercomNumber(sercomNum), rxPad(rxp)
 {
 	txBuffer.Init(numTxSlots);
@@ -21,6 +22,7 @@ Uart::Uart(uint8_t sercomNum, uint8_t rxp, size_t numTxSlots, size_t numRxSlots)
 // Initialise the UART. numRxSlots may be zero if we don't wish to receive.
 void Uart::begin(uint32_t baudRate) noexcept
 {
+	onBegin(this);
 	Serial::InitUart(sercomNumber, baudRate, rxPad);
 	errors.all = 0;
 	numInterruptBytesMatched = 0;
@@ -28,8 +30,10 @@ void Uart::begin(uint32_t baudRate) noexcept
 
 	const IRQn irqNumber = Serial::GetSercomIRQn(sercomNumber);
 	NVIC_EnableIRQ(irqNumber);
+#if SAME5x
 	NVIC_EnableIRQ((IRQn)(irqNumber + 2));
 	NVIC_EnableIRQ((IRQn)(irqNumber + 3));
+#endif
 }
 
 void Uart::end() noexcept
@@ -43,8 +47,11 @@ void Uart::end() noexcept
 	// Disable UART interrupt in NVIC
 	const IRQn irqNumber = Serial::GetSercomIRQn(sercomNumber);
 	NVIC_DisableIRQ(irqNumber);
+#if SAME5x
 	NVIC_DisableIRQ((IRQn)(irqNumber + 2));
 	NVIC_DisableIRQ((IRQn)(irqNumber + 3));
+#endif
+	onEnd(this);
 }
 
 // Non-blocking read, return 0 if no character available

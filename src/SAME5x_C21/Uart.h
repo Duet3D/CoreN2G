@@ -16,6 +16,9 @@ class Uart : public Stream
 {
 public:
 	typedef void (*InterruptCallbackFn)(Uart*) noexcept;
+	typedef void (*OnBeginFn)(Uart*) noexcept;
+	typedef void (*OnEndFn)(Uart*) noexcept;
+
 	union ErrorFlags
 	{
 		uint8_t all;
@@ -23,7 +26,7 @@ public:
 				framing : 1;
 	};
 
-	Uart(uint8_t sercomNum, uint8_t rxp, size_t numTxSlots, size_t numRxSlots) noexcept;
+	Uart(uint8_t sercomNum, uint8_t rxp, size_t numTxSlots, size_t numRxSlots, OnBeginFn p_onBegin, OnEndFn p_onEnd) noexcept;
 
 	// Overridden virtual functions
 	int available() noexcept override;
@@ -69,6 +72,8 @@ private:
 	volatile TaskHandle txWaitingTask;
 #endif
     InterruptCallbackFn interruptCallback;
+    OnBeginFn onBegin;
+    OnEndFn onEnd;
 	const uint8_t sercomNumber;
 	const uint8_t rxPad;
 	ErrorFlags errors;
