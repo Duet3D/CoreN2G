@@ -40,9 +40,9 @@ namespace AnalogOut
 		return lrintf(f * (float)(top + 1));
 	}
 
-	// Choose the most appropriate prescaler for the PWM frequency we want.
-	// Some TCs share a clock selection, so we always use GCLK1 as the clock
-	// 'counterBits' is either 16 or 8
+	// Choose the most appropriate TC or TCC prescaler for the PWM frequency we want.
+	// Some TCs and TCCs share a clock selection, so we always use the same GCLK
+	// 'counterBits' is 16 or 24 but we might also use 8 in future
 	// Return the prescaler register value
 	static uint32_t ChoosePrescaler(uint16_t freq, unsigned int counterBits, uint32_t& top) noexcept
 	{
@@ -190,10 +190,13 @@ namespace AnalogOut
 					hri_tcc_write_CTRLA_PRESCALER_bf(tccdev, prescaler);
 				}
 
+				// Some TCCs have more outputs than compare channels. So we can't always use the compare channel that corresponds to the output.
+				// As we only use one output per TCC we can program the output matrix to duplicate compare channel 0 to all outputs.
+				tccdev->WEXCTRL.bit.OTMX = 0x02;
 				tccdev->PERBUF.bit.PERBUF = tccTop[device];
 				tccdev->PER.bit.PER = tccTop[device];
-				tccdev->CCBUF[output].bit.CCBUF = cc;
-				tccdev->CC[output].bit.CC = cc;
+				tccdev->CCBUF[0].bit.CCBUF = cc;
+				tccdev->CC[0].bit.CC = cc;
 				hri_tcc_set_CTRLA_ENABLE_bit(tccdev);
 				hri_tcc_write_COUNT_reg(tccdev, 0);
 
@@ -203,7 +206,7 @@ namespace AnalogOut
 			{
 				// Just update the compare register
 				const uint32_t cc = ConvertRange(val, tccTop[device]);
-				hri_tcc_write_CCBUF_CCBUF_bf(tccdev, output, cc);
+				tccdev->CCBUF[0].bit.CCBUF = cc;
 			}
 
 			SetPinFunction(pin, peri);
