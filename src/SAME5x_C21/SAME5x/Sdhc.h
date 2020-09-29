@@ -84,8 +84,9 @@ int32_t hsmci_init() noexcept;
  *  \param[in] clock   Maximum clock to use (Hz)
  *  \param[in] bus_width  Bus width to use (1, 4 or 8)
  *  \param[in] high_speed true, to enable high speed mode
+ *  \return true if success
  */
-void hsmci_select_device(uint8_t slot, uint32_t clock, uint8_t bus_width, bool high_speed) noexcept;
+bool hsmci_select_device(uint8_t slot, uint32_t clock, uint8_t bus_width, bool high_speed) noexcept;
 
 /**
  *  \brief Deselect a device by an assigned slot

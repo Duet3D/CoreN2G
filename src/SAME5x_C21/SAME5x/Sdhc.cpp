@@ -79,7 +79,7 @@ typedef struct
 __attribute__((aligned(32))) static SDHC_ADMA_DESCR sdhc1DmaDescrTable[1];
 
 static void hsmci_reset() noexcept;
-static void hsmci_set_speed(uint32_t speed, uint8_t prog_clock_mode) noexcept;
+static bool hsmci_set_speed(uint32_t speed, uint8_t prog_clock_mode) noexcept;
 static bool hsmci_wait_busy() noexcept;
 static bool hsmci_send_cmd_execute(uint32_t cmdr, uint32_t cmd, uint32_t arg) noexcept;
 
@@ -99,8 +99,9 @@ static void hsmci_reset() noexcept
  * \param hw       The pointer to MCI hardware instance
  * \param speed    SDHC clock speed in Hz.
  * \param prog_clock_mode     Use programmable clock mode
+ * \return true if success
  */
-static void hsmci_set_speed(uint32_t speed, uint8_t prog_clock_mode) noexcept
+static bool hsmci_set_speed(uint32_t speed, uint8_t prog_clock_mode) noexcept
 {
 	// The following is based on the code from Harmony
 	uint32_t baseclk_frq = 0;
@@ -110,9 +111,17 @@ static void hsmci_set_speed(uint32_t speed, uint8_t prog_clock_mode) noexcept
 	// Disable clock before changing it
 	if (hri_sdhc_get_CCR_SDCLKEN_bit(hw))
 	{
-		// It hangs on this next line because the SDHC_PSR_CMDINHD_CANNOT bit it stuck on
+		// It sometimes hangs on this next line because the SDHC_PSR_CMDINHD_CANNOT bit it stuck on
 		// If we comment out this line, it doesn't hang but it fails to mount the SD card
-		while (hri_sdhc_read_PSR_reg(hw) & (SDHC_PSR_CMDINHC_CANNOT | SDHC_PSR_CMDINHD_CANNOT)) { }
+		// So we now return failure if it doesn't become ready
+		const uint32_t startedWaitingAt = millis();
+		while (hri_sdhc_read_PSR_reg(hw) & (SDHC_PSR_CMDINHC_CANNOT | SDHC_PSR_CMDINHD_CANNOT))
+		{
+			if (millis() - startedWaitingAt >= 2)
+			{
+				return false;
+			}
+		}
 		hri_sdhc_clear_CCR_SDCLKEN_bit(hw);
 	}
 
@@ -173,6 +182,8 @@ static void hsmci_set_speed(uint32_t speed, uint8_t prog_clock_mode) noexcept
 
 	// Enable the SDCLK
 	hri_sdhc_set_CCR_SDCLKEN_bit(hw);
+
+	return true;
 }
 
 // Setup the DMA transfer.
@@ -396,9 +407,9 @@ int32_t hsmci_init() noexcept
 
 
 /**
- *  \brief Select a device and initialize it
+ *  \brief Select a device and initialize it, returning true if success
  */
-void hsmci_select_device(uint8_t slot, uint32_t clock, uint8_t bus_width, bool high_speed) noexcept
+bool hsmci_select_device(uint8_t slot, uint32_t clock, uint8_t bus_width, bool high_speed) noexcept
 {
 	(void)(slot);
 
@@ -413,7 +424,15 @@ void hsmci_select_device(uint8_t slot, uint32_t clock, uint8_t bus_width, bool h
 
 	if (hri_sdhc_get_HC2R_PVALEN_bit(hw) == 0)
 	{
-		hsmci_set_speed(clock, CONF_SDHC_CLK_GEN_SEL);
+		if (!hsmci_set_speed(clock, CONF_SDHC_CLK_GEN_SEL))
+		{
+			//TODO should we just return false here and let the reset/retry be done at a higher level?
+			hsmci_reset();						//TODO we may need to use the full error recovery sequence, see section 3.10.1 of the SD Host Controller Simplified Specification Version 3.00
+			if (!hsmci_set_speed(clock, CONF_SDHC_CLK_GEN_SEL))
+			{
+				return false;
+			}
+		}
 	}
 
 	switch (bus_width)
@@ -427,6 +446,7 @@ void hsmci_select_device(uint8_t slot, uint32_t clock, uint8_t bus_width, bool h
 		hri_sdhc_set_HC1R_DW_bit(hw);
 		break;
 	}
+	return true;
 }
 
 /**
