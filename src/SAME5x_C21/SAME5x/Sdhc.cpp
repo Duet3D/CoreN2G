@@ -78,19 +78,44 @@ typedef struct
 
 __attribute__((aligned(32))) static SDHC_ADMA_DESCR sdhc1DmaDescrTable[1];
 
-static void hsmci_reset() noexcept;
+static void hsmci_reset_cmdinh() noexcept;
+static void hsmci_reset_datinh() noexcept;
+static void hsmci_reset_all() noexcept;
 static bool hsmci_set_speed(uint32_t speed, uint8_t prog_clock_mode) noexcept;
 static bool hsmci_wait_busy() noexcept;
 static bool hsmci_send_cmd_execute(uint32_t cmdr, uint32_t cmd, uint32_t arg) noexcept;
+
+/**
+ * \brief Reset the SDHC interface command inhibit bit
+ *
+ * \param hw The pointer to MCI hardware instance
+ */
+static void hsmci_reset_cmdinh() noexcept
+{
+	hw->SRR.reg = SDHC_SRR_SWRSTCMD;
+	while (hw->SRR.reg & SDHC_SRR_SWRSTCMD) { }
+}
+
+/**
+ * \brief Reset the SDHC interface command inhibit bit
+ *
+ * \param hw The pointer to MCI hardware instance
+ */
+static void hsmci_reset_datinh() noexcept
+{
+	hw->SRR.reg = SDHC_SRR_SWRSTDAT;
+	while (hw->SRR.reg & SDHC_SRR_SWRSTDAT) { }
+}
 
 /**
  * \brief Reset the SDHC interface
  *
  * \param hw The pointer to MCI hardware instance
  */
-static void hsmci_reset() noexcept
+static void hsmci_reset_all() noexcept
 {
-	hri_sdhc_set_SRR_SWRSTCMD_bit(hw);
+	hw->SRR.reg = SDHC_SRR_SWRSTALL;
+	while (hw->SRR.reg & SDHC_SRR_SWRSTALL) { }
 }
 
 /**
@@ -104,9 +129,6 @@ static void hsmci_reset() noexcept
 static bool hsmci_set_speed(uint32_t speed, uint8_t prog_clock_mode) noexcept
 {
 	// The following is based on the code from Harmony
-	uint32_t baseclk_frq = 0;
-	uint16_t divider = 0;
-	uint32_t clkmul = 0;
 
 	// Disable clock before changing it
 	if (hri_sdhc_get_CCR_SDCLKEN_bit(hw))
@@ -115,21 +137,25 @@ static bool hsmci_set_speed(uint32_t speed, uint8_t prog_clock_mode) noexcept
 		// If we comment out this line, it doesn't hang but it fails to mount the SD card
 		// So we now return failure if it doesn't become ready
 		const uint32_t startedWaitingAt = millis();
-		while (hri_sdhc_read_PSR_reg(hw) & (SDHC_PSR_CMDINHC_CANNOT | SDHC_PSR_CMDINHD_CANNOT))
+		hri_sdhc_psr_reg_t psr;
+		while (((psr = hri_sdhc_read_PSR_reg(hw)) & (SDHC_PSR_CMDINHC_CANNOT | SDHC_PSR_CMDINHD_CANNOT)) != 0 && millis() - startedWaitingAt < 2) { }
+		if (psr & SDHC_PSR_CMDINHC_CANNOT)
 		{
-			if (millis() - startedWaitingAt >= 2)
-			{
-				return false;
-			}
+			hsmci_reset_cmdinh();
+		}
+		if (psr & SDHC_PSR_CMDINHD_CANNOT)
+		{
+			hsmci_reset_datinh();
 		}
 		hri_sdhc_clear_CCR_SDCLKEN_bit(hw);
 	}
 
 	// Get the base clock frequency
-	baseclk_frq = AppGetSdhcClockSpeed()/2;
+	const uint32_t baseclk_frq = AppGetSdhcClockSpeed()/2;
 
 	// Use programmable clock mode if it is supported
-	clkmul = hri_sdhc_read_CA1R_CLKMULT_bf(hw);
+	uint32_t clkmul = hri_sdhc_read_CA1R_CLKMULT_bf(hw);
+	uint16_t divider = 0;
 	if (clkmul > 0)
 	{
 		/* F_SDCLK = F_MULTCLK/(DIV+1), where F_MULTCLK = F_BASECLK x (CLKMULT+1)
@@ -279,19 +305,15 @@ static uint32_t hsmci_get_clock_speed() noexcept
  */
 static bool hsmci_wait_busy() noexcept
 {
-	uint32_t busy_wait = 0xFFFFFFFF;
-	uint32_t psr;
-
-	do
+	const uint32_t startedWaitingAt = millis();
+	while ((hri_sdhc_read_PSR_reg(hw) & SDHC_PSR_DATLL(1)) == 0)
 	{
-		psr = hri_sdhc_read_PSR_reg(hw);
-
-		if (busy_wait-- == 0)
+		if (millis() - startedWaitingAt > 100)
 		{
-			hsmci_reset();
+			hsmci_reset_all();
 			return false;
 		}
-	} while (!(psr & SDHC_PSR_DATLL(1)));
+	}
 	return true;
 }
 
@@ -342,7 +364,7 @@ static bool hsmci_send_cmd_execute(uint32_t cmdr, uint32_t cmd, uint32_t arg) no
 		{
 			if (sr & (SDHC_EISTR_CMDTEO | SDHC_EISTR_CMDEND | SDHC_EISTR_CMDIDX | SDHC_EISTR_DATTEO | SDHC_EISTR_DATEND | SDHC_EISTR_ADMA))
 			{
-				hsmci_reset();
+				hsmci_reset_cmdinh();
 				hri_sdhc_set_EISTR_reg(hw, SDHC_EISTR_MASK);
 				return false;
 			}
@@ -351,7 +373,7 @@ static bool hsmci_send_cmd_execute(uint32_t cmdr, uint32_t cmd, uint32_t arg) no
 		{
 			if (sr & (SDHC_EISTR_CMDTEO | SDHC_EISTR_CMDEND | SDHC_EISTR_CMDIDX | SDHC_EISTR_CMDCRC | SDHC_EISTR_DATCRC | SDHC_EISTR_DATTEO | SDHC_EISTR_DATEND | SDHC_EISTR_ADMA))
 			{
-				hsmci_reset();
+				hsmci_reset_cmdinh();
 				hri_sdhc_set_EISTR_reg(hw, SDHC_EISTR_MASK);
 				return false;
 			}
@@ -426,12 +448,7 @@ bool hsmci_select_device(uint8_t slot, uint32_t clock, uint8_t bus_width, bool h
 	{
 		if (!hsmci_set_speed(clock, CONF_SDHC_CLK_GEN_SEL))
 		{
-			//TODO should we just return false here and let the reset/retry be done at a higher level?
-			hsmci_reset();						//TODO we may need to use the full error recovery sequence, see section 3.10.1 of the SD Host Controller Simplified Specification Version 3.00
-			if (!hsmci_set_speed(clock, CONF_SDHC_CLK_GEN_SEL))
-			{
-				return false;
-			}
+			return false;
 		}
 	}
 
@@ -625,7 +642,7 @@ bool hsmci_read_word(uint32_t *value) noexcept
 
 			if (sr & (SDHC_EISTR_DATTEO | SDHC_EISTR_DATCRC | SDHC_EISTR_DATEND))
 			{
-				hsmci_reset();
+				hsmci_reset_cmdinh();
 				return false;
 			}
 		} while (!hri_sdhc_get_NISTR_BRDRDY_bit(hw));
@@ -667,7 +684,7 @@ bool hsmci_read_word(uint32_t *value) noexcept
 
 		if (sr & (SDHC_EISTR_DATTEO | SDHC_EISTR_DATCRC | SDHC_EISTR_DATEND))
 		{
-			hsmci_reset();
+			hsmci_reset_cmdinh();
 			return false;
 		}
 	} while (!hri_sdhc_get_NISTR_TRFC_bit(hw));
@@ -693,7 +710,7 @@ bool hsmci_write_word(uint32_t value) noexcept
 
 			if (sr & (SDHC_EISTR_DATTEO | SDHC_EISTR_DATCRC | SDHC_EISTR_DATEND))
 			{
-				hsmci_reset();
+				hsmci_reset_cmdinh();
 				return false;
 			}
 		} while (!hri_sdhc_get_NISTR_BWRRDY_bit(hw));
@@ -715,7 +732,7 @@ bool hsmci_write_word(uint32_t value) noexcept
 
 		if (sr & (SDHC_EISTR_DATTEO | SDHC_EISTR_DATCRC | SDHC_EISTR_DATEND))
 		{
-			hsmci_reset();
+			hsmci_reset_cmdinh();
 			return false;
 		}
 	} while (!hri_sdhc_get_NISTR_TRFC_bit(hw));
@@ -734,7 +751,7 @@ bool hsmci_start_read_blocks(void *dst, uint16_t nb_block) noexcept
 		const bool ok = WaitForDmaComplete();
 		if (!ok)
 		{
-			hsmci_reset();
+			hsmci_reset_all();
 			return false;
 		}
 	}
@@ -753,7 +770,7 @@ bool hsmci_start_write_blocks(const void *src, uint16_t nb_block) noexcept
 		const bool ok = WaitForDmaComplete();
 		if (!ok)
 		{
-			hsmci_reset();
+			hsmci_reset_all();
 			return false;
 		}
 	}
