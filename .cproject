@@ -1224,6 +1224,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/SAM4S_4E_E70/SAME70/hal/utils/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/SAM4S_4E_E70/SAME70/hri}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/SAM4S_4E_E70/SAME70/hpl/pio}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/SAM4S_4E_E70/SAME70/hpl/pmc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/SAM4S_4E_E70/SAME70/Config}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/atmel/SAME70_DFP/2.4.166/same70b/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/arm/CMSIS/5.4.0/CMSIS/Core/Include}&quot;"/>
@@ -1430,6 +1431,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/SAM4S_4E_E70/SAME70/hal/utils/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/SAM4S_4E_E70/SAME70/hri}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/SAM4S_4E_E70/SAME70/hpl/pio}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/SAM4S_4E_E70/SAME70/hpl/pmc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/SAM4S_4E_E70/SAME70/Config}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/atmel/SAME70_DFP/2.4.166/same70b/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/arm/CMSIS/5.4.0/CMSIS/Core/Include}&quot;"/>

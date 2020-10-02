@@ -15,11 +15,22 @@
 #include <General/Bitmap.h>
 #include <cstring>
 
+#if SAME5x
+# include <hri_gclk_e54.h>
+#elif SAME70
+# include <hri_pmc_e70b.h>
+# include <hpl_pmc.h>
+#elif SAMC21
+# include <hri_gclk_c21.h>
+#else
+# error Unsupported processor
+#endif
+
 /**@}*/
 /**
  * \brief CAN receive FIFO element.
  */
-struct CanRxBufferHeader
+struct CanDevice::CanRxBufferHeader
 {
 	__IO union
 	{
@@ -50,7 +61,7 @@ struct CanRxBufferHeader
 	const volatile uint32_t *GetDataPointer() const volatile { return (volatile uint32_t*)this + (sizeof(*this)/sizeof(uint32_t)); }
 };
 
-template<size_t DataLength> struct CanRxBufferEntry : public CanRxBufferHeader
+template<size_t DataLength> struct CanRxBufferEntry : public CanDevice::CanRxBufferHeader
 {
 	uint8_t data[DataLength];
 };
@@ -58,7 +69,7 @@ template<size_t DataLength> struct CanRxBufferEntry : public CanRxBufferHeader
 /**
  * \brief CAN transmit FIFO element.
  */
-struct CanTxBufferHeader
+struct CanDevice::CanTxBufferHeader
 {
 	__IO union
 	{
@@ -89,7 +100,7 @@ struct CanTxBufferHeader
 	volatile uint32_t *GetDataPointer() volatile { return (volatile uint32_t*)this + (sizeof(*this)/sizeof(uint32_t)); }
 };
 
-template<size_t DataLength> struct CanTxBufferEntry : public CanTxBufferHeader
+template<size_t DataLength> struct CanTxBufferEntry : public CanDevice::CanTxBufferHeader
 {
 	uint8_t data[DataLength];
 };
@@ -180,70 +191,6 @@ struct CanDevice::CanExtendedMessageFilterElement
 	__IO union F1Type F1;
 };
 
-struct CanDevice::CanContext
-{
-	uint32_t dataSize;											//!< Maximum CAN data size
-	volatile uint8_t *rx0Fifo;									//!< Receive message fifo start
-	volatile uint8_t *rx1Fifo;									//!< Receive message fifo start
-	volatile uint8_t *rxBuffers;								//!< Receive direct buffers start
-	uint8_t *txBuffers;											//!< Transmit direct buffers start (the Tx fifo buffers follow them)
-	CanTxEventEntry *txEventFifo;								//!< Transfer event fifo
-	CanStandardMessageFilterElement *rxStdFilter;				//!< Standard filter List
-	CanExtendedMessageFilterElement *rxExtFilter;				//!< Extended filter List
-
-	uint32_t GetRxBufferSize() const { return sizeof(CanRxBufferHeader) + dataSize; }
-	uint32_t GetTxBufferSize() const { return sizeof(CanTxBufferHeader) + dataSize; }
-	volatile CanRxBufferHeader *GetRxFifo0Buffer(uint32_t index) const { return (volatile CanRxBufferHeader*)(rx0Fifo + (index * GetRxBufferSize())); }
-	volatile CanRxBufferHeader *GetRxFifo1Buffer(uint32_t index) const { return (volatile CanRxBufferHeader*)(rx1Fifo + (index * GetRxBufferSize())); }
-	volatile CanRxBufferHeader *GetRxBuffer(uint32_t index) const { return (volatile CanRxBufferHeader*)(rxBuffers + (index * GetRxBufferSize())); }
-	CanTxBufferHeader *GetTxBuffer(uint32_t index) const { return (CanTxBufferHeader*)(txBuffers + (index * GetTxBufferSize())); }
-};
-
-// DC: these buffers must be within the first 64kB of RAM. So we now declare them in section CanMessage.
-alignas(4) static CanRxBufferEntry<CanDevice::Can0DataSize> can0_rx_fifo0[CanDevice::RxFifo0Size[0]] __attribute__ ((section (".CanMessage")));
-alignas(4) static CanRxBufferEntry<CanDevice::Can0DataSize> can0_rx_fifo1[CanDevice::RxFifo1Size[0]] __attribute__ ((section (".CanMessage")));
-alignas(4) static CanRxBufferEntry<CanDevice::Can0DataSize> can0_rx_buffers[CanDevice::NumRxBuffers[0]] __attribute__ ((section (".CanMessage")));
-alignas(4) static CanTxBufferEntry<CanDevice::Can0DataSize> can0_tx_buffers[CanDevice::NumTxBuffers[0] + CanDevice::TxFifoSize[0]] __attribute__ ((section (".CanMessage")));
-alignas(4) static CanDevice::CanTxEventEntry can0_tx_event_fifo[CanDevice::TxEventFifoSize[0]] __attribute__ ((section (".CanMessage")));
-alignas(4) static CanDevice::CanStandardMessageFilterElement can0_rx_std_filter[CanDevice::NumShortFilterElements[0]] __attribute__ ((section (".CanMessage")));
-alignas(4) static CanDevice::CanExtendedMessageFilterElement can0_rx_ext_filter[CanDevice::NumExtendedFilterElements[0]] __attribute__ ((section (".CanMessage")));
-
-#if SAME70
-alignas(4) static CanRxBufferEntry<CanDevice::Can1DataSize> can1_rx_fifo0[CanDevice::RxFifo0Size[1]] __attribute__ ((section (".CanMessage")));
-alignas(4) static CanRxBufferEntry<CanDevice::Can1DataSize> can1_rx_fifo1[CanDevice::RxFifo1Size[1]] __attribute__ ((section (".CanMessage")));
-alignas(4) static CanRxBufferEntry<CanDevice::Can1DataSize> can1_rx_buffers[CanDevice::NumRxBuffers[1]] __attribute__ ((section (".CanMessage")));
-alignas(4) static CanTxBufferEntry<CanDevice::Can1DataSize> can1_tx_buffers[CanDevice::NumTxBuffers[1] + CanDevice::TxFifoSize[0]] __attribute__ ((section (".CanMessage")));
-alignas(4) static CanDevice::CanTxEventEntry can1_tx_event_fifo[CanDevice::TxEventFifoSize[1]] __attribute__ ((section (".CanMessage")));
-alignas(4) static CanDevice::CanStandardMessageFilterElement can1_rx_std_filter[CanDevice::NumShortFilterElements[1]] __attribute__ ((section (".CanMessage")));
-alignas(4) static CanDevice::CanExtendedMessageFilterElement can1_rx_ext_filter[CanDevice::NumExtendedFilterElements[1]] __attribute__ ((section (".CanMessage")));
-#endif
-
-CanDevice::CanContext const CanDevice::CanContexts[CanDevice::NumCanDevices] =
-{
-	{
-		.dataSize = Can0DataSize,
-		.rx0Fifo = (uint8_t*)can0_rx_fifo0,
-		.rx1Fifo = (uint8_t*)can0_rx_fifo1,
-		.rxBuffers = (uint8_t*)can0_rx_buffers,
-		.txBuffers = (uint8_t*)can0_tx_buffers,
-		.txEventFifo = can0_tx_event_fifo,
-		.rxStdFilter = can0_rx_std_filter,
-		.rxExtFilter = can0_rx_ext_filter
-	},
-#if SAME70
-	{
-		.dataSize = Can1DataSize,
-		.rx0Fifo = (uint8_t*)can1_rx_fifo0,
-		.rx1Fifo = (uint8_t*)can1_rx_fifo1,
-		.rxBuffers = (uint8_t*)can1_rx_buffers,
-		.txBuffers = (uint8_t*)can1_tx_buffers,
-		.txEventFifo = can1_tx_event_fifo,
-		.rxStdFilter = can1_rx_std_filter,
-		.rxExtFilter = can1_rx_ext_filter
-	},
-#endif
-};
-
 // Macros to handle the differing naming of registers and fields between the SAME70 and the SAME5x/C21
 #if SAME5x || SAMC21
 
@@ -274,8 +221,15 @@ static CanDevice *devicesByPort[2] = { nullptr, nullptr };
 
 CanDevice CanDevice::devices[NumCanDevices];
 
+inline uint32_t CanDevice::GetRxBufferSize() const noexcept { return sizeof(CanRxBufferHeader) + dataSize; }
+inline uint32_t CanDevice::GetTxBufferSize() const noexcept { return sizeof(CanTxBufferHeader) + dataSize; }
+inline volatile CanDevice::CanRxBufferHeader *CanDevice::GetRxFifo0Buffer(uint32_t index) const noexcept { return (volatile CanRxBufferHeader*)(rx0Fifo + (index * GetRxBufferSize())); }
+inline volatile CanDevice::CanRxBufferHeader *CanDevice::GetRxFifo1Buffer(uint32_t index) const noexcept { return (volatile CanRxBufferHeader*)(rx1Fifo + (index * GetRxBufferSize())); }
+inline volatile CanDevice::CanRxBufferHeader *CanDevice::GetRxBuffer(uint32_t index) const noexcept { return (volatile CanRxBufferHeader*)(rxBuffers + (index * GetRxBufferSize())); }
+inline CanDevice::CanTxBufferHeader *CanDevice::GetTxBuffer(uint32_t index) const noexcept { return (CanTxBufferHeader*)(txBuffers + (index * GetTxBufferSize())); }
+
 // Initialise a CAN device and return a pointer to it
-/*static*/ CanDevice* CanDevice::Init(unsigned int whichCan, unsigned int whichPort, bool useFDMode, const CanTiming &timing) noexcept
+/*static*/ CanDevice* CanDevice::Init(unsigned int whichCan, unsigned int whichPort, const Config& config, uint8_t *memStart, const CanTiming &timing) noexcept
 {
 	if (   whichCan >= NumCanDevices									// device number out of range
 		|| whichPort >= 2												// CAN instance number out of range
@@ -291,23 +245,67 @@ CanDevice CanDevice::devices[NumCanDevices];
 		return nullptr;
 	}
 
+	// Set up device number, peripheral number, hardware address etc.
 	dev.whichCan = whichCan;
 	dev.whichPort = whichPort;
 	dev.hw = CanPorts[whichPort];
+	dev.config = &config;
 	devicesByPort[whichPort] = &dev;
-	dev.context = &CanContexts[whichCan];
-	dev.useFDMode = useFDMode;
+
+	// Set up pointers to the individual parts of the buffer memory
+	memset(memStart, 0, config.GetMemorySize());						// clear out filters, transmit pending flags etc.
+	dev.dataSize = config.RoundedUpDataSize();
+	dev.rxStdFilter = (CanStandardMessageFilterElement*)memStart;
+	memStart += config.GetStandardFiltersMemSize();
+	dev.rxExtFilter = (CanExtendedMessageFilterElement*)memStart;
+	memStart += config.GetExtendedFiltersMemSize();
+	dev.rx0Fifo = memStart;
+	memStart += config.rxFifo0Size * config.GetRxBufferSize();
+	dev.rx1Fifo = memStart;
+	memStart += config.rxFifo1Size * config.GetRxBufferSize();
+	dev.rxBuffers = memStart;
+	memStart += config.numRxBuffers * config.GetRxBufferSize();
+	dev.txEventFifo = (CanTxEventEntry*)memStart;
+	memStart += config.GetTxEventFifoMemSize();
+	dev.txBuffers = memStart;
+
+	dev.useFDMode = (dev.dataSize > 8);									// assume we want standard CAN if the max data size is 8 or less
 	dev.messagesLost = dev.busOffCount = 0;
 #ifdef RTOS
 	dev.rxBuffersWaiting.Clear();
 	dev.txBuffersWaiting.Clear();
 #endif
+
 	dev.UpdateLocalCanTiming(timing);									// sets NBTP and DBTP
+
+	// Enable the clock
+#if SAME5x || SAMC21
+	if (whichPort == 0)
+	{
+		MCLK->AHBMASK.reg |= MCLK_AHBMASK_CAN0;
+		hri_gclk_write_PCHCTRL_reg(GCLK, CAN0_GCLK_ID, GclkNum48MHz | GCLK_PCHCTRL_CHEN);
+	}
+	else
+	{
+		MCLK->AHBMASK.reg |= MCLK_AHBMASK_CAN1;
+		hri_gclk_write_PCHCTRL_reg(GCLK, CAN1_GCLK_ID, GclkNum48MHz | GCLK_PCHCTRL_CHEN);
+	}
+#elif SAME70
+	if (whichPort == 0)
+	{
+		_pmc_enable_periph_clock(ID_MCAN0);
+	}
+	else
+	{
+		_pmc_enable_periph_clock(ID_MCAN1);
+	}
+#endif
+
 	dev.DoHardwareInit();
 	return &dev;
 }
 
-// Do the low level hardware initialisation, excluding the bits relating to timing
+// Do the low level hardware initialisation
 void CanDevice::DoHardwareInit() noexcept
 {
 	hw->REG(CCCR) |= CAN_(CCCR_INIT);
@@ -323,17 +321,19 @@ void CanDevice::DoHardwareInit() noexcept
 	hw->MRCFG.reg = CAN_MRCFG_QOS_MEDIUM;
 #endif
 	hw->REG(TDCR) = 0;														// use just the measured transceiver delay
+	hw->REG(NBTP) = nbtp;
+	hw->REG(DBTP) = dbtp;
 	hw->REG(RXF0C) = 														// configure receive FIFO 0
 		  (0 << CAN_(RXF0C_F0OM_Pos))										// blocking mode not overwrite mode
 		| CAN_(RXF0C_F0WM)(0)												// no watermark interrupt
-		| CAN_(RXF0C_F0S)(RxFifo0Size[whichCan])							// number of entries
-		| CAN_(RXF0C_F0SA)((uint32_t)context->rx0Fifo);						// address
-	hw->REG(RXBC) = CAN_(RXBC_RBSA)((uint32_t)context->rxBuffers);			// dedicated buffers start address
+		| CAN_(RXF0C_F0S)(config->rxFifo0Size)								// number of entries
+		| CAN_(RXF0C_F0SA)((uint32_t)rx0Fifo);								// address
+	hw->REG(RXBC) = CAN_(RXBC_RBSA)((uint32_t)rxBuffers);					// dedicated buffers start address
 	hw->REG(RXF1C) = 														// configure receive FIFO 1
 		  (0 << CAN_(RXF1C_F1OM_Pos))										// blocking mode not overwrite mode
 		| CAN_(RXF1C_F1WM)(0)												// no watermark interrupt
-		| CAN_(RXF1C_F1S)(RxFifo1Size[whichCan])							// number of entries
-		| CAN_(RXF1C_F1SA)((uint32_t)context->rx1Fifo);						// address
+		| CAN_(RXF1C_F1S)(config->rxFifo1Size)								// number of entries
+		| CAN_(RXF1C_F1SA)((uint32_t)rx1Fifo);								// address
 	hw->REG(RXESC) =
 #if SAME70
 		MCAN_RXESC_F0DS_64_BYTE | MCAN_RXESC_F1DS_64_BYTE | MCAN_RXESC_RBDS_64_BYTE; // receive buffer and fifo element size
@@ -348,12 +348,12 @@ void CanDevice::DoHardwareInit() noexcept
 #endif
 	hw->REG(TXBC) = 														// configure transmit buffers
 		  (0 << CAN_(TXBC_TFQM_Pos))										// FIFO not queue
-		| CAN_(TXBC_TFQS)(TxFifoSize[whichCan] + NumTxBuffers[whichCan])	// number of Tx fifo entries
-		| CAN_(TXBC_TBSA)((uint32_t)context->txBuffers);					// address
+		| CAN_(TXBC_TFQS)(config->txFifoSize + config->numTxBuffers)		// number of Tx buffer entries
+		| CAN_(TXBC_TBSA)((uint32_t)txBuffers);								// address
 	hw->REG(TXEFC) =  														// configure Tx event fifo
 		  CAN_(TXEFC_EFWM)(0)
-		| CAN_(TXEFC_EFS)(TxEventFifoSize[whichCan])
-		| CAN_(TXEFC_EFSA)((uint32_t)context->txEventFifo);					// address
+		| CAN_(TXEFC_EFS)(config->txEventFifoSize)
+		| CAN_(TXEFC_EFSA)((uint32_t)txEventFifo);							// address
 	hw->REG(GFC) =
 #if SAME70
 		  MCAN_GFC_ANFE(2)
@@ -364,7 +364,7 @@ void CanDevice::DoHardwareInit() noexcept
 #endif
 		| CAN_(GFC_RRFS)
 		| CAN_(GFC_RRFE);
-	hw->REG(SIDFC) = CAN_(SIDFC_LSS)(NumShortFilterElements[whichCan]) | CAN_(SIDFC_FLSSA)((uint32_t)context->rxStdFilter);
+	hw->REG(SIDFC) = CAN_(SIDFC_LSS)(config->numShortFilterElements) | CAN_(SIDFC_FLSSA)((uint32_t)rxStdFilter);
 	hw->REG(XIDAM) = CAN_(XIDAM_EIDM)(0x1FFFFFFF);
 
 	hw->REG(IE) = 0;														// disable all interrupt sources
@@ -447,7 +447,7 @@ bool CanDevice::IsSpaceAvailable(TxBufferNumber whichBuffer, uint32_t timeout) n
 	return bufferFree;
 }
 
-static void CopyMessageForTransmit(CanMessageBuffer *buffer, volatile CanTxBufferHeader *f) noexcept
+void CanDevice::CopyMessageForTransmit(CanMessageBuffer *buffer, volatile CanTxBufferHeader *f) noexcept
 {
 	if (buffer->extId)
 	{
@@ -535,10 +535,10 @@ void CanDevice::SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMes
 			while ((hw->REG(TXBRP) & trigMask) != 0 || READBITS(hw, TXFQS, TFQF));
 		}
 
-		CopyMessageForTransmit(buffer, context->GetTxBuffer(putIndex));
+		CopyMessageForTransmit(buffer, GetTxBuffer(putIndex));
 		hw->REG(TXBAR) = trigMask;
 	}
-	else if ((uint32_t)whichBuffer < (uint32_t)TxBufferNumber::buffer0 + NumTxBuffers[whichCan])
+	else if ((uint32_t)whichBuffer < (uint32_t)TxBufferNumber::buffer0 + config->numTxBuffers)
 	{
 		const uint32_t bufferIndex = (uint32_t)whichBuffer - (uint32_t)TxBufferNumber::buffer0;
 		const uint32_t trigMask = (uint32_t)1 << bufferIndex;
@@ -552,12 +552,12 @@ void CanDevice::SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMes
 			}
 			while ((hw->REG(TXBRP) & trigMask) != 0);
 		}
-		CopyMessageForTransmit(buffer, context->GetTxBuffer(bufferIndex));
+		CopyMessageForTransmit(buffer, GetTxBuffer(bufferIndex));
 		hw->REG(TXBAR) = trigMask;
 	}
 }
 
-static void CopyReceivedMessage(CanMessageBuffer *buffer, const volatile CanRxBufferHeader *f) noexcept
+void CanDevice::CopyReceivedMessage(CanMessageBuffer *buffer, const volatile CanRxBufferHeader *f) noexcept
 {
 	buffer->extId = f->R0.bit.XTD;
 	buffer->id.SetReceivedId((buffer->extId) ? f->R0.bit.ID : f->R0.bit.ID >> 18);			// A standard identifier is stored into ID[28:18]
@@ -658,7 +658,7 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 #endif
 			// Process the received message into the buffer
 			const uint32_t getIndex = (hw->REG(RXF0S) & CAN_(RXF0S_F0GI_Msk)) >> CAN_(RXF0S_F0GI_Pos);
-			CopyReceivedMessage(buffer, context->GetRxFifo0Buffer(getIndex));
+			CopyReceivedMessage(buffer, GetRxFifo0Buffer(getIndex));
 
 			// Tell the hardware that we have taken the message
 			WRITEBITS(hw, RXF0A, F0AI, getIndex);
@@ -697,7 +697,7 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 #endif
 			// Process the received message into the buffer
 			const uint32_t getIndex = (hw->REG(RXF1S) & CAN_(RXF1S_F1GI_Msk)) >> CAN_(RXF1S_F1GI_Pos);
-			CopyReceivedMessage(buffer, context->GetRxFifo1Buffer(getIndex));
+			CopyReceivedMessage(buffer, GetRxFifo1Buffer(getIndex));
 
 			// Tell the hardware that we have taken the message
 			WRITEBITS(hw, RXF1A, F1AI, getIndex);
@@ -705,7 +705,7 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 		return true;
 
 	default:
-		if ((uint32_t)whichBuffer < (uint32_t)RxBufferNumber::buffer0 + NumRxBuffers[whichCan])
+		if ((uint32_t)whichBuffer < (uint32_t)RxBufferNumber::buffer0 + config->numRxBuffers)
 		{
 			// Check for a received message and wait if necessary
 			// We assume that not more than 32 dedicated receive buffers have been configured, so we only need to look at the NDAT1 register
@@ -739,7 +739,7 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 			}
 #endif
 			// Process the received message into the buffer
-			CopyReceivedMessage(buffer, context->GetRxBuffer(bufferNumber));
+			CopyReceivedMessage(buffer, GetRxBuffer(bufferNumber));
 
 			// Tell the hardware that we have taken the message
 			hw->REG(NDAT1) = ndatMask;
@@ -789,14 +789,14 @@ void CanDevice::SetShortFilterElement(unsigned int index, RxBufferNumber whichBu
 			break;
 		}
 	}
-	context->rxStdFilter[index].S0.val = s0.val;
+	rxStdFilter[index].S0.val = s0.val;
 }
 
 // Set an extended ID field filter element. To disable the filter element, use a zero mask parameter.
 // If whichBuffer is a buffer number not a fifo number, the mask field is ignored except that a zero mask disables the filter element; so only the XIDAM mask filters the ID.
 void CanDevice::SetExtendedFilterElement(unsigned int index, RxBufferNumber whichBuffer, uint32_t id, uint32_t mask) noexcept
 {
-	volatile CanExtendedMessageFilterElement& efp = context->rxExtFilter[index];
+	volatile CanExtendedMessageFilterElement& efp = rxExtFilter[index];
 	efp.F0.val = 0;									// disable filter
 	if (mask != 0)
 	{
@@ -841,8 +841,12 @@ void CanDevice::GetLocalCanTiming(CanTiming &timing) noexcept
 
 void CanDevice::SetLocalCanTiming(const CanTiming &timing) noexcept
 {
+	UpdateLocalCanTiming(timing);				// set up nbtp and dbtp variables
 	hw->REG(CCCR) |= CAN_(CCCR_CCE) | CAN_(CCCR_INIT);
-	UpdateLocalCanTiming(timing);
+	while ((hw->REG(CCCR) & CAN_(CCCR_INIT)) == 0) { }
+
+	hw->REG(NBTP) = nbtp;
+	hw->REG(DBTP) = dbtp;
 	hw->REG(CCCR) &= ~CAN_(CCCR_CCE);
 }
 
@@ -868,15 +872,16 @@ void CanDevice::UpdateLocalCanTiming(const CanTiming &timing) noexcept
 		jumpWidth >>= 1;
 	}
 
-	hw->REG(NBTP) = ((tseg1 - 1) << CAN_(NBTP_NTSEG1_Pos))
-				| ((tseg2 - 1) << CAN_(NBTP_NTSEG2_Pos))
-				| ((jumpWidth - 1) << CAN_(NBTP_NSJW_Pos))
-				| ((prescaler - 1) << CAN_(NBTP_NBRP_Pos));
+	nbtp = ((tseg1 - 1) << CAN_(NBTP_NTSEG1_Pos))
+		| ((tseg2 - 1) << CAN_(NBTP_NTSEG2_Pos))
+		| ((jumpWidth - 1) << CAN_(NBTP_NSJW_Pos))
+		| ((prescaler - 1) << CAN_(NBTP_NBRP_Pos));
+
 	// The fast data rate defaults to the same timing
-	hw->REG(DBTP) = ((tseg1 - 1) << CAN_(DBTP_DTSEG1_Pos))
-				| ((tseg2 - 1) << CAN_(DBTP_DTSEG2_Pos))
-				| ((jumpWidth - 1) << CAN_(DBTP_DSJW_Pos))
-				| ((prescaler - 1) << CAN_(DBTP_DBRP_Pos));
+	dbtp = ((tseg1 - 1) << CAN_(DBTP_DTSEG1_Pos))
+		| ((tseg2 - 1) << CAN_(DBTP_DTSEG2_Pos))
+		| ((jumpWidth - 1) << CAN_(DBTP_DSJW_Pos))
+		| ((prescaler - 1) << CAN_(DBTP_DBRP_Pos));
 }
 
 #ifdef RTOS
@@ -905,7 +910,7 @@ void CanDevice::Interrupt() noexcept
 		if (ir & CAN_(IR_DRX))
 		{
 			// Check which receive buffers have new messages
-			if (NumRxBuffers[whichCan] != 0)		// needed to avoid a compiler warning
+			if (config->numRxBuffers != 0)		// needed to avoid a compiler warning
 			{
 				uint32_t newData;
 				while ((newData = hw->REG(NDAT1) & (rxBuffersWaiting.GetRaw() >> 2)) != 0)		// bottom 2 bits of rxBuffersWaiting are for the FIFOs

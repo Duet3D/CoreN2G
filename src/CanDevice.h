@@ -18,19 +18,21 @@
 #  include <RTOSIface/RTOSIface.h>
 # endif
 
+constexpr unsigned int MaxTxBuffers = 4;			// maximum number of dedicated transmit buffers supported by this driver
+constexpr unsigned int MaxRxBuffers = 4;			// maximum number of dedicated receive buffers supported by this driver
+
+static_assert(MaxTxBuffers <= 31);					// that hardware allows up to 32 if thjere is no transmit FIFO but our code only supports up to 31 + a FIFO
+static_assert(MaxRxBuffers <= 30);					// the hardware allows up to 64 but our code only supports up to 30 + the FIFOs
+
 # if SAME70
+constexpr unsigned int NumCanDevices = 2;			// this driver supports both CAN devices on the SAME70
 typedef Mcan Can;
+#else
+constexpr unsigned int NumCanDevices = 1;			// on other MCUs we only support one CAN device
 # endif
 
 class CanMessageBuffer;
 class CanTiming;
-
-// Return the highest element of a constexpr array
-// This function has to be declared out-of-class so that we can refer to it in constant expressions
-static inline constexpr unsigned int MaxElement(const unsigned int arr[], size_t sz) noexcept
-{
-	return (sz == 1) ? arr[0] : max<unsigned int>(arr[0], MaxElement(arr + 1, sz - 1));
-}
 
 class CanDevice
 {
@@ -47,8 +49,78 @@ public:
 		buffer0, buffer1, buffer2, buffer3,
 	};
 
+	// Struct used to pass configuration constants, with default values
+	struct Config
+	{
+		unsigned int dataSize = 64;
+		unsigned int numTxBuffers = 2;
+		unsigned int txFifoSize = 4;
+		unsigned int numRxBuffers =  0;
+		unsigned int rxFifo0Size = 16;
+		unsigned int rxFifo1Size = 16;
+		unsigned int numShortFilterElements = 0;
+		unsigned int numExtendedFilterElements = 3;
+		unsigned int txEventFifoSize = 2;
+
+		// Test whether this is a valid CAN configuration
+		constexpr bool IsValid() const noexcept
+		{
+			return numTxBuffers + txFifoSize <= 32							// maximum total Tx buffers supported is 32
+				&& numTxBuffers <= MaxTxBuffers								// our code only allows 31 buffers + the FIFO
+				&& numRxBuffers <= MaxRxBuffers								// the peripheral supports up to 64 buffers but our code only allows 30 buffers + the two FIFOs
+				&& rxFifo0Size <= 64										// max 64 entries per receive FIFO
+				&& rxFifo1Size <= 64;										// max 64 entries per receive FIFO
+		}
+
+		// Round up the data size to a multiple of 32 bits
+		constexpr unsigned int RoundedUpDataSize() const noexcept { return (dataSize + 3) & ~3; }
+
+		// Return the number of bytes of memory occupied by the 11-bit filters
+		constexpr size_t GetStandardFiltersMemSize() const noexcept
+		{
+			constexpr size_t StandardFilterElementSize = 4;					// one word each
+			return numShortFilterElements * StandardFilterElementSize;
+		}
+
+		// Return the number of bytes of memory occupied by the 29-bit filters
+		constexpr size_t GetExtendedFiltersMemSize() const noexcept
+		{
+			constexpr size_t ExtendedFilterElementSize = 8;					// two words
+			return numExtendedFilterElements * ExtendedFilterElementSize;
+		}
+
+		// Return the number of bytes of memory occupied by each transmit buffer
+		constexpr size_t GetTxBufferSize() const noexcept
+		{
+			return RoundedUpDataSize() + 8;									// each receive buffer has a 2-word header
+		}
+
+		// Return the number of bytes of memory occupied by each receive buffer
+		constexpr size_t GetRxBufferSize() const noexcept
+		{
+			return RoundedUpDataSize() + 8;									// each transmit buffer has a 2-word header
+		}
+
+		// Return the number of bytes of memory occupied by the transmit event FIFO
+		constexpr size_t GetTxEventFifoMemSize() const noexcept
+		{
+			constexpr size_t TxEventEntrySize = 8;							// each transmit event entry is 2 words
+			return txEventFifoSize * TxEventEntrySize;
+		}
+
+		// Return the total amount of buffer memory needed. Must be constexpr so we can allocate memory statically in the correct segment.
+		constexpr size_t GetMemorySize() const noexcept
+		{
+			return (numTxBuffers + txFifoSize) * GetTxBufferSize()
+				+ (numRxBuffers + rxFifo0Size + rxFifo1Size) * GetRxBufferSize()
+				+ GetStandardFiltersMemSize()
+				+ GetExtendedFiltersMemSize()
+				+ GetTxEventFifoMemSize();
+		}
+	};
+
 	// Initialise one of the CAN interfaces and return a pointer to the corresponding device. Returns null if device is already in use or device number is out of range.
-	static CanDevice *Init(unsigned int whichCan, unsigned int whichPort, bool useFDMode, const CanTiming& timing) noexcept;
+	static CanDevice *Init(unsigned int whichCan, unsigned int whichPort, const Config& config, uint8_t *memStart, const CanTiming& timing) noexcept;
 
 	// Free the device
 	void DeInit() noexcept;
@@ -92,82 +164,54 @@ public:
 	// Configuration constants. Need to be public because they are used to size static data in CanDevice.cpp
 	static constexpr size_t Can0DataSize = 64;
 
-# if SAME70
-	static constexpr unsigned int NumCanDevices = 2;
-	static constexpr unsigned int NumTxBuffers[NumCanDevices] = { 6, 6 };
-	static constexpr unsigned int TxFifoSize[NumCanDevices] = { 4, 4 };
-	static constexpr unsigned int NumRxBuffers[NumCanDevices] = { 4, 4 };
-	static constexpr unsigned int RxFifo0Size[NumCanDevices] = { 16, 16 };
-	static constexpr unsigned int RxFifo1Size[NumCanDevices] = { 16, 16 };
-	static constexpr unsigned int NumShortFilterElements[NumCanDevices] = { 0, 0 };
-	static constexpr unsigned int NumExtendedFilterElements[NumCanDevices] = { 3, 3 };
-	static constexpr unsigned int TxEventFifoSize[NumCanDevices] = { 2, 2 };
-# elif SAME5x
-	static constexpr unsigned int NumCanDevices = 1;
-	static constexpr unsigned int NumTxBuffers[NumCanDevices] = { 0 };
-	static constexpr unsigned int TxFifoSize[NumCanDevices] = { 4 };
-	static constexpr unsigned int NumRxBuffers[NumCanDevices] = { 0 };
-	static constexpr unsigned int RxFifo0Size[NumCanDevices] = { 16 };
-	static constexpr unsigned int RxFifo1Size[NumCanDevices] = { 0 };
-	static constexpr unsigned int NumShortFilterElements[NumCanDevices] = { 0 };
-	static constexpr unsigned int NumExtendedFilterElements[NumCanDevices] = { 2 };
-	static constexpr unsigned int TxEventFifoSize[NumCanDevices] = { 2 };
-#elif SAMC21
-	static constexpr unsigned int NumCanDevices = 1;
-	static constexpr unsigned int NumTxBuffers[NumCanDevices] = { 0 };
-	static constexpr unsigned int TxFifoSize[NumCanDevices] = { 16 };
-	static constexpr unsigned int NumRxBuffers[NumCanDevices] = { 0 };
-	static constexpr unsigned int RxFifo0Size[NumCanDevices] = { 16 };
-	static constexpr unsigned int RxFifo1Size[NumCanDevices] = { 0 };
-	static constexpr unsigned int NumShortFilterElements[NumCanDevices] = { 0 };
-	static constexpr unsigned int NumExtendedFilterElements[NumCanDevices] = { 2 };
-	static constexpr unsigned int TxEventFifoSize[NumCanDevices] = { 2 };
-#endif
-
-	static_assert(NumTxBuffers[0] + TxFifoSize[0] <= 32);		// maximum total Tx buffers supported is 32
-	static_assert(NumTxBuffers[0] + 1 <= 32);					// our code only allows 31 buffers + the FIFO
-	static_assert(NumRxBuffers[0] + 2 <= 32);					// the peripheral supports up to 64 buffers but our code only allows 30 buffers + the two FIFOs
-	static_assert(RxFifo0Size[0] <= 64);						// max 64 entries per receive FIFO
-	static_assert(RxFifo1Size[0] <= 64);						// max 64 entries per receive FIFO
-
-#if SAME70
-	static constexpr size_t Can1DataSize = 64;
-	static_assert(NumTxBuffers[1] + TxFifoSize[1] <= 32);		// maximum total Tx buffers supported is 32
-	static_assert(NumTxBuffers[1] + 1 <= 32);					// our code only allows 31 buffers + the FIFO
-	static_assert(NumRxBuffers[1] + 2 <= 32);					// the peripheral supports up to 64 buffers but our code only allows 30 buffers + the two FIFOs
-	static_assert(RxFifo0Size[1] <= 64);						// max 64 entries per receive FIFO
-	static_assert(RxFifo1Size[1] <= 64);						// max 64 entries per receive FIFO
-#endif
-
+private:
 	struct CanTxEventEntry;
 	struct CanStandardMessageFilterElement;
 	struct CanExtendedMessageFilterElement;
-	struct CanContext;
-
-private:
-	static constexpr unsigned int qq = 4;		//TEMPORARY!
+	class CanRxBufferHeader;
+	class CanTxBufferHeader;
 
 	static CanDevice devices[NumCanDevices];
-	static const CanContext CanContexts[CanDevice::NumCanDevices];
 
 	CanDevice() noexcept { }
 	void DoHardwareInit() noexcept;
 	void UpdateLocalCanTiming(const CanTiming& timing) noexcept;
+	uint32_t GetRxBufferSize() const noexcept;
+	uint32_t GetTxBufferSize() const noexcept;
+	volatile CanRxBufferHeader *GetRxFifo0Buffer(uint32_t index) const noexcept;
+	volatile CanRxBufferHeader *GetRxFifo1Buffer(uint32_t index) const noexcept;
+	volatile CanRxBufferHeader *GetRxBuffer(uint32_t index) const noexcept;
+	CanTxBufferHeader *GetTxBuffer(uint32_t index) const noexcept;
+	static void CopyMessageForTransmit(CanMessageBuffer *buffer, volatile CanTxBufferHeader *f) noexcept;
+	static void CopyReceivedMessage(CanMessageBuffer *buffer, const volatile CanRxBufferHeader *f) noexcept;
 
 	Can *hw;													// address of the CAN peripheral we are using
-	const CanContext *context;									// pointer to a struct the points to the buffers and filter elements
+
+	unsigned int whichCan;										// which CAN device we are
+	unsigned int whichPort;										// which CAN port number we use, 0 or 1
+	uint32_t nbtp;												//!< The NBTP register that gives the required normal bit timing
+	uint32_t dbtp;												//!< The DBTP register that gives the required bit timing when we use BRS
+
+	const Config *config;										//!< Configuration parameters
+	uint32_t dataSize;											//!< Maximum CAN data size
+	volatile uint8_t *rx0Fifo;									//!< Receive message fifo start
+	volatile uint8_t *rx1Fifo;									//!< Receive message fifo start
+	volatile uint8_t *rxBuffers;								//!< Receive direct buffers start
+	uint8_t *txBuffers;											//!< Transmit direct buffers start (the Tx fifo buffers follow them)
+	CanTxEventEntry *txEventFifo;								//!< Transfer event fifo
+	CanStandardMessageFilterElement *rxStdFilter;				//!< Standard filter List
+	CanExtendedMessageFilterElement *rxExtFilter;				//!< Extended filter List
+
+	unsigned int messagesLost;									// count of received messages lost because the receive FIFO was full
+	unsigned int busOffCount;									// count of the number of times we have reset due to bus off
 
 # ifdef RTOS
-	TaskHandle txTaskWaiting[MaxElement(NumTxBuffers, ARRAY_SIZE(NumTxBuffers)) + 1];	// tasks waiting for each Tx buffer to become free, first entry is for the Tx FIFO
-	TaskHandle rxTaskWaiting[MaxElement(NumRxBuffers, ARRAY_SIZE(NumRxBuffers)) + 2];	// tasks waiting for each Rx buffer to receive a message, first 2 entries are for the fifos
+	TaskHandle txTaskWaiting[MaxTxBuffers + 1];					// tasks waiting for each Tx buffer to become free, first entry is for the Tx FIFO
+	TaskHandle rxTaskWaiting[MaxRxBuffers + 2];					// tasks waiting for each Rx buffer to receive a message, first 2 entries are for the fifos
 	Bitmap<uint32_t> rxBuffersWaiting;							// which Rx FIFOs and buffers tasks are waiting on
 	Bitmap<uint32_t> txBuffersWaiting;							// which Tx FIFOs and buffers tasks are waiting on
 # endif
 
-	unsigned int whichCan;										// which CAN device we are
-	unsigned int whichPort;										// which CAN port number we use, 0 or 1
-	unsigned int messagesLost;									// count of received messages lost because the receive FIFO was full
-	unsigned int busOffCount;									// count of the number of times we have reset due to bus off
 	bool useFDMode;
 };
 
