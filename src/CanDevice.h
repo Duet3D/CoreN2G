@@ -52,7 +52,7 @@ public:
 	// Struct used to pass configuration constants, with default values
 	struct Config
 	{
-		unsigned int dataSize = 64;
+		unsigned int dataSize = 64;											// must be one of: 8, 12, 16, 20, 24, 32, 48, 64
 		unsigned int numTxBuffers = 2;
 		unsigned int txFifoSize = 4;
 		unsigned int numRxBuffers =  0;
@@ -62,53 +62,60 @@ public:
 		unsigned int numExtendedFilterElements = 3;
 		unsigned int txEventFifoSize = 2;
 
-		// Test whether this is a valid CAN configuration
+		// Test whether the data size is supported by the CAN hardware
+		constexpr bool ValidDataSize() const noexcept
+		{
+			return dataSize >= 8
+				&& (   (dataSize <= 24 && (dataSize & 3) == 0)
+					|| (dataSize <= 64 && (dataSize & 15) == 0)
+				   );
+		}
+
+		// Test whether this is a valid CAN configuration. Use this in a static_assert to check that a specified configuration is valid.
 		constexpr bool IsValid() const noexcept
 		{
-			return numTxBuffers + txFifoSize <= 32							// maximum total Tx buffers supported is 32
+			return ValidDataSize()
+				&& numTxBuffers + txFifoSize <= 32							// maximum total Tx buffers supported is 32
 				&& numTxBuffers <= MaxTxBuffers								// our code only allows 31 buffers + the FIFO
 				&& numRxBuffers <= MaxRxBuffers								// the peripheral supports up to 64 buffers but our code only allows 30 buffers + the two FIFOs
 				&& rxFifo0Size <= 64										// max 64 entries per receive FIFO
 				&& rxFifo1Size <= 64;										// max 64 entries per receive FIFO
 		}
 
-		// Round up the data size to a multiple of 32 bits
-		constexpr unsigned int RoundedUpDataSize() const noexcept { return (dataSize + 3) & ~3; }
-
-		// Return the number of bytes of memory occupied by the 11-bit filters
+		// Return the number of words of memory occupied by the 11-bit filters
 		constexpr size_t GetStandardFiltersMemSize() const noexcept
 		{
-			constexpr size_t StandardFilterElementSize = 4;					// one word each
+			constexpr size_t StandardFilterElementSize = 1;					// one word each
 			return numShortFilterElements * StandardFilterElementSize;
 		}
 
-		// Return the number of bytes of memory occupied by the 29-bit filters
+		// Return the number of words of memory occupied by the 29-bit filters
 		constexpr size_t GetExtendedFiltersMemSize() const noexcept
 		{
-			constexpr size_t ExtendedFilterElementSize = 8;					// two words
+			constexpr size_t ExtendedFilterElementSize = 2;					// two words
 			return numExtendedFilterElements * ExtendedFilterElementSize;
 		}
 
-		// Return the number of bytes of memory occupied by each transmit buffer
+		// Return the number of words of memory occupied by each transmit buffer
 		constexpr size_t GetTxBufferSize() const noexcept
 		{
-			return RoundedUpDataSize() + 8;									// each receive buffer has a 2-word header
+			return (dataSize/4) + 2;										// each receive buffer has a 2-word header
 		}
 
-		// Return the number of bytes of memory occupied by each receive buffer
+		// Return the number of words of memory occupied by each receive buffer
 		constexpr size_t GetRxBufferSize() const noexcept
 		{
-			return RoundedUpDataSize() + 8;									// each transmit buffer has a 2-word header
+			return (dataSize/4) + 2;										// each transmit buffer has a 2-word header
 		}
 
-		// Return the number of bytes of memory occupied by the transmit event FIFO
+		// Return the number of words of memory occupied by the transmit event FIFO
 		constexpr size_t GetTxEventFifoMemSize() const noexcept
 		{
-			constexpr size_t TxEventEntrySize = 8;							// each transmit event entry is 2 words
+			constexpr size_t TxEventEntrySize = 2;							// each transmit event entry is 2 words
 			return txEventFifoSize * TxEventEntrySize;
 		}
 
-		// Return the total amount of buffer memory needed. Must be constexpr so we can allocate memory statically in the correct segment.
+		// Return the total amount of buffer memory needed in 32-bit words. Must be constexpr so we can allocate memory statically in the correct segment.
 		constexpr size_t GetMemorySize() const noexcept
 		{
 			return (numTxBuffers + txFifoSize) * GetTxBufferSize()
@@ -120,7 +127,7 @@ public:
 	};
 
 	// Initialise one of the CAN interfaces and return a pointer to the corresponding device. Returns null if device is already in use or device number is out of range.
-	static CanDevice *Init(unsigned int whichCan, unsigned int whichPort, const Config& config, uint8_t *memStart, const CanTiming& timing) noexcept;
+	static CanDevice *Init(unsigned int whichCan, unsigned int whichPort, const Config& config, uint32_t *memStart, const CanTiming& timing) noexcept;
 
 	// Free the device
 	void DeInit() noexcept;
@@ -193,11 +200,10 @@ private:
 	uint32_t dbtp;												//!< The DBTP register that gives the required bit timing when we use BRS
 
 	const Config *config;										//!< Configuration parameters
-	uint32_t dataSize;											//!< Maximum CAN data size
-	volatile uint8_t *rx0Fifo;									//!< Receive message fifo start
-	volatile uint8_t *rx1Fifo;									//!< Receive message fifo start
-	volatile uint8_t *rxBuffers;								//!< Receive direct buffers start
-	uint8_t *txBuffers;											//!< Transmit direct buffers start (the Tx fifo buffers follow them)
+	volatile uint32_t *rx0Fifo;									//!< Receive message fifo start
+	volatile uint32_t *rx1Fifo;									//!< Receive message fifo start
+	volatile uint32_t *rxBuffers;								//!< Receive direct buffers start
+	uint32_t *txBuffers;										//!< Transmit direct buffers start (the Tx fifo buffers follow them)
 	CanTxEventEntry *txEventFifo;								//!< Transfer event fifo
 	CanStandardMessageFilterElement *rxStdFilter;				//!< Standard filter List
 	CanExtendedMessageFilterElement *rxExtFilter;				//!< Extended filter List
