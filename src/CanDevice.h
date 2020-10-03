@@ -18,7 +18,7 @@
 #  include <RTOSIface/RTOSIface.h>
 # endif
 
-constexpr unsigned int MaxTxBuffers = 4;			// maximum number of dedicated transmit buffers supported by this driver
+constexpr unsigned int MaxTxBuffers = 6;			// maximum number of dedicated transmit buffers supported by this driver
 constexpr unsigned int MaxRxBuffers = 4;			// maximum number of dedicated receive buffers supported by this driver
 
 static_assert(MaxTxBuffers <= 31);					// that hardware allows up to 32 if thjere is no transmit FIFO but our code only supports up to 31 + a FIFO
@@ -46,7 +46,7 @@ public:
 	enum class TxBufferNumber : uint32_t
 	{
 		fifo = 0,
-		buffer0, buffer1, buffer2, buffer3,
+		buffer0, buffer1, buffer2, buffer3, buffer4, buffer5,
 	};
 
 	// Struct used to pass configuration constants, with default values
@@ -99,13 +99,13 @@ public:
 		// Return the number of words of memory occupied by each transmit buffer
 		constexpr size_t GetTxBufferSize() const noexcept
 		{
-			return (dataSize/4) + 2;										// each receive buffer has a 2-word header
+			return (dataSize >> 2) + 2;										// each receive buffer has a 2-word header
 		}
 
 		// Return the number of words of memory occupied by each receive buffer
 		constexpr size_t GetRxBufferSize() const noexcept
 		{
-			return (dataSize/4) + 2;										// each transmit buffer has a 2-word header
+			return (dataSize >> 2) + 2;										// each transmit buffer has a 2-word header
 		}
 
 		// Return the number of words of memory occupied by the transmit event FIFO
