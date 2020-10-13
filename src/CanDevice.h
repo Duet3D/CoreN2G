@@ -55,7 +55,7 @@ public:
 		unsigned int dataSize = 64;											// must be one of: 8, 12, 16, 20, 24, 32, 48, 64
 		unsigned int numTxBuffers = 2;
 		unsigned int txFifoSize = 4;
-		unsigned int numRxBuffers =  0;
+		unsigned int numRxBuffers = 0;
 		unsigned int rxFifo0Size = 16;
 		unsigned int rxFifo1Size = 16;
 		unsigned int numShortFilterElements = 0;
@@ -163,6 +163,8 @@ public:
 	void GetLocalCanTiming(CanTiming& timing) noexcept;
 
 	void SetLocalCanTiming(const CanTiming& timing) noexcept;
+
+	void GetAndClearErrorCounts(unsigned int& rMessagesLost, unsigned int& rBusOffCount) noexcept;
 
 #ifdef RTOS
 	void Interrupt() noexcept;
