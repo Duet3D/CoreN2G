@@ -156,6 +156,14 @@ namespace AnalogOut
 			16, 16
 #endif
 		};
+		static constexpr uint8_t NumChannels[ARRAY_SIZE(TccDevices)] =
+		{
+#if SAME5x
+			6, 4, 3, 2, 2
+#elif SAMC21
+			4, 2, 2
+#endif
+		};
 		static uint16_t tccFreq[ARRAY_SIZE(TccDevices)] = { 0 };
 		static uint32_t tccTop[ARRAY_SIZE(TccDevices)] = { 0 };
 
@@ -187,26 +195,42 @@ namespace AnalogOut
 				else
 				{
 					hri_tcc_clear_CTRLA_ENABLE_bit(tccdev);
-					hri_tcc_write_CTRLA_PRESCALER_bf(tccdev, prescaler);
+					tccdev->CTRLA.bit.PRESCALER = prescaler;
 				}
 
-				// Some TCCs have more outputs than compare channels. So we can't always use the compare channel that corresponds to the output.
-				// As we only use one output per TCC we can program the output matrix to duplicate compare channel 0 to all outputs.
-				tccdev->WEXCTRL.bit.OTMX = 0x02;
 				tccdev->PERBUF.bit.PERBUF = tccTop[device];
 				tccdev->PER.bit.PER = tccTop[device];
-				tccdev->CCBUF[0].bit.CCBUF = cc;
-				tccdev->CC[0].bit.CC = cc;
+
+				// Some TCCs have more outputs than compare channels. So we can't always use the compare channel that corresponds to the output.
+				// As we only use one output per TCC, we can program the output matrix (if there is one) to duplicate compare channel 0 to all outputs.
+				if (output >= NumChannels[device])
+				{
+					tccdev->WEXCTRL.bit.OTMX = 0x02;
+					tccdev->CCBUF[0].bit.CCBUF = cc;
+					tccdev->CC[0].bit.CC = cc;
+				}
+				else
+				{
+					tccdev->CCBUF[output].bit.CCBUF = cc;
+					tccdev->CC[output].bit.CC = cc;
+				}
+
 				hri_tcc_set_CTRLA_ENABLE_bit(tccdev);
 				hri_tcc_write_COUNT_reg(tccdev, 0);
-
 				tccFreq[device] = freq;
 			}
 			else
 			{
 				// Just update the compare register
 				const uint32_t cc = ConvertRange(val, tccTop[device]);
-				tccdev->CCBUF[0].bit.CCBUF = cc;
+				if (output >= NumChannels[device])
+				{
+					tccdev->CCBUF[0].bit.CCBUF = cc;
+				}
+				else
+				{
+					tccdev->CCBUF[output].bit.CCBUF = cc;
+				}
 			}
 
 			SetPinFunction(pin, peri);
