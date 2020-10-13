@@ -35,21 +35,21 @@
 #define _HRI_C21_H_INCLUDED_
 
 #include <sam.h>
-#include <hri_ac_c21.h>
+//#include <hri_ac_c21.h>
 #include <hri_adc_c21.h>
-#include <hri_can_c21.h>
+//#include <hri_can_c21.h>
 #include <hri_ccl_c21.h>
-#include <hri_dac_c21.h>
+//#include <hri_dac_c21.h>
 #include <hri_divas_c21.h>
 #include <hri_dmac_c21.h>
-#include <hri_dsu_c21.h>
+//#include <hri_dsu_c21.h>
 #include <hri_eic_c21.h>
 #include <hri_evsys_c21.h>
 #include <hri_freqm_c21.h>
 #include <hri_gclk_c21.h>
 #include <hri_hmatrixb_c21.h>
 #include <hri_mclk_c21.h>
-#include <hri_mpu_c21.h>
+//#include <hri_mpu_c21.h>
 #include <hri_mtb_c21.h>
 #include <hri_nvic_c21.h>
 #include <hri_nvmctrl_c21.h>
