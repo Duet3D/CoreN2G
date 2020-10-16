@@ -33,6 +33,7 @@
 //extern uint32_t _sstack;
 extern uint32_t _estack;
 extern uint32_t _firmware_crc;
+extern const char VersionText[];
 
 // SystemCoreClock is needed by FreeRTOS. Declaring this here also ensures that the linker includes this object file.
 uint32_t SystemCoreClock = 4000000;
@@ -124,10 +125,11 @@ const DeviceVectors exception_table = {
         .pvReservedM10          = (void*) (0UL), /* Reserved */
 #if 1
 		.pvReservedM9			= (void*) (&_firmware_crc),		/* we store a pointer to the firmware CRC here */
+        .pvReservedM8           = (void*) VersionText,			/* we store a pointer to the firmware or bootloader version text here */
 #else
         .pvReservedM9           = (void*) (0UL), /* Reserved */
-#endif
         .pvReservedM8           = (void*) (0UL), /* Reserved */
+#endif
         .pvReservedM7           = (void*) (0UL), /* Reserved */
         .pvReservedM6           = (void*) (0UL), /* Reserved */
         .pfnSVCall_Handler      = (void*) SVCall_Handler,
