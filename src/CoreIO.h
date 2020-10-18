@@ -18,7 +18,11 @@
 
 #include <General/SimpleMath.h>
 
-// Define NumTotalPins as pin number at and beyond which it is not safe to access the corresponding port registers on this processor family.
+// Exported memory control variables. These are defined in file syscalls.h which must be included by exactly one client file.
+extern char *heapTop;
+extern const char *heapLimit;
+
+// Define NumTotalPins as the pin number at and beyond which it is not safe to access the corresponding port registers on this processor family.
 // This may be greater than the number of I/O pins actually on the particular device we are running on.
 #if SAME5x
 constexpr unsigned int NumTotalPins = (3 * 32) + 22;	// SAME54P20A goes up to PD21

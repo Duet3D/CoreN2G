@@ -5,39 +5,46 @@
  *
  * It cannot be a .cpp file in this project because if we do that, functions from the standard library get used instead of these functions.
  *
+ * The including file may declare "#define SystemStackSize xxxx" before including this, otherwise a default will be used
  */
 
 #include <sys/stat.h>
-
-/*----------------------------------------------------------------------------
- *        Exported variables
- *----------------------------------------------------------------------------*/
+#include <errno.h>
 
 #undef errno
-int errno = 0;
 
-/*----------------------------------------------------------------------------
- *        Exported functions
- *----------------------------------------------------------------------------*/
+int errno;
 
-extern int _end;
+#ifndef SystemStackSize
+# define SystemStackSize	(1024)
+#endif
+
+extern int _end;									// defined by the linker script
+extern int _estack;
+
+void OutOfMemoryHandler() noexcept;					// this must be provided by the client application
+
+char *heapTop = (char*)&_end;
+const char *heapLimit = (char*)&_estack - SystemStackSize;
 
 /**
  * \brief Replacement of C library of _sbrk
  */
-extern "C" char * _sbrk(int incr) noexcept
+extern "C" void * _sbrk(ptrdiff_t incr) noexcept
 {
-	static char *heap = nullptr;
-
-	if (heap == nullptr)
+	char *newHeap = heapTop + incr;
+	if (newHeap <= heapLimit)
 	{
-		heap = (char *)&_end;
+		void *prev_heap = heapTop;
+		heapTop = newHeap;
+		return prev_heap;
 	}
-	char *prev_heap = heap;
 
-	heap += incr;
+	OutOfMemoryHandler();
 
-	return prev_heap;
+	// The out of memory handle usually terminates, but in case it doesn't, try to return failure. Unfortunately, this doesn't seem to work with newlib.
+	errno = ENOMEM;
+	return reinterpret_cast<void*>(-1);
 }
 
 /**
