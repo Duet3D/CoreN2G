@@ -19,13 +19,13 @@ int errno;
 # define SystemStackSize	(1024)
 #endif
 
-extern int _end;									// defined by the linker script
-extern int _estack;
+extern char _end;								// defined by the linker script
+extern char _estack;
 
 void OutOfMemoryHandler() noexcept;					// this must be provided by the client application
 
-char *heapTop = (char*)&_end;
-const char *heapLimit = (char*)&_estack - SystemStackSize;
+char *heapTop = &_end;
+const char *heapLimit = &_estack - SystemStackSize;
 
 /**
  * \brief Replacement of C library of _sbrk
