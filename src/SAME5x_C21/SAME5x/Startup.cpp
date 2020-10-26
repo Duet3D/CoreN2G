@@ -5,6 +5,8 @@
  *      Author: David
  */
 
+#undef __SOFTFP__			// should not be defined, but Eclipse thinks it is
+
 #include <CoreIO.h>
 #include <hri_oscctrl_e54.h>
 #include <hri_nvmctrl_e54.h>
@@ -68,14 +70,11 @@ extern "C" [[noreturn]] void Reset_Handler() noexcept
 	pSrc = (uint32_t *) & _sfixed;
 	SCB->VTOR = ((uint32_t) pSrc & SCB_VTOR_TBLOFF_Msk);
 
-#if __FPU_USED
+	static_assert(__FPU_USED);
 	// Enable FPU
 	SCB->CPACR |= (0xFu << 20);
 	__DSB();
 	__ISB();
-#else
-# error FPU not used
-#endif
 
 	// Initialize the C library
 	__libc_init_array();

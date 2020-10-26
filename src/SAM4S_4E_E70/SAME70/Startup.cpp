@@ -27,6 +27,8 @@
  *
  */
 
+#undef __SOFTFP__			// should not be defined, but Eclipse thinks it is
+
 #include <CoreIO.h>
 
 /* Initialize segments */
@@ -105,13 +107,12 @@ extern "C" [[noreturn]] void Reset_Handler(void)
 	pSrc = (uint32_t *) & _sfixed;
 	SCB->VTOR = ((uint32_t) pSrc & SCB_VTOR_TBLOFF_Msk);
 
-#if __FPU_USED
+#if SAME70 || SAM4E
+static_assert(__FPU_USED);
 	// Enable FPU
 	SCB->CPACR |= (0xFu << 20);
 	__DSB();
 	__ISB();
-#else
-# error FPU not used
 #endif
 
 	/* Initialize the C library */
