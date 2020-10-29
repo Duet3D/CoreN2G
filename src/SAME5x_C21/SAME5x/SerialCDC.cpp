@@ -119,7 +119,7 @@ bool SerialCDC::IsConnected() const noexcept
 
 // Overridden virtual functions
 
-// Non-blocking read, return 0 if no character available
+// Non-blocking read, return -1 if no character available
 int SerialCDC::read() noexcept
 {
 	if (hasConnected)
