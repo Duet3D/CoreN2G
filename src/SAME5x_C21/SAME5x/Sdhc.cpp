@@ -330,8 +330,8 @@ static bool hsmci_wait_busy() noexcept
 static bool hsmci_send_cmd_execute(uint32_t cmdr, uint32_t cmd, uint32_t arg) noexcept
 {
 	// dc42 clear all bits in NISTR and EISTR before we start
-	((Sdhc*)hw)->NISTR.reg = SDHC_NISTR_MASK & 0x7FFF;
-	((Sdhc*)hw)->EISTR.reg = SDHC_EISTR_MASK;
+	hw->NISTR.reg = SDHC_NISTR_MASK & 0x7FFF;
+	hw->EISTR.reg = SDHC_EISTR_MASK;
 
 	cmdr |= SDHC_CR_CMDIDX(cmd) | SDHC_CR_CMDTYP_NORMAL;
 
@@ -346,44 +346,36 @@ static bool hsmci_send_cmd_execute(uint32_t cmdr, uint32_t cmd, uint32_t arg) no
 		}
 	}
 
-	if (cmd & MCI_CMD_OPENDRAIN) {
-		hri_sdhc_set_MC1R_OPD_bit(hw);
-	} else {
-		hri_sdhc_clear_MC1R_OPD_bit(hw);
+	if (cmd & MCI_CMD_OPENDRAIN)
+	{
+		hw->MC1R.reg |= SDHC_MC1R_OPD;
+	}
+	else
+	{
+		hw->MC1R.reg &= ~SDHC_MC1R_OPD;
 	}
 
-	hri_sdhc_write_ARG1R_reg(hw, arg);
-	hri_sdhc_write_CR_reg(hw, cmdr);
+	hw->ARG1R.reg = arg;
+	hw->CR.reg = cmdr;
 
 	/* Wait end of command */
+	const uint32_t errorMask = (cmd & MCI_RESP_CRC)
+							? SDHC_EISTR_CMDTEO | SDHC_EISTR_CMDEND | SDHC_EISTR_CMDIDX  | SDHC_EISTR_DATTEO | SDHC_EISTR_DATEND | SDHC_EISTR_ADMA | SDHC_EISTR_CMDCRC | SDHC_EISTR_DATCRC
+								: SDHC_EISTR_CMDTEO | SDHC_EISTR_CMDEND | SDHC_EISTR_CMDIDX | SDHC_EISTR_DATTEO | SDHC_EISTR_DATEND | SDHC_EISTR_ADMA;
 	do
 	{
-		const uint32_t sr = hri_sdhc_read_EISTR_reg(hw);
-
-		if (cmd & MCI_RESP_CRC)
+		if (hw->EISTR.reg & errorMask)
 		{
-			if (sr & (SDHC_EISTR_CMDTEO | SDHC_EISTR_CMDEND | SDHC_EISTR_CMDIDX | SDHC_EISTR_DATTEO | SDHC_EISTR_DATEND | SDHC_EISTR_ADMA))
-			{
-				hsmci_reset_cmdinh();
-				hri_sdhc_set_EISTR_reg(hw, SDHC_EISTR_MASK);
-				return false;
-			}
+			hsmci_reset_cmdinh();
+			hw->EISTR.reg |= SDHC_EISTR_MASK;
+			return false;
 		}
-		else
-		{
-			if (sr & (SDHC_EISTR_CMDTEO | SDHC_EISTR_CMDEND | SDHC_EISTR_CMDIDX | SDHC_EISTR_CMDCRC | SDHC_EISTR_DATCRC | SDHC_EISTR_DATTEO | SDHC_EISTR_DATEND | SDHC_EISTR_ADMA))
-			{
-				hsmci_reset_cmdinh();
-				hri_sdhc_set_EISTR_reg(hw, SDHC_EISTR_MASK);
-				return false;
-			}
-		}
-	} while (!hri_sdhc_get_NISTR_CMDC_bit(hw));
+	} while ((hw->NISTR.reg & SDHC_NISTR_CMDC) == 0);
 
-	if (!(cmdr & SDHC_CR_DPSEL_DATA))
+	if ((cmdr & SDHC_CR_DPSEL_DATA) == 0)
 	{
 		// dc42 only clear the CMDC bit! In particular, don't clear TRFC.
-		((Sdhc*)hw)->NISTR.reg = SDHC_NISTR_CMDC;
+		hw->NISTR.reg = SDHC_NISTR_CMDC;
 	}
 	if (cmd & MCI_RESP_BUSY)
 	{

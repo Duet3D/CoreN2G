@@ -300,7 +300,7 @@ typedef void (*StandardCallbackFunction)(CallbackParameter) noexcept;
 void WatchdogInit() noexcept;
 
 /**
- * @brief Kick the watchdog. This should be called form within the tick ISR.
+ * @brief Kick the watchdog. This should be called from within the tick ISR.
  *
  */
 void WatchdogReset() noexcept;
