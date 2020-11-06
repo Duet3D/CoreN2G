@@ -221,6 +221,9 @@ void ConfigureGclk(unsigned int index, GclkSource source, uint16_t divisor, bool
 
 #endif
 
+// Optimised version of memcpy for use when the source and destination are known to be 32-bit aligned and a whole number of 32-bit words is to be copied
+void memcpy32(uint32_t *dst, const uint32_t *src, size_t numWords) noexcept;
+
 // Atomic section locker, alternative to InterruptCriticalSectionLocker (is safe to call from within an ISR, and may be faster)
 /**
  * @brief This class is an alternative to InterruptCriticalSectionLocker. It is safe to call from within an ISR, and may be faster.
