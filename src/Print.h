@@ -25,35 +25,27 @@
 
 class Print
 {
-private:
-	size_t printNumber(unsigned long, uint8_t) noexcept;
-	size_t printFloat(double, uint8_t) noexcept;
-
 public:
-    Print() noexcept {}
-    virtual ~Print() {}
+	Print() noexcept {}
+	virtual ~Print() {}
 
-    virtual size_t write(uint8_t) noexcept = 0;
-    virtual size_t write(const uint8_t *buffer, size_t size) noexcept;		// this has a default implementation, but can be overridden for efficiency
+	virtual size_t write(uint8_t) noexcept = 0;
+	virtual size_t write(const uint8_t *buffer, size_t size) noexcept;		// this has a default implementation, but can be overridden for efficiency
 
-    size_t write(const char *str) noexcept
-    {
-    	return (str == NULL) ? 0 : write((const uint8_t *)str, strlen(str));
-    }
+	size_t write(const char *str) noexcept
+	{
+		return (str == NULL) ? 0 : write((const uint8_t *)str, strlen(str));
+	}
 
-    size_t write(const char *buffer, size_t size) noexcept
-    {
-    	return write((const uint8_t *)buffer, size);
-    }
+	size_t write(const char *buffer, size_t size) noexcept
+	{
+		return write((const uint8_t *)buffer, size);
+	}
 
-    size_t print(const char[]) noexcept;
-    size_t print(char) noexcept;
-    size_t print(unsigned char, int base = 10) noexcept;
-    size_t print(int, int base = 10) noexcept;
-    size_t print(unsigned int, int base = 10) noexcept;
-    size_t print(long, int base = 10) noexcept;
-    size_t print(unsigned long, int base = 10) noexcept;
-    size_t print(double, int digits = 2) noexcept;
+	size_t print(const char *str) noexcept
+	{
+		return write(str);
+	}
 };
 
 #endif
