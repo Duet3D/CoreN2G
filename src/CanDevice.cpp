@@ -269,7 +269,7 @@ inline CanDevice::CanTxBufferHeader *CanDevice::GetTxBuffer(uint32_t index) cons
 	dev.txBuffers = memStart;
 
 	dev.useFDMode = (config.dataSize > 8);								// assume we want standard CAN if the max data size is 8
-	dev.messagesLost = dev.busOffCount = 0;
+	dev.messagesQueuedForSending = dev.messagesReceived = dev.messagesLost = dev.busOffCount = dev.txTimeouts = 0;
 #ifdef RTOS
 	dev.rxBuffersWaiting.Clear();
 	dev.txBuffersWaiting.Clear();
@@ -535,6 +535,8 @@ void CanDevice::CopyMessageForTransmit(CanMessageBuffer *buffer, volatile CanTxB
 
 	f->T1.bit.FDF = buffer->fdMode;
 	f->T1.bit.BRS = buffer->useBrs;
+
+	++messagesQueuedForSending;
 }
 
 // Queue a message for sending via a buffer or FIFO. If the buffer isn't free, cancel the previous message (or oldest message in the fifo) and send it anyway.
@@ -555,6 +557,7 @@ void CanDevice::SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMes
 				delay(1);
 			}
 			while ((hw->REG(TXBRP) & trigMask) != 0 || READBITS(hw, TXFQS, TFQF));
+			++txTimeouts;
 		}
 
 		CopyMessageForTransmit(buffer, GetTxBuffer(putIndex));
@@ -573,6 +576,7 @@ void CanDevice::SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMes
 				delay(1);
 			}
 			while ((hw->REG(TXBRP) & trigMask) != 0);
+			++txTimeouts;
 		}
 		CopyMessageForTransmit(buffer, GetTxBuffer(bufferIndex));
 		hw->REG(TXBAR) = trigMask;
@@ -637,6 +641,8 @@ void CanDevice::CopyReceivedMessage(CanMessageBuffer *buffer, const volatile Can
 		buffer->msg.raw32[2] = data[2];
 		buffer->dataLength = dlc2len[f->R1.bit.DLC];
 	}
+
+	++messagesReceived;
 }
 
 // Receive a message in a buffer or fifo, with timeout. Returns true if successful, false if no message available even after the timeout period.
@@ -904,13 +910,16 @@ void CanDevice::UpdateLocalCanTiming(const CanTiming &timing) noexcept
 		| ((prescaler - 1) << CAN_(DBTP_DBRP_Pos));
 }
 
-void CanDevice::GetAndClearErrorCounts(unsigned int& rMessageLost, unsigned int& rBusOffCount) noexcept
+void CanDevice::GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsigned int& rMessagesReceived, unsigned int& rTxTimeouts, unsigned int& rMessagesLost, unsigned int& rBusOffCount) noexcept
 {
 	AtomicCriticalSectionLocker lock;
 
-	rMessageLost = messagesLost;
+	rMessagesQueuedForSending = messagesQueuedForSending;
+	rMessagesReceived = messagesReceived;
+	rMessagesLost = messagesLost;
 	rBusOffCount = busOffCount;
-	messagesLost = busOffCount = 0;
+	rTxTimeouts = txTimeouts;
+	messagesQueuedForSending = messagesReceived = messagesLost = busOffCount = txTimeouts = 0;
 }
 
 #ifdef RTOS
@@ -987,7 +996,7 @@ void CanDevice::Interrupt() noexcept
 			Enable();
 		}
 
-		if (ir & (CAN_(IR_RF0L) || CAN_(IR_RF1L)))
+		if (ir & (CAN_(IR_RF0L) | CAN_(IR_RF1L)))
 		{
 			++messagesLost;
 		}

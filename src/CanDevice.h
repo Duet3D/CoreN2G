@@ -164,7 +164,7 @@ public:
 
 	void SetLocalCanTiming(const CanTiming& timing) noexcept;
 
-	void GetAndClearErrorCounts(unsigned int& rMessagesLost, unsigned int& rBusOffCount) noexcept;
+	void GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsigned int& rMessagesReceived, unsigned int& rTxTimeouts, unsigned int& rMessagesLost, unsigned int& rBusOffCount) noexcept;
 
 #ifdef RTOS
 	void Interrupt() noexcept;
@@ -191,8 +191,8 @@ private:
 	volatile CanRxBufferHeader *GetRxFifo1Buffer(uint32_t index) const noexcept;
 	volatile CanRxBufferHeader *GetRxBuffer(uint32_t index) const noexcept;
 	CanTxBufferHeader *GetTxBuffer(uint32_t index) const noexcept;
-	static void CopyMessageForTransmit(CanMessageBuffer *buffer, volatile CanTxBufferHeader *f) noexcept;
-	static void CopyReceivedMessage(CanMessageBuffer *buffer, const volatile CanRxBufferHeader *f) noexcept;
+	void CopyMessageForTransmit(CanMessageBuffer *buffer, volatile CanTxBufferHeader *f) noexcept;
+	void CopyReceivedMessage(CanMessageBuffer *buffer, const volatile CanRxBufferHeader *f) noexcept;
 
 	Can *hw;													// address of the CAN peripheral we are using
 
@@ -210,6 +210,9 @@ private:
 	CanStandardMessageFilterElement *rxStdFilter;				//!< Standard filter List
 	CanExtendedMessageFilterElement *rxExtFilter;				//!< Extended filter List
 
+	unsigned int messagesQueuedForSending;
+	unsigned int messagesReceived;
+	unsigned int txTimeouts;
 	unsigned int messagesLost;									// count of received messages lost because the receive FIFO was full
 	unsigned int busOffCount;									// count of the number of times we have reset due to bus off
 
