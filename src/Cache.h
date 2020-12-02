@@ -22,7 +22,7 @@ namespace Cache
 	inline void InvalidateAfterDMAReceive(const volatile void *start, size_t length) noexcept { Invalidate(start, length); }
 	inline void FlushBeforeDMASend(const volatile void *start, size_t length) noexcept { Flush(start, length); }
 
-#if SAM4E
+#if SAM4E || SAME5x
 	uint32_t GetHitCount() noexcept;
 #endif
 };

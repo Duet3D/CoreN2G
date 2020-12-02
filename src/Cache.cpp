@@ -5,9 +5,9 @@
  *      Author: David
  */
 
-#include <Cache.h>
+#include "Cache.h"
 
-#if !SAMC21 && !SAM4S && !SAM3XA
+#if SAM4E || SAME70 || SAME5x
 
 #if SAME70
 # include <core_cm7.h>
@@ -16,6 +16,8 @@
 
 extern uint32_t _nocache_ram_start;
 extern uint32_t _nocache_ram_end;
+
+static bool cacheEnabled = false;
 
 # if USE_MPU
 #  include <mpu_armv7.h>
@@ -43,45 +45,75 @@ extern uint32_t _nocache_ram_end;
 
 # endif
 
-#endif
+#else
 
-#if SAM4E
-# include <cmcc/cmcc.h>
-#endif
+// SAM4E and SAME5x use fairly similar cache controllers
 
-#if SAME5x
-
-inline void cache_disable()
+inline bool is_cache_enabled() noexcept
 {
-	while (CMCC->SR.bit.CSTS)
+#if SAME5x
+	return CMCC->SR.bit.CSTS;
+#elif SAM4E
+	return (CMCC->CMCC_SR & CMCC_SR_CSTS) != 0;
+#endif
+}
+
+inline void cache_invalidate_all() noexcept
+{
+#if SAME5x
+	CMCC->MAINT0.reg = CMCC_MAINT0_INVALL;
+#elif SAM4E
+	CMCC->CMCC_MAINT0 = CMCC_MAINT0_INVALL;
+#endif
+	__ISB();
+	__DSB();
+}
+
+inline void cache_disable() noexcept
+{
+	while (is_cache_enabled())
 	{
+#if SAME5x
 		CMCC->CTRL.reg = 0;
+#elif SAM4E
+		CMCC->CMCC_CTRL = 0;
+#endif
 		__ISB();
 		__DSB();
 	}
 }
 
-inline void cache_enable()
+inline void cache_enable() noexcept
 {
-	CMCC->CTRL.reg = CMCC_CTRL_CEN;
-	__ISB();
-	__DSB();
-}
-
-inline void cache_invalidate_all()
-{
-	CMCC->MAINT0.reg = CMCC_MAINT0_INVALL;
+	if (!is_cache_enabled())
+	{
+		cache_invalidate_all();
+#if SAME5x
+		CMCC->CTRL.reg = CMCC_CTRL_CEN;
+#elif SAM4E
+		CMCC->CMCC_CTRL = CMCC_CTRL_CEN;
+#endif
+		__ISB();
+		__DSB();
+	}
 }
 
 #endif
-
-static bool enabled = false;
 
 void Cache::Init() noexcept
 {
 #if SAME70
 
 # if USE_MPU
+
+#  if 0
+// For debugging
+#   define CACHE_MODE	ARM_MPU_CACHEP_WT_NWA
+#  else
+// Normal operation
+#   define CACHE_MODE	ARM_MPU_CACHEP_WB_WRA
+#  endif
+
 	// Set up the MPU so that we can have a non-cacheable RAM region, and so that we can trap accesses to non-existent memory
 	// Where regions overlap, the region with the highest region number takes priority
 	constexpr ARM_MPU_Region_t regionTable[] =
@@ -91,49 +123,56 @@ void Cache::Init() noexcept
 			ARM_MPU_RBAR(0, IFLASH_ADDR),
 			ARM_MPU_RASR_EX(0u, ARM_MPU_AP_RO, ARM_MPU_ACCESS_NORMAL(ARM_MPU_CACHEP_WB_WRA, ARM_MPU_CACHEP_WB_WRA, 1u), 0u, ARM_MPU_REGION_SIZE_1MB)
 		},
+		// First 512b of the flash memory is also the flash write page buffer, which we need to write to when writing the user page
+		{
+			ARM_MPU_RBAR(1, IFLASH_ADDR),
+			ARM_MPU_RASR_EX(0u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_NORMAL(ARM_MPU_CACHEP_WT_NWA, ARM_MPU_CACHEP_WT_NWA, 1u), 0u, ARM_MPU_REGION_SIZE_512B)
+		},
 		// First 256kb RAM, read-write, cacheable, execute disabled. Parts of this are overridden later.
 		{
-			ARM_MPU_RBAR(1, IRAM_ADDR),
-			ARM_MPU_RASR_EX(1u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_NORMAL(ARM_MPU_CACHEP_WB_WRA, ARM_MPU_CACHEP_WB_WRA, 1u), 0u, ARM_MPU_REGION_SIZE_256KB)
+			ARM_MPU_RBAR(2, IRAM_ADDR),
+			ARM_MPU_RASR_EX(1u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_NORMAL(CACHE_MODE, CACHE_MODE, 1u), 0u, ARM_MPU_REGION_SIZE_256KB)
 		},
 		// Final 128kb RAM, read-write, cacheable, execute disabled
 		{
-			ARM_MPU_RBAR(2, IRAM_ADDR + 0x00040000),
-			ARM_MPU_RASR_EX(1u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_NORMAL(ARM_MPU_CACHEP_WB_WRA, ARM_MPU_CACHEP_WB_WRA, 1u), 0u, ARM_MPU_REGION_SIZE_128KB)
+			ARM_MPU_RBAR(3, IRAM_ADDR + 0x00040000),
+			ARM_MPU_RASR_EX(1u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_NORMAL(CACHE_MODE, CACHE_MODE, 1u), 0u, ARM_MPU_REGION_SIZE_128KB)
 		},
 		// Non-cachable RAM. This must be before normal RAM because it includes CAN buffers which must be within first 64kb.
 		// Read write, execute disabled, non-cacheable
 		{
-			ARM_MPU_RBAR(3, IRAM_ADDR),
-			ARM_MPU_RASR_EX(1u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_ORDERED, 0, ARM_MPU_REGION_SIZE_64KB)
+			ARM_MPU_RBAR(4, IRAM_ADDR),
+			ARM_MPU_RASR_EX(1u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_ORDERED, 0, ARM_MPU_REGION_SIZE_32KB)
 		},
 		// RAMFUNC memory. Read-only (the code has already been written to it), execution allowed. The initialised data memory follows, so it must be RW.
 		// 256 bytes is enough at present (check the linker memory map if adding more RAMFUNCs).
 		{
-			ARM_MPU_RBAR(4, IRAM_ADDR + 0x00010000),
-			ARM_MPU_RASR_EX(0u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_NORMAL(ARM_MPU_CACHEP_WB_WRA, ARM_MPU_CACHEP_WB_WRA, 1u), 0u, ARM_MPU_REGION_SIZE_256B)
+			ARM_MPU_RBAR(5, IRAM_ADDR + 0x00008000),
+			ARM_MPU_RASR_EX(0u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_NORMAL(CACHE_MODE, CACHE_MODE, 1u), 0u, ARM_MPU_REGION_SIZE_256B)
 		},
 		// Peripherals
 		{
-			ARM_MPU_RBAR(5, 0x40000000),
+			ARM_MPU_RBAR(6, 0x40000000),
 			ARM_MPU_RASR_EX(1u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_DEVICE(1u), 0u, ARM_MPU_REGION_SIZE_16MB)
 		},
 		// USBHS
 		{
-			ARM_MPU_RBAR(6, 0xA0100000),
+			ARM_MPU_RBAR(7, 0xA0100000),
 			ARM_MPU_RASR_EX(1u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_DEVICE(1u), 0u, ARM_MPU_REGION_SIZE_1MB)
 		},
 		// ROM
 		{
-			ARM_MPU_RBAR(7, IROM_ADDR),
-			ARM_MPU_RASR_EX(0u, ARM_MPU_AP_RO, ARM_MPU_ACCESS_NORMAL(ARM_MPU_CACHEP_WB_WRA, ARM_MPU_CACHEP_WB_WRA, 1u), 0u, ARM_MPU_REGION_SIZE_4MB)
+			ARM_MPU_RBAR(8, IROM_ADDR),
+			ARM_MPU_RASR_EX(0u, ARM_MPU_AP_RO, ARM_MPU_ACCESS_NORMAL(ARM_MPU_CACHEP_WT_NWA, ARM_MPU_CACHEP_WT_NWA, 1u), 0u, ARM_MPU_REGION_SIZE_4MB)
 		},
 		// ARM Private Peripheral Bus
 		{
-			ARM_MPU_RBAR(8, 0xE0000000),
+			ARM_MPU_RBAR(9, 0xE0000000),
 			ARM_MPU_RASR_EX(1u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_ORDERED, 0u, ARM_MPU_REGION_SIZE_1MB)
 		}
 	};
+
+	static_assert(ARRAY_SIZE(regionTable) <= 16);		// SAME70 supports 16 regions
 
 	// Ensure MPU is disabled
 	ARM_MPU_Disable();
@@ -153,57 +192,51 @@ void Cache::Init() noexcept
 # endif
 
 #elif SAME5x
-	// No need to do any initialisation
+	CMCC->MCFG.reg = CMCC_MCFG_MODE_DHIT_COUNT;		// data hit mode
+	CMCC->MEN.bit.MENABLE = 1;
 #elif SAM4E
-	cmcc_config g_cmcc_cfg;
-	cmcc_get_config_defaults(&g_cmcc_cfg);
-	cmcc_init(CMCC, &g_cmcc_cfg);
+	CMCC->CMCC_MCFG = 2;							// data hit mode
+	CMCC->CMCC_MEN |= CMCC_MEN_MENABLE;
 #endif
 }
 
 void Cache::Enable() noexcept
 {
-	if (!enabled)
-	{
-		enabled = true;
 #if SAME70
+	if (!cacheEnabled)
+	{
+		cacheEnabled = true;
 		SCB_EnableICache();
 		SCB_EnableDCache();
-#elif SAME5x
-		cache_invalidate_all();
-		cache_enable();
-#elif SAM4E
-		cmcc_invalidate_all(CMCC);
-		cmcc_enable(CMCC);
-#endif
 	}
+#else
+	cache_enable();
+#endif
 }
 
 // Disable the cache, returning true if it was enabled
 bool Cache::Disable() noexcept
 {
-	if (enabled)
-	{
 #if SAME70
-		SCB_CleanDCache();
+	const bool wasEnabled = cacheEnabled;
+	if (wasEnabled)
+	{
 		SCB_DisableICache();
-		SCB_DisableDCache();
-#elif SAME5x
-		cache_disable();
-#elif SAM4E
-		cmcc_disable(CMCC);
-#endif
-		enabled = false;
-		return true;
+		SCB_DisableDCache();						// this cleans it as well as disabling it
+		cacheEnabled = false;
 	}
-	return false;
+#else
+	const bool wasEnabled = is_cache_enabled();
+	cache_disable();
+#endif
+	return wasEnabled;
 }
 
 #if SAME70
 
 void Cache::Flush(const volatile void *start, size_t length) noexcept
 {
-	if (enabled)
+	if (cacheEnabled)
 	{
 		// We assume that the DMA buffer is entirely inside or entirely outside the non-cached RAM area
 		if (start < (void*)&_nocache_ram_start || start >= (void*)&_nocache_ram_end)
@@ -218,9 +251,9 @@ void Cache::Flush(const volatile void *start, size_t length) noexcept
 
 void Cache::Invalidate(const volatile void *start, size_t length) noexcept
 {
-	if (enabled)
-	{
 #if SAME70
+	if (cacheEnabled)
+	{
 		// We assume that the DMA buffer is entirely inside or entirely outside the non-cached RAM area
 		if (start < (void*)&_nocache_ram_start || start >= (void*)&_nocache_ram_end)
 		{
@@ -228,36 +261,39 @@ void Cache::Invalidate(const volatile void *start, size_t length) noexcept
 			const uint32_t startAddr = reinterpret_cast<uint32_t>(start);
 			SCB_InvalidateDCache_by_Addr(reinterpret_cast<uint32_t*>(startAddr & ~3), length + (startAddr & 3));
 		}
-#elif SAME5x
-		//TODO can we invalidate just the relevant cache line(s)?
-		// Disable interrupts throughout the sequence, otherwise we could get a task switch while the cache is disabled.
-		// The can cause a crash because we end up invalidating the cache while it is enabled.
+	}
+#else
+	// We just invalidate the whole cache
+	if (is_cache_enabled())
+	{
+		// Disable interrupts to prevent a task switch, otherwise we may end up with the cache disabled in another task
 		const irqflags_t flags = cpu_irq_save();
 		cache_disable();
 		cache_invalidate_all();
 		cache_enable();
 		cpu_irq_restore(flags);
-#elif SAM4E
-		// The cache is only 2kb on the SAM4E so we just invalidate the whole cache
-		const irqflags_t flags = cpu_irq_save();
-		cmcc_disable(CMCC);
-		cmcc_invalidate_all(CMCC);
-		cmcc_enable(CMCC);
-		cpu_irq_restore(flags);
-#endif
 	}
+	else
+	{
+		cache_invalidate_all();
+	}
+#endif
 }
 
-#if SAM4E
+#if SAM4E || SAME5x
 
 uint32_t Cache::GetHitCount() noexcept
 {
-	return cmcc_get_monitor_cnt(CMCC);
+#if SAM4E
+	return CMCC->CMCC_MSR;
+#elif SAME5x
+	return CMCC->MSR.reg;
+#endif
 }
 
 #endif
 
-#endif	// !SAMC21 && !SAM4S && !SAM3XA
+#endif	// SAM4E || SAME70 || SAME5x
 
 // Entry points that can be called from ASF C code
 void CacheFlushBeforeDMAReceive(const volatile void *start, size_t length) noexcept { Cache::FlushBeforeDMAReceive(start, length); }
