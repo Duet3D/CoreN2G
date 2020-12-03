@@ -6,6 +6,7 @@
  */
 
 #include "Uart.h"
+#include <algorithm>		// for std::swap
 
 Uart::Uart(uint8_t sercomNum, uint8_t rxp, size_t numTxSlots, size_t numRxSlots, OnBeginFn p_onBegin, OnEndFn p_onEnd) noexcept
 	: sercom(Serial::GetSercom(sercomNum)),
@@ -143,12 +144,10 @@ size_t Uart::write(const uint8_t* buffer, size_t buflen) noexcept
 }
 
 // Get and clear the errors
-Uart::ErrorFlags Uart::GetAndClearErrors() noexcept
+Uart::Errors Uart::GetAndClearErrors() noexcept
 {
-	__disable_irq();
-	const ErrorFlags errs = errors;
-	errors.all = 0;
-	__enable_irq();
+	Errors errs;
+	std::swap(errs, errors);
 	return errs;
 }
 
@@ -207,7 +206,7 @@ void Uart::Interrupt2() noexcept
 
 	if (!rxBuffer.PutItem(c))
 	{
-		errors.overrun = true;
+		++errors.bufferOverrun;
 	}
 }
 
@@ -217,11 +216,11 @@ void Uart::Interrupt3() noexcept
 	const uint16_t stat2 = sercom->USART.STATUS.reg;
 	if (stat2 & SERCOM_USART_STATUS_BUFOVF)
 	{
-		errors.overrun = true;
+		++errors.uartOverrun;
 	}
 	if (stat2 & SERCOM_USART_STATUS_FERR)
 	{
-		errors.framing = true;
+		++errors.framing;
 	}
 	sercom->USART.STATUS.reg = stat2;
 	sercom->USART.INTFLAG.reg = SERCOM_USART_INTFLAG_ERROR;			// clear the error
@@ -256,7 +255,7 @@ void Uart::Interrupt() noexcept
 
 		if (!rxBuffer.PutItem(c))
 		{
-			errors.overrun = true;
+			++errors.bufferOverrun;
 		}
 	}
 
@@ -294,11 +293,11 @@ void Uart::Interrupt() noexcept
 		const uint16_t stat2 = sercom->USART.STATUS.reg;
 		if (stat2 & SERCOM_USART_STATUS_BUFOVF)
 		{
-			errors.overrun = true;
+			++errors.uartOverrun;
 		}
 		if (stat2 & SERCOM_USART_STATUS_FERR)
 		{
-			errors.framing = true;
+			++errors.framing;
 		}
 		sercom->USART.STATUS.reg = stat2;
 		sercom->USART.INTFLAG.reg = SERCOM_USART_INTFLAG_ERROR;			// clear the error

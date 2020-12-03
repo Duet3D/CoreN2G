@@ -19,11 +19,14 @@ public:
 	typedef void (*OnBeginFn)(Uart*) noexcept;
 	typedef void (*OnEndFn)(Uart*) noexcept;
 
-	union ErrorFlags
+	union Errors
 	{
-		uint8_t all;
-		uint8_t overrun : 1,
-				framing : 1;
+		uint32_t all;
+		uint32_t uartOverrun : 11,
+				 framing : 11,
+				 bufferOverrun : 10;
+
+		Errors() noexcept { all = 0; }
 	};
 
 	Uart(uint8_t sercomNum, uint8_t rxp, size_t numTxSlots, size_t numRxSlots, OnBeginFn p_onBegin, OnEndFn p_onEnd) noexcept;
@@ -62,7 +65,7 @@ public:
 #endif
 
 	// Get and clear the errors
-	ErrorFlags GetAndClearErrors() noexcept;
+	Errors GetAndClearErrors() noexcept;
 
 private:
 	RingBuffer<uint8_t> txBuffer;
@@ -74,9 +77,9 @@ private:
     InterruptCallbackFn interruptCallback;
     OnBeginFn onBegin;
     OnEndFn onEnd;
+	Errors errors;
 	const uint8_t sercomNumber;
 	const uint8_t rxPad;
-	ErrorFlags errors;
     uint8_t numInterruptBytesMatched;
 
     static constexpr uint8_t interruptSeq[2] = { 0xF0, 0x0F };
