@@ -45,6 +45,7 @@ constexpr IRQn SDHC_IRQn = SDHC1_IRQn;
 
 #define HSMCI_SLOT_0_SIZE 		4
 #define CONF_SDHC_CLK_GEN_SEL	0
+#define STOP_CLOCK_WHEN_IDLE	1
 
 //extern void debugPrintf(const char* fmt, ...) noexcept __attribute__ ((format (printf, 1, 2)));
 
@@ -463,8 +464,12 @@ bool hsmci_select_device(uint8_t slot, uint32_t clock, uint8_t bus_width, bool h
  */
 void hsmci_deselect_device(uint8_t slot) noexcept
 {
-	/* Nothing to do */
 	(void)(slot);
+#if STOP_CLOCK_WHEN_IDLE
+	hri_sdhc_clear_CCR_SDCLKEN_bit(hw);				// stop the SD card clock to reduce EMI
+#else
+	/* Nothing to do */
+#endif
 }
 
 /**
