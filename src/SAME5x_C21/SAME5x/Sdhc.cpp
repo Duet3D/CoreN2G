@@ -45,7 +45,9 @@ constexpr IRQn SDHC_IRQn = SDHC1_IRQn;
 
 #define HSMCI_SLOT_0_SIZE 		4
 #define CONF_SDHC_CLK_GEN_SEL	0
-#define STOP_CLOCK_WHEN_IDLE	1
+
+// Enabling STOP_CLOCK_WHEN_IDLE reduces EMI when idle, but caused system hangs on Christian's board when uploading files. So leave it disabled for now.
+#define STOP_CLOCK_WHEN_IDLE	0
 
 //extern void debugPrintf(const char* fmt, ...) noexcept __attribute__ ((format (printf, 1, 2)));
 
@@ -375,7 +377,7 @@ static bool hsmci_send_cmd_execute(uint32_t cmdr, uint32_t cmd, uint32_t arg) no
 
 	if ((cmdr & SDHC_CR_DPSEL_DATA) == 0)
 	{
-		// dc42 only clear the CMDC bit! In particular, don't clear TRFC.
+		// dc42: only clear the CMDC bit! In particular, don't clear TRFC.
 		hw->NISTR.reg = SDHC_NISTR_CMDC;
 	}
 	if (cmd & MCI_RESP_BUSY)
@@ -437,12 +439,9 @@ bool hsmci_select_device(uint8_t slot, uint32_t clock, uint8_t bus_width, bool h
 		hri_sdhc_clear_HC1R_HSEN_bit(hw);
 	}
 
-	if (hri_sdhc_get_HC2R_PVALEN_bit(hw) == 0)
+	if (!hsmci_set_speed(clock, CONF_SDHC_CLK_GEN_SEL))
 	{
-		if (!hsmci_set_speed(clock, CONF_SDHC_CLK_GEN_SEL))
-		{
-			return false;
-		}
+		return false;
 	}
 
 	switch (bus_width)
