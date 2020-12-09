@@ -25,11 +25,8 @@
 #elif SAME70
 # include <hri_pmc_e70b.h>
 # include <hpl/pmc/hpl_pmc.h>
-#elif SAM4E
-# include <hri_pmc_4e.h>
-# include <hpl/pmc/hpl_pmc.h>
-#elif SAM4S
-# include <hri_pmc_4s.h>
+#elif SAM4E || SAM4S
+# include <asf/sam/drivers/pmc/pmc.h>
 # include <hpl/pmc/hpl_pmc.h>
 #endif
 

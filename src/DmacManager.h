@@ -184,7 +184,7 @@ enum class DmaTrigSource : uint8_t
 	tc7_mc1
 # endif
 
-#elif SAME70
+#elif SAME70 || SAM4E || SAM4S
 	//TODO
 #else
 # error Unsupported processor

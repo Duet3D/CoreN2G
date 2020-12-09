@@ -28,6 +28,10 @@ extern const char *heapLimit;
 constexpr unsigned int NumTotalPins = (3 * 32) + 22;	// SAME54P20A goes up to PD21
 #elif SAMC21
 constexpr unsigned int NumTotalPins = 2 * 32;			// SAMC21J goes up to PB31. We don't support the SAMC21N.
+#elif SAM4E
+constexpr unsigned int NumTotalPins = (4 * 32) + 6;		// SAM4E8E goes up to PE5
+#elif SAM4S
+constexpr unsigned int NumTotalPins = 3 * 32;			// SAM4S8C goes up to PC31
 #elif SAME70
 constexpr unsigned int NumTotalPins = (4 * 32) + 6;		// SAME70 goes up to PE5
 #else
@@ -371,7 +375,7 @@ inline void fastDigitalWriteHigh(uint32_t pin) noexcept
 {
 #if SAME5x || SAMC21
 	PORT->Group[GpioPortNumber(pin)].OUTSET.reg = GpioMask(pin);
-#elif SAME70
+#elif SAME70 || SAM4E || SAM4S
 	GpioPort(pin)->PIO_SODR = GpioMask(pin);
 #else
 # error Unsupported processor
@@ -387,7 +391,7 @@ inline void fastDigitalWriteLow(uint32_t pin) noexcept
 {
 #if SAME5x || SAMC21
 	PORT->Group[GpioPortNumber(pin)].OUTCLR.reg = GpioMask(pin);
-#elif SAME70
+#elif SAME70 || SAM4E || SAM4S
 	GpioPort(pin)->PIO_CODR = GpioMask(pin);
 #else
 # error Unsupported processor
@@ -403,7 +407,7 @@ inline bool fastDigitalRead(uint32_t pin) noexcept
 {
 #if SAME5x || SAMC21
 	return PORT->Group[GpioPortNumber(pin)].IN.reg & GpioMask(pin);
-#elif SAME70
+#elif SAME70 || SAM4E || SAM4S
 	return GpioPort(pin)->PIO_PDSR & GpioMask(pin);
 #else
 # error Unsupported processor
@@ -480,7 +484,7 @@ static inline constexpr GpioPinFunction GetPeriNumber(TcOutput tc) noexcept
 {
 #if SAME5x || SAMC21
 	return GpioPinFunction::E;		// all TCs are on peripheral E for both the SAME5x and the SAMC21
-#elif SAME70
+#elif SAME70 || SAM4E || SAM4S
 	return (GpioPinFunction)((uint8_t)tc >> 5);
 #else
 # error Unsupported processor

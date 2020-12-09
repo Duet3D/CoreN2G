@@ -46,7 +46,26 @@
 # define SAME5x				0
 # define SAME70				0
 # define SUPPORT_SDHC		0			// SAMC21 doesn't support SDHC
+#elif defined(__SAM4E8E__)
+# include <parts.h>
+# include <sam4e8e.h>
+# define SAMC21				0
+# define SAM4E				1
+# define SAM4S				0
+# define SAME5x				0
+# define SAME70				0
+# define SUPPORT_CAN		0			// SAM4E doesn't support CAN-FD
+#elif defined(__SAM4S8C__)
+# include <parts.h>
+# include <sam4s8c.h>
+# define SAMC21				0
+# define SAM4E				0
+# define SAM4S				1
+# define SAME5x				0
+# define SAME70				0
+# define SUPPORT_CAN		0			// SAM4E doesn't support CAN-FD
 #elif defined(__SAME70Q20B__)
+# include <parts.h>
 # include <same70q20b.h>
 # define SAMC21				0
 # define SAM4S				0
