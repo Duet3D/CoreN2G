@@ -25,6 +25,7 @@
 # define __ARM_ARCH_7EM__	1
 # include <same54.h>
 # define SAMC21				0
+# define SAM3XA				0
 # define SAM4E				0
 # define SAM4S				0
 # define SAME5x				1
@@ -33,6 +34,7 @@
 # define __ARM_ARCH_7EM__	1
 # include <same51.h>
 # define SAMC21				0
+# define SAM3XA				0
 # define SAM4E				0
 # define SAM4S				0
 # define SAME5x				1
@@ -41,6 +43,7 @@
 # define __ARM_ARCH_6M__	1
 # include <samc21.h>
 # define SAMC21				1
+# define SAM3XA				0
 # define SAM4E				0
 # define SAM4S				0
 # define SAME5x				0
@@ -49,25 +52,18 @@
 #elif defined(__SAM4E8E__)
 # include <parts.h>
 # include <sam4e8e.h>
-# define SAMC21				0
-# define SAM4E				1
-# define SAM4S				0
 # define SAME5x				0
-# define SAME70				0
 # define SUPPORT_CAN		0			// SAM4E doesn't support CAN-FD
 #elif defined(__SAM4S8C__)
 # include <parts.h>
 # include <sam4s8c.h>
-# define SAMC21				0
-# define SAM4E				0
-# define SAM4S				1
 # define SAME5x				0
-# define SAME70				0
 # define SUPPORT_CAN		0			// SAM4E doesn't support CAN-FD
 #elif defined(__SAME70Q20B__)
 # include <parts.h>
 # include <same70q20b.h>
 # define SAMC21				0
+# define SAM3XA				0
 # define SAM4S				0
 # define SAM4E				0
 # define SAME5x				0
@@ -75,8 +71,6 @@
 #else
 # error unsupported processor
 #endif
-
-#define SAM3XA	0
 
 #include <inttypes.h>				// for PRIu32 etc.
 #include <ctype.h>
@@ -113,6 +107,14 @@ static const unsigned int GclkNum48MHz = 0;
 static const unsigned int GclkNum31KHz = 1;				// frequency is 31250Hz
 // Other GCLKs may be defined by the client application
 
+#elif SAM4E
+
+static const uint32_t SystemCoreClockFreq = 120000000;	///< The processor clock frequency after initialisation
+
+#elif SAM4S
+
+static const uint32_t SystemCoreClockFreq = 120000000;	///< The processor clock frequency after initialisation
+
 #elif SAME70
 
 static const uint32_t SystemCoreClockFreq = 300000000;	///< The processor clock frequency after initialisation
@@ -138,8 +140,9 @@ enum PinMode
 # include <stdbool.h>
 #endif
 
-/// Macro to indicate that a function parameter is unused
-#define UNUSED(_x)	(void)_x
+#if SAMC21 || SAME5x || SAME70
+# define UNUSED(_x)	(void)_x		/// Macro to indicate that a function parameter is unused
+#endif
 
 /// Assert macro, normally defined to do nothing
 #define Assert(expr) ((void) 0)
@@ -230,6 +233,12 @@ static inline void delayMicroseconds(uint32_t usec) noexcept
 
 // Functions and macros to enable/disable interrupts
 
+#if SAM4E || SAM4S
+
+# include <asf/common/utils/interrupt/interrupt_sam_nvic.h>
+
+#else
+
 /**
  * @brief Enable interrupts unconditionally
  *
@@ -297,6 +306,8 @@ static inline void cpu_irq_restore(irqflags_t flags) noexcept
 		cpu_irq_enable();
 	}
 }
+
+#endif
 
 /**
  * @brief Return true of a character is one of the digits 0 thru 9

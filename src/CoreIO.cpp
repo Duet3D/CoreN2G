@@ -20,17 +20,18 @@
 
 #if SAME5x
 # include <hri_wdt_e54.h>
+# include <hal_gpio.h>
 #elif SAMC21
 # include <hri_wdt_c21.h>
+# include <hal_gpio.h>
 #elif SAME70
 # include <hri_pmc_e70b.h>
 # include <hpl/pmc/hpl_pmc.h>
+# include <hal_gpio.h>
 #elif SAM4E || SAM4S
 # include <asf/sam/drivers/pmc/pmc.h>
-# include <hpl/pmc/hpl_pmc.h>
 #endif
 
-#include <hal_gpio.h>
 
 // Delay for a specified number of CPU clock cycles from the starting time. Return the time at which we actually stopped waiting.
 extern "C" uint32_t DelayCycles(uint32_t start, uint32_t cycles) noexcept
@@ -169,10 +170,9 @@ uint32_t millis() noexcept
 
 uint64_t millis64() noexcept
 {
-	hal_atomic_t flags;
-	atomic_enter_critical(&flags);
+	const irqflags_t flags = cpu_irq_save();
 	const uint64_t ret = g_ms_ticks;			// take a copy with interrupts disabled to guard against rollover while we read it
-	atomic_leave_critical(&flags);
+	cpu_irq_restore(flags);
 	return ret;
 }
 

@@ -10,6 +10,8 @@
 
 #include "compiler.h"
 
+#define UDD_NO_SLEEP_MGR		// DC
+
 /**
  * USB Device Configuration
  * @{
