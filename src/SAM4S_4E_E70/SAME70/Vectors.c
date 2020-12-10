@@ -34,7 +34,7 @@ extern uint32_t _estack;
 extern uint32_t _firmware_crc;
 
 // SystemCoreClock is needed by FreeRTOS. Declaring this here also ensures that the linker includes this object file.
-uint32_t SystemCoreClock = SystemCoreClockFreq;
+uint32_t SystemCoreClock = CHIP_FREQ_MAINCK_RC_4MHZ;
 
 // Forward declaration
 void Reset_Handler(void);

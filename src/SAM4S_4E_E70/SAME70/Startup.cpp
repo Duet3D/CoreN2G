@@ -71,7 +71,6 @@ const uint32_t FlashWaitStates = 5;
                             CKGR_PLLAR_PLLACOUNT(0x3fU) | CKGR_PLLAR_DIVA_BYPASS)
 #define SYS_BOARD_MCKR      (PMC_MCKR_PRES_CLK_1 | PMC_MCKR_CSS_PLLA_CLK | PMC_MCKR_MDIV_PCK_DIV2)
 
-
 /**
  * \brief This is the code that gets called on processor reset.
  * To initialize the device, and call the main() routine.
@@ -107,13 +106,11 @@ extern "C" [[noreturn]] void Reset_Handler() noexcept
 	pSrc = (uint32_t *) & _sfixed;
 	SCB->VTOR = ((uint32_t) pSrc & SCB_VTOR_TBLOFF_Msk);
 
-#if SAME70 || SAM4E
-static_assert(__FPU_USED);
 	// Enable FPU
+	static_assert(__FPU_USED);
 	SCB->CPACR |= (0xFu << 20);
 	__DSB();
 	__ISB();
-#endif
 
 	/* Initialize the C library */
 	__libc_init_array();
@@ -137,51 +134,40 @@ static_assert(__FPU_USED);
 
 void InitClocks() noexcept
 {
-	/* Set FWS according to SYS_BOARD_MCKR configuration */
+	// Set FWS according to SYS_BOARD_MCKR configuration
 	EFC->EEFC_FMR = EEFC_FMR_FWS(FlashWaitStates);
 
-	/* Initialize main oscillator */
-	if ( !(PMC->CKGR_MOR & CKGR_MOR_MOSCSEL) )			// if the crystal oscillator is not selected
+	// Initialize crystal oscillator
+	if (!(PMC->CKGR_MOR & CKGR_MOR_MOSCSEL))				// if the crystal oscillator is not selected
 	{
 		PMC->CKGR_MOR = CKGR_MOR_KEY_PASSWD | SYS_BOARD_OSCOUNT | CKGR_MOR_MOSCRCEN | CKGR_MOR_MOSCXTEN;		// enable the crystal oscillator, keep the RC oscillator enabled
-
-		while ( !(PMC->PMC_SR & PMC_SR_MOSCXTS) )			// wait until crystal oscillator has stablised
-		{
-		}
+		while (!(PMC->PMC_SR & PMC_SR_MOSCXTS)) { }			// wait until crystal oscillator has stablised
 	}
 
-	/* Switch to 3-20MHz Xtal oscillator */
+	// Switch to crystal oscillator
 	PMC->CKGR_MOR = CKGR_MOR_KEY_PASSWD | SYS_BOARD_OSCOUNT | CKGR_MOR_MOSCRCEN | CKGR_MOR_MOSCXTEN | CKGR_MOR_MOSCSEL;	// switch to crystal oscillator
+	while (!(PMC->PMC_SR & PMC_SR_MOSCSELS)) { }			// wait until selection is complete
 
-	while ( !(PMC->PMC_SR & PMC_SR_MOSCSELS) )			// wait until selection is complete
-	{
-	}
+	// Switch master clock to main clock
+	PMC->PMC_MCKR = (PMC->PMC_MCKR & ~(uint32_t)PMC_MCKR_CSS_Msk) | PMC_MCKR_CSS_MAIN_CLK;
+	while (!(PMC->PMC_SR & PMC_SR_MCKRDY)) { }
 
-	PMC->PMC_MCKR = (PMC->PMC_MCKR & ~(uint32_t)PMC_MCKR_CSS_Msk) | PMC_MCKR_CSS_MAIN_CLK;					// switch master clock to main clock
+	// Stop the PLL before we change it
+	PMC->CKGR_PLLAR = CKGR_PLLAR_ONE | CKGR_PLLAR_MULA(0);
 
-	while ( !(PMC->PMC_SR & PMC_SR_MCKRDY) )
-	{
-	}
-
-	/* Initialize PLLA */
+	// Initialize PLLA
 	PMC->CKGR_PLLAR = SYS_BOARD_PLLAR;
-	while ( !(PMC->PMC_SR & PMC_SR_LOCKA) )
-	{
-	}
+	while (!(PMC->PMC_SR & PMC_SR_LOCKA)) { }
 
-	/* Switch to main clock */
+	// Switch to main clock
 	PMC->PMC_MCKR = (SYS_BOARD_MCKR & ~PMC_MCKR_CSS_Msk) | PMC_MCKR_CSS_MAIN_CLK;
-	while ( !(PMC->PMC_SR & PMC_SR_MCKRDY) )
-	{
-	}
+	while (!(PMC->PMC_SR & PMC_SR_MCKRDY)) { }
 
-	/* Switch to PLLA */
+	// Switch to PLLA
 	PMC->PMC_MCKR = SYS_BOARD_MCKR;
-	while ( !(PMC->PMC_SR & PMC_SR_MCKRDY) )
-	{
-	}
+	while (!(PMC->PMC_SR & PMC_SR_MCKRDY)) { }
 
-	SystemCoreClock = CHIP_FREQ_XTAL_12M * PllaMul;
+	SystemCoreClock = SystemCoreClockFreq;
 }
 
 // End

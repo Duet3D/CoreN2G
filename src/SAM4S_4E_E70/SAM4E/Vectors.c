@@ -44,33 +44,14 @@
  * Support and FAQ: visit <a href="http://www.atmel.com/design-support/">Atmel Support</a>
  */
 
-#undef __SOFTFP__				// should not be defined anyway, but Eclipse thinks it is
+#include <Core.h>
 
-#include "sam4e.h"
-#include "system_sam4e.h"
-
-#if __FPU_USED /* CMSIS defined value to indicate usage of FPU */
-# include "fpu/fpu.h"
-#else
-# warning Compiling without FPU support
-#endif
-
-extern void __libc_init_array(void);
-extern void init(void);
-extern void UrgentInit(void);
-extern void AppMain();
-
-/* Initialize segments */
-extern uint32_t _sfixed;
-//extern uint32_t _efixed;
-extern uint32_t _etext;
-extern uint32_t _srelocate;
-extern uint32_t _erelocate;
-extern uint32_t _szero;
-extern uint32_t _ezero;
-//extern uint32_t _sstack;
+// Symbols defined by the linker script
 extern uint32_t _estack;
 extern uint32_t _firmware_crc;
+
+// SystemCoreClock is needed by FreeRTOS. Declaring this here also ensures that the linker includes this object file.
+uint32_t SystemCoreClock = CHIP_FREQ_MAINCK_RC_4MHZ;
 
 /**
  * \brief Default interrupt handler for unused IRQs.
@@ -188,44 +169,4 @@ const DeviceVectors exception_table =
 	(void*) UART1_Handler   /* 45 UART */
 };
 
-/**
- * \brief This is the code that gets called on processor reset.
- * To initialize the device, and call the main() routine.
- */
-void Reset_Handler(void)
-{
-	uint32_t *pSrc, *pDest;
-
-	/* Initialize the relocate segment */
-	pSrc = &_etext;
-	pDest = &_srelocate;
-
-	if (pSrc != pDest) {
-		for (; pDest < &_erelocate;) {
-			*pDest++ = *pSrc++;
-		}
-	}
-
-	/* Clear the zero segment */
-	for (pDest = &_szero; pDest < &_ezero;)
-	{
-		*pDest++ = 0;
-	}
-
-	/* Set the vector table base address */
-	pSrc = (uint32_t *) & _sfixed;
-	SCB->VTOR = ((uint32_t) pSrc & SCB_VTOR_TBLOFF_Msk);
-
-#if __FPU_USED
-	fpu_enable();
-#else
-# warning Compiling without FPU support
-#endif
-
-	SystemInit();			// set up the clock
-	UrgentInit();			// initialise anything in the main application that can't wait
-	__libc_init_array();	// initialize C library and call C++ constructors for static data
-	init();					// initialise variant
-
-	AppMain();				// note: app must set up the system tick interrupt, either within FreeRTOS or by calling SysTickInit
-}
+// End
