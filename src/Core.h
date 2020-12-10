@@ -119,6 +119,7 @@ static const uint32_t SystemCoreClockFreq = 300000000;	///< The processor clock 
 /// Pin mode enumeration
 enum PinMode
 {
+	PIN_MODE_NOT_CONFIGURED = -1,	///< pin has not been configured
 	INPUT = 0,						///< pin is a digital input
 	INPUT_PULLUP,					///< pin is a digital input with pullup enabled
 	INPUT_PULLDOWN,					///< pin is a digital input with pulldown enabled
