@@ -101,7 +101,7 @@ int32_t flash_read(struct flash_descriptor *flash, uint32_t src_addr, uint8_t *b
 /**
  * \brief Updates several bytes to the internal Flash
  */
-int32_t flash_write(struct flash_descriptor *flash, uint32_t dst_addr, uint8_t *buffer, uint32_t length)
+int32_t flash_write(struct flash_descriptor *flash, uint32_t dst_addr, const uint8_t *buffer, uint32_t length)
 {
 	ASSERT(flash && buffer && length);
 
@@ -125,7 +125,7 @@ int32_t flash_write(struct flash_descriptor *flash, uint32_t dst_addr, uint8_t *
 /**
  * \brief Appends a number of bytes to a page in the internal Flash
  */
-int32_t flash_append(struct flash_descriptor *flash, uint32_t dst_addr, uint8_t *buffer, uint32_t length)
+int32_t flash_append(struct flash_descriptor *flash, uint32_t dst_addr, const uint8_t *buffer, uint32_t length)
 {
 	ASSERT(flash && buffer && length);
 

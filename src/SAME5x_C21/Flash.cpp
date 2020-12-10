@@ -68,7 +68,7 @@ bool Flash::Lock(uint32_t start, uint32_t length) noexcept
 // We used to disable interrupts while erasing, but that isn't necessary when writing from the IAP in RAM
 // Programs that call this may need to disable interrupts themselves
 // The memory being written must already have been erased
-bool Flash::Write(uint32_t start, uint32_t length, uint8_t *data) noexcept
+bool Flash::Write(uint32_t start, uint32_t length, const uint8_t *data) noexcept
 {
 	return flash_append(&flash, start, data, length) == 0;
 }

@@ -27,20 +27,25 @@
  *
  */
 
-#include "same70q21b.h"
+#include <Core.h>
 
 // Symbols defined by the linker script
 extern uint32_t _estack;
 extern uint32_t _firmware_crc;
 
 // SystemCoreClock is needed by FreeRTOS. Declaring this here also ensures that the linker includes this object file.
-uint32_t SystemCoreClock = 300000000;
+uint32_t SystemCoreClock = SystemCoreClockFreq;
 
 // Forward declaration
 void Reset_Handler(void);
 
-/* Default empty handler */
-void Dummy_Handler(void);
+/**
+ * \brief Default interrupt handler for unused IRQs.
+ */
+void Dummy_Handler(void)
+{
+	while (1) { }
+}
 
 /* Cortex-M7 core handlers */
 void NonMaskableInt_Handler ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
@@ -228,13 +233,5 @@ const DeviceVectors exception_table = {
         .pfnGMAC_Q4_Handler            = (void*) GMAC_Q4_Handler, /* 72 Gigabit Ethernet MAC */
         .pfnGMAC_Q5_Handler            = (void*) GMAC_Q5_Handler  /* 73 Gigabit Ethernet MAC */
 };
-
-/**
- * \brief Default interrupt handler for unused IRQs.
- */
-void Dummy_Handler(void)
-{
-	while (1) { }
-}
 
 // End

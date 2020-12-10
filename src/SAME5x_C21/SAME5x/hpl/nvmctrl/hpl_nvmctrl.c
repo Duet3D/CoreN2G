@@ -163,7 +163,7 @@ void _flash_read(struct _flash_device *const device, const uint32_t src_addr, ui
 /**
  * \brief Writes a number of bytes to a page in the internal Flash.
  */
-void RAMFUNC _flash_write(struct _flash_device *const device, const uint32_t dst_addr, uint8_t *buffer, uint32_t length)
+void RAMFUNC _flash_write(struct _flash_device *const device, const uint32_t dst_addr, const uint8_t *buffer, uint32_t length)
 {
 	uint8_t  tmp_buffer[NVMCTRL_BLOCK_PAGES][NVMCTRL_PAGE_SIZE];
 	uint32_t block_start_addr, block_end_addr;
@@ -208,7 +208,7 @@ void RAMFUNC _flash_write(struct _flash_device *const device, const uint32_t dst
 /**
  * \brief Appends a number of bytes in the internal Flash.
  */
-void _flash_append(struct _flash_device *const device, const uint32_t dst_addr, uint8_t *buffer, uint32_t length)
+void _flash_append(struct _flash_device *const device, const uint32_t dst_addr, const uint8_t *buffer, uint32_t length)
 {
 	uint32_t page_start_addr = dst_addr & ~(NVMCTRL_PAGE_SIZE - 1);
 	uint32_t size;
