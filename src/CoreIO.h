@@ -168,7 +168,7 @@ inline void SetPinFunction(Pin p, GpioPinFunction f) noexcept
  */
 inline void ClearPinFunction(Pin p) noexcept
 {
-#if SAME5x || SAMC21 || SAM4E || SAM4S
+#if SAME5x || SAMC21
 	PORT->Group[p >> 5].PINCFG[p & 0x1F].bit.PMUXEN = 0;
 #elif SAME70 || SAM4E || SAM4S
 	Pio * const p_pio = GpioPort(p);
@@ -178,6 +178,9 @@ inline void ClearPinFunction(Pin p) noexcept
 # error Unsupported processor
 #endif
 }
+
+// Set the mode of a pin with optional debouncing
+void SetPinMode(Pin pin, enum PinMode mode, uint32_t debounceCutoff) noexcept;
 
 #if SAME5x || SAMC21
 

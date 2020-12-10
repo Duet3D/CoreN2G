@@ -18,8 +18,14 @@
 #if SAME5x
 # include <hri_gclk_e54.h>
 #elif SAME70
-# include <hri_pmc_e70b.h>
-# include <hpl_pmc.h>
+# include <asf/sam/drivers/pmc/pmc.h>
+// The following definitions are missing from the MCAN peripheral definition in ASF3
+# define MCAN_RXF0C_F0OM_Pos	(31)								/**< (MCAN_RXF0C) FIFO 0 Operation Mode Position */
+# define MCAN_RXF1C_F1OM_Pos	(31)								/**< (MCAN_RXF1C) FIFO 1 Operation Mode Position */
+# define MCAN_TXBC_TFQM_Pos		(30)								/**< (MCAN_TXBC) Tx FIFO/Queue Mode Position */
+# define MCAN_TXBC_TFQM_Msk		(0x1u << MCAN_TXBC_TFQM_Pos)		/**< (MCAN_TXBC) Tx FIFO/Queue Mode Mask */
+# define MCAN_TXFQS_TFQF_Pos	(21)								/**< (MCAN_TXFQS) Tx FIFO/Queue Full Position */
+# define MCAN_TXFQS_TFQF_Msk	(0x1u << MCAN_TXFQS_TFQF_Pos)		/**< (MCAN_TXFQS) Tx FIFO/Queue Full Mask */
 #elif SAMC21
 # include <hri_gclk_c21.h>
 #else
@@ -292,11 +298,11 @@ inline CanDevice::CanTxBufferHeader *CanDevice::GetTxBuffer(uint32_t index) cons
 #elif SAME70
 	if (whichPort == 0)
 	{
-		_pmc_enable_periph_clock(ID_MCAN0);
+		pmc_enable_periph_clk(ID_MCAN0);
 	}
 	else
 	{
-		_pmc_enable_periph_clock(ID_MCAN1);
+		pmc_enable_periph_clk(ID_MCAN1);
 	}
 #endif
 

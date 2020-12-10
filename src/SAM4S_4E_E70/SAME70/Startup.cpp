@@ -76,7 +76,7 @@ const uint32_t FlashWaitStates = 5;
  * \brief This is the code that gets called on processor reset.
  * To initialize the device, and call the main() routine.
  */
-extern "C" [[noreturn]] void Reset_Handler(void)
+extern "C" [[noreturn]] void Reset_Handler() noexcept
 {
 	uint32_t *pSrc = &_etext;
 	uint32_t *pDest = &_srelocate;

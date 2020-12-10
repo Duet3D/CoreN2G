@@ -62,12 +62,7 @@
 #elif defined(__SAME70Q20B__)
 # include <parts.h>
 # include <same70q20b.h>
-# define SAMC21				0
-# define SAM3XA				0
-# define SAM4S				0
-# define SAM4E				0
 # define SAME5x				0
-# define SAME70				1
 #else
 # error unsupported processor
 #endif
@@ -124,14 +119,12 @@ static const uint32_t SystemCoreClockFreq = 300000000;	///< The processor clock 
 /// Pin mode enumeration
 enum PinMode
 {
-	PIN_MODE_NOT_CONFIGURED = -1,	///< do not use
 	INPUT = 0,						///< pin is a digital input
 	INPUT_PULLUP,					///< pin is a digital input with pullup enabled
 	INPUT_PULLDOWN,					///< pin is a digital input with pulldown enabled
 	OUTPUT_LOW,						///< pin is an output with initial state LOW
 	OUTPUT_HIGH,					///< pin is an output with initial state HIGH
 	AIN,							///< pin is an analog input, digital input buffer is disabled if possible
-	SPECIAL,						///< do not use
 	OUTPUT_PWM_LOW,					///< PWM output mode, initially low
 	OUTPUT_PWM_HIGH,				///< PWM output mode, initially high
 };
@@ -140,7 +133,7 @@ enum PinMode
 # include <stdbool.h>
 #endif
 
-#if SAMC21 || SAME5x || SAME70
+#if SAMC21 || SAME5x
 # define UNUSED(_x)	(void)_x		/// Macro to indicate that a function parameter is unused
 #endif
 
@@ -233,7 +226,7 @@ static inline void delayMicroseconds(uint32_t usec) noexcept
 
 // Functions and macros to enable/disable interrupts
 
-#if SAM4E || SAM4S
+#if SAM4E || SAM4S || SAME70
 
 # include <asf/common/utils/interrupt/interrupt_sam_nvic.h>
 
