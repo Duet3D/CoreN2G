@@ -160,7 +160,7 @@ void SetPullup(Pin p, bool on) noexcept
 #if SAM4E || SAM4S || SAME70
 	pio_pull_up(GpioPort(p), GpioMask(p), (uint32_t)on) ;
 #else
-	gpio_set_pin_pull_mode(pin, (on) ? GPIO_PULL_UP : GPIO_PULL_OFF);
+	gpio_set_pin_pull_mode(p, (on) ? GPIO_PULL_UP : GPIO_PULL_OFF);
 #endif
 }
 
