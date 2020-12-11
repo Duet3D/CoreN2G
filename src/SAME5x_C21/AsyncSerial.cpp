@@ -5,10 +5,10 @@
  *      Author: David
  */
 
-#include "Uart.h"
+#include "AsyncSerial.h"
 #include <algorithm>		// for std::swap
 
-Uart::Uart(uint8_t sercomNum, uint8_t rxp, size_t numTxSlots, size_t numRxSlots, OnBeginFn p_onBegin, OnEndFn p_onEnd) noexcept
+AsyncSerial::AsyncSerial(uint8_t sercomNum, uint8_t rxp, size_t numTxSlots, size_t numRxSlots, OnBeginFn p_onBegin, OnEndFn p_onEnd) noexcept
 	: sercom(Serial::GetSercom(sercomNum)),
 #ifdef RTOS
 	  txWaitingTask(nullptr),
@@ -21,8 +21,10 @@ Uart::Uart(uint8_t sercomNum, uint8_t rxp, size_t numTxSlots, size_t numRxSlots,
 }
 
 // Initialise the UART. numRxSlots may be zero if we don't wish to receive.
-void Uart::begin(uint32_t baudRate) noexcept
+void AsyncSerial::begin(uint32_t baudRate) noexcept
 {
+	txBuffer.Clear();
+	rxBuffer.Clear();
 	onBegin(this);
 	Serial::InitUart(sercomNumber, baudRate, rxPad);
 	errors.all = 0;
@@ -37,7 +39,7 @@ void Uart::begin(uint32_t baudRate) noexcept
 #endif
 }
 
-void Uart::end() noexcept
+void AsyncSerial::end() noexcept
 {
 	// Clear any received data
 	rxBuffer.Clear();
@@ -56,18 +58,18 @@ void Uart::end() noexcept
 }
 
 // Non-blocking read, return 0 if no character available
-int Uart::read() noexcept
+int AsyncSerial::read() noexcept
 {
 	uint8_t c;
 	return (rxBuffer.GetItem(c)) ? c : -1;
 }
 
-int Uart::available() noexcept
+int AsyncSerial::available() noexcept
 {
 	return rxBuffer.ItemsPresent();
 }
 
-void Uart::flush() noexcept
+void AsyncSerial::flush() noexcept
 {
 	// If we have never transmitted then the TXC bit never gets set, so we mustn't wait for it
 	if (!txBuffer.IsEmpty() || !sercom->USART.INTFLAG.bit.DRE)
@@ -77,13 +79,13 @@ void Uart::flush() noexcept
 	}
 }
 
-size_t Uart::canWrite() noexcept
+size_t AsyncSerial::canWrite() noexcept
 {
 	return txBuffer.SpaceLeft();
 }
 
 // Write single character, blocking
-size_t Uart::write(uint8_t c) noexcept
+size_t AsyncSerial::write(uint8_t c) noexcept
 {
 	if (txBuffer.IsEmpty() && sercom->USART.INTFLAG.bit.DRE)
 	{
@@ -112,7 +114,7 @@ size_t Uart::write(uint8_t c) noexcept
 
 #if 0
 // Nonblocking write block
-size_t Uart::TryPutBlock(const uint8_t* buffer, size_t buflen) noexcept
+size_t AsyncSerial::TryPutBlock(const uint8_t* buffer, size_t buflen) noexcept
 {
 	const size_t written = txBuffer.PutBlock(buffer, buflen);
 	sercom->USART.INTENSET.reg = SERCOM_USART_INTENSET_DRE;
@@ -121,7 +123,7 @@ size_t Uart::TryPutBlock(const uint8_t* buffer, size_t buflen) noexcept
 #endif
 
 // Blocking write block
-size_t Uart::write(const uint8_t* buffer, size_t buflen) noexcept
+size_t AsyncSerial::write(const uint8_t* buffer, size_t buflen) noexcept
 {
 	const size_t ret = buflen;
 	for (;;)
@@ -144,7 +146,7 @@ size_t Uart::write(const uint8_t* buffer, size_t buflen) noexcept
 }
 
 // Get and clear the errors
-Uart::Errors Uart::GetAndClearErrors() noexcept
+AsyncSerial::Errors AsyncSerial::GetAndClearErrors() noexcept
 {
 	Errors errs;
 	std::swap(errs, errors);
@@ -155,7 +157,7 @@ Uart::Errors Uart::GetAndClearErrors() noexcept
 
 // Interrupts from the SERCOM arrive here
 // Interrupt 0 means transmit data register empty
-void Uart::Interrupt0() noexcept
+void AsyncSerial::Interrupt0() noexcept
 {
 	uint8_t c;
 	if (txBuffer.GetItem(c))
@@ -184,7 +186,7 @@ void Uart::Interrupt0() noexcept
 
 // We don't use interrupt 1, it signals transmit complete
 // Interrupt 2 means receive character available
-void Uart::Interrupt2() noexcept
+void AsyncSerial::Interrupt2() noexcept
 {
 	const char c = sercom->USART.DATA.reg;
 	if (c == interruptSeq[numInterruptBytesMatched])
@@ -211,7 +213,7 @@ void Uart::Interrupt2() noexcept
 }
 
 // Interrupt 3 means error or break or CTS change or receive start, but we only enable error
-void Uart::Interrupt3() noexcept
+void AsyncSerial::Interrupt3() noexcept
 {
 	const uint16_t stat2 = sercom->USART.STATUS.reg;
 	if (stat2 & SERCOM_USART_STATUS_BUFOVF)
@@ -222,13 +224,17 @@ void Uart::Interrupt3() noexcept
 	{
 		++errors.framing;
 	}
+	if (stat2 && (SERCOM_USART_STATUS_BUFOVF || SERCOM_USART_STATUS_FERR))
+	{
+		rxBuffer.PutItem(0x7F);
+	}
 	sercom->USART.STATUS.reg = stat2;
 	sercom->USART.INTFLAG.reg = SERCOM_USART_INTFLAG_ERROR;			// clear the error
 }
 
 #elif SAMC21
 
-void Uart::Interrupt() noexcept
+void AsyncSerial::Interrupt() noexcept
 {
 	const uint8_t status = sercom->USART.INTFLAG.reg;
 
@@ -299,6 +305,10 @@ void Uart::Interrupt() noexcept
 		{
 			++errors.framing;
 		}
+		if (stat2 && (SERCOM_USART_STATUS_BUFOVF || SERCOM_USART_STATUS_FERR))
+		{
+			rxBuffer.PutItem(0x7F);
+		}
 		sercom->USART.STATUS.reg = stat2;
 		sercom->USART.INTFLAG.reg = SERCOM_USART_INTFLAG_ERROR;			// clear the error
 	}
@@ -306,14 +316,14 @@ void Uart::Interrupt() noexcept
 
 #endif
 
-Uart::InterruptCallbackFn Uart::SetInterruptCallback(InterruptCallbackFn f) noexcept
+AsyncSerial::InterruptCallbackFn AsyncSerial::SetInterruptCallback(InterruptCallbackFn f) noexcept
 {
 	const InterruptCallbackFn ret = interruptCallback;
 	interruptCallback = f;
 	return ret;
 }
 
-void Uart::setInterruptPriority(uint32_t rxPrio, uint32_t txAndErrorPrio) const noexcept
+void AsyncSerial::setInterruptPriority(uint32_t rxPrio, uint32_t txAndErrorPrio) const noexcept
 {
 	const IRQn irqNumber = Serial::GetSercomIRQn(sercomNumber);
 	NVIC_SetPriority(irqNumber, txAndErrorPrio);

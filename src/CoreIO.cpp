@@ -80,19 +80,93 @@ extern "C" uint32_t DelayCycles(uint32_t start, uint32_t cycles) noexcept
 	}
 }
 
-#if SAM4E || SAM4S || SAME70
-constexpr uint32_t PioIds[] =
+/**
+ * @brief Set the function of an I/O pin
+ *
+ * @param p The pin number
+ * @param f The required pin function
+ */
+void SetPinFunction(Pin p, GpioPinFunction f) noexcept
 {
-	ID_PIOA, ID_PIOB, ID_PIOC,
-# if SAM4E || SAME70
-	ID_PIOD, ID_PIOE,
-# endif
-};
+#if SAME5x || SAMC21
+	const uint8_t port = p >> 5;
+	const uint8_t pin  = p & 0x1F;
+	uint8_t tmp = PORT->Group[port].PMUX[pin >> 1].reg;
+	if (pin & 1)
+	{
+		// Odd numbered pin
+		tmp &= ~PORT_PMUX_PMUXO_Msk;
+		tmp |= PORT_PMUX_PMUXO((uint8_t)f);
+	}
+	else
+	{
+		// Even numbered pin
+		tmp &= ~PORT_PMUX_PMUXE_Msk;
+		tmp |= PORT_PMUX_PMUXE((uint8_t)f);
+	}
+	PORT->Group[port].PMUX[pin >> 1].reg = tmp;
+	PORT->Group[port].PINCFG[pin].bit.PMUXEN = 1;
+#elif SAME70 || SAM4E || SAM4S
+	Pio * const p_pio = GpioPort(p);
+	const uint32_t mask = (uint32_t)1 << (p & 0x1F);
+	p_pio->PIO_IDR = mask;									// disable interrupts on the pin
+	uint32_t sr0 = p_pio->PIO_ABCDSR[0];
+	uint32_t sr1 = p_pio->PIO_ABCDSR[1];
+	if ((uint8_t)f & 0x01)
+	{
+		sr0 |= mask;
+	}
+	else
+	{
+		sr0 &= ~mask;
+	}
+	if ((uint8_t)f & 0x02)
+	{
+		sr1 |= mask;
+	}
+	else
+	{
+		sr1 &= ~mask;
+	}
+	p_pio->PIO_ABCDSR[0] = sr0;
+	p_pio->PIO_ABCDSR[1] = sr1;
+	p_pio->PIO_PDR = mask;									// remove the pins from under the control of PIO
+#else
+# error Unsupported processor
 #endif
+}
+
+/**
+ * @brief Set a pin back to ordinary digital I/O
+ *
+ * @param p The pin number
+ */
+void ClearPinFunction(Pin p) noexcept
+{
+#if SAME5x || SAMC21
+	PORT->Group[p >> 5].PINCFG[p & 0x1F].bit.PMUXEN = 0;
+#elif SAME70 || SAM4E || SAM4S
+	Pio * const p_pio = GpioPort(p);
+	const uint32_t mask = (uint32_t)1 << (p & 0x1F);
+	p_pio->PIO_PER = mask;									// put the pins under the control of PIO
+#else
+# error Unsupported processor
+#endif
+}
 
 // IoPort::SetPinMode calls this
 void SetPinMode(Pin pin, enum PinMode mode, uint32_t debounceCutoff = 0) noexcept
 {
+#if SAM4E || SAM4S || SAME70
+	constexpr uint32_t PioIds[] =
+	{
+		ID_PIOA, ID_PIOB, ID_PIOC,
+# if SAM4E || SAME70
+		ID_PIOD, ID_PIOE,
+# endif
+	};
+#endif
+
 	if (pin < NumTotalPins)
 	{
 		switch (mode)

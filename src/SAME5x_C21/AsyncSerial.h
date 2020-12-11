@@ -5,19 +5,19 @@
  *      Author: David
  */
 
-#ifndef SRC_HARDWARE_SAME5X_UART_H_
-#define SRC_HARDWARE_SAME5X_UART_H_
+#ifndef SRC_HARDWARE_SAME5X_C21_ASYNCSERIAL_H_
+#define SRC_HARDWARE_SAME5X_C21_ASYNCSERIAL_H_
 
-#include "Stream.h"
-#include "Serial.h"
+#include <Stream.h>
 #include <General/RingBuffer.h>
+#include "Serial.h"
 
-class Uart : public Stream
+class AsyncSerial : public Stream
 {
 public:
-	typedef void (*InterruptCallbackFn)(Uart*) noexcept;
-	typedef void (*OnBeginFn)(Uart*) noexcept;
-	typedef void (*OnEndFn)(Uart*) noexcept;
+	typedef void (*InterruptCallbackFn)(AsyncSerial*) noexcept;
+	typedef void (*OnBeginFn)(AsyncSerial*) noexcept;
+	typedef void (*OnEndFn)(AsyncSerial*) noexcept;
 
 	union Errors
 	{
@@ -29,7 +29,7 @@ public:
 		Errors() noexcept { all = 0; }
 	};
 
-	Uart(uint8_t sercomNum, uint8_t rxp, size_t numTxSlots, size_t numRxSlots, OnBeginFn p_onBegin, OnEndFn p_onEnd) noexcept;
+	AsyncSerial(uint8_t sercomNum, uint8_t rxp, size_t numTxSlots, size_t numRxSlots, OnBeginFn p_onBegin, OnEndFn p_onEnd) noexcept;
 
 	// Overridden virtual functions
 	int available() noexcept override;
@@ -85,4 +85,4 @@ private:
     static constexpr uint8_t interruptSeq[2] = { 0xF0, 0x0F };
 };
 
-#endif /* SRC_HARDWARE_SAME5X_UART_H_ */
+#endif /* SRC_HARDWARE_SAME5X_C21_ASYNCSERIAL_H_ */
