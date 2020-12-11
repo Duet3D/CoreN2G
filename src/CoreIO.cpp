@@ -342,6 +342,16 @@ void WatchdogReset() noexcept
 #endif
 }
 
+#if SAM4E || SAME70
+
+void WatchdogResetSecondary() noexcept
+{
+	constexpr uint32_t RSWDT_KEY_PASSWORD = 0xC4000000;
+	RSWDT->RSWDT_CR = RSWDT_KEY_PASSWORD | RSWDT_CR_WDRSTT;
+}
+
+#endif
+
 void Reset() noexcept
 {
 	SCB->AIRCR = (0x5FA << 16) | (1u << 2);						// reset the processor

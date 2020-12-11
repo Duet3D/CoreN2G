@@ -62,7 +62,7 @@ inline constexpr Pin PortAPin(unsigned int n) noexcept { return n; }
  */
 inline constexpr Pin PortBPin(unsigned int n) noexcept { return 32+n; }
 
-#if SAME5x || SAME70
+#if SAME5x || SAM4E || SAM4S || SAME70
 
 /**
  * @brief Return the global pin number for a Port C pin
@@ -71,6 +71,10 @@ inline constexpr Pin PortBPin(unsigned int n) noexcept { return 32+n; }
  * @return The global pin number
  */
 inline constexpr Pin PortCPin(unsigned int n) noexcept { return 64+n; }
+
+#endif
+
+#if SAME5x || SAM4E || SAME70
 
 /**
  * @brief Return the global pin number for a Port D pin
@@ -82,7 +86,8 @@ inline constexpr Pin PortDPin(unsigned int n) noexcept { return 96+n; }
 
 #endif
 
-#if SAME70
+#if SAM4E || SAME70
+
 /**
  * @brief Return the global pin number for a Port E pin
  *
@@ -331,6 +336,16 @@ void WatchdogInit() noexcept;
  *
  */
 void WatchdogReset() noexcept;
+
+#if SAM4E || SAME70
+
+/**
+ * @brief Kick the secondary watchdog. This should be called from within the tick ISR.
+ *
+ */
+void WatchdogResetSecondary() noexcept;
+
+#endif
 
 /**
  * @brief Timekeeping function. Call this from within the tick ISR.

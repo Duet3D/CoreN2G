@@ -548,4 +548,49 @@ bool Flash::EraseUserSignature() noexcept
 	return efc_perform_command(EFC, EFC_FCMD_EUS, 0) == 0;
 }
 
+/**
+ * \brief Check if the given GPNVM bit is set or not.
+ *
+ * \param ul_gpnvm GPNVM bit index.
+ *
+ * \return -1 if command failed, 0 if not not set, 1 if bit set
+ */
+int Flash::IsGpNvmSet(uint32_t gpnvm) noexcept
+{
+	if (gpnvm >= GPNVM_NUM_MAX)
+	{
+		return -1;
+	}
+
+	if (efc_perform_command(EFC, EFC_FCMD_GGPB, 0) != EFC_RC_OK)
+	{
+		return -1;
+	}
+
+	const uint32_t ul_gpnvm_bits = efc_get_result(EFC);
+	return (int)((ul_gpnvm_bits >> gpnvm) & 1u);
+}
+
+/**
+ * \brief Clear the given GPNVM bit.
+ *
+ * \param ul_gpnvm GPNVM bit index.
+ *
+ * \return true if successful
+ */
+bool Flash::ClearGpNvm(uint32_t gpnvm) noexcept
+{
+	if (gpnvm >= GPNVM_NUM_MAX)
+	{
+		return false;
+	}
+
+	if (IsGpNvmSet(gpnvm) == 0)
+	{
+		return true;
+	}
+
+	return efc_perform_command(EFC, EFC_FCMD_CGPB, gpnvm) == EFC_RC_OK;
+}
+
 // End
