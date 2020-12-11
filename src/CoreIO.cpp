@@ -147,10 +147,20 @@ void ClearPinFunction(Pin p) noexcept
 	PORT->Group[p >> 5].PINCFG[p & 0x1F].bit.PMUXEN = 0;
 #elif SAME70 || SAM4E || SAM4S
 	Pio * const p_pio = GpioPort(p);
-	const uint32_t mask = (uint32_t)1 << (p & 0x1F);
+	const uint32_t mask = GpioMask(p);
 	p_pio->PIO_PER = mask;									// put the pins under the control of PIO
 #else
 # error Unsupported processor
+#endif
+}
+
+// Enable or disable the pullup[ resistor
+void SetPullup(Pin p, bool on) noexcept
+{
+#if SAM4E || SAM4S || SAME70
+	pio_pull_up(GpioPort(p), GpioMask(p), (uint32_t)on) ;
+#else
+	gpio_set_pin_pull_mode(pin, (on) ? GPIO_PULL_UP : GPIO_PULL_OFF);
 #endif
 }
 
@@ -377,13 +387,14 @@ static void RandomInit()
 
 void CoreInit() noexcept
 {
+#if SAME5x || SAMC21
 	DmacManager::Init();
+	InitialiseExints();
+#endif
 
 #if SAME5x || SAME70
 	RandomInit();
 #endif
-
-	InitialiseExints();
 }
 
 void WatchdogInit() noexcept

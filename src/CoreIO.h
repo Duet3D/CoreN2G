@@ -125,6 +125,9 @@ void SetPinFunction(Pin p, GpioPinFunction f) noexcept;
  */
 void ClearPinFunction(Pin p) noexcept;
 
+// Enable or disable the pullup[ resistor
+void SetPullup(Pin p, bool on) noexcept;
+
 // Set the mode of a pin with optional debouncing
 void SetPinMode(Pin pin, enum PinMode mode, uint32_t debounceCutoff) noexcept;
 

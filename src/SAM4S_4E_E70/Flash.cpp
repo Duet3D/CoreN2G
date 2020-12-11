@@ -273,7 +273,8 @@ static void compute_address(Efc *p_efc, uint16_t us_page, uint16_t us_offset, ui
 #endif
 
 	/* Store result */
-	if (pul_addr != NULL) {
+	if (pul_addr != nullptr)
+	{
 		*pul_addr = ul_addr;
 	}
 }
@@ -288,17 +289,16 @@ static void compute_address(Efc *p_efc, uint16_t us_page, uint16_t us_offset, ui
  */
 static void compute_lock_range(uint32_t ul_start, uint32_t ul_end, uint32_t *pul_actual_start, uint32_t *pul_actual_end) noexcept
 {
-	uint32_t ul_actual_start, ul_actual_end;
+	const uint32_t ul_actual_start = ul_start - (ul_start % IFLASH_LOCK_REGION_SIZE);
+	const uint32_t ul_actual_end = ul_end - (ul_end % IFLASH_LOCK_REGION_SIZE) + IFLASH_LOCK_REGION_SIZE - 1;
 
-	ul_actual_start = ul_start - (ul_start % IFLASH_LOCK_REGION_SIZE);
-	ul_actual_end = ul_end - (ul_end % IFLASH_LOCK_REGION_SIZE) +
-			IFLASH_LOCK_REGION_SIZE - 1;
-
-	if (pul_actual_start) {
+	if (pul_actual_start)
+	{
 		*pul_actual_start = ul_actual_start;
 	}
 
-	if (pul_actual_end) {
+	if (pul_actual_end)
+	{
 		*pul_actual_end = ul_actual_end;
 	}
 }
@@ -403,6 +403,10 @@ bool Flash::Write(uint32_t start, uint32_t length, const uint8_t *data) noexcept
 	return true;
 }
 
+uint32_t Flash::GetLockRegionSize() noexcept
+{
+	return IFLASH_LOCK_REGION_SIZE;
+}
 
 /**
  * \brief Lock all the regions in the given address range. The actual lock

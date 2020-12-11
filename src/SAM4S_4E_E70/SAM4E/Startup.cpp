@@ -15,7 +15,7 @@
 # warning Compiling without FPU support
 #endif
 
-extern void __libc_init_array(void);
+extern "C" void __libc_init_array();
 
 // Forward declaration
 static void InitClocks() noexcept;

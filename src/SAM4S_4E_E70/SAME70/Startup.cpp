@@ -46,7 +46,7 @@ extern uint32_t _sCanMessage;
 extern uint32_t _eCanMessage;
 #endif
 
-extern "C" void __libc_init_array(void);
+extern "C" void __libc_init_array();
 
 // Forward declaration
 static void InitClocks() noexcept;
