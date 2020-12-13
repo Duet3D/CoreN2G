@@ -316,10 +316,9 @@ bool Flash::Init() noexcept
 /**
  * \brief Erase the flash sector.
  *
- * \note Erase sector command needs a page number parameter which belongs to
- * the sector to be erased.
+ * \note Erase sector command needs a page number parameter which belongs to the sector to be erased.
  *
- * \param ul_address Flash sector start address.
+ * \param start Flash sector start address.
  *
  * \return 0 if successful; otherwise returns an error code.
  */
@@ -327,7 +326,7 @@ bool Flash::EraseSector(uint32_t start) noexcept
 {
 	Efc *p_efc;
 	uint16_t us_page;
-	translate_address(&p_efc, start, &us_page, NULL);
+	translate_address(&p_efc, start, &us_page, nullptr);
 
 	return efc_perform_command(p_efc, EFC_FCMD_ES, us_page) == 0;
 }
@@ -335,11 +334,8 @@ bool Flash::EraseSector(uint32_t start) noexcept
 /**
  * \brief Write a data buffer on flash.
  *
- * \note This function works in polling mode, and thus only returns when the
- * data has been effectively written.
- * \note For dual bank flash, this function doesn't support cross write from
- * bank 0 to bank 1. In this case, flash_write must be called twice (ie for
- * each bank).
+ * \note This function works in polling mode, and thus only returns when the data has been effectively written.
+ * \note For dual bank flash, this function doesn't support cross write from bank 0 to bank 1. In this case, flash_write must be called twice (i.e. for each bank).
  *
  * \param ul_address Write address.
  * \param p_buffer Data buffer.
@@ -351,7 +347,6 @@ bool Flash::EraseSector(uint32_t start) noexcept
 bool Flash::Write(uint32_t start, uint32_t length, const uint8_t *data) noexcept
 {
 	Efc *p_efc;
-	uint32_t ul_page_addr;
 
 	/* Flash page buffer for alignment */
 	static uint32_t gs_ul_page_buffer[IFLASH_PAGE_SIZE / sizeof(uint32_t)];
@@ -366,6 +361,7 @@ bool Flash::Write(uint32_t start, uint32_t length, const uint8_t *data) noexcept
 	{
 		/* Copy data in temporary buffer to avoid alignment problems. */
 		const uint32_t writeSize = Min((uint32_t) IFLASH_PAGE_SIZE - us_offset, length);
+		uint32_t ul_page_addr;
 		compute_address(p_efc, us_page, 0, &ul_page_addr);
 		uint16_t us_padding = IFLASH_PAGE_SIZE - us_offset - writeSize;
 
