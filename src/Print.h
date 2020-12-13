@@ -22,6 +22,7 @@
 
 #include <CoreIO.h>
 #include <cstring>
+#include <cstdarg>
 
 class Print
 {
@@ -46,6 +47,9 @@ public:
 	{
 		return write(str);
 	}
+
+	int printf(const char *fmt, ...) noexcept;
+	int printf(const char *fmt, va_list vargs) noexcept;
 };
 
 #endif
