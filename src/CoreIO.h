@@ -21,6 +21,7 @@
 // Exported memory control variables. These are defined in file syscalls.h which must be included by exactly one client file.
 extern char *heapTop;
 extern const char *heapLimit;
+extern const char * const sysStackLimit;
 
 // Define NumTotalPins as the pin number at and beyond which it is not safe to access the corresponding port registers on this processor family.
 // This may be greater than the number of I/O pins actually on the particular device we are running on.

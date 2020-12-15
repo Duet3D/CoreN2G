@@ -22,10 +22,13 @@ int errno;
 extern char _end;								// defined by the linker script
 extern char _estack;
 
-void OutOfMemoryHandler() noexcept;					// this must be provided by the client application
+void OutOfMemoryHandler() noexcept;				// this must be provided by the client application
 
-char *heapTop = &_end;
+extern const char * const sysStackLimit;
+const char * const sysStackLimit = &_estack - SystemStackSize;
+
 const char *heapLimit = &_estack - SystemStackSize;
+char *heapTop = &_end;
 
 /**
  * \brief Replacement of C library of _sbrk
