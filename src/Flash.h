@@ -15,7 +15,7 @@ namespace Flash
 	bool Init() noexcept;
 	bool Unlock(uint32_t start, uint32_t length) noexcept;
 	bool Lock(uint32_t start, uint32_t length) noexcept;
-	bool Write(uint32_t start, uint32_t length, const uint8_t *data) noexcept;
+	bool Write(uint32_t start, uint32_t length, const uint32_t *data) noexcept;
 #if SAM4S || SAM4E || SAME70
 	bool EraseSector(uint32_t) noexcept;
 #else

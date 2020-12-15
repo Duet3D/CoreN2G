@@ -236,47 +236,38 @@ static void translate_address(Efc **pp_efc, uint32_t ul_addr, uint16_t *pus_page
  * \param us_offset Byte offset inside page.
  * \param pul_addr Computed address (optional).
  */
-static void compute_address(Efc *p_efc, uint16_t us_page, uint16_t us_offset, uint32_t *pul_addr) noexcept
+static uint32_t compute_address(Efc *p_efc, uint16_t us_page) noexcept
 {
-	uint32_t ul_addr;
-
 /* Dual bank flash */
 #ifdef EFC1
 	/* Compute address */
 #if (SAM4SD16 || SAM4SD32 || SAM4C32 || SAM4CMP32 || SAM4CMS32)
-	uint32_t uc_gpnvm2;
-	uc_gpnvm2 = flash_is_gpnvm_set(2);
+	const uint32_t uc_gpnvm2 = flash_is_gpnvm_set(2);
 	if (p_efc == EFC0) {
 		if(uc_gpnvm2 == FLASH_RC_YES) {
-			ul_addr = IFLASH1_ADDR + us_page * IFLASH_PAGE_SIZE + us_offset;
+			return IFLASH1_ADDR + us_page * IFLASH_PAGE_SIZE;
 		} else {
-			ul_addr = IFLASH0_ADDR + us_page * IFLASH_PAGE_SIZE + us_offset;
+			return IFLASH0_ADDR + us_page * IFLASH_PAGE_SIZE;
 		}
 	} else {
 		if(uc_gpnvm2 == FLASH_RC_YES) {
-			ul_addr = IFLASH0_ADDR + us_page * IFLASH_PAGE_SIZE + us_offset;
+			return IFLASH0_ADDR + us_page * IFLASH_PAGE_SIZE;
 		} else {
-			ul_addr = IFLASH1_ADDR + us_page * IFLASH_PAGE_SIZE + us_offset;
+			return IFLASH1_ADDR + us_page * IFLASH_PAGE_SIZE;
 		}
 	}
 #else
-	ul_addr = (p_efc == EFC0) ?
-			IFLASH0_ADDR + us_page * IFLASH_PAGE_SIZE + us_offset :
-			IFLASH1_ADDR + us_page * IFLASH_PAGE_SIZE + us_offset;
+	return (p_efc == EFC0) ?
+			IFLASH0_ADDR + us_page * IFLASH_PAGE_SIZE :
+			IFLASH1_ADDR + us_page * IFLASH_PAGE_SIZE;
 #endif
 /* One bank flash */
 #else
 	/* avoid Cppcheck Warning */
 	UNUSED(p_efc);
 	/* Compute address */
-	ul_addr = IFLASH_ADDR + us_page * IFLASH_PAGE_SIZE + us_offset;
+	return IFLASH_ADDR + us_page * IFLASH_PAGE_SIZE;
 #endif
-
-	/* Store result */
-	if (pul_addr != nullptr)
-	{
-		*pul_addr = ul_addr;
-	}
 }
 
 /**
@@ -344,45 +335,23 @@ bool Flash::EraseSector(uint32_t start) noexcept
  *
  * \return 0 if successful, otherwise returns an error code.
  */
-bool Flash::Write(uint32_t start, uint32_t length, const uint8_t *data) noexcept
+bool Flash::Write(uint32_t start, uint32_t length, const uint32_t *data) noexcept
 {
+	// We only support writing whole pages, and the source buffer must be dword aligned
+	if ((start % IFLASH_PAGE_SIZE) != 0 || (length % IFLASH_PAGE_SIZE) != 0 || (reinterpret_cast<uint32_t>(data) & 3) != 0)
+	{
+		return false;
+	}
+
 	Efc *p_efc;
-
-	/* Flash page buffer for alignment */
-	static uint32_t gs_ul_page_buffer[IFLASH_PAGE_SIZE / sizeof(uint32_t)];
-	uint8_t * const puc_page_buffer = (uint8_t *) gs_ul_page_buffer;
-
 	uint16_t us_page;
-	uint16_t us_offset;
-	translate_address(&p_efc, start, &us_page, &us_offset);
+	translate_address(&p_efc, start, &us_page, nullptr);
 
 	/* Write all pages */
-	while (length > 0)
+	while (length != 0)
 	{
-		/* Copy data in temporary buffer to avoid alignment problems. */
-		const uint32_t writeSize = Min((uint32_t) IFLASH_PAGE_SIZE - us_offset, length);
-		uint32_t ul_page_addr;
-		compute_address(p_efc, us_page, 0, &ul_page_addr);
-		uint16_t us_padding = IFLASH_PAGE_SIZE - us_offset - writeSize;
-
-		/* Pre-buffer data */
-		memcpy(puc_page_buffer, (void *)ul_page_addr, us_offset);
-
-		/* Buffer data */
-		memcpy(puc_page_buffer + us_offset, data, writeSize);
-
-		/* Post-buffer data */
-		memcpy(puc_page_buffer + us_offset + writeSize, (void *)(ul_page_addr + us_offset + writeSize), us_padding);
-
-		/* Write page.
-		 * Writing 8-bit and 16-bit data is not allowed and may lead to
-		 * unpredictable data corruption.
-		 */
-		uint32_t *p_aligned_dest = (uint32_t *) ul_page_addr;
-		for (uint32_t ul_idx = 0; ul_idx < (IFLASH_PAGE_SIZE / sizeof(uint32_t)); ++ul_idx)
-		{
-			*p_aligned_dest++ = gs_ul_page_buffer[ul_idx];
-		}
+		uint32_t ul_page_addr = compute_address(p_efc, us_page);
+		memcpyu32(reinterpret_cast<uint32_t*>(ul_page_addr), data, IFLASH_PAGE_SIZE/4);
 
 		if (efc_perform_command(p_efc, EFC_FCMD_WP, us_page) != 0)
 		{
@@ -390,10 +359,9 @@ bool Flash::Write(uint32_t start, uint32_t length, const uint8_t *data) noexcept
 		}
 
 		/* Progression */
-		data += writeSize;
-		length -= writeSize;
+		data += IFLASH_PAGE_SIZE;
+		length -= IFLASH_PAGE_SIZE;
 		us_page++;
-		us_offset = 0;
 	}
 
 	return true;
