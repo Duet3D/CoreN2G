@@ -338,7 +338,7 @@ bool Flash::EraseSector(uint32_t start) noexcept
 bool Flash::Write(uint32_t start, uint32_t length, const uint32_t *data) noexcept
 {
 	// We only support writing whole pages, and the source buffer must be dword aligned
-	if ((start % IFLASH_PAGE_SIZE) != 0 || (length % IFLASH_PAGE_SIZE) != 0 || (reinterpret_cast<uint32_t>(data) & 3) != 0)
+	if ((start % IFLASH_PAGE_SIZE) != 0 || (length % IFLASH_PAGE_SIZE) != 0)
 	{
 		return false;
 	}
