@@ -46,11 +46,13 @@ constexpr IRQn SDHC_IRQn = SDHC1_IRQn;
 #define HSMCI_SLOT_0_SIZE 		4
 #define CONF_SDHC_CLK_GEN_SEL	0
 
-// Enabling STOP_CLOCK_WHEN_IDLE reduces EMI when idle, but caused system hangs on Christian's board when uploading files. So leave it disabled for now.
-#define STOP_CLOCK_WHEN_IDLE	0
+// Enabling STOP_CLOCK_WHEN_IDLE reduces EMI when idle. This caused system hangs on Christian's board when uploading files, but that sometimes happens on his board even without this.
+#define STOP_CLOCK_WHEN_IDLE	1
 
 //extern void debugPrintf(const char* fmt, ...) noexcept __attribute__ ((format (printf, 1, 2)));
 
+static uint32_t currentRequestedClockFrequency = 0;			// the speed we were asked for when we last set the clock frequency (not necessarily the actual clock speed)
+static uint32_t currentActualClockFrequency;				// the actual speed we set
 static uint64_t mci_sync_trans_pos;
 static uint16_t mci_sync_block_size;
 static uint16_t mci_sync_nb_block;
@@ -84,7 +86,7 @@ __attribute__((aligned(32))) static SDHC_ADMA_DESCR sdhc1DmaDescrTable[1];
 static void hsmci_reset_cmdinh() noexcept;
 static void hsmci_reset_datinh() noexcept;
 static void hsmci_reset_all() noexcept;
-static bool hsmci_set_speed(uint32_t speed, uint8_t prog_clock_mode) noexcept;
+static bool hsmci_set_speed(uint32_t speed) noexcept;
 static bool hsmci_wait_busy() noexcept;
 static bool hsmci_send_cmd_execute(uint32_t cmdr, uint32_t cmd, uint32_t arg) noexcept;
 
@@ -121,19 +123,9 @@ static void hsmci_reset_all() noexcept
 	while (hw->SRR.reg & SDHC_SRR_SWRSTALL) { }
 }
 
-/**
- * \brief Set speed of the SDHC clock.
- *
- * \param hw       The pointer to MCI hardware instance
- * \param speed    SDHC clock speed in Hz.
- * \param prog_clock_mode     Use programmable clock mode
- * \return true if success
- */
-static bool hsmci_set_speed(uint32_t speed, uint8_t prog_clock_mode) noexcept
+// Stop the SD card clock
+static void hsmciStopClock() noexcept
 {
-	// The following is based on the code from Harmony
-
-	// Disable clock before changing it
 	if (hri_sdhc_get_CCR_SDCLKEN_bit(hw))
 	{
 		// It sometimes hangs on this next line because the SDHC_PSR_CMDINHD_CANNOT bit it stuck on
@@ -152,66 +144,90 @@ static bool hsmci_set_speed(uint32_t speed, uint8_t prog_clock_mode) noexcept
 		}
 		hri_sdhc_clear_CCR_SDCLKEN_bit(hw);
 	}
+}
 
-	// Get the base clock frequency
-	const uint32_t baseclk_frq = AppGetSdhcClockSpeed()/2;
-
-	// Use programmable clock mode if it is supported
-	uint32_t clkmul = hri_sdhc_read_CA1R_CLKMULT_bf(hw);
-	uint16_t divider = 0;
-	if (clkmul > 0)
+/**
+ * \brief Set speed of the SDHC clock.
+ *
+ * \param hw       The pointer to MCI hardware instance
+ * \param speed    SDHC clock speed in Hz.
+ * \return true if success
+ */
+static bool hsmci_set_speed(uint32_t speed) noexcept
+{
+	if (speed != currentRequestedClockFrequency)
 	{
-		/* F_SDCLK = F_MULTCLK/(DIV+1), where F_MULTCLK = F_BASECLK x (CLKMULT+1)
-		   F_SDCLK = (F_BASECLK x (CLKMULT + 1))/(DIV + 1)
-		   For a given F_SDCLK, DIV = [(F_BASECLK x (CLKMULT + 1))/F_SDCLK] - 1
-		*/
-		divider = (baseclk_frq * (clkmul + 1)) / speed;
-		if (divider > 0)
+		currentRequestedClockFrequency = currentActualClockFrequency = 0;
+
+		// The following is based on the code from Harmony
+		hsmciStopClock();								// disable clock before changing it
+
+		// Get the base clock frequency
+		const uint32_t baseclk_frq = AppGetSdhcClockSpeed()/2;
+
+		// Use programmable clock mode if it is supported
+		uint32_t clkmul = hri_sdhc_read_CA1R_CLKMULT_bf(hw);
+		uint16_t divider = 0;
+		if (clkmul > 0)
 		{
-			divider = divider - 1;
+			/* F_SDCLK = F_MULTCLK/(DIV+1), where F_MULTCLK = F_BASECLK x (CLKMULT+1)
+			   F_SDCLK = (F_BASECLK x (CLKMULT + 1))/(DIV + 1)
+			   For a given F_SDCLK, DIV = [(F_BASECLK x (CLKMULT + 1))/F_SDCLK] - 1
+			*/
+			divider = (baseclk_frq * (clkmul + 1)) / speed;
+			if (divider > 0)
+			{
+				divider = divider - 1;
+			}
+			hri_sdhc_set_CCR_CLKGSEL_bit(hw);
 		}
-		hri_sdhc_set_CCR_CLKGSEL_bit(hw);
-	}
-	else
-	{
-		// Programmable clock mode is not supported, so use divided clock mode
-		/* F_SDCLK = F_BASECLK/(2 x DIV).
-		   For a given F_SDCLK, DIV = F_BASECLK/(2 x F_SDCLK)
-		*/
-		divider =  baseclk_frq/(2 * speed);
-		hri_sdhc_clear_CCR_CLKGSEL_bit(hw);
-	}
+		else
+		{
+			// Programmable clock mode is not supported, so use divided clock mode
+			/* F_SDCLK = F_BASECLK/(2 x DIV).
+			   For a given F_SDCLK, DIV = F_BASECLK/(2 x F_SDCLK)
+			*/
+			divider =  baseclk_frq/(2 * speed);
+			if (divider == 0)
+			{
+				divider = 1;
+			}
+			hri_sdhc_clear_CCR_CLKGSEL_bit(hw);
+		}
 
-	if (speed > 25000000)
-	{
-		// Enable the high speed mode
-		hri_sdhc_set_HC1R_HSEN_bit(hw);
+		if (speed > 25000000)
+		{
+			// Enable the high speed mode
+			hri_sdhc_set_HC1R_HSEN_bit(hw);
+		}
+		else
+		{
+			// Clear the high speed mode
+			hri_sdhc_clear_HC1R_HSEN_bit(hw);
+		}
+
+		if (hri_sdhc_get_HC1R_HSEN_bit(hw) && divider == 0)
+		{
+			// IP limitation, if high speed mode is active divider must be non zero
+			divider = 1;
+		}
+
+		// Set the divider
+		hri_sdhc_write_CCR_SDCLKFSEL_bf(hw, divider & 0xFF);
+		hri_sdhc_write_CCR_USDCLKFSEL_bf(hw, divider >> 8);
+
+		// Enable internal clock
+		hri_sdhc_set_CCR_INTCLKEN_bit(hw);
+
+		// Wait for the internal clock to stabilize
+		while (hri_sdhc_get_CCR_INTCLKS_bit(hw) == 0) { }
+
+		currentRequestedClockFrequency = speed;
+		currentActualClockFrequency = (hri_sdhc_get_CCR_CLKGSEL_bit(hw)) ? (baseclk_frq * (clkmul + 1)) / (divider + 1) : baseclk_frq/(divider * 2);
 	}
-	else
-	{
-		// Clear the high speed mode
-		hri_sdhc_clear_HC1R_HSEN_bit(hw);
-	}
-
-	if (hri_sdhc_get_HC1R_HSEN_bit(hw) && divider == 0)
-	{
-		// IP limitation, if high speed mode is active divider must be non zero
-		divider = 1;
-	}
-
-	// Set the divider
-	hri_sdhc_write_CCR_SDCLKFSEL_bf(hw, divider & 0xFF);
-	hri_sdhc_write_CCR_USDCLKFSEL_bf(hw, divider >> 8);
-
-	// Enable internal clock
-	hri_sdhc_set_CCR_INTCLKEN_bit(hw);
-
-	// Wait for the internal clock to stabilize
-	while (hri_sdhc_get_CCR_INTCLKS_bit(hw) == 0) { }
 
 	// Enable the SDCLK
 	hri_sdhc_set_CCR_SDCLKEN_bit(hw);
-
 	return true;
 }
 
@@ -280,24 +296,7 @@ static bool WaitForDmaComplete() noexcept
 
 static uint32_t hsmci_get_clock_speed() noexcept
 {
-	uint32_t clkbase = AppGetSdhcClockSpeed();
-	const uint32_t clkmul = hri_sdhc_read_CA1R_CLKMULT_bf(hw);
-
-	// If programmable clock mode is supported, baseclk is divided by 2
-	if (clkmul > 0)
-	{
-		clkbase = clkbase / 2;
-	}
-
-	uint32_t div = (hri_sdhc_read_CCR_USDCLKFSEL_bf(hw) << 8) | hri_sdhc_read_CCR_SDCLKFSEL_bf(hw);
-	if (hri_sdhc_get_CCR_CLKGSEL_bit(hw))				// if programmable clock mode
-	{
-		return (clkbase * (clkmul + 1))/(div + 1);
-	}
-
-	// Divided clock mode
-	div = (div == 0) ? 1 : 2 * div;
-	return clkbase/div;
+	return currentActualClockFrequency;
 }
 
 /**
@@ -409,9 +408,6 @@ int32_t hsmci_init() noexcept
 	hri_sdhc_set_NISTER_reg(hw, SDHC_NISTER_MASK);
 	hri_sdhc_set_EISTER_reg(hw, SDHC_EISTER_MASK);
 
-	// dc42 The clock divider defaults to 0. Set it to 1 so that M122 doesn't report a too-high interface speed when no card is present.
-	hri_sdhc_write_CCR_SDCLKFSEL_bf(hw, 1);
-
 #ifdef RTOS
 	hw->NISIER.reg = 0;					// disable normal interrupts
 	hw->EISIER.reg = 0;					// disable error interrupts
@@ -439,7 +435,7 @@ bool hsmci_select_device(uint8_t slot, uint32_t clock, uint8_t bus_width, bool h
 		hri_sdhc_clear_HC1R_HSEN_bit(hw);
 	}
 
-	if (!hsmci_set_speed(clock, CONF_SDHC_CLK_GEN_SEL))
+	if (!hsmci_set_speed(clock))
 	{
 		return false;
 	}
@@ -465,9 +461,9 @@ void hsmci_deselect_device(uint8_t slot) noexcept
 {
 	(void)(slot);
 #if STOP_CLOCK_WHEN_IDLE
-	hri_sdhc_clear_CCR_SDCLKEN_bit(hw);				// stop the SD card clock to reduce EMI
+	hsmciStopClock();				// stop the SD card clock to reduce EMI
 #else
-	/* Nothing to do */
+	// Nothing to do
 #endif
 }
 
@@ -508,9 +504,7 @@ uint32_t hsmci_get_speed() noexcept
  */
 void hsmci_send_clock() noexcept
 {
-	volatile uint32_t i;
-	//TODO use delayMicroseconds instead
-	for (i = 0; i < 5000; i++) { }
+	delayMicroseconds(80'000'000/currentActualClockFrequency);		// delay for 80 SD card clocks plus the time taken to execute the division
 }
 
 /**
