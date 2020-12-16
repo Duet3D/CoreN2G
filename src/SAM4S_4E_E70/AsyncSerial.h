@@ -22,6 +22,10 @@
 #include <Stream.h>
 #include <General/RingBuffer.h>
 
+#ifdef RTOS
+# include <RTOSIface/RTOSIface.h>
+#endif
+
 #if SAM4E || SAME70
 #include "component/usart.h"
 #else
