@@ -72,10 +72,8 @@ extern "C" {
  *  \brief Initialize MCI low level driver.
  *
  *  \return Operation status.
- *  \retval 0 Success.
- *  \retval <0 Error code.
  */
-int32_t hsmci_init() noexcept;
+void hsmci_init() noexcept;
 
 /**
  *  \brief Select a device and initialize it

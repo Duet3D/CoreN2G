@@ -36,7 +36,6 @@
 #if SUPPORT_SDHC
 
 #include <CoreIO.h>
-#include <hri_sdhc_e54.h>
 
 // Define which SDHC controller we are using
 Sdhc* const hw = SDHC1;
@@ -49,7 +48,7 @@ constexpr IRQn SDHC_IRQn = SDHC1_IRQn;
 // Enabling STOP_CLOCK_WHEN_IDLE reduces EMI when idle. This caused system hangs on Christian's board when uploading files, but that sometimes happens on his board even without this.
 #define STOP_CLOCK_WHEN_IDLE	1
 
-//extern void debugPrintf(const char* fmt, ...) noexcept __attribute__ ((format (printf, 1, 2)));
+//extern "C" int debugPrintf(const char* fmt, ...) noexcept __attribute__ ((format (printf, 1, 2)));
 
 static uint32_t currentRequestedClockFrequency = 0;			// the speed we were asked for when we last set the clock frequency (not necessarily the actual clock speed)
 static uint32_t currentActualClockFrequency;				// the actual speed we set
@@ -60,7 +59,7 @@ static uint16_t mci_sync_nb_block;
 #ifdef RTOS
 
 #include <RTOSIface/RTOSIface.h>
-static TaskHandle sdhcWaitingTask;
+volatile static TaskHandle sdhcWaitingTask;
 
 #endif
 
@@ -126,14 +125,11 @@ static void hsmci_reset_all() noexcept
 // Stop the SD card clock
 static void hsmciStopClock() noexcept
 {
-	if (hri_sdhc_get_CCR_SDCLKEN_bit(hw))
+	if ((hw->CCR.reg & SDHC_CCR_SDCLKEN) != 0)
 	{
-		// It sometimes hangs on this next line because the SDHC_PSR_CMDINHD_CANNOT bit it stuck on
-		// If we comment out this line, it doesn't hang but it fails to mount the SD card
-		// So we now return failure if it doesn't become ready
 		const uint32_t startedWaitingAt = millis();
-		hri_sdhc_psr_reg_t psr;
-		while (((psr = hri_sdhc_read_PSR_reg(hw)) & (SDHC_PSR_CMDINHC_CANNOT | SDHC_PSR_CMDINHD_CANNOT)) != 0 && millis() - startedWaitingAt < 2) { }
+		uint32_t psr;
+		while (((psr = hw->PSR.reg) & (SDHC_PSR_CMDINHC_CANNOT | SDHC_PSR_CMDINHD_CANNOT)) != 0 && millis() - startedWaitingAt < 2) { }
 		if (psr & SDHC_PSR_CMDINHC_CANNOT)
 		{
 			hsmci_reset_cmdinh();
@@ -142,7 +138,7 @@ static void hsmciStopClock() noexcept
 		{
 			hsmci_reset_datinh();
 		}
-		hri_sdhc_clear_CCR_SDCLKEN_bit(hw);
+		hw->CCR.reg &= ~SDHC_CCR_SDCLKEN;
 	}
 }
 
@@ -165,8 +161,8 @@ static bool hsmci_set_speed(uint32_t speed) noexcept
 		// Get the base clock frequency
 		const uint32_t baseclk_frq = AppGetSdhcClockSpeed()/2;
 
-		// Use programmable clock mode if it is supported
-		uint32_t clkmul = hri_sdhc_read_CA1R_CLKMULT_bf(hw);
+		// Use programmable clock mode if it is supported. Note, clkmul is 1 on the SAME54P20, not 0 as specified in the data sheet.
+		const uint32_t clkmul = (hw->CA1R.reg & SDHC_CA1R_CLKMULT_Msk) >> SDHC_CA1R_CLKMULT_Pos;
 		uint16_t divider = 0;
 		if (clkmul > 0)
 		{
@@ -179,7 +175,7 @@ static bool hsmci_set_speed(uint32_t speed) noexcept
 			{
 				divider = divider - 1;
 			}
-			hri_sdhc_set_CCR_CLKGSEL_bit(hw);
+			hw->CCR.reg |= SDHC_CCR_CLKGSEL;
 		}
 		else
 		{
@@ -192,42 +188,41 @@ static bool hsmci_set_speed(uint32_t speed) noexcept
 			{
 				divider = 1;
 			}
-			hri_sdhc_clear_CCR_CLKGSEL_bit(hw);
+			hw->CCR.reg &= ~SDHC_CCR_CLKGSEL;
 		}
 
 		if (speed > 25000000)
 		{
 			// Enable the high speed mode
-			hri_sdhc_set_HC1R_HSEN_bit(hw);
+			hw->HC1R.reg |= SDHC_HC1R_HSEN;
+			if (divider == 0)
+			{
+				// IP limitation, if high speed mode is active divider must be non zero
+				divider = 1;
+			}
 		}
 		else
 		{
 			// Clear the high speed mode
-			hri_sdhc_clear_HC1R_HSEN_bit(hw);
-		}
-
-		if (hri_sdhc_get_HC1R_HSEN_bit(hw) && divider == 0)
-		{
-			// IP limitation, if high speed mode is active divider must be non zero
-			divider = 1;
+			hw->HC1R.reg &= ~SDHC_HC1R_HSEN;
 		}
 
 		// Set the divider
-		hri_sdhc_write_CCR_SDCLKFSEL_bf(hw, divider & 0xFF);
-		hri_sdhc_write_CCR_USDCLKFSEL_bf(hw, divider >> 8);
+		hw->CCR.reg = (hw->CCR.reg & ~(SDHC_CCR_SDCLKFSEL_Msk | SDHC_CCR_USDCLKFSEL_Msk))
+						| (SDHC_CCR_SDCLKFSEL(divider & 0xFF) | SDHC_CCR_USDCLKFSEL(divider >> 8));
 
 		// Enable internal clock
-		hri_sdhc_set_CCR_INTCLKEN_bit(hw);
+		hw->CCR.reg |= SDHC_CCR_INTCLKEN;
 
 		// Wait for the internal clock to stabilize
-		while (hri_sdhc_get_CCR_INTCLKS_bit(hw) == 0) { }
+		while ((hw->CCR.reg & SDHC_CCR_INTCLKS) == 0) { }
 
 		currentRequestedClockFrequency = speed;
-		currentActualClockFrequency = (hri_sdhc_get_CCR_CLKGSEL_bit(hw)) ? (baseclk_frq * (clkmul + 1)) / (divider + 1) : baseclk_frq/(divider * 2);
+		currentActualClockFrequency = ((hw->CCR.reg & SDHC_CCR_CLKGSEL) != 0) ? (baseclk_frq * (clkmul + 1)) / (divider + 1) : baseclk_frq/(divider * 2);
 	}
 
 	// Enable the SDCLK
-	hri_sdhc_set_CCR_SDCLKEN_bit(hw);
+	hw->CCR.reg |= SDHC_CCR_SDCLKEN;
 	return true;
 }
 
@@ -236,7 +231,7 @@ static bool hsmci_set_speed(uint32_t speed) noexcept
 // For simplicity we use only one descriptor, so numBytes must not exceed 65536.
 static void hsmci_dma_setup (const void* buffer, uint32_t numBytes) noexcept
 {
-	hri_sdhc_set_HC1R_DMASEL_bf(hw, SDHC_HC1R_DMASEL_32BIT_Val);
+	hw->HC1R.reg |= SDHC_HC1R_DMASEL(SDHC_HC1R_DMASEL_32BIT_Val);
 
 	// Set up the descriptor
 	sdhc1DmaDescrTable[0].address = (uint32_t)(buffer);
@@ -247,16 +242,20 @@ static void hsmci_dma_setup (const void* buffer, uint32_t numBytes) noexcept
 	hw->ASAR[0].reg = (uint32_t)(&sdhc1DmaDescrTable[0]);
 }
 
-// Wait for a transfer to complete, returning true if OK, false if it failed
+// Wait for a DMA data transfer to complete, returning true if OK, false if it failed
 static bool WaitForDmaComplete() noexcept
 {
+	// These three constants are probably the same, but let the compiler sort that out
+	constexpr uint16_t ErrorInterruptMask = SDHC_EISIER_DATTEO | SDHC_EISIER_DATCRC | SDHC_EISIER_DATEND | SDHC_EISIER_ADMA;
+	constexpr uint16_t ErrorStatusMask =    SDHC_EISIER_DATTEO | SDHC_EISIER_DATCRC | SDHC_EISIER_DATEND | SDHC_EISIER_ADMA;
 	while (true)
 	{
-		uint16_t nistr;
+		uint16_t nistr, eistr;
 		while (true)
 		{
 			nistr = hw->NISTR.reg;
-			if ((nistr & (SDHC_NISTR_TRFC | SDHC_NISTR_ERRINT)) != 0)
+			eistr = hw->EISTR.reg;
+			if ((nistr & SDHC_NISTR_TRFC) != 0 || (eistr & ErrorStatusMask) != 0)
 			{
 				break;
 			}
@@ -264,13 +263,20 @@ static bool WaitForDmaComplete() noexcept
 			__disable_irq();
 			sdhcWaitingTask = TaskBase::GetCallerTaskHandle();
 			hw->NISIER.reg = SDHC_NISIER_TRFC;
-			hw->EISIER.reg = SDHC_EISIER_DATTEO | SDHC_EISIER_DATCRC | SDHC_EISIER_DATEND | SDHC_EISIER_ADMA;
+			hw->EISIER.reg = ErrorInterruptMask;
 			__enable_irq();
-			TaskBase::Take();
+			if (!TaskBase::Take(500))
+			{
+				sdhcWaitingTask = nullptr;
+				hw->NISIER.reg = 0;
+				hw->EISIER.reg = 0;
+				// Timed out waiting for interrupt
+//				debugPrintf("SDHC timeout, NISTR=%04x EISTR=%04x\n", hw->NISTR.reg, hw->EISTR.reg);
+				return false;
+			}
 #endif
 		}
 
-		uint16_t eistr = hw->EISTR.reg;
 		hw->NISTR.reg = nistr;					// clear the interrupt(s)
 		hw->EISTR.reg = eistr;					// clear the error status
 
@@ -279,7 +285,7 @@ static bool WaitForDmaComplete() noexcept
 			return true;						// transfer complete or DMA complete
 		}
 
-		eistr &= (SDHC_EISTR_DATTEO | SDHC_EISTR_DATCRC | SDHC_EISTR_DATEND | SDHC_EISTR_ADMA);		// get the errors we care about
+		eistr &= ErrorStatusMask;				// get the errors we care about
 		if ((nistr & SDHC_NISTR_TRFC) != 0 && (eistr & ~SDHC_EISTR_DATTEO) == 0)
 		{
 			return true;						// we had transfer complete and timeout - the controller specification says treat this as a successful transfer
@@ -308,7 +314,7 @@ static uint32_t hsmci_get_clock_speed() noexcept
 static bool hsmci_wait_busy() noexcept
 {
 	const uint32_t startedWaitingAt = millis();
-	while ((hri_sdhc_read_PSR_reg(hw) & SDHC_PSR_DATLL(1)) == 0)
+	while ((hw->PSR.reg & SDHC_PSR_DATLL(1)) == 0)
 	{
 		if (millis() - startedWaitingAt > 100)
 		{
@@ -394,19 +400,19 @@ static bool hsmci_send_cmd_execute(uint32_t cmdr, uint32_t cmd, uint32_t arg) no
  *  \brief Initialize MCI low level driver.
  *  If using RTOS then the client must also set the NVIC interrupt priority during initialisation to a value low enough to allow the ISR to make FreeRTOS calls
  */
-int32_t hsmci_init() noexcept
+void hsmci_init() noexcept
 {
-	hri_sdhc_set_SRR_SWRSTALL_bit(hw);
-	while (hri_sdhc_get_SRR_SWRSTALL_bit(hw)) { }
+	hw->SRR.reg |= SDHC_SRR_SWRSTALL;
+	while ((hw->SRR.reg & SDHC_SRR_SWRSTALL) != 0) { }
 
 	/* Set the Data Timeout Register to 2 Mega Cycles */
-	hri_sdhc_write_TCR_reg(hw, SDHC_TCR_DTCVAL(0xE));
+	hw->TCR.reg = SDHC_TCR_DTCVAL(0xE);
 
 	/* Set 3v3 power supply */
-	hri_sdhc_write_PCR_reg(hw, SDHC_PCR_SDBPWR_ON | SDHC_PCR_SDBVSEL_3V3);
+	hw->PCR.reg = SDHC_PCR_SDBPWR_ON | SDHC_PCR_SDBVSEL_3V3;
 
-	hri_sdhc_set_NISTER_reg(hw, SDHC_NISTER_MASK);
-	hri_sdhc_set_EISTER_reg(hw, SDHC_EISTER_MASK);
+	hw->NISTER.reg = SDHC_NISTER_MASK;
+	hw->EISTER.reg = SDHC_EISTER_MASK;
 
 #ifdef RTOS
 	hw->NISIER.reg = 0;					// disable normal interrupts
@@ -414,8 +420,6 @@ int32_t hsmci_init() noexcept
 	NVIC_ClearPendingIRQ(SDHC_IRQn);
 	NVIC_EnableIRQ(SDHC_IRQn);
 #endif
-
-	return ERR_NONE;
 }
 
 
@@ -424,16 +428,8 @@ int32_t hsmci_init() noexcept
  */
 bool hsmci_select_device(uint8_t slot, uint32_t clock, uint8_t bus_width, bool high_speed) noexcept
 {
-	(void)(slot);
-
-	if (high_speed)
-	{
-		hri_sdhc_set_HC1R_HSEN_bit(hw);
-	}
-	else
-	{
-		hri_sdhc_clear_HC1R_HSEN_bit(hw);
-	}
+	(void)slot;
+	(void)high_speed;			// we set high speed or not automatically depending on the clock frequency
 
 	if (!hsmci_set_speed(clock))
 	{
@@ -444,11 +440,11 @@ bool hsmci_select_device(uint8_t slot, uint32_t clock, uint8_t bus_width, bool h
 	{
 	case 1:
 	default:
-		hri_sdhc_clear_HC1R_DW_bit(hw);
+		hw->HC1R.reg &= ~SDHC_HC1R_DW;
 		break;
 
 	case 4:
-		hri_sdhc_set_HC1R_DW_bit(hw);
+		hw->HC1R.reg |= SDHC_HC1R_DW;
 		break;
 	}
 	return true;
@@ -489,7 +485,7 @@ uint8_t hsmci_get_bus_width(uint8_t slot) noexcept
  */
 bool hsmci_is_high_speed_capable() noexcept
 {
-	return hri_sdhc_get_CA0R_HSSUP_bit(hw);
+	return (hw->CA0R.reg & SDHC_CA0R_HSSUP) != 0;
 }
 
 // Get the transfer rate in bytes/sec
@@ -513,7 +509,7 @@ void hsmci_send_clock() noexcept
 bool hsmci_send_cmd(uint32_t cmd, uint32_t arg) noexcept
 {
 	/* Check Command Inhibit (CMD) in the Present State register */
-	if (hri_sdhc_get_PSR_CMDINHC_bit(hw))
+	if (hw->PSR.reg & SDHC_PSR_CMDINHC)
 	{
 		return false;
 	}
@@ -526,7 +522,7 @@ bool hsmci_send_cmd(uint32_t cmd, uint32_t arg) noexcept
  */
 uint32_t hsmci_get_response() noexcept
 {
-	return hri_sdhc_read_RR_reg(hw, 0);
+	return hw->RR[0].reg;
 }
 
 /**
@@ -534,11 +530,9 @@ uint32_t hsmci_get_response() noexcept
  */
 void hsmci_get_response_128(uint8_t *response) noexcept
 {
-	uint32_t response_32;
-
-	for (int8_t i = 3; i >= 0; i--)
+	for (int i = 3; i >= 0; i--)
 	{
-		response_32 = hri_sdhc_read_RR_reg(hw, i);
+		const uint32_t response_32 = hw->RR[i].reg;
 		if (i != 3)
 		{
 			*response = (response_32 >> 24) & 0xFF;
@@ -561,7 +555,7 @@ void hsmci_get_response_128(uint8_t *response) noexcept
 bool hsmci_adtc_start(uint32_t cmd, uint32_t arg, uint16_t block_size, uint16_t nb_block, const void *dmaAddr) noexcept
 {
 	/* Check Command Inhibit (CMD/DAT) in the Present State register */
-	if (hri_sdhc_get_PSR_CMDINHC_bit(hw) || hri_sdhc_get_PSR_CMDINHD_bit(hw))
+	if ((hw->PSR.reg & (SDHC_PSR_CMDINHC | SDHC_PSR_CMDINHD)) != 0)
 	{
 		return false;
 	}
@@ -581,8 +575,8 @@ bool hsmci_adtc_start(uint32_t cmd, uint32_t arg, uint16_t block_size, uint16_t 
 		return false;
 	}
 
-	hri_sdhc_write_BCR_reg(hw, SDHC_BCR_BCNT(nb_block));
-	hri_sdhc_write_BSR_reg(hw, SDHC_BSR_BLOCKSIZE(block_size) | SDHC_BSR_BOUNDARY_4K);
+	hw->BCR.reg =  SDHC_BCR_BCNT(nb_block);
+	hw->BSR.reg =  SDHC_BSR_BLOCKSIZE(block_size) | SDHC_BSR_BOUNDARY_4K;
 
 	if (dmaAddr != NULL)
 	{
@@ -590,7 +584,7 @@ bool hsmci_adtc_start(uint32_t cmd, uint32_t arg, uint16_t block_size, uint16_t 
 		tmr |= SDHC_TMR_DMAEN_ENABLE;
 	}
 
-	hri_sdhc_write_TMR_reg(hw, tmr);
+	hw->TMR.reg = tmr;
 
 	mci_sync_trans_pos  = 0;
 	mci_sync_block_size = block_size;
@@ -616,39 +610,33 @@ bool hsmci_adtc_stop(uint32_t cmd, uint32_t arg) noexcept
  */
 bool hsmci_read_word(uint32_t *value) noexcept
 {
-	uint32_t sr;
-	uint8_t  nbytes;
-
 	/* Wait data available */
-	nbytes = (mci_sync_block_size * mci_sync_nb_block - mci_sync_trans_pos < 4)
-	             ? (mci_sync_block_size % 4)
-	             : 4;
+	const uint8_t nbytes = (mci_sync_block_size * mci_sync_nb_block - mci_sync_trans_pos < 4)
+							 ? (mci_sync_block_size % 4)
+							 : 4;
 
 	if (mci_sync_trans_pos % mci_sync_block_size == 0)
 	{
 		do
 		{
-			sr = hri_sdhc_read_EISTR_reg(hw);
-
+			const uint32_t sr = hw->EISTR.reg;
 			if (sr & (SDHC_EISTR_DATTEO | SDHC_EISTR_DATCRC | SDHC_EISTR_DATEND))
 			{
 				hsmci_reset_cmdinh();
 				return false;
 			}
-		} while (!hri_sdhc_get_NISTR_BRDRDY_bit(hw));
-		hri_sdhc_set_NISTR_BRDRDY_bit(hw);
+		} while ((hw->NISTR.reg & SDHC_NISTR_BRDRDY) == 0);
+		hw->NISTR.reg |= SDHC_NISTR_BRDRDY;
 	}
 
 	/* Read data */
-	if (nbytes == 4)
 	{
-		*value = hri_sdhc_read_BDPR_reg(hw);
-	}
-	else
-	{
-		sr = hri_sdhc_read_BDPR_reg(hw);
+		const uint32_t sr = hw->BDPR.reg;
 		switch (nbytes)
 		{
+		case 4:
+			value[0] = sr;
+			break;
 		case 3:
 			value[0] = sr & 0xFFFFFF;
 			break;
@@ -670,15 +658,14 @@ bool hsmci_read_word(uint32_t *value) noexcept
 	/* Wait end of transfer */
 	do
 	{
-		sr = hri_sdhc_read_EISTR_reg(hw);
-
+		const uint32_t sr = hw->EISTR.reg;
 		if (sr & (SDHC_EISTR_DATTEO | SDHC_EISTR_DATCRC | SDHC_EISTR_DATEND))
 		{
 			hsmci_reset_cmdinh();
 			return false;
 		}
-	} while (!hri_sdhc_get_NISTR_TRFC_bit(hw));
-	hri_sdhc_set_NISTR_TRFC_bit(hw);
+	} while ((hw->NISTR.reg & SDHC_NISTR_TRFC) == 0);
+	hw->NISTR.reg |= SDHC_NISTR_TRFC;
 	return true;
 }
 
@@ -687,27 +674,23 @@ bool hsmci_read_word(uint32_t *value) noexcept
  */
 bool hsmci_write_word(uint32_t value) noexcept
 {
-	uint32_t sr;
-	uint8_t  nbytes;
-
 	/* Wait data available */
-	nbytes = 4; //( mci_dev->mci_sync_block_size & 0x3 ) ? 1 : 4;
+	uint8_t nbytes = 4; //( mci_dev->mci_sync_block_size & 0x3 ) ? 1 : 4;
 	if (mci_sync_trans_pos % mci_sync_block_size == 0)
 	{
 		do
 		{
-			sr = hri_sdhc_read_EISTR_reg(hw);
-
+			const uint32_t sr = hw->EISTR.reg;
 			if (sr & (SDHC_EISTR_DATTEO | SDHC_EISTR_DATCRC | SDHC_EISTR_DATEND))
 			{
 				hsmci_reset_cmdinh();
 				return false;
 			}
-		} while (!hri_sdhc_get_NISTR_BWRRDY_bit(hw));
-		hri_sdhc_set_NISTR_BWRRDY_bit(hw);
+		} while ((hw->NISTR.reg & SDHC_NISTR_BWRRDY) == 0);
+		hw->NISTR.reg |= SDHC_NISTR_BWRRDY;
 	}
 	/* Write data */
-	hri_sdhc_write_BDPR_reg(hw, value);
+	hw->BDPR.reg = value;
 	mci_sync_trans_pos += nbytes;
 
 	if (((uint64_t)mci_sync_block_size * mci_sync_nb_block) > mci_sync_trans_pos)
@@ -718,15 +701,14 @@ bool hsmci_write_word(uint32_t value) noexcept
 	/* Wait end of transfer */
 	do
 	{
-		sr = hri_sdhc_read_EISTR_reg(hw);
-
+		const uint32_t sr = hw->EISTR.reg;
 		if (sr & (SDHC_EISTR_DATTEO | SDHC_EISTR_DATCRC | SDHC_EISTR_DATEND))
 		{
 			hsmci_reset_cmdinh();
 			return false;
 		}
-	} while (!hri_sdhc_get_NISTR_TRFC_bit(hw));
-	hri_sdhc_set_NISTR_TRFC_bit(hw);
+	} while ((hw->NISTR.reg & SDHC_NISTR_TRFC) == 0);
+	hw->NISTR.reg |= SDHC_NISTR_TRFC;
 	return true;
 }
 
