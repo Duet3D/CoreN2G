@@ -45,8 +45,8 @@ constexpr IRQn SDHC_IRQn = SDHC1_IRQn;
 #define HSMCI_SLOT_0_SIZE 		4
 #define CONF_SDHC_CLK_GEN_SEL	0
 
-// Enabling STOP_CLOCK_WHEN_IDLE reduces EMI when idle. This caused system hangs on Christian's board when uploading files, but that sometimes happens on his board even without this.
-#define STOP_CLOCK_WHEN_IDLE	1
+// Enabling STOP_CLOCK_WHEN_IDLE reduces EMI when idle. Unfortunately it causes hangs when running the SD card write speed test. So leave it disabled.
+#define STOP_CLOCK_WHEN_IDLE	0
 
 //extern "C" int debugPrintf(const char* fmt, ...) noexcept __attribute__ ((format (printf, 1, 2)));
 
@@ -370,12 +370,19 @@ static bool hsmci_send_cmd_execute(uint32_t cmdr, uint32_t cmd, uint32_t arg) no
 	const uint32_t errorMask = (cmd & MCI_RESP_CRC)
 							? SDHC_EISTR_CMDTEO | SDHC_EISTR_CMDEND | SDHC_EISTR_CMDIDX  | SDHC_EISTR_DATTEO | SDHC_EISTR_DATEND | SDHC_EISTR_ADMA | SDHC_EISTR_CMDCRC | SDHC_EISTR_DATCRC
 								: SDHC_EISTR_CMDTEO | SDHC_EISTR_CMDEND | SDHC_EISTR_CMDIDX | SDHC_EISTR_DATTEO | SDHC_EISTR_DATEND | SDHC_EISTR_ADMA;
+	const uint32_t startedWaitingAt = millis();
 	do
 	{
 		if (hw->EISTR.reg & errorMask)
 		{
 			hsmci_reset_cmdinh();
 			hw->EISTR.reg |= SDHC_EISTR_MASK;
+			return false;
+		}
+		if (millis() - startedWaitingAt > 100)
+		{
+//			debugPrintf("SD hang, cmd=%" PRIx32 " cmdr=%" PRIx32 " NISTR=%04x EISTR=%04x\n", cmd, cmdr, hw->NISTR.reg, hw->EISTR.reg);
+			hsmci_reset_all();
 			return false;
 		}
 	} while ((hw->NISTR.reg & SDHC_NISTR_CMDC) == 0);
@@ -500,7 +507,7 @@ uint32_t hsmci_get_speed() noexcept
  */
 void hsmci_send_clock() noexcept
 {
-	delayMicroseconds(80'000'000/currentActualClockFrequency);		// delay for 80 SD card clocks plus the time taken to execute the division
+	delayMicroseconds((75'000'000/currentActualClockFrequency) + 1);		// delay for 75 SD card clocks plus 1us to round it up, plus the time taken to execute the division
 }
 
 /**
@@ -656,12 +663,19 @@ bool hsmci_read_word(uint32_t *value) noexcept
 	}
 
 	/* Wait end of transfer */
+	const uint32_t startedWaitingAt = millis();
 	do
 	{
 		const uint32_t sr = hw->EISTR.reg;
 		if (sr & (SDHC_EISTR_DATTEO | SDHC_EISTR_DATCRC | SDHC_EISTR_DATEND))
 		{
 			hsmci_reset_cmdinh();
+			return false;
+		}
+		if (millis() - startedWaitingAt > 100)
+		{
+//			debugPrintf("SD hang, cmd=%" PRIx32 " cmdr=%" PRIx32 " NISTR=%04x EISTR=%04x\n", cmd, cmdr, hw->NISTR.reg, hw->EISTR.reg);
+			hsmci_reset_all();
 			return false;
 		}
 	} while ((hw->NISTR.reg & SDHC_NISTR_TRFC) == 0);
@@ -699,12 +713,19 @@ bool hsmci_write_word(uint32_t value) noexcept
 	}
 
 	/* Wait end of transfer */
+	const uint32_t startedWaitingAt = millis();
 	do
 	{
 		const uint32_t sr = hw->EISTR.reg;
 		if (sr & (SDHC_EISTR_DATTEO | SDHC_EISTR_DATCRC | SDHC_EISTR_DATEND))
 		{
 			hsmci_reset_cmdinh();
+			return false;
+		}
+		if (millis() - startedWaitingAt > 100)
+		{
+//			debugPrintf("SD hang, cmd=%" PRIx32 " cmdr=%" PRIx32 " NISTR=%04x EISTR=%04x\n", cmd, cmdr, hw->NISTR.reg, hw->EISTR.reg);
+			hsmci_reset_all();
 			return false;
 		}
 	} while ((hw->NISTR.reg & SDHC_NISTR_TRFC) == 0);
