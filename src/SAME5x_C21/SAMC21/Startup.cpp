@@ -140,7 +140,7 @@ static void InitClocks() noexcept
 
 	if (xoscFrequency == 0)
 	{
-		// Start up the crystal oscillator with high gain to guaranteed operation, so that we can measure its frequency
+		// Start up the crystal oscillator with high gain to guarantee operation, so that we can measure its frequency
 		hri_oscctrl_write_XOSCCTRL_reg(OSCCTRL,
 		    	  OSCCTRL_XOSCCTRL_STARTUP(0)
 				| (0 << OSCCTRL_XOSCCTRL_AMPGC_Pos)
