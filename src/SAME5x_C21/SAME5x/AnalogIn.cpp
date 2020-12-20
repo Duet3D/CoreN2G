@@ -16,6 +16,8 @@
 #include "AnalogIn.h"
 #include <RTOSIface/RTOSIface.h>
 #include <DmacManager.h>
+#include <Cache.h>
+
 #include <hri_adc_e54.h>
 
 constexpr unsigned int AdcGclkNum = GclkNum60MHz;
@@ -68,9 +70,9 @@ public:
 	void Exit() noexcept;
 
 private:
-	bool InternalEnableChannel(unsigned int chan, uint8_t ctrlB, uint8_t refCtrl, uint8_t avgCtrl,
-								AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
+	bool InternalEnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
 	size_t GetChannel(size_t slot) noexcept { return inputRegisters[DmaDwordsPerChannel * slot] & 0x1F; }
+	void ReInit() noexcept;
 
 	static void DmaCompleteCallback(CallbackParameter cp, DmaCallbackReason reason) noexcept;
 
@@ -132,7 +134,7 @@ bool AdcClass::EnableChannel(unsigned int chan, AnalogInCallbackFunction fn, Cal
 		return false;
 	}
 
-	return InternalEnableChannel(chan, CtrlB, RefCtrl, AvgCtrl, fn, param, p_ticksPerCall);
+	return InternalEnableChannel(chan, fn, param, p_ticksPerCall);
 }
 
 bool AdcClass::SetCallback(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept
@@ -165,11 +167,96 @@ bool AdcClass::EnableTemperatureSensor(unsigned int sensorNumber, AnalogInCallba
 		return false;
 	}
 
-	return InternalEnableChannel(sensorNumber + ADC_INPUTCTRL_MUXPOS_PTAT_Val, CtrlB, RefCtrl, AvgCtrl, fn, param, p_ticksPerCall);
+	return InternalEnableChannel(sensorNumber + ADC_INPUTCTRL_MUXPOS_PTAT_Val, fn, param, p_ticksPerCall);
 }
 
-bool AdcClass::InternalEnableChannel(unsigned int chan, uint8_t ctrlB, uint8_t refCtrl, uint8_t avgCtrl,
-										AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept
+// Initialise or re-initialise the ADC and DMA channels. The ADC clock has already been enabled.
+void AdcClass::ReInit() noexcept
+{
+	if (!hri_adc_is_syncing(device, ADC_SYNCBUSY_SWRST))
+	{
+		if (hri_adc_get_CTRLA_reg(device, ADC_CTRLA_ENABLE))
+		{
+			hri_adc_clear_CTRLA_ENABLE_bit(device);
+			hri_adc_wait_for_sync(device, ADC_SYNCBUSY_ENABLE);
+		}
+		hri_adc_write_CTRLA_reg(device, ADC_CTRLA_SWRST);
+	}
+	hri_adc_wait_for_sync(device, ADC_SYNCBUSY_SWRST);
+
+	// From the SAME5x errata:
+	// 2.1.4 DMA Sequencing
+	//	ADC DMA Sequencing with prescaler>8 (ADC->CTRLA.bit.PRESCALER>2) does not produce the expected channel sequence.
+	// Workaround
+	//  Keep the prescaler setting to a maximum of 8, and use the GCLK Generator divider if more prescaling is needed.
+	// 2.1.5 DMA Sequencing
+	//  ADC DMA Sequencing with averaging enabled (AVGCTRL.SAMPLENUM>1) without the AVGCTRL bit set (DSEQCTRL.AVGCTRL=0) in the update sequence
+	//  does not produce the expected channel sequence.
+	// Workaround
+	//  Add the AVGCTRL register in the register update list (DSEQCTRL.AVGCTRL=1) and set the desired value in this list.
+	hri_adc_write_CTRLA_reg(device, ADC_CTRLA_PRESCALER_DIV8);			// GCLK1 is 60MHz, divided by 8 is 7.5MHz
+	hri_adc_write_CTRLB_reg(device, CtrlB);
+	hri_adc_write_REFCTRL_reg(device,  RefCtrl);
+	hri_adc_write_EVCTRL_reg(device, ADC_EVCTRL_RESRDYEO);
+	hri_adc_write_INPUTCTRL_reg(device, ADC_INPUTCTRL_MUXNEG_GND);
+	hri_adc_write_AVGCTRL_reg(device, AvgCtrl);
+	hri_adc_write_SAMPCTRL_reg(device, SampCtrl);						// this also extends the sample time to 4 ADC clocks
+	hri_adc_write_WINLT_reg(device, 0);
+	hri_adc_write_WINUT_reg(device, 0xFFFF);
+	hri_adc_write_GAINCORR_reg(device, 1u << 11);
+	hri_adc_write_OFFSETCORR_reg(device, 0);
+	hri_adc_write_DBGCTRL_reg(device, 0);
+
+	// Load CALIB with NVM data calibration results
+	do
+	{
+		uint32_t biasComp, biasRefbuf, biasR2R;
+		if (device == ADC0)
+		{
+			biasComp = (*reinterpret_cast<const uint32_t*>(ADC0_FUSES_BIASCOMP_ADDR) & ADC0_FUSES_BIASCOMP_Msk) >> ADC0_FUSES_BIASCOMP_Pos;
+			biasRefbuf = (*reinterpret_cast<const uint32_t*>(ADC0_FUSES_BIASREFBUF_ADDR) & ADC0_FUSES_BIASREFBUF_Msk) >> ADC0_FUSES_BIASREFBUF_Pos;
+			biasR2R = (*reinterpret_cast<const uint32_t*>(ADC0_FUSES_BIASR2R_ADDR) & ADC0_FUSES_BIASR2R_Msk) >> ADC0_FUSES_BIASR2R_Pos;
+		}
+		else if (device == ADC1)
+		{
+			biasComp = (*reinterpret_cast<const uint32_t*>(ADC1_FUSES_BIASCOMP_ADDR) & ADC1_FUSES_BIASCOMP_Msk) >> ADC1_FUSES_BIASCOMP_Pos;
+			biasRefbuf = (*reinterpret_cast<const uint32_t*>(ADC1_FUSES_BIASREFBUF_ADDR) & ADC1_FUSES_BIASREFBUF_Msk) >> ADC1_FUSES_BIASREFBUF_Pos;
+			biasR2R = (*reinterpret_cast<const uint32_t*>(ADC1_FUSES_BIASR2R_ADDR) & ADC1_FUSES_BIASR2R_Msk) >> ADC1_FUSES_BIASR2R_Pos;
+		}
+		else
+		{
+			break;
+		}
+		hri_adc_write_CALIB_reg(device, ADC_CALIB_BIASCOMP(biasComp) | ADC_CALIB_BIASREFBUF(biasRefbuf) | ADC_CALIB_BIASR2R(biasR2R));
+	} while (false);
+
+	// Enable DMA sequencing, updating the input, reference control and average control registers.
+	hri_adc_write_DSEQCTRL_reg(device, DmaSeqVal);
+	hri_adc_set_CTRLA_ENABLE_bit(device);
+
+	// Set the supply controller to on-demand mode so that we can get at both temperature sensors
+	hri_supc_set_VREF_ONDEMAND_bit(SUPC);
+	hri_supc_set_VREF_TSEN_bit(SUPC);
+	hri_supc_clear_VREF_VREFOE_bit(SUPC);
+
+	// Initialise the DMAC. First the sequencer
+	DmacManager::DisableChannel(dmaChan);
+	DmacManager::SetDestinationAddress(dmaChan, &device->DSEQDATA.reg);
+	DmacManager::SetBtctrl(dmaChan, DMAC_BTCTRL_VALID | DMAC_BTCTRL_EVOSEL_DISABLE | DMAC_BTCTRL_BLOCKACT_INT | DMAC_BTCTRL_BEATSIZE_WORD
+								| DMAC_BTCTRL_SRCINC | DMAC_BTCTRL_STEPSEL_SRC | DMAC_BTCTRL_STEPSIZE_X1);
+	DmacManager::SetTriggerSource(dmaChan, (DmaTrigSource)((uint8_t)trigSrc + 1));
+
+	// Now the result reader
+	DmacManager::DisableChannel(dmaChan + 1);
+	DmacManager::SetSourceAddress(dmaChan + 1, const_cast<uint16_t *>(&device->RESULT.reg));
+	DmacManager::SetInterruptCallback(dmaChan + 1, DmaCompleteCallback, this);
+	DmacManager::SetBtctrl(dmaChan + 1, DMAC_BTCTRL_VALID | DMAC_BTCTRL_EVOSEL_DISABLE | DMAC_BTCTRL_BLOCKACT_INT | DMAC_BTCTRL_BEATSIZE_HWORD
+								| DMAC_BTCTRL_DSTINC | DMAC_BTCTRL_STEPSEL_DST | DMAC_BTCTRL_STEPSIZE_X1);
+	DmacManager::SetTriggerSource(dmaChan + 1, trigSrc);
+	state = State::starting;
+}
+
+bool AdcClass::InternalEnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept
 {
 	if (chan < NumAdcChannels)
 	{
@@ -183,8 +270,8 @@ bool AdcClass::InternalEnableChannel(unsigned int chan, uint8_t ctrlB, uint8_t r
 		ticksAtLastCall[newChannelNumber] = millis();
 
 		// Set up the input registers in the DMA area
-		inputRegisters[newChannelNumber * DmaDwordsPerChannel] = (ADC_INPUTCTRL_MUXNEG_GND | (uint32_t)chan) | (ctrlB << 16);
-		inputRegisters[newChannelNumber * DmaDwordsPerChannel + 1] = refCtrl | (avgCtrl << 16) | (SampCtrl << 24);
+		inputRegisters[newChannelNumber * DmaDwordsPerChannel] = (ADC_INPUTCTRL_MUXNEG_GND | (uint32_t)chan) | (CtrlB << 16);
+		inputRegisters[newChannelNumber * DmaDwordsPerChannel + 1] = RefCtrl | (AvgCtrl << 16) | (SampCtrl << 24);
 
 		resultsByChannel[chan] = 0;
 		channelsEnabled |= 1ul << chan;
@@ -193,85 +280,7 @@ bool AdcClass::InternalEnableChannel(unsigned int chan, uint8_t ctrlB, uint8_t r
 		if (newChannelNumber == 0)
 		{
 			// First channel is being enabled, so initialise the ADC
-			if (!hri_adc_is_syncing(device, ADC_SYNCBUSY_SWRST))
-			{
-				if (hri_adc_get_CTRLA_reg(device, ADC_CTRLA_ENABLE))
-				{
-					hri_adc_clear_CTRLA_ENABLE_bit(device);
-					hri_adc_wait_for_sync(device, ADC_SYNCBUSY_ENABLE);
-				}
-				hri_adc_write_CTRLA_reg(device, ADC_CTRLA_SWRST);
-			}
-			hri_adc_wait_for_sync(device, ADC_SYNCBUSY_SWRST);
-
-			// From the SAME5x errata:
-			// 2.1.4 DMA Sequencing
-			//	ADC DMA Sequencing with prescaler>8 (ADC->CTRLA.bit.PRESCALER>2) does not produce the expected channel sequence.
-			// Workaround
-			//  Keep the prescaler setting to a maximum of 8, and use the GCLK Generator divider if more prescaling is needed.
-			// 2.1.5 DMA Sequencing
-			//  ADC DMA Sequencing with averaging enabled (AVGCTRL.SAMPLENUM>1) without the AVGCTRL bit set (DSEQCTRL.AVGCTRL=0) in the update sequence
-			//  does not produce the expected channel sequence.
-			// Workaround
-			//  Add the AVGCTRL register in the register update list (DSEQCTRL.AVGCTRL=1) and set the desired value in this list.
-			hri_adc_write_CTRLA_reg(device, ADC_CTRLA_PRESCALER_DIV8);			// GCLK1 is 60MHz, divided by 8 is 7.5MHz
-			hri_adc_write_CTRLB_reg(device, ctrlB);
-			hri_adc_write_REFCTRL_reg(device,  refCtrl);
-			hri_adc_write_EVCTRL_reg(device, ADC_EVCTRL_RESRDYEO);
-			hri_adc_write_INPUTCTRL_reg(device, ADC_INPUTCTRL_MUXNEG_GND);
-			hri_adc_write_AVGCTRL_reg(device, avgCtrl);
-			hri_adc_write_SAMPCTRL_reg(device, SampCtrl);						// this also extends the sample time to 4 ADC clocks
-			hri_adc_write_WINLT_reg(device, 0);
-			hri_adc_write_WINUT_reg(device, 0xFFFF);
-			hri_adc_write_GAINCORR_reg(device, 1u << 11);
-			hri_adc_write_OFFSETCORR_reg(device, 0);
-			hri_adc_write_DBGCTRL_reg(device, 0);
-
-			// Load CALIB with NVM data calibration results
-			do
-			{
-				uint32_t biasComp, biasRefbuf, biasR2R;
-				if (device == ADC0)
-				{
-					biasComp = (*reinterpret_cast<const uint32_t*>(ADC0_FUSES_BIASCOMP_ADDR) & ADC0_FUSES_BIASCOMP_Msk) >> ADC0_FUSES_BIASCOMP_Pos;
-					biasRefbuf = (*reinterpret_cast<const uint32_t*>(ADC0_FUSES_BIASREFBUF_ADDR) & ADC0_FUSES_BIASREFBUF_Msk) >> ADC0_FUSES_BIASREFBUF_Pos;
-					biasR2R = (*reinterpret_cast<const uint32_t*>(ADC0_FUSES_BIASR2R_ADDR) & ADC0_FUSES_BIASR2R_Msk) >> ADC0_FUSES_BIASR2R_Pos;
-				}
-				else if (device == ADC1)
-				{
-					biasComp = (*reinterpret_cast<const uint32_t*>(ADC1_FUSES_BIASCOMP_ADDR) & ADC1_FUSES_BIASCOMP_Msk) >> ADC1_FUSES_BIASCOMP_Pos;
-					biasRefbuf = (*reinterpret_cast<const uint32_t*>(ADC1_FUSES_BIASREFBUF_ADDR) & ADC1_FUSES_BIASREFBUF_Msk) >> ADC1_FUSES_BIASREFBUF_Pos;
-					biasR2R = (*reinterpret_cast<const uint32_t*>(ADC1_FUSES_BIASR2R_ADDR) & ADC1_FUSES_BIASR2R_Msk) >> ADC1_FUSES_BIASR2R_Pos;
-				}
-				else
-				{
-					break;
-				}
-				hri_adc_write_CALIB_reg(device, ADC_CALIB_BIASCOMP(biasComp) | ADC_CALIB_BIASREFBUF(biasRefbuf) | ADC_CALIB_BIASR2R(biasR2R));
-			} while (false);
-
-			// Enable DMA sequencing, updating the input, reference control and average control registers.
-			hri_adc_write_DSEQCTRL_reg(device, DmaSeqVal);
-			hri_adc_set_CTRLA_ENABLE_bit(device);
-
-			// Set the supply controller to on-demand mode so that we can get at both temperature sensors
-			hri_supc_set_VREF_ONDEMAND_bit(SUPC);
-			hri_supc_set_VREF_TSEN_bit(SUPC);
-			hri_supc_clear_VREF_VREFOE_bit(SUPC);
-
-			// Initialise the DMAC. First the sequencer
-			DmacManager::SetDestinationAddress(dmaChan, &device->DSEQDATA.reg);
-			DmacManager::SetBtctrl(dmaChan, DMAC_BTCTRL_VALID | DMAC_BTCTRL_EVOSEL_DISABLE | DMAC_BTCTRL_BLOCKACT_INT | DMAC_BTCTRL_BEATSIZE_WORD
-										| DMAC_BTCTRL_SRCINC | DMAC_BTCTRL_STEPSEL_SRC | DMAC_BTCTRL_STEPSIZE_X1);
-			DmacManager::SetTriggerSource(dmaChan, (DmaTrigSource)((uint8_t)trigSrc + 1));
-
-			// Now the result reader
-			DmacManager::SetSourceAddress(dmaChan + 1, const_cast<uint16_t *>(&device->RESULT.reg));
-			DmacManager::SetInterruptCallback(dmaChan + 1, DmaCompleteCallback, this);
-			DmacManager::SetBtctrl(dmaChan + 1, DMAC_BTCTRL_VALID | DMAC_BTCTRL_EVOSEL_DISABLE | DMAC_BTCTRL_BLOCKACT_INT | DMAC_BTCTRL_BEATSIZE_HWORD
-										| DMAC_BTCTRL_DSTINC | DMAC_BTCTRL_STEPSEL_DST | DMAC_BTCTRL_STEPSIZE_X1);
-			DmacManager::SetTriggerSource(dmaChan + 1, trigSrc);
-			state = State::starting;
+			ReInit();
 		}
 
 		return true;
@@ -296,7 +305,7 @@ bool AdcClass::StartConversion() noexcept
 			return false;
 		}
 		++conversionTimeouts;
-		//TODO should we reset the ADC here?
+		ReInit();
 	}
 
 	taskToWake = TaskBase::GetCallerTaskHandle();
@@ -332,6 +341,7 @@ bool AdcClass::StartConversion() noexcept
 
 void AdcClass::ExecuteCallbacks() noexcept
 {
+	Cache::InvalidateAfterDMAReceive(results, sizeof(results));
 	TaskCriticalSectionLocker lock;
 	const uint32_t now = millis();
 	for (size_t i = 0; i < numChannelsConverting; ++i)
@@ -392,10 +402,7 @@ void AnalogIn::TaskLoop(void *) noexcept
 
 		if (conversionStarted)
 		{
-			if (!TaskBase::Take(500))
-			{
-				//TODO we had a timeout so record an error
-			}
+			TaskBase::Take(100);
 			delay(2);
 		}
 		else

@@ -16,6 +16,7 @@
 #include "AnalogIn.h"
 #include <RTOSIface/RTOSIface.h>
 #include <DmacManager.h>
+#include <Cache.h>
 
 #include <hri_adc_c21.h>
 #include <hri_sdadc_c21.h>
@@ -177,6 +178,7 @@ public:
 
 protected:
 	bool InternalEnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept override;
+	void ReInit() noexcept;
 
 private:
 	Adc * const device;
@@ -185,6 +187,68 @@ private:
 AdcClass::AdcClass(Adc * const p_device, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept
 	: AdcBase(p_dmaChan, priority, p_trigSrc), device(p_device)
 {
+}
+
+void AdcClass::ReInit() noexcept
+{
+	if (!hri_adc_is_syncing(device, ADC_SYNCBUSY_SWRST))
+	{
+		if (hri_adc_get_CTRLA_reg(device, ADC_CTRLA_ENABLE))
+		{
+			hri_adc_clear_CTRLA_ENABLE_bit(device);
+			hri_adc_wait_for_sync(device, ADC_SYNCBUSY_ENABLE);
+		}
+		hri_adc_write_CTRLA_reg(device, ADC_CTRLA_SWRST);
+	}
+	hri_adc_wait_for_sync(device, ADC_SYNCBUSY_SWRST);
+
+	hri_adc_write_CTRLB_reg(device, ADC_CTRLB_PRESCALER_DIV4);			// Max ADC clock is 16MHz. GCLK0 is 48MHz, divided by 4 is 12MHz
+#if defined(EXP1XD) || defined(EXP1HCE)
+	hri_adc_write_CTRLC_reg(device, ADC_CTRLC_RESSEL_16BIT | ADC_CTRLC_R2R);	// 16 bit result, rail-to-rail input
+#else
+	hri_adc_write_CTRLC_reg(device, ADC_CTRLC_RESSEL_16BIT);			// 16 bit result
+#endif
+	hri_adc_write_REFCTRL_reg(device,  ADC_REFCTRL_REFSEL_INTVCC2);
+	hri_adc_write_EVCTRL_reg(device, ADC_EVCTRL_RESRDYEO);
+	hri_adc_write_INPUTCTRL_reg(device, ADC_INPUTCTRL_MUXNEG_GND);
+	hri_adc_write_AVGCTRL_reg(device, ADC_AVGCTRL_SAMPLENUM_64);		// average 64 measurements
+	hri_adc_write_SAMPCTRL_reg(device, ADC_SAMPCTRL_OFFCOMP);			// enable comparator offset compensation, sampling time is fixed at 4 ADC clocks
+	hri_adc_write_WINLT_reg(device, 0);
+	hri_adc_write_WINUT_reg(device, 0xFFFF);
+	hri_adc_write_GAINCORR_reg(device, 1u << 11);
+	hri_adc_write_OFFSETCORR_reg(device, 0);
+	hri_adc_write_DBGCTRL_reg(device, 0);
+
+	// Load CALIB with NVM data calibration results
+	do
+	{
+		uint32_t biasComp, biasRefbuf;
+		if (device == ADC0)
+		{
+			biasComp = (*reinterpret_cast<const uint32_t*>(ADC0_FUSES_BIASCOMP_ADDR) & ADC0_FUSES_BIASCOMP_Msk) >> ADC0_FUSES_BIASCOMP_Pos;
+			biasRefbuf = (*reinterpret_cast<const uint32_t*>(ADC0_FUSES_BIASREFBUF_ADDR) & ADC0_FUSES_BIASREFBUF_Msk) >> ADC0_FUSES_BIASREFBUF_Pos;
+		}
+		else if (device == ADC1)
+		{
+			biasComp = (*reinterpret_cast<const uint32_t*>(ADC1_FUSES_BIASCOMP_ADDR) & ADC1_FUSES_BIASCOMP_Msk) >> ADC1_FUSES_BIASCOMP_Pos;
+			biasRefbuf = (*reinterpret_cast<const uint32_t*>(ADC1_FUSES_BIASREFBUF_ADDR) & ADC1_FUSES_BIASREFBUF_Msk) >> ADC1_FUSES_BIASREFBUF_Pos;
+		}
+		else
+		{
+			break;
+		}
+		hri_adc_write_CALIB_reg(device, ADC_CALIB_BIASCOMP(biasComp) | ADC_CALIB_BIASREFBUF(biasRefbuf));
+	} while (false);
+
+	hri_adc_set_CTRLA_ENABLE_bit(device);
+
+	// Initialise the DMAC to read the result
+	DmacManager::DisableChannel(dmaChan);
+	DmacManager::SetBtctrl(dmaChan, DMAC_BTCTRL_VALID | DMAC_BTCTRL_EVOSEL_DISABLE | DMAC_BTCTRL_BLOCKACT_INT | DMAC_BTCTRL_BEATSIZE_HWORD
+								| DMAC_BTCTRL_DSTINC | DMAC_BTCTRL_STEPSEL_DST | DMAC_BTCTRL_STEPSIZE_X1);
+	DmacManager::SetSourceAddress(dmaChan, const_cast<uint16_t *>(&device->RESULT.reg));
+	DmacManager::SetInterruptCallback(dmaChan, DmaCompleteCallback, this);
+	DmacManager::SetTriggerSource(dmaChan, trigSrc);
 }
 
 // A note on ADC timings.
@@ -213,64 +277,7 @@ bool AdcClass::InternalEnableChannel(unsigned int chan, AnalogInCallbackFunction
 			if (numChannelsEnabled == 1)
 			{
 				// First channel is being enabled, so initialise the ADC
-				if (!hri_adc_is_syncing(device, ADC_SYNCBUSY_SWRST))
-				{
-					if (hri_adc_get_CTRLA_reg(device, ADC_CTRLA_ENABLE))
-					{
-						hri_adc_clear_CTRLA_ENABLE_bit(device);
-						hri_adc_wait_for_sync(device, ADC_SYNCBUSY_ENABLE);
-					}
-					hri_adc_write_CTRLA_reg(device, ADC_CTRLA_SWRST);
-				}
-				hri_adc_wait_for_sync(device, ADC_SYNCBUSY_SWRST);
-
-				hri_adc_write_CTRLB_reg(device, ADC_CTRLB_PRESCALER_DIV4);			// Max ADC clock is 16MHz. GCLK0 is 48MHz, divided by 4 is 12MHz
-#if defined(EXP1XD) || defined(EXP1HCE)
-				hri_adc_write_CTRLC_reg(device, ADC_CTRLC_RESSEL_16BIT | ADC_CTRLC_R2R);	// 16 bit result, rail-to-rail input
-#else
-				hri_adc_write_CTRLC_reg(device, ADC_CTRLC_RESSEL_16BIT);			// 16 bit result
-#endif
-				hri_adc_write_REFCTRL_reg(device,  ADC_REFCTRL_REFSEL_INTVCC2);
-				hri_adc_write_EVCTRL_reg(device, ADC_EVCTRL_RESRDYEO);
-				hri_adc_write_INPUTCTRL_reg(device, ADC_INPUTCTRL_MUXNEG_GND);
-				hri_adc_write_AVGCTRL_reg(device, ADC_AVGCTRL_SAMPLENUM_64);		// average 64 measurements
-				hri_adc_write_SAMPCTRL_reg(device, ADC_SAMPCTRL_OFFCOMP);			// enable comparator offset compensation, sampling time is fixed at 4 ADC clocks
-				hri_adc_write_WINLT_reg(device, 0);
-				hri_adc_write_WINUT_reg(device, 0xFFFF);
-				hri_adc_write_GAINCORR_reg(device, 1u << 11);
-				hri_adc_write_OFFSETCORR_reg(device, 0);
-				hri_adc_write_DBGCTRL_reg(device, 0);
-
-				// Load CALIB with NVM data calibration results
-				do
-				{
-					uint32_t biasComp, biasRefbuf;
-					if (device == ADC0)
-					{
-						biasComp = (*reinterpret_cast<const uint32_t*>(ADC0_FUSES_BIASCOMP_ADDR) & ADC0_FUSES_BIASCOMP_Msk) >> ADC0_FUSES_BIASCOMP_Pos;
-						biasRefbuf = (*reinterpret_cast<const uint32_t*>(ADC0_FUSES_BIASREFBUF_ADDR) & ADC0_FUSES_BIASREFBUF_Msk) >> ADC0_FUSES_BIASREFBUF_Pos;
-					}
-					else if (device == ADC1)
-					{
-						biasComp = (*reinterpret_cast<const uint32_t*>(ADC1_FUSES_BIASCOMP_ADDR) & ADC1_FUSES_BIASCOMP_Msk) >> ADC1_FUSES_BIASCOMP_Pos;
-						biasRefbuf = (*reinterpret_cast<const uint32_t*>(ADC1_FUSES_BIASREFBUF_ADDR) & ADC1_FUSES_BIASREFBUF_Msk) >> ADC1_FUSES_BIASREFBUF_Pos;
-					}
-					else
-					{
-						break;
-					}
-					hri_adc_write_CALIB_reg(device, ADC_CALIB_BIASCOMP(biasComp) | ADC_CALIB_BIASREFBUF(biasRefbuf));
-				} while (false);
-
-				hri_adc_set_CTRLA_ENABLE_bit(device);
-
-				// Initialise the DMAC to read the result
-				DmacManager::DisableChannel(chan);
-				DmacManager::SetBtctrl(dmaChan, DMAC_BTCTRL_VALID | DMAC_BTCTRL_EVOSEL_DISABLE | DMAC_BTCTRL_BLOCKACT_INT | DMAC_BTCTRL_BEATSIZE_HWORD
-											| DMAC_BTCTRL_DSTINC | DMAC_BTCTRL_STEPSEL_DST | DMAC_BTCTRL_STEPSIZE_X1);
-				DmacManager::SetSourceAddress(dmaChan, const_cast<uint16_t *>(&device->RESULT.reg));
-				DmacManager::SetInterruptCallback(dmaChan, DmaCompleteCallback, this);
-				DmacManager::SetTriggerSource(dmaChan, trigSrc);
+				ReInit();
 				state = State::starting;
 			}
 		}
@@ -297,11 +304,15 @@ bool AdcClass::StartConversion() noexcept
 			return false;
 		}
 		++conversionTimeouts;
-		//TODO should we reset the ADC here?
+		ReInit();
 	}
 
 	taskToWake = TaskBase::GetCallerTaskHandle();
+
+	DmacManager::DisableChannel(dmaChan);
+
 	(void)device->RESULT.reg;			// make sure no result pending
+
 	device->SEQCTRL.reg = channelsEnabled;
 
 	// Set up DMA to read the results our of the ADC into the results array
@@ -322,6 +333,7 @@ bool AdcClass::StartConversion() noexcept
 
 void AdcClass::ExecuteCallbacks() noexcept
 {
+	Cache::InvalidateAfterDMAReceive(results, sizeof(results));
 	TaskCriticalSectionLocker lock;
 
 	const uint32_t now = millis();
@@ -358,6 +370,7 @@ public:
 
 protected:
 	bool InternalEnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept override;
+	void ReInit() noexcept;
 
 private:
 	static constexpr size_t NumSdAdcChannels = 2;
@@ -387,7 +400,7 @@ bool SdAdcClass::StartConversion() noexcept
 			return false;
 		}
 		++conversionTimeouts;
-		//TODO should we reset the SDADC here?
+		ReInit();
 	}
 
 	taskToWake = TaskBase::GetCallerTaskHandle();
@@ -412,6 +425,7 @@ bool SdAdcClass::StartConversion() noexcept
 
 void SdAdcClass::ExecuteCallbacks() noexcept
 {
+	Cache::InvalidateAfterDMAReceive(results, sizeof(results));
 	TaskCriticalSectionLocker lock;
 	const uint32_t now = millis();
 	const volatile uint16_t *p = results;
@@ -435,6 +449,42 @@ void SdAdcClass::ExecuteCallbacks() noexcept
 	}
 }
 
+void SdAdcClass::ReInit() noexcept
+{
+	if (!hri_sdadc_is_syncing(device, SDADC_SYNCBUSY_SWRST))
+	{
+		if (hri_sdadc_get_CTRLA_reg(device, SDADC_CTRLA_ENABLE))
+		{
+			hri_sdadc_clear_CTRLA_ENABLE_bit(device);
+			hri_sdadc_wait_for_sync(device, SDADC_SYNCBUSY_ENABLE);
+		}
+		hri_sdadc_write_CTRLA_reg(device, SDADC_CTRLA_SWRST);
+	}
+	hri_sdadc_wait_for_sync(device, SDADC_SYNCBUSY_SWRST);
+
+	// Min SDADC clock is 1MHz, max is 6MHz. GCLK0 is 48MHz, divided by prescaler 8 is 6MHz
+	static constexpr uint16_t SDADC_OSR_256 = 0x02;
+	hri_sdadc_write_CTRLB_reg(device, SDADC_CTRLB_PRESCALER(8/2 - 1) | SDADC_CTRLB_OSR(SDADC_OSR_256) | SDADC_CTRLB_SKPCNT(4));
+	hri_sdadc_write_REFCTRL_reg(device, SDADC_REFCTRL_REFSEL_INTVCC | SDADC_REFCTRL_REFRANGE(0x3));
+	hri_sdadc_write_EVCTRL_reg(device, SDADC_EVCTRL_RESRDYEO);
+	hri_sdadc_write_WINLT_reg(device, 0);
+	hri_sdadc_write_WINUT_reg(device, 0xFFFF);
+	hri_sdadc_write_GAINCORR_reg(device, 1);
+	hri_sdadc_write_OFFSETCORR_reg(device, 0);
+	hri_sdadc_write_SHIFTCORR_reg(device, 7);			// convert 24-bit positive signed result to 16-bit unsigned
+	hri_sdadc_set_ANACTRL_ONCHOP_bit(device);
+	hri_sdadc_write_DBGCTRL_reg(device, 0);
+
+	hri_sdadc_set_CTRLA_ENABLE_bit(device);
+
+	// Initialise the DMAC to read the result. The result register is 32 bits wide but we are only interested in the lowest 16 bits.
+	DmacManager::SetBtctrl(dmaChan, DMAC_BTCTRL_VALID | DMAC_BTCTRL_EVOSEL_DISABLE | DMAC_BTCTRL_BLOCKACT_INT | DMAC_BTCTRL_BEATSIZE_HWORD
+								| DMAC_BTCTRL_DSTINC | DMAC_BTCTRL_STEPSEL_DST | DMAC_BTCTRL_STEPSIZE_X1);
+	DmacManager::SetSourceAddress(dmaChan, const_cast<uint16_t *>(reinterpret_cast<volatile uint16_t*>(&device->RESULT.reg)));
+	DmacManager::SetInterruptCallback(dmaChan, DmaCompleteCallback, this);
+	DmacManager::SetTriggerSource(dmaChan, trigSrc);
+}
+
 bool SdAdcClass::InternalEnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept
 {
 	if (chan < NumSdAdcChannels)
@@ -456,38 +506,7 @@ bool SdAdcClass::InternalEnableChannel(unsigned int chan, AnalogInCallbackFuncti
 			if (numChannelsEnabled == 1)
 			{
 				// First channel is being enabled, so initialise the ADC
-				if (!hri_sdadc_is_syncing(device, SDADC_SYNCBUSY_SWRST))
-				{
-					if (hri_sdadc_get_CTRLA_reg(device, SDADC_CTRLA_ENABLE))
-					{
-						hri_sdadc_clear_CTRLA_ENABLE_bit(device);
-						hri_sdadc_wait_for_sync(device, SDADC_SYNCBUSY_ENABLE);
-					}
-					hri_sdadc_write_CTRLA_reg(device, SDADC_CTRLA_SWRST);
-				}
-				hri_sdadc_wait_for_sync(device, SDADC_SYNCBUSY_SWRST);
-
-				// Min SDADC clock is 1MHz, max is 6MHz. GCLK0 is 48MHz, divided by prescaler 8 is 6MHz
-				static constexpr uint16_t SDADC_OSR_256 = 0x02;
-				hri_sdadc_write_CTRLB_reg(device, SDADC_CTRLB_PRESCALER(8/2 - 1) | SDADC_CTRLB_OSR(SDADC_OSR_256) | SDADC_CTRLB_SKPCNT(4));
-				hri_sdadc_write_REFCTRL_reg(device, SDADC_REFCTRL_REFSEL_INTVCC | SDADC_REFCTRL_REFRANGE(0x3));
-				hri_sdadc_write_EVCTRL_reg(device, SDADC_EVCTRL_RESRDYEO);
-				hri_sdadc_write_WINLT_reg(device, 0);
-				hri_sdadc_write_WINUT_reg(device, 0xFFFF);
-				hri_sdadc_write_GAINCORR_reg(device, 1);
-				hri_sdadc_write_OFFSETCORR_reg(device, 0);
-				hri_sdadc_write_SHIFTCORR_reg(device, 7);			// convert 24-bit positive signed result to 16-bit unsigned
-				hri_sdadc_set_ANACTRL_ONCHOP_bit(device);
-				hri_sdadc_write_DBGCTRL_reg(device, 0);
-
-				hri_sdadc_set_CTRLA_ENABLE_bit(device);
-
-				// Initialise the DMAC to read the result. The result register is 32 bits wide but we are only interested in the lowest 16 bits.
-				DmacManager::SetBtctrl(dmaChan, DMAC_BTCTRL_VALID | DMAC_BTCTRL_EVOSEL_DISABLE | DMAC_BTCTRL_BLOCKACT_INT | DMAC_BTCTRL_BEATSIZE_HWORD
-											| DMAC_BTCTRL_DSTINC | DMAC_BTCTRL_STEPSEL_DST | DMAC_BTCTRL_STEPSIZE_X1);
-				DmacManager::SetSourceAddress(dmaChan, const_cast<uint16_t *>(reinterpret_cast<volatile uint16_t*>(&device->RESULT.reg)));
-				DmacManager::SetInterruptCallback(dmaChan, DmaCompleteCallback, this);
-				DmacManager::SetTriggerSource(dmaChan, trigSrc);
+				ReInit();
 				state = State::starting;
 			}
 		}
@@ -538,10 +557,7 @@ void AnalogIn::TaskLoop(void*) noexcept
 
 		if (conversionStarted)
 		{
-			if (!TaskBase::Take(500))
-			{
-				//TODO we had a timeout so record an error
-			}
+			TaskBase::Take(100);
 			delay(2);
 		}
 		else
