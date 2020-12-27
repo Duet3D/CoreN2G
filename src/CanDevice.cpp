@@ -7,8 +7,9 @@
 
 #include "CanDevice.h"
 
-#if SUPPORT_CAN /*&& !SAME70*/		// this driver doesn't work with SAME70 MCAN definitions
+#if SUPPORT_CAN
 
+#include <Cache.h>
 #include <CanSettings.h>
 #include <CanMessageBuffer.h>
 #include <CanId.h>
@@ -591,8 +592,11 @@ void CanDevice::SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMes
 
 void CanDevice::CopyReceivedMessage(CanMessageBuffer *buffer, const volatile CanRxBufferHeader *f) noexcept
 {
+	// The CAN has written the message directly to memory, so we must invalidate the cache before we read it
+	Cache::InvalidateAfterDMAReceive(f, sizeof(CanRxBufferHeader) + 64);					// flush the header and up to 64 bytes of data
+
 	buffer->extId = f->R0.bit.XTD;
-	buffer->id.SetReceivedId((buffer->extId) ? f->R0.bit.ID : f->R0.bit.ID >> 18);			// A standard identifier is stored into ID[28:18]
+	buffer->id.SetReceivedId((buffer->extId) ? f->R0.bit.ID : f->R0.bit.ID >> 18);			// a standard identifier is stored into ID[28:18]
 	buffer->remote = f->R0.bit.RTR;
 
 	const volatile uint32_t *data = f->GetDataPointer();
