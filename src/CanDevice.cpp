@@ -236,46 +236,46 @@ inline volatile CanDevice::CanRxBufferHeader *CanDevice::GetRxBuffer(uint32_t in
 inline CanDevice::CanTxBufferHeader *CanDevice::GetTxBuffer(uint32_t index) const noexcept { return (CanTxBufferHeader*)(txBuffers + (index * GetTxBufferSize())); }
 
 // Initialise a CAN device and return a pointer to it
-/*static*/ CanDevice* CanDevice::Init(unsigned int whichCan, unsigned int whichPort, const Config& config, uint32_t *memStart, const CanTiming &timing) noexcept
+/*static*/ CanDevice* CanDevice::Init(unsigned int p_whichCan, unsigned int p_whichPort, const Config& p_config, uint32_t *memStart, const CanTiming &timing) noexcept
 {
-	if (   whichCan >= NumCanDevices									// device number out of range
-		|| whichPort >= 2												// CAN instance number out of range
-		|| devicesByPort[whichPort] != nullptr							// CAN instance number already in use
+	if (   p_whichCan >= NumCanDevices									// device number out of range
+		|| p_whichPort >= 2												// CAN instance number out of range
+		|| devicesByPort[p_whichPort] != nullptr						// CAN instance number already in use
 	   )
 	{
 		return nullptr;
 	}
 
-	CanDevice& dev = devices[whichCan];
+	CanDevice& dev = devices[p_whichCan];
 	if (dev.hw != nullptr)												// device instance already in use
 	{
 		return nullptr;
 	}
 
 	// Set up device number, peripheral number, hardware address etc.
-	dev.whichCan = whichCan;
-	dev.whichPort = whichPort;
-	dev.hw = CanPorts[whichPort];
-	dev.config = &config;
-	devicesByPort[whichPort] = &dev;
+	dev.whichCan = p_whichCan;
+	dev.whichPort = p_whichPort;
+	dev.hw = CanPorts[p_whichPort];
+	dev.config = &p_config;
+	devicesByPort[p_whichPort] = &dev;
 
 	// Set up pointers to the individual parts of the buffer memory
-	memset(memStart, 0, config.GetMemorySize());						// clear out filters, transmit pending flags etc.
+	memset(memStart, 0, p_config.GetMemorySize());						// clear out filters, transmit pending flags etc.
 	dev.rxStdFilter = (CanStandardMessageFilterElement*)memStart;
-	memStart += config.GetStandardFiltersMemSize();
+	memStart += p_config.GetStandardFiltersMemSize();
 	dev.rxExtFilter = (CanExtendedMessageFilterElement*)memStart;
-	memStart += config.GetExtendedFiltersMemSize();
+	memStart += p_config.GetExtendedFiltersMemSize();
 	dev.rx0Fifo = memStart;
-	memStart += config.rxFifo0Size * config.GetRxBufferSize();
+	memStart += p_config.rxFifo0Size * p_config.GetRxBufferSize();
 	dev.rx1Fifo = memStart;
-	memStart += config.rxFifo1Size * config.GetRxBufferSize();
+	memStart += p_config.rxFifo1Size * p_config.GetRxBufferSize();
 	dev.rxBuffers = memStart;
-	memStart += config.numRxBuffers * config.GetRxBufferSize();
+	memStart += p_config.numRxBuffers * p_config.GetRxBufferSize();
 	dev.txEventFifo = (CanTxEventEntry*)memStart;
-	memStart += config.GetTxEventFifoMemSize();
+	memStart += p_config.GetTxEventFifoMemSize();
 	dev.txBuffers = memStart;
 
-	dev.useFDMode = (config.dataSize > 8);								// assume we want standard CAN if the max data size is 8
+	dev.useFDMode = (p_config.dataSize > 8);								// assume we want standard CAN if the max data size is 8
 	dev.messagesQueuedForSending = dev.messagesReceived = dev.messagesLost = dev.busOffCount = dev.txTimeouts = 0;
 #ifdef RTOS
 	dev.rxBuffersWaiting.Clear();
@@ -286,7 +286,7 @@ inline CanDevice::CanTxBufferHeader *CanDevice::GetTxBuffer(uint32_t index) cons
 
 	// Enable the clock
 #if SAME5x || SAMC21
-	if (whichPort == 0)
+	if (p_whichPort == 0)
 	{
 		MCLK->AHBMASK.reg |= MCLK_AHBMASK_CAN0;
 		hri_gclk_write_PCHCTRL_reg(GCLK, CAN0_GCLK_ID, GclkNum48MHz | GCLK_PCHCTRL_CHEN);
@@ -297,7 +297,7 @@ inline CanDevice::CanTxBufferHeader *CanDevice::GetTxBuffer(uint32_t index) cons
 		hri_gclk_write_PCHCTRL_reg(GCLK, CAN1_GCLK_ID, GclkNum48MHz | GCLK_PCHCTRL_CHEN);
 	}
 #elif SAME70
-	if (whichPort == 0)
+	if (p_whichPort == 0)
 	{
 		pmc_enable_periph_clk(ID_MCAN0);
 	}
@@ -326,6 +326,17 @@ void CanDevice::DoHardwareInit() noexcept
 	}
 #if SAME5x || SAMC21
 	hw->MRCFG.reg = CAN_MRCFG_QOS_MEDIUM;
+#endif
+#if SAME70
+	// Set upper 16 bits of DMA addresses
+	if (whichCan == 0)
+	{
+		MATRIX->CCFG_CAN0 = (MATRIX->CCFG_CAN0 & 0x0000FFFF) | ((uint32_t)rxBuffers & 0xFFFF0000);
+	}
+	else
+	{
+		MATRIX->CCFG_SYSIO = (MATRIX->CCFG_SYSIO & 0x0000FFFF) | ((uint32_t)rxBuffers & 0xFFFF0000);
+	}
 #endif
 	hw->REG(TDCR) = 0;														// use just the measured transceiver delay
 	hw->REG(NBTP) = nbtp;
