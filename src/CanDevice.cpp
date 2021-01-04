@@ -878,11 +878,11 @@ void CanDevice::SetExtendedFilterElement(unsigned int index, RxBufferNumber whic
 
 void CanDevice::GetLocalCanTiming(CanTiming &timing) noexcept
 {
-	const uint32_t nbtp = hw->REG(NBTP);
-	const uint32_t tseg1 = (nbtp & CAN_(NBTP_NTSEG1_Msk)) >> CAN_(NBTP_NTSEG1_Pos);
-	const uint32_t tseg2 = (nbtp & CAN_(NBTP_NTSEG2_Msk)) >> CAN_(NBTP_NTSEG2_Pos);
-	const uint32_t jw = (nbtp & CAN_(NBTP_NSJW_Msk)) >> CAN_(NBTP_NSJW_Pos);
-	const uint32_t brp = (nbtp & CAN_(NBTP_NBRP_Msk)) >> CAN_(NBTP_NBRP_Pos);
+	const uint32_t localNbtp = hw->REG(NBTP);
+	const uint32_t tseg1 = (localNbtp & CAN_(NBTP_NTSEG1_Msk)) >> CAN_(NBTP_NTSEG1_Pos);
+	const uint32_t tseg2 = (localNbtp & CAN_(NBTP_NTSEG2_Msk)) >> CAN_(NBTP_NTSEG2_Pos);
+	const uint32_t jw = (localNbtp & CAN_(NBTP_NSJW_Msk)) >> CAN_(NBTP_NSJW_Pos);
+	const uint32_t brp = (localNbtp & CAN_(NBTP_NBRP_Msk)) >> CAN_(NBTP_NBRP_Pos);
 	timing.period = (tseg1 + tseg2 + 3) * (brp + 1);
 	timing.tseg1 = (tseg1 + 1) * (brp + 1);
 	timing.jumpWidth = (jw + 1) * (brp + 1);
