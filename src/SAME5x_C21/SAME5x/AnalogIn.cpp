@@ -62,7 +62,7 @@ public:
 	bool IsChannelEnabled(unsigned int chan) const noexcept;
 	bool StartConversion() noexcept;
 	uint16_t ReadChannel(unsigned int chan) const noexcept { return resultsByChannel[chan]; }
-	bool EnableTemperatureSensor(unsigned int sensorNumber, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall) noexcept;
+	bool EnableTemperatureSensor(unsigned int sensorNumber, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
 
 	void ResultReadyCallback(DmaCallbackReason reason) noexcept;
 	void ExecuteCallbacks() noexcept;

@@ -189,7 +189,7 @@ typedef struct _DeviceVectors
 } DeviceVectors;
 
 /* Cortex-M0+ processor handlers */
-void Reset_Handler               ( void );
+void Reset_Handler               ( void ) __attribute__((noreturn));
 void NonMaskableInt_Handler      ( void );
 void HardFault_Handler           ( void );
 void SVCall_Handler              ( void );

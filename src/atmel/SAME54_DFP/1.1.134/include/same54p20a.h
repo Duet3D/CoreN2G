@@ -402,7 +402,7 @@ typedef struct _DeviceVectors
 } DeviceVectors;
 
 /* Cortex-M4 processor handlers */
-void Reset_Handler               ( void ) noexcept;
+void Reset_Handler               ( void ) noexcept __attribute__((noreturn));
 void NonMaskableInt_Handler      ( void );
 void HardFault_Handler           ( void ) noexcept;
 void MemManagement_Handler       ( void );
