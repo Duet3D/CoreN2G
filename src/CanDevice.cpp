@@ -380,6 +380,14 @@ void CanDevice::DoHardwareInit() noexcept
 
 	hw->REG(IR) = 0xFFFFFFFF;												// clear all interrupt sources
 
+	// Set up the timestamp counter
+#if SAME70
+	// The datasheet says that when using CAN-FD, the external timestamp counter must be used, which is TC0. So TC0 must be the step clock lower 16 bits on SAME70 boards.
+	hw->MCAN_TSCC = MCAN_TSCC_TSS_EXT_TIMESTAMP;
+#else
+	hw->TSCC.reg = CAN_TSCC_TSS_INC | CAN_TSCC_TCP(0);						// run timestamp counter at CAN clock speed
+#endif
+
 #ifdef RTOS
 	const IRQn irqn = IRQnsByPort[whichPort];
 	NVIC_DisableIRQ(irqn);
@@ -414,6 +422,11 @@ void CanDevice::Enable() noexcept
 {
 	hw->REG(CCCR) &= ~CAN_(CCCR_INIT);
 	while ((hw->REG(CCCR) & CAN_(CCCR_INIT)) != 0) { }
+}
+
+uint16_t CanDevice::ReadTimestampCounter() noexcept
+{
+	return hw->REG(TSCV);
 }
 
 // Disable this device
@@ -611,7 +624,8 @@ void CanDevice::CopyReceivedMessage(CanMessageBuffer *buffer, const volatile Can
 	buffer->remote = f->R0.bit.RTR;
 
 	const volatile uint32_t *data = f->GetDataPointer();
-	uint8_t dlc = f->R1.bit.DLC;
+	buffer->timeStamp = f->R1.bit.RXTS;
+	const uint8_t dlc = f->R1.bit.DLC;
 	static constexpr uint8_t dlc2len[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 24, 32, 48, 64};
 
 	switch (dlc)
@@ -660,7 +674,7 @@ void CanDevice::CopyReceivedMessage(CanMessageBuffer *buffer, const volatile Can
 		buffer->msg.raw32[0] = data[0];
 		buffer->msg.raw32[1] = data[1];
 		buffer->msg.raw32[2] = data[2];
-		buffer->dataLength = dlc2len[f->R1.bit.DLC];
+		buffer->dataLength = dlc2len[dlc];
 	}
 
 	++messagesReceived;

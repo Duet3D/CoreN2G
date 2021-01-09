@@ -127,7 +127,7 @@ public:
 	};
 
 	// Initialise one of the CAN interfaces and return a pointer to the corresponding device. Returns null if device is already in use or device number is out of range.
-	static CanDevice *Init(unsigned int whichCan, unsigned int whichPort, const Config& config, uint32_t *memStart, const CanTiming& timing) noexcept;
+	static CanDevice *Init(unsigned int p_whichCan, unsigned int p_whichPort, const Config& p_config, uint32_t *memStart, const CanTiming& timing) noexcept;
 
 	// Free the device
 	void DeInit() noexcept;
@@ -165,6 +165,8 @@ public:
 	void SetLocalCanTiming(const CanTiming& timing) noexcept;
 
 	void GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsigned int& rMessagesReceived, unsigned int& rTxTimeouts, unsigned int& rMessagesLost, unsigned int& rBusOffCount) noexcept;
+
+	uint16_t ReadTimestampCounter() noexcept;
 
 #ifdef RTOS
 	void Interrupt() noexcept;
