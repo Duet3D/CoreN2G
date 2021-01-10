@@ -385,7 +385,7 @@ void CanDevice::DoHardwareInit() noexcept
 	// The datasheet says that when using CAN-FD, the external timestamp counter must be used, which is TC0. So TC0 must be the step clock lower 16 bits on SAME70 boards.
 	hw->MCAN_TSCC = MCAN_TSCC_TSS_EXT_TIMESTAMP;
 #else
-	hw->TSCC.reg = CAN_TSCC_TSS_INC | CAN_TSCC_TCP(0);						// run timestamp counter at CAN clock speed
+	hw->TSCC.reg = CAN_TSCC_TSS_INC | CAN_TSCC_TCP(15);						// run timestamp counter at CAN clock speed divided by 16 (which is the maximum divisor supported) i.e. 3MHz
 #endif
 
 #ifdef RTOS
@@ -422,11 +422,6 @@ void CanDevice::Enable() noexcept
 {
 	hw->REG(CCCR) &= ~CAN_(CCCR_INIT);
 	while ((hw->REG(CCCR) & CAN_(CCCR_INIT)) != 0) { }
-}
-
-uint16_t CanDevice::ReadTimestampCounter() noexcept
-{
-	return hw->REG(TSCV);
 }
 
 // Disable this device

@@ -166,7 +166,14 @@ public:
 
 	void GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsigned int& rMessagesReceived, unsigned int& rTxTimeouts, unsigned int& rMessagesLost, unsigned int& rBusOffCount) noexcept;
 
-	uint16_t ReadTimestampCounter() noexcept;
+	uint16_t ReadTimestampCounter() noexcept
+	{
+#if SAME70
+		return hw->MCAN_TSCV;
+#else
+		return hw->TSCV.reg;
+#endif
+	}
 
 #ifdef RTOS
 	void Interrupt() noexcept;
