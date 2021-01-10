@@ -385,7 +385,7 @@ void CanDevice::DoHardwareInit() noexcept
 	// The datasheet says that when using CAN-FD, the external timestamp counter must be used, which is TC0. So TC0 must be the step clock lower 16 bits on SAME70 boards.
 	hw->MCAN_TSCC = MCAN_TSCC_TSS_EXT_TIMESTAMP;
 #else
-	hw->TSCC.reg = CAN_TSCC_TSS_INC | CAN_TSCC_TCP(15);						// run timestamp counter at CAN clock speed divided by 16 (which is the maximum divisor supported) i.e. 3MHz
+	hw->TSCC.reg = CAN_TSCC_TSS_INC | CAN_TSCC_TCP(0);						// run timestamp counter at CAN bit speed
 #endif
 
 #ifdef RTOS
@@ -922,11 +922,17 @@ void CanDevice::UpdateLocalCanTiming(const CanTiming &timing) noexcept
 		{
 			break;
 		}
+
+		// Currently we always use a prescaler that is a power of 2, but we could be more general
 		prescaler <<= 1;
 		period >>= 1;
 		tseg1 >>= 1;
 		jumpWidth >>= 1;
 	}
+
+#if !SAME70
+	bitPeriod = period * prescaler;				// the actual CAN normal bit period, in 48MHz clocks
+#endif
 
 	nbtp = ((tseg1 - 1) << CAN_(NBTP_NTSEG1_Pos))
 		| ((tseg2 - 1) << CAN_(NBTP_NTSEG2_Pos))

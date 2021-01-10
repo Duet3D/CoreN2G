@@ -166,7 +166,7 @@ public:
 
 	void GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsigned int& rMessagesReceived, unsigned int& rTxTimeouts, unsigned int& rMessagesLost, unsigned int& rBusOffCount) noexcept;
 
-	uint16_t ReadTimestampCounter() noexcept
+	uint16_t ReadTimeStampCounter() noexcept
 	{
 #if SAME70
 		return hw->MCAN_TSCV;
@@ -174,6 +174,13 @@ public:
 		return hw->TSCV.reg;
 #endif
 	}
+
+#if !SAME70
+	uint16_t GetTimeStampPeriod() noexcept
+	{
+		return bitPeriod;
+	}
+#endif
 
 #ifdef RTOS
 	void Interrupt() noexcept;
@@ -231,6 +238,10 @@ private:
 	Bitmap<uint32_t> rxBuffersWaiting;							// which Rx FIFOs and buffers tasks are waiting on
 	Bitmap<uint32_t> txBuffersWaiting;							// which Tx FIFOs and buffers tasks are waiting on
 # endif
+
+#if !SAME70
+	uint16_t bitPeriod;											// how many clocks in a CAN normal bit
+#endif
 
 	bool useFDMode;
 };
