@@ -12,6 +12,7 @@
 
 #if SUPPORT_CAN
 
+# include <CanId.h>
 # include <General/Bitmap.h>
 
 # ifdef RTOS
@@ -60,7 +61,7 @@ public:
 		unsigned int rxFifo1Size = 16;
 		unsigned int numShortFilterElements = 0;
 		unsigned int numExtendedFilterElements = 3;
-		unsigned int txEventFifoSize = 2;
+		unsigned int txEventFifoSize = 16;
 
 		// Test whether the data size is supported by the CAN hardware
 		constexpr bool ValidDataSize() const noexcept
@@ -79,7 +80,8 @@ public:
 				&& numTxBuffers <= MaxTxBuffers								// our code only allows 31 buffers + the FIFO
 				&& numRxBuffers <= MaxRxBuffers								// the peripheral supports up to 64 buffers but our code only allows 30 buffers + the two FIFOs
 				&& rxFifo0Size <= 64										// max 64 entries per receive FIFO
-				&& rxFifo1Size <= 64;										// max 64 entries per receive FIFO
+				&& rxFifo1Size <= 64										// max 64 entries per receive FIFO
+				&& txEventFifoSize <= 32;									// max 32 entries in transmit event FIFO
 		}
 
 		// Return the number of words of memory occupied by the 11-bit filters
@@ -126,8 +128,11 @@ public:
 		}
 	};
 
+	// Type of the callback function called when a transmi event with a nonzero message marker occurs
+	typedef void (*TxCallbackFunction)(uint8_t marker, CanId id, uint16_t timeStamp) noexcept;
+
 	// Initialise one of the CAN interfaces and return a pointer to the corresponding device. Returns null if device is already in use or device number is out of range.
-	static CanDevice *Init(unsigned int p_whichCan, unsigned int p_whichPort, const Config& p_config, uint32_t *memStart, const CanTiming& timing) noexcept;
+	static CanDevice *Init(unsigned int p_whichCan, unsigned int p_whichPort, const Config& p_config, uint32_t *memStart, const CanTiming& timing, TxCallbackFunction p_txCallback) noexcept;
 
 	// Free the device
 	void DeInit() noexcept;
@@ -190,11 +195,11 @@ public:
 	static constexpr size_t Can0DataSize = 64;
 
 private:
-	struct CanTxEventEntry;
-	struct CanStandardMessageFilterElement;
-	struct CanExtendedMessageFilterElement;
-	class CanRxBufferHeader;
-	class CanTxBufferHeader;
+	struct TxEvent;
+	struct StandardMessageFilterElement;
+	struct ExtendedMessageFilterElement;
+	class RxBufferHeader;
+	class TxBufferHeader;
 
 	static CanDevice devices[NumCanDevices];
 
@@ -203,12 +208,14 @@ private:
 	void UpdateLocalCanTiming(const CanTiming& timing) noexcept;
 	uint32_t GetRxBufferSize() const noexcept;
 	uint32_t GetTxBufferSize() const noexcept;
-	volatile CanRxBufferHeader *GetRxFifo0Buffer(uint32_t index) const noexcept;
-	volatile CanRxBufferHeader *GetRxFifo1Buffer(uint32_t index) const noexcept;
-	volatile CanRxBufferHeader *GetRxBuffer(uint32_t index) const noexcept;
-	CanTxBufferHeader *GetTxBuffer(uint32_t index) const noexcept;
-	void CopyMessageForTransmit(CanMessageBuffer *buffer, volatile CanTxBufferHeader *f) noexcept;
-	void CopyReceivedMessage(CanMessageBuffer *buffer, const volatile CanRxBufferHeader *f) noexcept;
+	RxBufferHeader *GetRxFifo0Buffer(uint32_t index) const noexcept;
+	RxBufferHeader *GetRxFifo1Buffer(uint32_t index) const noexcept;
+	RxBufferHeader *GetRxBuffer(uint32_t index) const noexcept;
+	TxBufferHeader *GetTxBuffer(uint32_t index) const noexcept;
+	TxEvent *GetTxEvent(uint32_t index) const noexcept;
+
+	void CopyMessageForTransmit(CanMessageBuffer *buffer, volatile TxBufferHeader *f) noexcept;
+	void CopyReceivedMessage(CanMessageBuffer *buffer, const volatile RxBufferHeader *f) noexcept;
 
 	Can *hw;													// address of the CAN peripheral we are using
 
@@ -222,15 +229,17 @@ private:
 	volatile uint32_t *rx1Fifo;									//!< Receive message fifo start
 	volatile uint32_t *rxBuffers;								//!< Receive direct buffers start
 	uint32_t *txBuffers;										//!< Transmit direct buffers start (the Tx fifo buffers follow them)
-	CanTxEventEntry *txEventFifo;								//!< Transfer event fifo
-	CanStandardMessageFilterElement *rxStdFilter;				//!< Standard filter List
-	CanExtendedMessageFilterElement *rxExtFilter;				//!< Extended filter List
+	TxEvent *txEventFifo;										//!< Transfer event fifo
+	StandardMessageFilterElement *rxStdFilter;					//!< Standard filter List
+	ExtendedMessageFilterElement *rxExtFilter;					//!< Extended filter List
 
 	unsigned int messagesQueuedForSending;
 	unsigned int messagesReceived;
 	unsigned int txTimeouts;
 	unsigned int messagesLost;									// count of received messages lost because the receive FIFO was full
 	unsigned int busOffCount;									// count of the number of times we have reset due to bus off
+
+	TxCallbackFunction txCallback;								// function that gets called by the ISR when a transmit event for a message with a nonzero marker occurs
 
 # ifdef RTOS
 	TaskHandle txTaskWaiting[MaxTxBuffers + 1];					// tasks waiting for each Tx buffer to become free, first entry is for the Tx FIFO
