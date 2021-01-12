@@ -401,11 +401,17 @@ enum class TcOutput : uint8_t
 	tc6_0, tc6_1,
 	tc7_0, tc7_1,
 # endif
-#elif SAME70
+#elif SAME70 || SAM4E || SAM4S
 	// TIO devices. Bottom bit is the output number, next 4 bits are the TOI number, bits 5 and 6 are the peripheral number
 	tioa0 = 0x20, tiob0, tioa1, tiob1, tioa2, tiob2, tioa3, tiob3, tioa4, tiob4,				// TIO 0-10 are on peripheral B
-	tioa5, tiob5, tioa6, tiob6, tioa7, tiob7, tioa8, tiob8, tioa9, tiob9, tioa10, tiob10,
+	tioa5, tiob5,
+# if SAME70 || SAM4E
+	tioa6, tiob6, tioa7, tiob7, tioa8, tiob8,
+# endif
+# if SAME70
+	tioa9, tiob9, tioa10, tiob10,
 	tioa11 = 0x40, tiob11,																		// TIO11 is on peripheral C
+# endif
 #endif
 
 	none = 0xFF,
@@ -552,6 +558,8 @@ enum class PwmOutput : uint8_t
 	pwm1l0_c = 0x48, pwm1h0_c, pwm1l1_c, pwm1h1_c, pwm1l2_c, pwm1h2_c, pwm1l3_c, pwm1h3_c,
 	pwm1l0_d = 0x68, pwm1h0_d, pwm1l1_d, pwm1h1_d, pwm1l2_d, pwm1h2_d, pwm1l3_d, pwm1h3_d,
 #endif
+
+	none = 0xFF,
 };
 
 /**
@@ -602,18 +610,31 @@ static inline constexpr GpioPinFunction GetPeriNumber(PwmOutput pwm) noexcept
 
 /**
  * @brief ADC input identifiers, encoding both the ADC device and the ADC input number within the device.
- * On the SAMC21 we only support the first ADC and the SDADC. On the SAME5x we support both ADCs.
+ * On the SAMC21 we only support the first ADC and the SDADC. On the SAME5x, SAM4S and SAmE70 we support both ADCs.
+ * SAM4S only has one ADC.
  *
  */
 enum class AdcInput : uint8_t
 {
-	adc0_0 = 0x00, adc0_1, adc0_2, adc0_3, adc0_4, adc0_5, adc0_6, adc0_7, adc0_8, adc0_9, adc0_10, adc0_11,
-#if SAME5x
-	adc0_12, adc0_13, adc0_14, adc0_15,
-	adc1_0 = 0x10, adc1_1, adc1_2, adc1_3, adc1_4, adc1_5, adc1_6, adc1_7, adc1_8, adc1_9, adc1_10, adc1_11, adc1_12, adc1_13, adc1_14, adc1_15,
-#elif SAMC21
+	adc0_0 = 0x00, adc0_1, adc0_2, adc0_3, adc0_4, adc0_5, adc0_6, adc0_7, adc0_8, adc0_9,
+#if SAMC21
+	adc0_10, adc0_11,
 	sdadc_0 = 0x10, sdadc_1,
 #endif
+#if SAM4E
+	adc0_10, adc0_11, adc0_12, adc0_13, adc0_14,
+	adc1_0 = 0x10, adc1_1, adc1_2, adc1_3, adc1_4, adc1_5, adc1_6, adc1_7,
+#endif
+#if SAME5x
+	adc0_10, adc0_11, adc0_12, adc0_13, adc0_14, adc0_15,
+	adc1_0 = 0x10, adc1_1, adc1_2, adc1_3, adc1_4, adc1_5, adc1_6, adc1_7,
+	adc1_8, adc1_9, adc1_10, adc1_11, adc1_12, adc1_13, adc1_14, adc1_15,
+#endif
+#if SAME70
+	adc1_0 = 0x10, adc1_1, adc1_2, adc1_3, adc1_4, adc1_5, adc1_6, adc1_7,
+	adc1_8, adc1_9, adc1_10, adc1_11,
+#endif
+
 	none = 0xFF			// this must give an out-of-range device number when passed to GetDeviceNumber
 };
 
