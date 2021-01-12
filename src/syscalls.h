@@ -23,7 +23,7 @@ int errno;
 extern char _end;								// defined by the linker script
 extern char _estack;
 
-void OutOfMemoryHandler() noexcept;				// this must be provided by the client application
+[[noreturn]] void OutOfMemoryHandler() noexcept;				// this must be provided by the client application
 
 const char *sysStackLimit = &_estack - SystemStackSize;
 
