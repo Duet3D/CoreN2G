@@ -50,4 +50,4 @@ public:
 
 #endif
 
-#endif /* USBSERIAL_H_ */
+#endif /* SRC_SAME4S_4E_E70_SERIALCDC_H_ */
