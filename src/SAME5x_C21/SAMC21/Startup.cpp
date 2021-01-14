@@ -171,6 +171,12 @@ static void InitClocks() noexcept
 		FREQM->CTRLA.reg = FREQM_CTRLA_SWRST;
 		while (FREQM->SYNCBUSY.bit.SWRST) { }
 
+		// Allow the oscillator to stabilize
+		for (unsigned int i = 0; i < 1000; ++i)
+		{
+		   asm volatile("nop");
+		}
+
 		FREQM->CFGA.reg = 40;									// count for 40 cycles of the 4MHz reference clock i.e. 10us
 		FREQM->CTRLA.reg = FREQM_CTRLA_ENABLE;
 		while (FREQM->SYNCBUSY.bit.ENABLE) { }
