@@ -237,7 +237,7 @@ inline CanDevice::TxBufferHeader *CanDevice::GetTxBuffer(uint32_t index) const n
 inline CanDevice::TxEvent *CanDevice::GetTxEvent(uint32_t index) const noexcept { return &txEventFifo[index]; }
 
 // Initialise a CAN device and return a pointer to it
-/*static*/ CanDevice* CanDevice::Init(unsigned int p_whichCan, unsigned int p_whichPort, const Config& p_config, uint32_t *memStart, const CanTiming &timing, TxCallbackFunction p_txCallback) noexcept
+/*static*/ CanDevice* CanDevice::Init(unsigned int p_whichCan, unsigned int p_whichPort, const Config& p_config, uint32_t *memStart, const CanTiming &timing, TxEventCallbackFunction p_txCallback) noexcept
 {
 	if (   p_whichCan >= NumCanDevices									// device number out of range
 		|| p_whichPort >= 2												// CAN instance number out of range
@@ -399,10 +399,12 @@ void CanDevice::DoHardwareInit() noexcept
 	NVIC_ClearPendingIRQ(irqn);
 
 	hw->REG(ILS) = 0;														// all interrupt sources assigned to interrupt line 0 for now
+	statusMask =         CAN_(IR_RF0N)  | CAN_(IR_RF1N)  | CAN_(IR_DRX)  | CAN_(IR_TC)  | CAN_(IR_BO)  | CAN_(IR_RF0L)  | CAN_(IR_RF1L);
 	uint32_t intEnable = CAN_(IE_RF0NE) | CAN_(IE_RF1NE) | CAN_(IE_DRXE) | CAN_(IE_TCE) | CAN_(IE_BOE) | CAN_(IE_RF0LE) | CAN_(IE_RF1LE);
 	if (txCallback != nullptr)
 	{
 		intEnable |= CAN_(IE_TEFNE);
+		statusMask |= CAN_(IR_TEFN);
 	}
 	hw->REG(IE) = intEnable;												// enable the interrupt sources that we want
 	hw->REG(ILE) = CAN_(ILE_EINT0);											// enable interrupt line 0
@@ -440,6 +442,29 @@ void CanDevice::Disable() noexcept
 	hw->REG(CCCR) |= CAN_(CCCR_INIT);
 	while ((hw->REG(CCCR) & CAN_(CCCR_INIT)) == 0) { }
 	hw->REG(CCCR) |= CAN_(CCCR_CCE);
+}
+
+// Drain the Tx event fifo. Can use this instead of supplying a Tx event callback in Init() if we don't expect many events.
+void CanDevice::PollTxEventFifo(TxEventCallbackFunction p_txCallback) noexcept
+{
+	uint32_t txefs;
+	while (((txefs = hw->REG(TXEFS)) & CAN_(TXEFS_EFFL_Msk)) != 0)
+	{
+		const uint32_t index = (txefs & CAN_(TXEFS_EFGI_Msk)) >> CAN_(TXEFS_EFGI_Pos);
+		const TxEvent* elem = GetTxEvent(index);
+		if (elem->R1.bit.ET == 1)
+		{
+			CanId id;
+			id.SetReceivedId(elem->R0.bit.ID);
+			p_txCallback(elem->R1.bit.MM, id, elem->R1.bit.TXTS);
+		}
+		hw->REG(TXEFA) = index;
+	}
+}
+
+uint32_t CanDevice::GetErrorRegister() const noexcept
+{
+	return hw->ECR.reg;
 }
 
 // Return true if space is available to send using this buffer or FIFO
@@ -974,7 +999,7 @@ void CanDevice::GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsign
 void CanDevice::Interrupt() noexcept
 {
 	uint32_t ir;
-	while (((ir = hw->REG(IR)) & (CAN_(IR_RF0N) | CAN_(IR_RF1N) | CAN_(IR_DRX) | CAN_(IR_TC) | CAN_(IR_BO) | CAN_(IR_RF0L) | CAN_(IR_RF1L) | CAN_(IR_TEFN))) != 0)
+	while (((ir = hw->REG(IR)) & statusMask) != 0)
 	{
 		hw->REG(IR) = ir;
 
@@ -1050,11 +1075,12 @@ void CanDevice::Interrupt() noexcept
 
 		if (ir & CAN_(IR_TEFN))
 		{
-			while (READBITS(hw, TXEFS, EFFL) != 0)
+			uint32_t txefs;
+			while (((txefs = hw->REG(TXEFS)) & CAN_(TXEFS_EFFL_Msk)) != 0)
 			{
-				const uint32_t index = READBITS(hw, TXEFS, EFGI);
+				const uint32_t index = (txefs & CAN_(TXEFS_EFGI_Msk)) >> CAN_(TXEFS_EFGI_Pos);
 				const TxEvent* elem = GetTxEvent(index);
-				if (txCallback != nullptr && elem->R1.bit.ET == 1)
+				if (elem->R1.bit.ET == 1)
 				{
 					CanId id;
 					id.SetReceivedId(elem->R0.bit.ID);

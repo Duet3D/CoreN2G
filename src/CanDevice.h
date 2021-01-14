@@ -129,10 +129,10 @@ public:
 	};
 
 	// Type of the callback function called when a transmi event with a nonzero message marker occurs
-	typedef void (*TxCallbackFunction)(uint8_t marker, CanId id, uint16_t timeStamp) noexcept;
+	typedef void (*TxEventCallbackFunction)(uint8_t marker, CanId id, uint16_t timeStamp) noexcept;
 
 	// Initialise one of the CAN interfaces and return a pointer to the corresponding device. Returns null if device is already in use or device number is out of range.
-	static CanDevice *Init(unsigned int p_whichCan, unsigned int p_whichPort, const Config& p_config, uint32_t *memStart, const CanTiming& timing, TxCallbackFunction p_txCallback) noexcept;
+	static CanDevice *Init(unsigned int p_whichCan, unsigned int p_whichPort, const Config& p_config, uint32_t *memStart, const CanTiming& timing, TxEventCallbackFunction p_txCallback) noexcept;
 
 	// Free the device
 	void DeInit() noexcept;
@@ -187,6 +187,10 @@ public:
 	}
 #endif
 
+	void PollTxEventFifo(TxEventCallbackFunction p_txCallback) noexcept;
+
+	uint32_t GetErrorRegister() const noexcept;
+
 #ifdef RTOS
 	void Interrupt() noexcept;
 #endif
@@ -223,6 +227,7 @@ private:
 	unsigned int whichPort;										// which CAN port number we use, 0 or 1
 	uint32_t nbtp;												//!< The NBTP register that gives the required normal bit timing
 	uint32_t dbtp;												//!< The DBTP register that gives the required bit timing when we use BRS
+	uint32_t statusMask;
 
 	const Config *config;										//!< Configuration parameters
 	volatile uint32_t *rx0Fifo;									//!< Receive message fifo start
@@ -239,7 +244,7 @@ private:
 	unsigned int messagesLost;									// count of received messages lost because the receive FIFO was full
 	unsigned int busOffCount;									// count of the number of times we have reset due to bus off
 
-	TxCallbackFunction txCallback;								// function that gets called by the ISR when a transmit event for a message with a nonzero marker occurs
+	TxEventCallbackFunction txCallback;								// function that gets called by the ISR when a transmit event for a message with a nonzero marker occurs
 
 # ifdef RTOS
 	TaskHandle txTaskWaiting[MaxTxBuffers + 1];					// tasks waiting for each Tx buffer to become free, first entry is for the Tx FIFO

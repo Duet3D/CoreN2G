@@ -239,7 +239,7 @@ static inline void delayMicroseconds(uint32_t usec) noexcept
  */
 static inline void cpu_irq_enable() noexcept
 {
-	__DMB();
+	__DSB();						// make sure all memory writes complete before we enable interrupts
 	__enable_irq();
 }
 
@@ -250,7 +250,7 @@ static inline void cpu_irq_enable() noexcept
 static inline void cpu_irq_disable() noexcept
 {
 	__disable_irq();
-	__DMB();
+	__DSB();
 }
 
 typedef bool irqflags_t;	///< Type used to indicate whether interrupts were enabled/should be enabled
