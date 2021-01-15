@@ -142,7 +142,7 @@ static void InitClocks() noexcept
 	{
 		// Start up the crystal oscillator with high gain to guarantee operation, so that we can measure its frequency
 		hri_oscctrl_write_XOSCCTRL_reg(OSCCTRL,
-		    	  OSCCTRL_XOSCCTRL_STARTUP(0)
+		    	  OSCCTRL_XOSCCTRL_STARTUP(4)		// 4 gives about 500µs startup time to let the oscillators stabilize (required by bootloader)
 				| (0 << OSCCTRL_XOSCCTRL_AMPGC_Pos)
 		        | OSCCTRL_XOSCCTRL_GAIN(4)
 				| (1 << OSCCTRL_XOSCCTRL_RUNSTDBY_Pos)
@@ -170,12 +170,6 @@ static void InitClocks() noexcept
 
 		FREQM->CTRLA.reg = FREQM_CTRLA_SWRST;
 		while (FREQM->SYNCBUSY.bit.SWRST) { }
-
-		// Allow the oscillator to stabilize
-		for (unsigned int i = 0; i < 1000; ++i)
-		{
-		   asm volatile("nop");
-		}
 
 		FREQM->CFGA.reg = 40;									// count for 40 cycles of the 4MHz reference clock i.e. 10us
 		FREQM->CTRLA.reg = FREQM_CTRLA_ENABLE;
