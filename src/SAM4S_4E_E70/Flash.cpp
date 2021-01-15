@@ -454,7 +454,7 @@ bool Flash::Unlock(uint32_t start, uint32_t length) noexcept
  *
  * \return 0 if successful; otherwise returns an error code.
  */
-bool Flash::ReadUniqueId(uint32_t pul_data[4]) noexcept
+bool Flash::ReadUniqueId(uint32_t* pul_data) noexcept
 {
 	// dc42 bBug fix: must disable interrupts while executing the EFC read command
 	const irqflags_t flags = cpu_irq_save();

@@ -291,7 +291,7 @@ pre((pinDesc.ulPinAttribute & PIN_ATTR_TIMER) != 0)
 							TC_CMR_ACPA_CLEAR | TC_CMR_ACPC_CLEAR |
 							TC_CMR_BCPB_CLEAR | TC_CMR_BCPC_CLEAR |
 							TC_CMR_ASWTRG_SET | TC_CMR_BSWTRG_SET);	// Software trigger will let us set the output high
-			const uint32_t top = (SystemCoreClockFreq/8)/(uint32_t)freq;	// with 120MHz clock this varies between 228 @ 65.535kHz and 15 million @ 1Hz
+			const uint32_t top = (SystemPeripheralClock()/8)/(uint32_t)freq;	// with 120MHz clock this varies between 228 @ 65.535kHz and 15 million @ 1Hz
 #endif
 			// The datasheet doesn't say directly how the period relates to the RC value, but from measurement it seems that we do not need to subtract one from top
 			tc_write_rc(chTC, chNo, top);
