@@ -132,7 +132,7 @@ static void InitClocks() noexcept
 		// Start up the crystal oscillator with high gain to guaranteed operation, so that we can measure its frequency
 		hri_oscctrl_write_XOSCCTRL_reg(OSCCTRL, xoscNumber,
 				  OSCCTRL_XOSCCTRL_CFDPRESC(3)
-				| OSCCTRL_XOSCCTRL_STARTUP(0)
+				| OSCCTRL_XOSCCTRL_STARTUP(5)		// 5 gives about 1ms startup time to let the oscillators stabilize (required by bootloader)
 				| (0 << OSCCTRL_XOSCCTRL_SWBEN_Pos)
 				| (0 << OSCCTRL_XOSCCTRL_CFDEN_Pos)
 				| (0 << OSCCTRL_XOSCCTRL_ENALC_Pos)
