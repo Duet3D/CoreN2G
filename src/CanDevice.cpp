@@ -381,7 +381,7 @@ void CanDevice::DoHardwareInit() noexcept
 		| CAN_(GFC_RRFE);
 	hw->REG(SIDFC) = CAN_(SIDFC_LSS)(config->numShortFilterElements) | CAN_(SIDFC_FLSSA)((uint32_t)rxStdFilter);
 	hw->REG(XIDFC) = CAN_(XIDFC_LSE)(config->numExtendedFilterElements) | CAN_(XIDFC_FLESA)((uint32_t)rxExtFilter);
-	hw->REG(XIDAM) = CAN_(XIDAM_EIDM)(0x1FFFFFFF);
+	hw->REG(XIDAM) = 0x1FFFFFFF;
 
 	hw->REG(IR) = 0xFFFFFFFF;												// clear all interrupt sources
 
@@ -415,6 +415,12 @@ void CanDevice::DoHardwareInit() noexcept
 	hw->REG(ILE) = 0;
 #endif
 	// Leave the device disabled. Client must call Enable() to enable it after setting up the receive filters.
+}
+
+// Set the extended ID mask. May only be used while the interface is disabled.
+void CanDevice::SetExtendedIdMask(uint32_t mask) noexcept
+{
+	hw->REG(XIDAM) = mask;
 }
 
 // Stop and free this device and the CAN port it uses
@@ -464,7 +470,7 @@ void CanDevice::PollTxEventFifo(TxEventCallbackFunction p_txCallback) noexcept
 
 uint32_t CanDevice::GetErrorRegister() const noexcept
 {
-	return hw->ECR.reg;
+	return hw->REG(ECR);
 }
 
 // Return true if space is available to send using this buffer or FIFO
@@ -806,7 +812,7 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 			const uint32_t bufferNumber = (unsigned int)whichBuffer - (unsigned int)RxBufferNumber::buffer0;
 			const uint32_t ndatMask = (uint32_t)1 << bufferNumber;
 #ifdef RTOS
-			if ((hw->REG(NDAT1) & (1ul << (unsigned int)whichBuffer)) == 0)
+			if ((hw->REG(NDAT1) & ndatMask) == 0)
 			{
 				if (timeout == 0)
 				{
@@ -816,7 +822,7 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 				const unsigned int waitingIndex = (unsigned int)whichBuffer;
 				rxTaskWaiting[waitingIndex] = TaskBase::GetCallerTaskHandle();
 				rxBuffersWaiting.SetBit(waitingIndex);
-				const bool success = ((hw->REG(NDAT1) & (1ul << (unsigned int)whichBuffer))) || (TaskBase::Take(timeout), (hw->REG(NDAT1) & (1ul << (unsigned int)whichBuffer)) != 0);
+				const bool success = (hw->REG(NDAT1) & ndatMask) != 0 || (TaskBase::Take(timeout), (hw->REG(NDAT1) & ndatMask) != 0);
 				rxBuffersWaiting.ClearBit(waitingIndex);
 				if (!success)
 				{
@@ -824,7 +830,7 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 				}
 			}
 #else
-			while ((hw->NDAT1.reg & (1ul << (unsigned int)whichBuffer)) == 0)
+			while ((hw->REG(NDAT1) & ndatMask) == 0)
 			{
 				if (millis() - start >= timeout)
 				{

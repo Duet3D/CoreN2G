@@ -22,7 +22,7 @@
 constexpr unsigned int MaxTxBuffers = 6;			// maximum number of dedicated transmit buffers supported by this driver
 constexpr unsigned int MaxRxBuffers = 4;			// maximum number of dedicated receive buffers supported by this driver
 
-static_assert(MaxTxBuffers <= 31);					// that hardware allows up to 32 if thjere is no transmit FIFO but our code only supports up to 31 + a FIFO
+static_assert(MaxTxBuffers <= 31);					// the hardware allows up to 32 if there is no transmit FIFO but our code only supports up to 31 + a FIFO
 static_assert(MaxRxBuffers <= 30);					// the hardware allows up to 64 but our code only supports up to 30 + the FIFOs
 
 # if SAME70
@@ -133,6 +133,9 @@ public:
 
 	// Initialise one of the CAN interfaces and return a pointer to the corresponding device. Returns null if device is already in use or device number is out of range.
 	static CanDevice *Init(unsigned int p_whichCan, unsigned int p_whichPort, const Config& p_config, uint32_t *memStart, const CanTiming& timing, TxEventCallbackFunction p_txCallback) noexcept;
+
+	// Set the extended ID mask. May only be used while the interface is disabled.
+	void SetExtendedIdMask(uint32_t mask) noexcept;
 
 	// Free the device
 	void DeInit() noexcept;
