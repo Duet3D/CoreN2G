@@ -344,6 +344,52 @@ void CoreSysTick() noexcept
 	g_ms_ticks++;
 }
 
+// Members of class MicrosecondsTimer
+MicrosecondsTimer::MicrosecondsTimer() noexcept
+{
+	Reset();
+}
+
+void MicrosecondsTimer::Reset() noexcept
+{
+	for (;;)
+	{
+		const uint32_t c1 = GetCurrentCycles();
+		const uint32_t m = millis();
+		const uint32_t c2 = GetCurrentCycles();
+		if (c2 < c1)
+		{
+			startMillis = m;
+			startCycles = c2;
+			return;
+		}
+	}
+}
+
+uint32_t MicrosecondsTimer::Read() noexcept
+{
+	uint32_t cyclesNow, millisNow;
+	for (;;)
+	{
+		cyclesNow = GetCurrentCycles();
+		millisNow = millis();
+		const uint32_t c2 = GetCurrentCycles();
+		if (c2 < cyclesNow)
+		{
+			break;
+		}
+	}
+
+	const uint32_t cyclesPerTick = (SysTick->LOAD & 0x00FFFFFF) + 1;
+	uint32_t sc = startCycles;
+	if (sc < cyclesNow)
+	{
+		sc += cyclesPerTick;
+		--millisNow;
+	}
+	return ((sc - cyclesNow) * 1000)/cyclesPerTick + (millisNow - startMillis) * 1000;
+}
+
 // Optimised version of memcpy for when we know that the source and destination are 32-bit aligned and a whole number of 32-bit words are to be copied
 void __attribute__ ((__optimize__ ("-fno-tree-loop-distribute-patterns"))) memcpyu32(uint32_t *dst, const uint32_t *src, size_t numWords) noexcept
 {

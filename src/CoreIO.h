@@ -732,6 +732,16 @@ struct PinDescriptionBase
 #endif
 };
 
+class MicrosecondsTimer
+{
+public:
+	MicrosecondsTimer() noexcept;
+	void Reset() noexcept;
+	uint32_t Read() noexcept;
+private:
+	uint32_t startMillis;
+	uint32_t startCycles;
+};
 
 /**
  * @brief Initialise the application. Called after the main clocks have been set up.

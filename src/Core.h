@@ -209,9 +209,32 @@ uint32_t DelayCycles(uint32_t start, uint32_t cycles) noexcept;
  *
  * @return The cycle counter
  */
-inline uint32_t GetCurrentCycles() noexcept
+static inline uint32_t GetCurrentCycles() noexcept
 {
 	return SysTick->VAL & 0x00FFFFFF;
+}
+
+/**
+ * @brief Get the elapsed time in clock cycles between a start time and an end time, assuming it is below 1ms
+ * @param startTime The start time, obtained by a call to GetCurrentCycles
+ * @param endTime The end time, obtained by a call to GetCurrentCycles
+ *
+ * @return The elapsed time
+ */
+static inline uint32_t GetElapsedCyclesBetween(uint32_t startCycles, uint32_t endCycles) noexcept
+{
+	return ((endCycles < startCycles) ? startCycles : startCycles + (SysTick->LOAD & 0x00FFFFFF) + 1) - endCycles;
+}
+
+/**
+ * @brief Get the elapsed time in clock cycles since a start time, assuming it is below 1ms
+ * @param startTime The start time, obtained by a call to GetCurrentCycles
+ *
+ * @return The elapsed time
+ */
+static inline uint32_t GetElapsedCycles(uint32_t startCycles) noexcept
+{
+	return GetElapsedCyclesBetween(startCycles, GetCurrentCycles());
 }
 
 /**
