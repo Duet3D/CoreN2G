@@ -247,7 +247,7 @@ typedef struct _DeviceVectors
 } DeviceVectors;
 
 /* Cortex-M7 core handlers */
-void Reset_Handler      ( void ) noexcept __attribute__((noreturn));
+void Reset_Handler      ( void ) noexcept __attribute__((naked, noreturn));
 void NMI_Handler        ( void ) noexcept;
 void HardFault_Handler  ( void ) noexcept;
 void MemManage_Handler  ( void ) noexcept;

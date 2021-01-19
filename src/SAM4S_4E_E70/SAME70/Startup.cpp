@@ -72,9 +72,9 @@ const uint32_t FlashWaitStates = 5;
 #define SYS_BOARD_MCKR      (PMC_MCKR_PRES_CLK_1 | PMC_MCKR_CSS_PLLA_CLK | PMC_MCKR_MDIV_PCK_DIV2)
 
 // This must be marked noinline so that R0 is loaded with the required value for SP. Return is via LR so it's OK to return with a different SP.
-__attribute((noinline)) void SetStackPointer(uint32_t *topOfStack)
+inline void SetStackPointer(uint32_t *topOfStack)
 {
-	__asm volatile("msr msp, r0");
+	__asm volatile("msr msp, %0" : : "r"(topOfStack));
 }
 
 /**
