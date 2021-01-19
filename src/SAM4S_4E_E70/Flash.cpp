@@ -516,6 +516,17 @@ bool Flash::EraseUserSignature() noexcept
 	return efc_perform_command(EFC, EFC_FCMD_EUS, 0) == 0;
 }
 
+// Read all nine GPNVM bits. Return 0xFFFFFFFF if failed, else the GPNVM bits in bits 0 to 8.
+uint32_t Flash::ReadGpNvmBits() noexcept
+{
+	if (EFC_RC_OK != efc_perform_command(EFC, EFC_FCMD_GGPB, 0))
+	{
+		return 0xFFFFFFFF;
+	}
+
+	return efc_get_result(EFC) & ((1ul << 9) - 1ul);
+}
+
 /**
  * \brief Check if the given GPNVM bit is set or not.
  *

@@ -31,6 +31,7 @@ namespace Flash
 	bool EraseUserSignature() noexcept;
 	bool ReadUniqueId(uint32_t* pul_data) noexcept;
 	int IsGpNvmSet(uint32_t gpnvm) noexcept;
+	uint32_t ReadGpNvmBits() noexcept;
 	bool ClearGpNvm(uint32_t gpnvm) noexcept;
 #endif
 
