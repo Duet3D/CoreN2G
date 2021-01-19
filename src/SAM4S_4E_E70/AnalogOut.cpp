@@ -37,7 +37,7 @@ static const uint32_t PwmFastClock = 15000000;			// fast PWM clock for Intel spe
 static const uint32_t PwmSlowClock = 100000;			// slow PWM clock to allow us to get slow speeds, minimum a little under 2Hz, servo resolution is 10us
 
 // Initialise this module
-extern void Init()
+extern void AnalogOut::Init()
 {
 	// Nothing to do yet
 }
@@ -345,7 +345,7 @@ pre((pinDesc.ulPinAttribute & PIN_ATTR_TIMER) != 0)
 // Analog write to DAC, PWM, TC or plain output pin
 // Setting the frequency of a TC or PWM pin to zero resets it so that the next call to AnalogOut with a non-zero frequency
 // will re-initialise it. The pinMode function relies on this.
-void Write(Pin pin, float ulValue, PwmFrequency freq) noexcept
+void AnalogOut::Write(Pin pin, float ulValue, PwmFrequency freq) noexcept
 {
 	const PinDescriptionBase * const pinDesc = AppGetPinDescription(pin);
 	if (pinDesc == nullptr || std::isnan(ulValue))

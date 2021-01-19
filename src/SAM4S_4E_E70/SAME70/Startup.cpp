@@ -42,8 +42,8 @@ extern uint32_t _ezero;
 //extern uint32_t _sstack;
 
 #if SUPPORT_CAN
-extern uint32_t _sCanMessage;
-extern uint32_t _eCanMessage;
+extern uint32_t _szero_nocache;
+extern uint32_t _ezero_nocache;
 #endif
 
 extern "C" void __libc_init_array();
@@ -96,7 +96,7 @@ extern "C" [[noreturn]] void Reset_Handler() noexcept
 
 #if SUPPORT_CAN
 	// Clear the CAN message buffer segment
-	for (pDest = &_sCanMessage; pDest < &_eCanMessage; )
+	for (pDest = &_szero_nocache; pDest < &_ezero_nocache; )
 	{
 		*pDest++ = 0;
 	}

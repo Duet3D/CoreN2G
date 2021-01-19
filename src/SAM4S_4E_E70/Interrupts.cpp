@@ -71,7 +71,7 @@ static void __initialize()
 }
 
 // Attach an interrupt to the specified pin returning true if successful
-bool attachInterrupt(uint32_t pin, StandardCallbackFunction callback, enum InterruptMode mode, CallbackParameter param) noexcept
+bool attachInterrupt(Pin pin, StandardCallbackFunction callback, InterruptMode mode, CallbackParameter param) noexcept
 {
 	const PinDescriptionBase * const pinDesc = AppGetPinDescription(pin);
 	if (pinDesc == nullptr)
@@ -172,7 +172,7 @@ bool attachInterrupt(uint32_t pin, StandardCallbackFunction callback, enum Inter
 	return true;
 }
 
-void detachInterrupt(uint32_t pin)
+void detachInterrupt(Pin pin) noexcept
 {
 	const PinDescriptionBase * const pinDesc = AppGetPinDescription(pin);
 	if (pinDesc != nullptr)
