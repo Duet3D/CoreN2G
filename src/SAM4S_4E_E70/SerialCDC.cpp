@@ -12,6 +12,9 @@
 #include "udi_cdc.h"		// Atmel CDC module
 #include "udc.h"
 
+// Pointer to the serial USB device. Currently we support only one.
+static SerialCDC *serialUSBDevice = nullptr;
+
 void core_vbus_off(CallbackParameter) noexcept;
 
 // SerialCDC members
@@ -30,10 +33,13 @@ void SerialCDC::Start(Pin p_vBusPin) noexcept
 		pinMode(vBusPin, INPUT);
 		attachInterrupt(vBusPin, core_vbus_off, INTERRUPT_MODE_FALLING, nullptr);
 	}
+
+	serialUSBDevice = this;
 }
 
 void SerialCDC::end() noexcept
 {
+	serialUSBDevice = nullptr;
 	isConnected = false;
 	udc_stop();
 }
@@ -107,43 +113,54 @@ void SerialCDC::cdcTxEmptyNotify() noexcept
 	}
 }
 
-#if 0 // This needs to be figured out where to put best
-// Declare the Serial USB device
-SerialCDC SerialUSB;
-
 // Callback glue functions, all called from the USB ISR
 
 // This is called when we are plugged in and connect to a host
 extern "C" bool core_cdc_enable(uint8_t port) noexcept
 {
-	SerialUSB.cdcSetConnected(true);
-	return true;
+	if (serialUSBDevice != nullptr)
+	{
+		serialUSBDevice->cdcSetConnected(true);
+		return true;
+	}
+	return false;
 }
 
 // This is called when we get disconnected from the host
 extern "C" void core_cdc_disable(uint8_t port) noexcept
 {
-	SerialUSB.cdcSetConnected(false);
+	if (serialUSBDevice != nullptr)
+	{
+		serialUSBDevice->cdcSetConnected(false);
+	}
 }
 
 // This is called when data has been received
 extern "C" void core_cdc_rx_notify(uint8_t port) noexcept
 {
-	SerialUSB.cdcRxNotify();
+	if (serialUSBDevice != nullptr)
+	{
+		serialUSBDevice->cdcRxNotify();
+	}
 }
 
 // This is called when the transmit buffer has been emptied
 extern "C" void core_cdc_tx_empty_notify(uint8_t port) noexcept
 {
-	SerialUSB.cdcTxEmptyNotify();
+	if (serialUSBDevice != nullptr)
+	{
+		serialUSBDevice->cdcTxEmptyNotify();
+	}
 }
 
 // On the SAM4E and SAM4S we use a GPIO pin available to monitor the VBUS state
 void core_vbus_off(CallbackParameter) noexcept
 {
-	SerialUSB.cdcSetConnected(false);
+	if (serialUSBDevice != nullptr)
+	{
+		serialUSBDevice->cdcSetConnected(false);
+	}
 }
-#endif
 
 #endif
 

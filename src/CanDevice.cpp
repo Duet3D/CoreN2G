@@ -299,6 +299,10 @@ inline CanDevice::TxEvent *CanDevice::GetTxEvent(uint32_t index) const noexcept 
 		hri_gclk_write_PCHCTRL_reg(GCLK, CAN1_GCLK_ID, GclkNum48MHz | GCLK_PCHCTRL_CHEN);
 	}
 #elif SAME70
+	pmc_disable_pck(PMC_PCK_5);
+	pmc_switch_pck_to_upllck(PMC_PCK_5, PMC_PCK_PRES(9));		// run PCLK5 at 48MHz
+	pmc_enable_pck(PMC_PCK_5);
+
 	if (p_whichPort == 0)
 	{
 		pmc_enable_periph_clk(ID_MCAN0);
