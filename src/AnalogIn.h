@@ -128,12 +128,19 @@ namespace LegacyAnalogIn
 // This function is for backwards compatibility with CoreNG
 inline uint16_t AnalogInReadChannel(AdcInput adcin)
 {
+#if SAME70
+	return LegacyAnalogIn::AnalogInReadChannel(adcin);
+#else
 	return AnalogIn::ReadChannel(adcin);
+#endif
 }
 
 // This function is for backwards compatibility with CoreNG
 inline void AnalogInEnableChannel(AdcInput adcin, bool enable)
 {
+#if SAME70
+	LegacyAnalogIn::AnalogInEnableChannel(adcin, enable);
+#else
 	if (enable)
 	{
 		if (!AnalogIn::IsChannelEnabled(adcin))
@@ -145,6 +152,7 @@ inline void AnalogInEnableChannel(AdcInput adcin, bool enable)
 	{
 		AnalogIn::DisableChannel(adcin);
 	}
+#endif
 }
 
 #endif

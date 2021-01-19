@@ -43,7 +43,7 @@ extern void Init()
 }
 
 // Convert a float in 0..1 to unsigned integer in 0..N
-static inline uint32_t ConvertRange(float f, uint32_t top)
+static inline uint32_t ConvertRange(float f, uint32_t top) noexcept
 pre(0.0 <= ulValue; ulValue <= 1.0)
 post(result <= top)
 {
@@ -67,7 +67,7 @@ uint32_t maxPwmLoopCount = 0;
 
 // AnalogWrite to a PWM pin
 // Return true if successful, false if we need to fall back to digitalWrite
-static bool AnalogWritePwm(Pin pin, const PinDescriptionBase * const pinDesc, float ulValue, PwmFrequency freq)
+static bool AnalogWritePwm(Pin pin, const PinDescriptionBase * const pinDesc, float ulValue, PwmFrequency freq) noexcept
 pre(0.0 <= ulValue; ulValue <= 1.0)
 pre((pinDesc.ulPinAttribute & PIN_ATTR_PWM) != 0)
 {
@@ -228,17 +228,17 @@ static const uint8_t channelToId[NumTcChannels] =
 // Current frequency of each TC channel
 static uint16_t TCChanFreq[NumTcChannels] = {0};
 
-static inline void TC_SetCMR_ChannelA(Tc *tc, uint32_t chan, uint32_t v)
+static inline void TC_SetCMR_ChannelA(Tc *tc, uint32_t chan, uint32_t v) noexcept
 {
 	tc->TC_CHANNEL[chan].TC_CMR = (tc->TC_CHANNEL[chan].TC_CMR & 0xFFF0FFFF) | v;
 }
 
-static inline void TC_SetCMR_ChannelB(Tc *tc, uint32_t chan, uint32_t v)
+static inline void TC_SetCMR_ChannelB(Tc *tc, uint32_t chan, uint32_t v) noexcept
 {
 	tc->TC_CHANNEL[chan].TC_CMR = (tc->TC_CHANNEL[chan].TC_CMR & 0xF0FFFFFF) | v;
 }
 
-static inline void TC_WriteCCR(Tc *tc, uint32_t chan, uint32_t v)
+static inline void TC_WriteCCR(Tc *tc, uint32_t chan, uint32_t v) noexcept
 {
 	tc->TC_CHANNEL[chan].TC_CCR = v;
 }
@@ -247,7 +247,7 @@ static inline void TC_WriteCCR(Tc *tc, uint32_t chan, uint32_t v)
 // Return true if successful, false if we need to fall back to digitalWrite
 // WARNING: this will screw up big time if you try to use both the A and B outputs of the same timer at different frequencies.
 // The Duet boards use only A outputs, so this is OK.
-static bool AnalogWriteTc(Pin pin, const PinDescriptionBase * const pinDesc, float ulValue, PwmFrequency freq)
+static bool AnalogWriteTc(Pin pin, const PinDescriptionBase * const pinDesc, float ulValue, PwmFrequency freq) noexcept
 pre(0.0 <= ulValue; ulValue <= 1.0)
 pre((pinDesc.ulPinAttribute & PIN_ATTR_TIMER) != 0)
 {
@@ -345,7 +345,7 @@ pre((pinDesc.ulPinAttribute & PIN_ATTR_TIMER) != 0)
 // Analog write to DAC, PWM, TC or plain output pin
 // Setting the frequency of a TC or PWM pin to zero resets it so that the next call to AnalogOut with a non-zero frequency
 // will re-initialise it. The pinMode function relies on this.
-extern void Write(Pin pin, float ulValue, PwmFrequency freq)
+void Write(Pin pin, float ulValue, PwmFrequency freq) noexcept
 {
 	const PinDescriptionBase * const pinDesc = AppGetPinDescription(pin);
 	if (pinDesc == nullptr || std::isnan(ulValue))
