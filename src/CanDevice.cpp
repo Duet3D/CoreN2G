@@ -18,7 +18,7 @@
 #if SAME5x
 # include <hri_gclk_e54.h>
 #elif SAME70
-# include <asf/sam/drivers/pmc/pmc.h>
+# include <pmc/pmc.h>
 // The following definitions are missing from the MCAN peripheral definition in ASF3
 # define MCAN_RXF0C_F0OM_Pos	(31)								/**< (MCAN_RXF0C) FIFO 0 Operation Mode Position */
 # define MCAN_RXF1C_F1OM_Pos	(31)								/**< (MCAN_RXF1C) FIFO 1 Operation Mode Position */
