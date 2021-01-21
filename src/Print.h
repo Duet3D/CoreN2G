@@ -48,7 +48,7 @@ public:
 		return write(str);
 	}
 
-	int printf(const char *fmt, ...) noexcept;
+	int printf(const char *fmt, ...) noexcept __attribute__ ((format (printf, 2, 3)));
 	int printf(const char *fmt, va_list vargs) noexcept;
 };
 
