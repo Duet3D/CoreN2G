@@ -83,8 +83,10 @@ inline void SetStackPointer(uint32_t *topOfStack)
  */
 extern "C" [[noreturn]] void Reset_Handler() noexcept
 {
+#if SUPPORT_CAN
 	// If TCM is allocated then SP may point beyond the end of RAM, so move it
 	SetStackPointer(&_ezero_nocache);
+#endif
 
 	// Initialize the relocate segment
 	{
