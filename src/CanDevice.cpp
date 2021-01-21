@@ -1009,7 +1009,7 @@ void CanDevice::GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsign
 void CanDevice::Interrupt() noexcept
 {
 	uint32_t ir;
-	while (((ir = hw->REG(IR)) & statusMask) != 0)
+	while ((ir = hw->REG(IR) & statusMask) != 0)
 	{
 		hw->REG(IR) = ir;
 
