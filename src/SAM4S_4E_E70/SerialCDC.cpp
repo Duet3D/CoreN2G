@@ -31,7 +31,7 @@ void SerialCDC::Start(Pin p_vBusPin) noexcept
 	if (vBusPin != NoPin)
 	{
 		pinMode(vBusPin, INPUT);
-		attachInterrupt(vBusPin, core_vbus_off, INTERRUPT_MODE_FALLING, nullptr);
+		attachInterrupt(vBusPin, core_vbus_off, InterruptMode::falling, nullptr);
 	}
 
 	serialUSBDevice = this;

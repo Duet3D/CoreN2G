@@ -35,14 +35,6 @@ enum class InterruptMode : uint8_t
 	rising
 };
 
-// Definitions for backwards compatibility with RRF
-constexpr InterruptMode INTERRUPT_MODE_NONE = InterruptMode::none;
-constexpr InterruptMode INTERRUPT_MODE_LOW = InterruptMode::low;
-constexpr InterruptMode INTERRUPT_MODE_HIGH = InterruptMode::high;
-constexpr InterruptMode INTERRUPT_MODE_CHANGE = InterruptMode::change;
-constexpr InterruptMode INTERRUPT_MODE_FALLING = InterruptMode::falling;
-constexpr InterruptMode INTERRUPT_MODE_RISING = InterruptMode::rising;
-
 void InitialiseExints() noexcept;
 bool attachInterrupt(Pin pin, StandardCallbackFunction callback, InterruptMode mode, CallbackParameter param) noexcept;
 void detachInterrupt(Pin pin) noexcept;

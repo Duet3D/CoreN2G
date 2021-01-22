@@ -124,7 +124,7 @@ bool attachInterrupt(Pin pin, StandardCallbackFunction callback, InterruptMode m
 #endif
 
 	// Configure the interrupt mode
-	if (mode == INTERRUPT_MODE_CHANGE)
+	if (mode == InterruptMode::change)
 	{
 		// Disable additional interrupt mode (detects both rising and falling edges)
 		pio->PIO_AIMDR = mask;
@@ -137,22 +137,22 @@ bool attachInterrupt(Pin pin, StandardCallbackFunction callback, InterruptMode m
 		// Select mode of operation
 		switch(mode)
 		{
-		case INTERRUPT_MODE_LOW:
+		case InterruptMode::low:
 			pio->PIO_LSR = mask;    // "Level" Select Register
 			pio->PIO_FELLSR = mask; // "Falling Edge / Low Level" Select Register
 			break;
 
-		case INTERRUPT_MODE_HIGH:
+		case InterruptMode::high:
 			pio->PIO_LSR = mask;    // "Level" Select Register
 			pio->PIO_REHLSR = mask; // "Rising Edge / High Level" Select Register
 			break;
 
-		case INTERRUPT_MODE_FALLING:
+		case InterruptMode::falling:
 			pio->PIO_ESR = mask;    // "Edge" Select Register
 			pio->PIO_FELLSR = mask; // "Falling Edge / Low Level" Select Register
 			break;
 
-		case INTERRUPT_MODE_RISING:
+		case InterruptMode::rising:
 			pio->PIO_ESR = mask;    // "Edge" Select Register
 			pio->PIO_REHLSR = mask; // "Rising Edge / High Level" Select Register
 			break;
@@ -163,7 +163,7 @@ bool attachInterrupt(Pin pin, StandardCallbackFunction callback, InterruptMode m
 	}
 
 	// Enable interrupt
-	if (mode != INTERRUPT_MODE_NONE)
+	if (mode != InterruptMode::none)
 	{
 		pio->PIO_IFER = mask;		// enable glitch filter on this pin
 		pio->PIO_IER = mask;		// enable interrupt on this pin
