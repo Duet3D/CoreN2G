@@ -219,7 +219,7 @@ private:
 	irqflags_t flags;
 };
 
-#if SAME5x || SAME70
+#if SAME5x || SAM4E || SAM4S || SAME70		// SAMC21 doesn't support these
 
 // Functions to change the base priority, to shut out interrupts up to a priority level
 
@@ -402,7 +402,7 @@ enum class TcOutput : uint8_t
 	tc7_0, tc7_1,
 # endif
 #elif SAME70 || SAM4E || SAM4S
-	// TIO devices. Bottom bit is the output number, next 4 bits are the TOI number, bits 5 and 6 are the peripheral number
+	// TIO devices. Bottom bit is the output number, next 4 bits are the TIO number, bits 5 and 6 are the peripheral number
 	tioa0 = 0x20, tiob0, tioa1, tiob1, tioa2, tiob2, tioa3, tiob3, tioa4, tiob4,				// TIO 0-10 are on peripheral B
 	tioa5, tiob5,
 # if SAME70 || SAM4E

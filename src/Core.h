@@ -327,7 +327,7 @@ static inline void cpu_irq_restore(irqflags_t flags) noexcept
 #endif
 
 /**
- * @brief Return true of a character is one of the digits 0 thru 9
+ * @brief Return true if a character is one of the digits 0 thru 9
  *
  * @param c the character to test
  * @return True iff the character is a digit
