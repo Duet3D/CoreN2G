@@ -632,9 +632,9 @@ extern "C" uint32_t random32() noexcept
 #elif SAME70
 
 	while (!(TRNG->TRNG_ISR & TRNG_ISR_DATRDY)) {}
-	return (uint32_t)TRNG->TRNG_ODATA;
+	return TRNG->TRNG_ODATA;
 
-#else
+#else		// processor doesn't have a true random number generator
 
 	static bool isInitialised = false;
 
