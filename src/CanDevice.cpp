@@ -18,7 +18,7 @@
 #if SAME5x
 # include <hri_gclk_e54.h>
 #elif SAME70
-# include <asf/sam/drivers/pmc/pmc.h>
+# include <pmc/pmc.h>
 // The following definitions are missing from the MCAN peripheral definition in ASF3
 # define MCAN_RXF0C_F0OM_Pos	(31)								/**< (MCAN_RXF0C) FIFO 0 Operation Mode Position */
 # define MCAN_RXF1C_F1OM_Pos	(31)								/**< (MCAN_RXF1C) FIFO 1 Operation Mode Position */
@@ -263,6 +263,19 @@ inline CanDevice::TxEvent *CanDevice::GetTxEvent(uint32_t index) const noexcept 
 
 	// Set up pointers to the individual parts of the buffer memory
 	memset(memStart, 0, p_config.GetMemorySize());						// clear out filters, transmit pending flags etc.
+
+#if SAME70
+	// Set upper 16 bits of DMA addresses. The CAN memory must not cross a 64kb boundary.
+	if (dev.whichPort == 0)
+	{
+		MATRIX->CCFG_CAN0 = (MATRIX->CCFG_CAN0 & 0x0000FFFF) | (reinterpret_cast<uint32_t>(memStart) & 0xFFFF0000);
+	}
+	else
+	{
+		MATRIX->CCFG_SYSIO = (MATRIX->CCFG_SYSIO & 0x0000FFFF) | (reinterpret_cast<uint32_t>(memStart) & 0xFFFF0000);
+	}
+#endif
+
 	dev.rxStdFilter = (StandardMessageFilterElement*)memStart;
 	memStart += p_config.GetStandardFiltersMemSize();
 	dev.rxExtFilter = (ExtendedMessageFilterElement*)memStart;
@@ -277,7 +290,7 @@ inline CanDevice::TxEvent *CanDevice::GetTxEvent(uint32_t index) const noexcept 
 	memStart += p_config.GetTxEventFifoMemSize();
 	dev.txBuffers = memStart;
 
-	dev.useFDMode = (p_config.dataSize > 8);								// assume we want standard CAN if the max data size is 8
+	dev.useFDMode = (p_config.dataSize > 8);							// assume we want standard CAN if the max data size is 8
 	dev.messagesQueuedForSending = dev.messagesReceived = dev.messagesLost = dev.busOffCount = dev.txTimeouts = 0;
 #ifdef RTOS
 	dev.rxBuffersWaiting.Clear();
@@ -299,6 +312,10 @@ inline CanDevice::TxEvent *CanDevice::GetTxEvent(uint32_t index) const noexcept 
 		hri_gclk_write_PCHCTRL_reg(GCLK, CAN1_GCLK_ID, GclkNum48MHz | GCLK_PCHCTRL_CHEN);
 	}
 #elif SAME70
+	pmc_disable_pck(PMC_PCK_5);
+	pmc_switch_pck_to_upllck(PMC_PCK_5, PMC_PCK_PRES(9));		// run PCLK5 at 48MHz
+	pmc_enable_pck(PMC_PCK_5);
+
 	if (p_whichPort == 0)
 	{
 		pmc_enable_periph_clk(ID_MCAN0);
@@ -311,6 +328,12 @@ inline CanDevice::TxEvent *CanDevice::GetTxEvent(uint32_t index) const noexcept 
 
 	dev.DoHardwareInit();
 	return &dev;
+}
+
+// get bits 2..15 of an address
+static inline uint32_t Bits2to15(const volatile void *addr) noexcept
+{
+	return reinterpret_cast<uint32_t>(addr) & 0x0000FFFC;
 }
 
 // Do the low level hardware initialisation
@@ -332,17 +355,6 @@ void CanDevice::DoHardwareInit() noexcept
 #if SAME5x || SAMC21
 	hw->MRCFG.reg = CAN_MRCFG_QOS_MEDIUM;
 #endif
-#if SAME70
-	// Set upper 16 bits of DMA addresses
-	if (whichCan == 0)
-	{
-		MATRIX->CCFG_CAN0 = (MATRIX->CCFG_CAN0 & 0x0000FFFF) | ((uint32_t)rxBuffers & 0xFFFF0000);
-	}
-	else
-	{
-		MATRIX->CCFG_SYSIO = (MATRIX->CCFG_SYSIO & 0x0000FFFF) | ((uint32_t)rxBuffers & 0xFFFF0000);
-	}
-#endif
 	hw->REG(TDCR) = 0;														// use just the measured transceiver delay
 	hw->REG(NBTP) = nbtp;
 	hw->REG(DBTP) = dbtp;
@@ -350,37 +362,42 @@ void CanDevice::DoHardwareInit() noexcept
 		  (0 << CAN_(RXF0C_F0OM_Pos))										// blocking mode not overwrite mode
 		| CAN_(RXF0C_F0WM)(0)												// no watermark interrupt
 		| CAN_(RXF0C_F0S)(config->rxFifo0Size)								// number of entries
-		| CAN_(RXF0C_F0SA)((uint32_t)rx0Fifo);								// address
+		| Bits2to15(rx0Fifo);												// address - don't use CAN_(RXF0C_F0SA) here, it is defined strangely on the SAME70
 	hw->REG(RXF1C) = 														// configure receive FIFO 1
 		  (0 << CAN_(RXF1C_F1OM_Pos))										// blocking mode not overwrite mode
 		| CAN_(RXF1C_F1WM)(0)												// no watermark interrupt
 		| CAN_(RXF1C_F1S)(config->rxFifo1Size)								// number of entries
-		| CAN_(RXF1C_F1SA)((uint32_t)rx1Fifo);								// address
-	hw->REG(RXBC) = CAN_(RXBC_RBSA)((uint32_t)rxBuffers);					// dedicated buffers start address
+		| Bits2to15(rx1Fifo);												// address - don't use CAN_(RXF0C_F1SA) here, it is defined strangely on the SAME70
+	hw->REG(RXBC) = Bits2to15(rxBuffers);									// dedicated buffers start address - don't use CAN_(RXBC_RBSA) here, it is defined strangely on the SAME70
 
 	const uint32_t dataSizeCode = (config->dataSize <= 24) ? (config->dataSize >> 2) - 2 : (config->dataSize >> 4) + 3;
-	hw->REG(RXESC) = CAN_(RXESC_F0DS)(dataSizeCode) | CAN_(RXESC_F1DS)(dataSizeCode) | CAN_(RXESC_RBDS)(dataSizeCode);	// receive buffer and fifo data size
+	hw->REG(RXESC) = CAN_(RXESC_F0DS)(dataSizeCode)							// receive fifo 0 data size
+					| CAN_(RXESC_F1DS)(dataSizeCode)						// receive fifo 1 data size
+					| CAN_(RXESC_RBDS)(dataSizeCode);						// receive buffer data size
 	hw->REG(TXESC) = CAN_(TXESC_TBDS)(dataSizeCode);						// transmit buffer data size
 	hw->REG(TXBC) = 														// configure transmit buffers
 		  (0 << CAN_(TXBC_TFQM_Pos))										// FIFO not queue
-		| CAN_(TXBC_TFQS)(config->txFifoSize + config->numTxBuffers)		// number of Tx buffer entries
-		| CAN_(TXBC_TBSA)((uint32_t)txBuffers);								// address
+		| CAN_(TXBC_TFQS)(config->txFifoSize)								// number of Tx fifo entries
+		| CAN_(TXBC_NDTB)(config->numTxBuffers)								// number of dedicated Tx buffers
+		| Bits2to15(txBuffers);												// address - don't use CAN_(TXBC_TBSA) here, it is defined strangely on the SAME70
 	hw->REG(TXEFC) =  														// configure Tx event fifo
 		  CAN_(TXEFC_EFWM)(0)												// no watermark interrupt
 		| CAN_(TXEFC_EFS)(config->txEventFifoSize)							// event FIFO size
-		| CAN_(TXEFC_EFSA)((uint32_t)txEventFifo);							// address
+		| Bits2to15(txEventFifo);											// address - don't use CAN_(TXEFC_EFSA) here, it is defined strangely on the SAME70
 	hw->REG(GFC) =
 #if SAME70
-		  MCAN_GFC_ANFE(2)
-		| MCAN_GFC_ANFS(2)
+		  MCAN_GFC_ANFE(2)													// reject non-matching frames extended
+		| MCAN_GFC_ANFS(2)													// reject non-matching frames standard
 #else
 		  CAN_(GFC_ANFS_REJECT)
 		| CAN_(GFC_ANFE_REJECT)
 #endif
 		| CAN_(GFC_RRFS)
 		| CAN_(GFC_RRFE);
-	hw->REG(SIDFC) = CAN_(SIDFC_LSS)(config->numShortFilterElements) | CAN_(SIDFC_FLSSA)((uint32_t)rxStdFilter);
-	hw->REG(XIDFC) = CAN_(XIDFC_LSE)(config->numExtendedFilterElements) | CAN_(XIDFC_FLESA)((uint32_t)rxExtFilter);
+	hw->REG(SIDFC) = CAN_(SIDFC_LSS)(config->numShortFilterElements)		// number of short filter elements
+					| Bits2to15(rxStdFilter);								// short filter start address - don't use CAN_(SIDFC_FLSSA) here, it is defined strangely on the SAME70
+	hw->REG(XIDFC) = CAN_(XIDFC_LSE)(config->numExtendedFilterElements)		// number of extended filter elements
+					| Bits2to15(rxExtFilter);								// extended filter start address - don't use CAN_(SIDFC_FLESA) here, it is defined strangely on the SAME70
 	hw->REG(XIDAM) = 0x1FFFFFFF;
 
 	hw->REG(IR) = 0xFFFFFFFF;												// clear all interrupt sources
