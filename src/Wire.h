@@ -27,13 +27,6 @@
 
 #define BUFFER_LENGTH 32
 
-#if SAM4E
-# define WIRE_INTERFACES_COUNT 1
-#else
-# define WIRE_INTERFACES_COUNT 0
-#endif
-
-
 #if SAME70
 # define Twi Twihs
 #endif
