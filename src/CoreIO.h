@@ -621,9 +621,11 @@ enum class AdcInput : uint8_t
 	adc0_10, adc0_11,
 	sdadc_0 = 0x10, sdadc_1,
 #endif
-#if SAM4E
+#if SAM4E || SAM4S
 	adc0_10, adc0_11, adc0_12, adc0_13, adc0_14,
+# if SAM4E
 	adc1_0 = 0x10, adc1_1, adc1_2, adc1_3, adc1_4, adc1_5, adc1_6, adc1_7,
+# endif
 	dac0 = 0x20, dac1,
 #endif
 #if SAME5x
