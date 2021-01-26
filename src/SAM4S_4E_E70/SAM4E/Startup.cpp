@@ -19,7 +19,6 @@ extern "C" void __libc_init_array();
 
 // Forward declaration
 static void InitClocks() noexcept;
-extern "C" void AppUrgentInit(void);
 
 // Symbols defined by the linker
 extern uint32_t _sfixed;
@@ -76,9 +75,6 @@ void Reset_Handler(void)
 
 	// Set up the standard clocks
 	InitClocks();
-
-	// Initialise anything in the main application that can't wait
-	AppUrgentInit();
 
 	// Temporarily set up systick so that delayMicroseconds works
 	SysTick->LOAD = ((SystemCoreClockFreq/1000) - 1) << SysTick_LOAD_RELOAD_Pos;
