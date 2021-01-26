@@ -130,9 +130,10 @@ static void InitClocks() noexcept
 	if (xoscFrequency == 0)
 	{
 		// Start up the crystal oscillator with high gain to guaranteed operation, so that we can measure its frequency
+		// We have one EXP3HC board with a 12MHz crystal for which OSCCTRL_XOSCCTRL_STARTUP(5) does not give enough time for the oscillator to stabilise
 		hri_oscctrl_write_XOSCCTRL_reg(OSCCTRL, xoscNumber,
 				  OSCCTRL_XOSCCTRL_CFDPRESC(3)
-				| OSCCTRL_XOSCCTRL_STARTUP(5)		// 5 gives about 1ms startup time to let the oscillators stabilize (required by bootloader)
+				| OSCCTRL_XOSCCTRL_STARTUP(6)					// 6 gives about 2ms startup time to let the oscillators stabilize (required by bootloader)
 				| (0 << OSCCTRL_XOSCCTRL_SWBEN_Pos)
 				| (0 << OSCCTRL_XOSCCTRL_CFDEN_Pos)
 				| (0 << OSCCTRL_XOSCCTRL_ENALC_Pos)
@@ -199,9 +200,8 @@ static void InitClocks() noexcept
 	}
 
 	// Initialise the XOSC
-	const uint32_t imult = (xoscFrequency > 24) ? 6
-							: (xoscFrequency > 16) ? 5
-								: 4;						// we assume the crystal frequency is always >8MHz
+	// The SAME5x datasheet says we can use imult = 4 for a 12MHz crystal, however we have one EXP3HC board that requires imult >= 5
+	const uint32_t imult = (xoscFrequency > 24) ? 6 : 5;
 	const uint32_t iptat = 3;								// we assume the crystal frequency is always >8MHz
 	hri_oscctrl_write_XOSCCTRL_reg(OSCCTRL, xoscNumber,
 			  OSCCTRL_XOSCCTRL_CFDPRESC(3)
