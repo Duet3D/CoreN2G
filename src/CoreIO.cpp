@@ -155,7 +155,7 @@ void ClearPinFunction(Pin p) noexcept
 #endif
 }
 
-// Enable or disable the pullup[ resistor
+// Enable or disable the pullup resistor
 void SetPullup(Pin p, bool on) noexcept
 {
 #if SAM4E || SAM4S || SAME70
