@@ -64,48 +64,14 @@
 
 #include "board.h"
 
-// SD card configuration for Duet and Duet WiFi
-#define SD_MMC_ENABLE
-
 #if defined(__RADDS__)
-
-#define SD_MMC_HSMCI_MEM_CNT		0			// Number of HSMCI card slots supported
-#define SD_MMC_SPI_MEM_CNT			2			// Number of SPI card slots supported
-
-#define SD_MMC_SPI_MAX_CLOCK		(4000000)	// Max 4MHz clock for SPI cards, to allow a reasonable cable length
-
-#define SD_MMC_WP_DETECT_VALUE		false
-
+# define SD_MMC_HSMCI_MEM_CNT		0			// Number of HSMCI card slots supported
 #elif defined(__ALLIGATOR__)
-
-#define SD_MMC_HSMCI_MEM_CNT		0			// Number of HSMCI card slots supported
-#define SD_MMC_SPI_MEM_CNT			1			// Number of SPI card slots supported
-
-#define SD_MMC_SPI_MAX_CLOCK		(20000000)	// Max 20MHz clock for onboard SPI cards
-
-#define SD_MMC_WP_DETECT_VALUE		false
-
-
+# define SD_MMC_HSMCI_MEM_CNT		0			// Number of HSMCI card slots supported
 #else
-
-#define CONF_BOARD_SD_MMC_HSMCI		1			// Enable HSMCI
-#define SD_MMC_HSMCI_MEM_CNT		1			// Number of HSMCI card slots supported
-#define SD_MMC_HSMCI_SLOT_0_SIZE	4			// HSMCI bus width
-#define SD_MMC_SPI_MEM_CNT			1			// Number of SPI card slots supported
-
-#define SD_MMC_SPI_MAX_CLOCK		(4000000)	// Max 4MHz clock for SPI cards, to allow a reasonable cable length
-
-#define SD_MMC_WP_DETECT_VALUE		false
-
-#if SAME70
-# define CONF_HSMCI_XDMAC_CHANNEL	0			// Which XDMAC channel we use for HSMCI
+# define CONF_BOARD_SD_MMC_HSMCI	1			// Enable HSMCI
+# define SD_MMC_HSMCI_MEM_CNT		1			// Number of HSMCI card slots supported
+# define SD_MMC_HSMCI_SLOT_0_SIZE	4			// HSMCI bus width
 #endif
-
-#endif
-
-#define SD_MMC_MEM_CNT				(SD_MMC_HSMCI_MEM_CNT + SD_MMC_SPI_MEM_CNT)
-
-#define ACCESS_MEM_TO_RAM_ENABLED
 
 #endif /* CONF_SD_MMC_H_INCLUDED */
-
