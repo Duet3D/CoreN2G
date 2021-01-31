@@ -162,16 +162,30 @@ static void InitClocks() noexcept
 		FREQM->CTRLA.reg = FREQM_CTRLA_SWRST;
 		while (FREQM->SYNCBUSY.bit.SWRST) { }
 
-		FREQM->CFGA.reg = 240;									// count for 240 cycles of the 48MHz reference clock i.e. 5us
+		FREQM->CFGA.reg = 240;										// count for 240 cycles of the 48MHz reference clock i.e. 10us
 		FREQM->CTRLA.reg = FREQM_CTRLA_ENABLE;
 		while (FREQM->SYNCBUSY.bit.ENABLE) { }
 
-		FREQM->STATUS.reg = FREQM_STATUS_OVF;					// clear overflow status
-		FREQM->CTRLB.reg = FREQM_CTRLB_START;					// start counting
-		while (FREQM->STATUS.bit.BUSY) { }						// wait until finished
+		// Some 12MHz crystal oscillators are slow to start, so make sure we get a consistent result before we use it
+		int32_t freq = 0;
+		for (unsigned int count = 0; ; ++count)
+		{
+			FREQM->STATUS.reg = FREQM_STATUS_OVF;					// clear overflow status
+			FREQM->CTRLB.reg = FREQM_CTRLB_START;					// start counting
+			while (FREQM->STATUS.bit.BUSY) { }						// wait until finished
 
-		const uint32_t freq = FREQM->VALUE.reg & 0x00FFFFFF;	// get the number of crystal oscillator cycles in 10us
-		const bool overflowed = FREQM->STATUS.bit.OVF;
+			// We only use every 256th reading. The 255 readings in between serve as a delay of 255 * 5us = 1.275ms.
+			if ((count & 0x000000FF) == 0)
+			{
+				const int32_t lastFreq  = freq;
+				freq = FREQM->VALUE.reg & 0x00FFFFFF;				// get the number of crystal oscillator cycles in 5us
+				const bool overflowed = FREQM->STATUS.bit.OVF;
+				if (!overflowed && freq >= 52 && abs(freq - lastFreq) <= 2)
+				{
+					break;
+				}
+			}
+		}
 
 		// Turn off the temporary GCLK and the frequency meter to save power
 		GCLK->GENCTRL[1].reg = 0;
@@ -181,15 +195,15 @@ static void InitClocks() noexcept
 		hri_gclk_write_PCHCTRL_reg(GCLK, FREQM_GCLK_ID_MSR, 0);
 
 		// Expected frequencies are 12, 16 and 25MHz. We allow a +/-12% tolerance for the 48MHz oscillator so that the 12 and 16MHz bands don't overlap.
-		if (!overflowed && freq >= 52 && freq <= 68)
+		if (freq >= 52 && freq <= 68)								// centre value is 60
 		{
 			xoscFrequency = 12;
 		}
-		else if (!overflowed && freq >= 70 && freq <= 90)
+		else if (freq >= 70 && freq <= 90)							// centre value is 80
 		{
 			xoscFrequency = 16;
 		}
-		else if (!overflowed && freq >= 110 && freq <= 140)
+		else if (freq >= 110 && freq <= 140)						// centre value is 125
 		{
 			xoscFrequency = 25;
 		}

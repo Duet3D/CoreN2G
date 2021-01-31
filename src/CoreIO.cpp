@@ -275,7 +275,7 @@ void SetPinMode(Pin pin, enum PinMode mode, uint32_t debounceCutoff = 0) noexcep
 			// The SAME70 errata says we must disable the pullup resistor before enabling the AFEC channel
 			gpio_set_pin_pull_mode(pin, GPIO_PULL_OFF);
 			gpio_set_pin_direction(pin, GPIO_DIRECTION_OFF);				// disable the data input buffer
-			SetPinFunction(pin, GpioPinFunction::B);						// ADC is always on peripheral B for the SAMC21 an SAME5x
+			SetPinFunction(pin, GpioPinFunction::B);						// ADC is always on peripheral B for the SAMC21 and SAME5x
 #endif
 			break;
 
