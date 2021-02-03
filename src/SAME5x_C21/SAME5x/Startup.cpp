@@ -133,7 +133,7 @@ static void InitClocks() noexcept
 		// We have one EXP3HC board with a 12MHz crystal for which OSCCTRL_XOSCCTRL_STARTUP(5) does not give enough time for the oscillator to stabilise
 		hri_oscctrl_write_XOSCCTRL_reg(OSCCTRL, xoscNumber,
 				  OSCCTRL_XOSCCTRL_CFDPRESC(3)
-				| OSCCTRL_XOSCCTRL_STARTUP(6)					// 6 gives about 2ms startup time to let the oscillators stabilize (required by bootloader)
+				| OSCCTRL_XOSCCTRL_STARTUP(6)						// 6 gives about 2ms startup time to let the oscillators stabilize (required by bootloader)
 				| (0 << OSCCTRL_XOSCCTRL_SWBEN_Pos)
 				| (0 << OSCCTRL_XOSCCTRL_CFDEN_Pos)
 				| (0 << OSCCTRL_XOSCCTRL_ENALC_Pos)
@@ -162,7 +162,7 @@ static void InitClocks() noexcept
 		FREQM->CTRLA.reg = FREQM_CTRLA_SWRST;
 		while (FREQM->SYNCBUSY.bit.SWRST) { }
 
-		FREQM->CFGA.reg = 240;										// count for 240 cycles of the 48MHz reference clock i.e. 10us
+		FREQM->CFGA.reg = 240;													// count for 240 cycles of the 48MHz reference clock i.e. 10us
 		FREQM->CTRLA.reg = FREQM_CTRLA_ENABLE;
 		while (FREQM->SYNCBUSY.bit.ENABLE) { }
 
@@ -170,19 +170,29 @@ static void InitClocks() noexcept
 		int32_t freq = 0;
 		for (unsigned int count = 0; ; ++count)
 		{
-			FREQM->STATUS.reg = FREQM_STATUS_OVF;					// clear overflow status
-			FREQM->CTRLB.reg = FREQM_CTRLB_START;					// start counting
-			while (FREQM->STATUS.bit.BUSY) { }						// wait until finished
+			FREQM->STATUS.reg = FREQM_STATUS_OVF;								// clear overflow status
+			FREQM->CTRLB.reg = FREQM_CTRLB_START;								// start counting
+			while (FREQM->STATUS.bit.BUSY) { }									// wait until finished
 
-			// We only use every 256th reading. The 255 readings in between serve as a delay of 255 * 5us = 1.275ms.
-			if ((count & 0x000000FF) == 0)
+			// We only use every 512th reading. The 511 readings in between serve as a delay of 511 * 5us = 2.55ms.
+			if ((count & 0x000001FF) == 0)
 			{
 				const int32_t lastFreq  = freq;
-				freq = FREQM->VALUE.reg & 0x00FFFFFF;				// get the number of crystal oscillator cycles in 5us
+				freq = FREQM->VALUE.reg & 0x00FFFFFF;							// get the number of crystal oscillator cycles in 5us
 				const bool overflowed = FREQM->STATUS.bit.OVF;
-				if (!overflowed && freq >= 52 && abs(freq - lastFreq) <= 2)
+				if (!overflowed && abs(freq - lastFreq) <= 2)
 				{
-					break;
+					// Expected frequencies are 12 and 25MHz. We allow a +/-25% tolerance for the 48MHz oscillator so that the 12 and 25MHz bands don't overlap.
+					if (freq >= 45 && freq <= 75)								// centre value is 60
+					{
+						xoscFrequency = 12;
+						break;
+					}
+					else if (freq >= 94 && freq <= 156)							// centre value is 125
+					{
+						xoscFrequency = 25;
+						break;
+					}
 				}
 			}
 		}
@@ -194,23 +204,6 @@ static void InitClocks() noexcept
 		hri_gclk_write_PCHCTRL_reg(GCLK, FREQM_GCLK_ID_REF, 0);
 		hri_gclk_write_PCHCTRL_reg(GCLK, FREQM_GCLK_ID_MSR, 0);
 
-		// Expected frequencies are 12, 16 and 25MHz. We allow a +/-12% tolerance for the 48MHz oscillator so that the 12 and 16MHz bands don't overlap.
-		if (freq >= 52 && freq <= 68)								// centre value is 60
-		{
-			xoscFrequency = 12;
-		}
-		else if (freq >= 70 && freq <= 90)							// centre value is 80
-		{
-			xoscFrequency = 16;
-		}
-		else if (freq >= 110 && freq <= 140)						// centre value is 125
-		{
-			xoscFrequency = 25;
-		}
-		else
-		{
-			Reset();
-		}
 	}
 
 	// Initialise the XOSC

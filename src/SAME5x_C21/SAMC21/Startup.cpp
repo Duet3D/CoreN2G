@@ -142,7 +142,7 @@ static void InitClocks() noexcept
 	{
 		// Start up the crystal oscillator with high gain to guarantee operation, so that we can measure its frequency
 		hri_oscctrl_write_XOSCCTRL_reg(OSCCTRL,
-		    	  OSCCTRL_XOSCCTRL_STARTUP(5)		// 5 gives about 1ms startup time to let the oscillators stabilize (required by bootloader)
+		    	  OSCCTRL_XOSCCTRL_STARTUP(6)						// 6 gives about 2ms startup time to let the oscillators stabilize (required by bootloader)
 				| (0 << OSCCTRL_XOSCCTRL_AMPGC_Pos)
 		        | OSCCTRL_XOSCCTRL_GAIN(4)
 				| (1 << OSCCTRL_XOSCCTRL_RUNSTDBY_Pos)
@@ -171,16 +171,40 @@ static void InitClocks() noexcept
 		FREQM->CTRLA.reg = FREQM_CTRLA_SWRST;
 		while (FREQM->SYNCBUSY.bit.SWRST) { }
 
-		FREQM->CFGA.reg = 40;									// count for 40 cycles of the 4MHz reference clock i.e. 10us
+		FREQM->CFGA.reg = 40;										// count for 40 cycles of the 4MHz reference clock i.e. 10us
 		FREQM->CTRLA.reg = FREQM_CTRLA_ENABLE;
 		while (FREQM->SYNCBUSY.bit.ENABLE) { }
 
-		FREQM->STATUS.reg = FREQM_STATUS_OVF;					// clear overflow status
-		FREQM->CTRLB.reg = FREQM_CTRLB_START;					// start counting
-		while (FREQM->STATUS.bit.BUSY) { }						// wait until finished
+		// Some 12MHz crystal oscillators are slow to start on the SAME5x (not sure about the SAMC21), so make sure we get a consistent result before we use it
+		int32_t freq = 0;
+		for (unsigned int count = 0; ; ++count)
+		{
+			FREQM->STATUS.reg = FREQM_STATUS_OVF;					// clear overflow status
+			FREQM->CTRLB.reg = FREQM_CTRLB_START;					// start counting
+			while (FREQM->STATUS.bit.BUSY) { }						// wait until finished
 
-		const uint32_t freq = FREQM->VALUE.reg & 0x00FFFFFF;	// get the number of crystal oscillator cycles in 10us
-		const bool overflowed = FREQM->STATUS.bit.OVF;
+			// We only use every 256th reading. The 255 readings in between serve as a delay of 255 * 10us = 2.55ms.
+			if ((count & 0x000000FF) == 0)
+			{
+				const int32_t lastFreq  = freq;
+				freq = FREQM->VALUE.reg & 0x00FFFFFF;				// get the number of crystal oscillator cycles in 10us
+				const bool overflowed = FREQM->STATUS.bit.OVF;
+				if (!overflowed && abs(freq - lastFreq) <= 2)
+				{
+					// Expected frequencies are 12 and 25MHz. We allow a +/-25% tolerance for the 48MHz oscillator so that the 12 and 25MHz bands don't overlap.
+					if (freq >= 90 && freq <= 150)
+					{
+						xoscFrequency = 12;
+						break;
+					}
+					if (freq >= 188 && freq <= 312)
+					{
+						xoscFrequency = 25;
+						break;
+					}
+				}
+			}
+		}
 
 		// Turn off the temporary GCLK and the frequency meter to save power
 		GCLK->GENCTRL[1].reg = 0;
@@ -188,24 +212,6 @@ static void InitClocks() noexcept
 		MCLK->APBAMASK.reg &= ~(MCLK_APBAMASK_FREQM);
 		hri_gclk_write_PCHCTRL_reg(GCLK, FREQM_GCLK_ID_REF, 0);
 		hri_gclk_write_PCHCTRL_reg(GCLK, FREQM_GCLK_ID_MSR, 0);
-
-		// Expected frequencies are 12, 16 and 25MHz. We allow a +/-12% tolerance for the 48MHz oscillator so that the 12 and 16MHz bands don't overlap.
-		if (!overflowed && freq >= 105 && freq <= 135)
-		{
-			xoscFrequency = 12;
-		}
-		else if (!overflowed && freq >= 141 && freq <= 179)
-		{
-			xoscFrequency = 16;
-		}
-		else if (!overflowed && freq >= 220 && freq <= 280)
-		{
-			xoscFrequency = 25;
-		}
-		else
-		{
-			Reset();
-		}
 	}
 
 	const int32_t gain = (xoscFrequency > 16) ? 4 : 3;		// we are assuming that the frequency is >8MHz so we always need gain at least 3
