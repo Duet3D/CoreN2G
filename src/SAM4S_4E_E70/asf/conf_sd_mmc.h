@@ -72,6 +72,11 @@
 # define CONF_BOARD_SD_MMC_HSMCI	1			// Enable HSMCI
 # define SD_MMC_HSMCI_MEM_CNT		1			// Number of HSMCI card slots supported
 # define SD_MMC_HSMCI_SLOT_0_SIZE	4			// HSMCI bus width
+
+# if SAME70
+#  define CONF_HSMCI_XDMAC_CHANNEL	0
+# endif
+
 #endif
 
 #endif /* CONF_SD_MMC_H_INCLUDED */
