@@ -403,14 +403,14 @@ enum class TcOutput : uint8_t
 # endif
 #elif SAME70 || SAM4E || SAM4S
 	// TIO devices. Bottom bit is the output number, next 4 bits are the TIO number, bits 5 and 6 are the peripheral number
-	tioa0 = 0x20, tiob0, tioa1, tiob1, tioa2, tiob2, tioa3, tiob3, tioa4, tiob4,				// TIO 0-10 are on peripheral B
+	tioa0 = 0x20 + (0u << 1), tiob0, tioa1, tiob1, tioa2, tiob2, tioa3, tiob3, tioa4, tiob4,	// TIO 0-10 are on peripheral B
 	tioa5, tiob5,
 # if SAME70 || SAM4E
 	tioa6, tiob6, tioa7, tiob7, tioa8, tiob8,
 # endif
 # if SAME70
 	tioa9, tiob9, tioa10, tiob10,
-	tioa11 = 0x40, tiob11,																		// TIO11 is on peripheral C
+	tioa11 = 0x40 + (11u << 1), tiob11,															// TIO11 is on peripheral C
 # endif
 #endif
 
