@@ -563,25 +563,14 @@ enum class PwmOutput : uint8_t
 };
 
 /**
- * @brief Extract the PWM device number
- *
- * @param tcc The PwmOutput value
- * @return The PWM device number, 0 or 1
- */
-static inline constexpr unsigned int GetDeviceNumber(PwmOutput pwm) noexcept
-{
-	return ((uint8_t)pwm >> 3) & 0x01;
-}
-
-/**
  * @brief Extract the PWM channel number
  *
  * @param tcc The PwmOutput value
- * @return The PWM channel number, 0 to 3
+ * @return The PWM channel number, 0 to 7. On the SAME70, channels 0-3 are on PWM0, 4-7 are on PWM1.
  */
 static inline constexpr unsigned int GetChannelNumber(PwmOutput pwm) noexcept
 {
-	return ((uint8_t)pwm >> 1) & 0x03;
+	return ((uint8_t)pwm >> 1) & 0x07;
 }
 
 /**
