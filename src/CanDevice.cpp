@@ -628,11 +628,13 @@ void CanDevice::CopyMessageForTransmit(CanMessageBuffer *buffer, volatile TxBuff
 // On return the caller must free or re-use the buffer.
 void CanDevice::SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept
 {
-	const bool bufferFree = IsSpaceAvailable(whichBuffer, timeout);
-	if (whichBuffer == TxBufferNumber::fifo)
+	if ((uint32_t)whichBuffer < (uint32_t)TxBufferNumber::buffer0 + config->numTxBuffers)
 	{
-		const uint32_t putIndex = (hw->REG(TXFQS) & CAN_(TXFQS_TFQPI_Msk)) >> CAN_(TXFQS_TFQPI_Pos);
-		const uint32_t trigMask = (uint32_t)1 << putIndex;
+		const bool bufferFree = IsSpaceAvailable(whichBuffer, timeout);
+		const uint32_t bufferIndex = (whichBuffer == TxBufferNumber::fifo)
+										? (hw->REG(TXFQS) & CAN_(TXFQS_TFQPI_Msk)) >> CAN_(TXFQS_TFQPI_Pos)
+											: (uint32_t)whichBuffer - (uint32_t)TxBufferNumber::buffer0;
+		const uint32_t trigMask = (uint32_t)1 << bufferIndex;
 		if (!bufferFree)
 		{
 			// Cancel transmission of the oldest packet
@@ -641,29 +643,12 @@ void CanDevice::SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMes
 			{
 				delay(1);
 			}
-			while ((hw->REG(TXBRP) & trigMask) != 0 || READBITS(hw, TXFQS, TFQF));
+			while ((hw->REG(TXBRP) & trigMask) != 0 || (whichBuffer == TxBufferNumber::fifo && READBITS(hw, TXFQS, TFQF)));
 			++txTimeouts;
 		}
 
-		CopyMessageForTransmit(buffer, GetTxBuffer(putIndex));
-		hw->REG(TXBAR) = trigMask;
-	}
-	else if ((uint32_t)whichBuffer < (uint32_t)TxBufferNumber::buffer0 + config->numTxBuffers)
-	{
-		const uint32_t bufferIndex = (uint32_t)whichBuffer - (uint32_t)TxBufferNumber::buffer0;
-		const uint32_t trigMask = (uint32_t)1 << bufferIndex;
-		if (!bufferFree)
-		{
-			// Cancel transmission of the existing packet in this buffer
-			hw->REG(TXBCR) = trigMask;
-			do
-			{
-				delay(1);
-			}
-			while ((hw->REG(TXBRP) & trigMask) != 0);
-			++txTimeouts;
-		}
 		CopyMessageForTransmit(buffer, GetTxBuffer(bufferIndex));
+		__DSB();								// this is needed on the SAME70, otherwise incorrect data sometimes gets transmitted
 		hw->REG(TXBAR) = trigMask;
 	}
 }
@@ -671,7 +656,7 @@ void CanDevice::SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMes
 void CanDevice::CopyReceivedMessage(CanMessageBuffer *buffer, const volatile RxBufferHeader *f) noexcept
 {
 	// The CAN has written the message directly to memory, so we must invalidate the cache before we read it
-	Cache::InvalidateAfterDMAReceive(f, sizeof(RxBufferHeader) + 64);					// flush the header and up to 64 bytes of data
+	Cache::InvalidateAfterDMAReceive(f, sizeof(RxBufferHeader) + 64);						// flush the header and up to 64 bytes of data
 
 	buffer->extId = f->R0.bit.XTD;
 	buffer->id.SetReceivedId((buffer->extId) ? f->R0.bit.ID : f->R0.bit.ID >> 18);			// a standard identifier is stored into ID[28:18]
