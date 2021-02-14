@@ -128,6 +128,11 @@ enum PinMode
 	AIN,							///< pin is an analog input, digital input buffer is disabled if possible
 	OUTPUT_PWM_LOW,					///< PWM output mode, initially low
 	OUTPUT_PWM_HIGH,				///< PWM output mode, initially high
+#if SAM4E
+	OUTPUT_LOW_OPEN_DRAIN,			///< pin is used in SX1509B expansion driver to put the pin in open drain output mode
+	OUTPUT_HIGH_OPEN_DRAIN,			///< pin is  used in SX1509B expansion driver to put the pin in open drain output mode
+	OUTPUT_PWM_OPEN_DRAIN,			///< pin is  used in SX1509B expansion driver to put the pin in PWM output mode
+#endif
 };
 
 #ifndef __cplusplus
@@ -252,7 +257,7 @@ static inline void delayMicroseconds(uint32_t usec) noexcept
 
 #if SAM4E || SAM4S || SAME70
 
-# include <asf/common/utils/interrupt/interrupt_sam_nvic.h>
+# include <interrupt/interrupt_sam_nvic.h>
 
 #else
 

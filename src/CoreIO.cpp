@@ -25,8 +25,9 @@
 # include <hri_wdt_c21.h>
 # include <hal_gpio.h>
 #elif SAM4E || SAM4S || SAME70
-# include <asf/sam/drivers/pmc/pmc.h>
-# include <asf/sam/drivers/pio/pio.h>
+# include <pmc/pmc.h>
+# include <pio/pio.h>
+# include <rstc/rstc.h>
 #endif
 
 
@@ -154,7 +155,7 @@ void ClearPinFunction(Pin p) noexcept
 #endif
 }
 
-// Enable or disable the pullup[ resistor
+// Enable or disable the pullup resistor
 void SetPullup(Pin p, bool on) noexcept
 {
 #if SAM4E || SAM4S || SAME70
@@ -485,7 +486,11 @@ void WatchdogResetSecondary() noexcept
 
 void Reset() noexcept
 {
+#if SAME70 || SAM4E || SAM4S
+	rstc_start_software_reset(RSTC);
+#else
 	SCB->AIRCR = (0x5FA << 16) | (1u << 2);						// reset the processor
+#endif
 	for (;;) { }
 }
 

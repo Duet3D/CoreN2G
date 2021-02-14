@@ -17,7 +17,7 @@
 */
 
 #ifndef SRC_HARDWARE_SAME4S_4E_E70_ASYNC_SERIAL_H_
-#define SRC_HARDWARE_SAME4S_4E_E70_UART_H_
+#define SRC_HARDWARE_SAME4S_4E_E70_ASYNC_SERIAL_H_
 
 #include <Stream.h>
 #include <General/RingBuffer.h>
@@ -111,4 +111,4 @@ class AsyncSerial : public Stream
 	static constexpr uint8_t interruptSeq[2] = { 0xF0, 0x0F };
 };
 
-#endif // SRC_HARDWARE_SAME4S_4E_E70_UART_H_
+#endif // SRC_HARDWARE_SAME4S_4E_E70_ASYNC_SERIAL_H_

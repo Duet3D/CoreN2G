@@ -78,17 +78,69 @@ namespace AnalogIn
 #endif
 }
 
+namespace LegacyAnalogIn
+{
+	// Module initialisation
+	void AnalogInInit() noexcept;
+
+	// Enable or disable a channel. Use AnalogCheckReady to make sure the ADC is ready before calling this.
+	void AnalogInEnableChannel(AnalogChannelNumber channel, bool enable) noexcept;
+
+	// Return the number of bits provided by a call to AnalogInReadChannel
+#if SAME70
+	static constexpr unsigned int AdcBits = 14;
+#else
+	static constexpr unsigned int AdcBits = 12;
+#endif
+
+	// Read the most recent result from a channel
+	uint16_t AnalogInReadChannel(AnalogChannelNumber channel) noexcept;
+
+	typedef void (*AnalogCallback_t)(void) noexcept;
+
+	// Set up a callback for when all conversions have been completed. Returns the previous callback pointer.
+	AnalogCallback_t AnalogInSetCallback(AnalogCallback_t) noexcept;
+
+	// Start converting the enabled channels, to include the specified ones. Disabled channels are ignored.
+	void AnalogInStartConversion(uint32_t channels = 0xFFFFFFFF) noexcept;
+
+	// Finalise a conversion
+#if SAME70
+	void AnalogInFinaliseConversion() noexcept;
+#else
+	static inline void AnalogInFinaliseConversion() noexcept { }
+#endif
+
+	// Check whether all conversions of the specified channels have been completed since the last call to AnalogStartConversion.
+	// Disabled channels are ignored
+	bool AnalogInCheckReady(uint32_t channels = 0xFFFFFFFF) noexcept;
+
+	// Convert a pin number to an AnalogIn channel
+	extern AnalogChannelNumber PinToAdcChannel(uint32_t pin) noexcept;
+
+	// Get the temperature measurement channel
+	extern AnalogChannelNumber GetTemperatureAdcChannel() noexcept;
+
+}
+
 #ifdef RTOS
 
 // This function is for backwards compatibility with CoreNG
 inline uint16_t AnalogInReadChannel(AdcInput adcin)
 {
+#if SAME70 || SAM4E || SAM4S
+	return LegacyAnalogIn::AnalogInReadChannel(adcin);
+#else
 	return AnalogIn::ReadChannel(adcin);
+#endif
 }
 
 // This function is for backwards compatibility with CoreNG
 inline void AnalogInEnableChannel(AdcInput adcin, bool enable)
 {
+#if SAME70 || SAM4E || SAM4S
+	LegacyAnalogIn::AnalogInEnableChannel(adcin, enable);
+#else
 	if (enable)
 	{
 		if (!AnalogIn::IsChannelEnabled(adcin))
@@ -100,6 +152,7 @@ inline void AnalogInEnableChannel(AdcInput adcin, bool enable)
 	{
 		AnalogIn::DisableChannel(adcin);
 	}
+#endif
 }
 
 #endif

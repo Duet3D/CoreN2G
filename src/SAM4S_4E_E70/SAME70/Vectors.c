@@ -53,7 +53,7 @@ void HardFault_Handler    ( void ) __attribute__ ((weak, alias("Dummy_Handler"))
 void MemoryManagement_Handler ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
 void BusFault_Handler     ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
 void UsageFault_Handler   ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
-void SVCall_Handler       ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
+void SVC_Handler          ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
 void DebugMonitor_Handler ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
 void PendSV_Handler       ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
 void SysTick_Handler      ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
@@ -151,7 +151,7 @@ const DeviceVectors exception_table = {
         .pfnReserved2_Handler			= (void*) (0UL), /* Reserved */
         .pfnReserved3_Handler			= (void*) (0UL), /* Reserved */
         .pfnReserved4_Handler			= (void*) (0UL), /* Reserved */
-        .pfnSVC_Handler					= (void*) SVCall_Handler,
+        .pfnSVC_Handler					= (void*) SVC_Handler,
         .pfnDebugMon_Handler			= (void*) DebugMonitor_Handler,
         .pfnReserved5_Handler			= (void*) (0UL), /* Reserved */
         .pfnPendSV_Handler             = (void*) PendSV_Handler,
