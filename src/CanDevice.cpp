@@ -292,6 +292,7 @@ inline CanDevice::TxEvent *CanDevice::GetTxEvent(uint32_t index) const noexcept 
 
 	dev.useFDMode = (p_config.dataSize > 8);							// assume we want standard CAN if the max data size is 8
 	dev.messagesQueuedForSending = dev.messagesReceived = dev.messagesLost = dev.busOffCount = dev.txTimeouts = 0;
+	dev.lastCancelledId = 0;
 #ifdef RTOS
 	dev.rxBuffersWaiting.Clear();
 	dev.txBuffersWaiting.Clear();
@@ -637,6 +638,8 @@ void CanDevice::SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMes
 		const uint32_t trigMask = (uint32_t)1 << bufferIndex;
 		if (!bufferFree)
 		{
+			// Retrieve details of the packet we are about to cancel
+			lastCancelledId = GetTxBuffer(bufferIndex)->T0.bit.ID;
 			// Cancel transmission of the oldest packet
 			hw->REG(TXBCR) = trigMask;
 			do
@@ -990,7 +993,8 @@ void CanDevice::UpdateLocalCanTiming(const CanTiming &timing) noexcept
 		| ((prescaler - 1) << CAN_(DBTP_DBRP_Pos));
 }
 
-void CanDevice::GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsigned int& rMessagesReceived, unsigned int& rTxTimeouts, unsigned int& rMessagesLost, unsigned int& rBusOffCount) noexcept
+void CanDevice::GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsigned int& rMessagesReceived, unsigned int& rTxTimeouts,
+									unsigned int& rMessagesLost, unsigned int& rBusOffCount, uint32_t& rLastCancelledId) noexcept
 {
 	AtomicCriticalSectionLocker lock;
 
@@ -999,7 +1003,9 @@ void CanDevice::GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsign
 	rMessagesLost = messagesLost;
 	rBusOffCount = busOffCount;
 	rTxTimeouts = txTimeouts;
+	rLastCancelledId = lastCancelledId;
 	messagesQueuedForSending = messagesReceived = messagesLost = busOffCount = txTimeouts = 0;
+	lastCancelledId = 0;
 }
 
 #ifdef RTOS

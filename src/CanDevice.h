@@ -172,7 +172,8 @@ public:
 
 	void SetLocalCanTiming(const CanTiming& timing) noexcept;
 
-	void GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsigned int& rMessagesReceived, unsigned int& rTxTimeouts, unsigned int& rMessagesLost, unsigned int& rBusOffCount) noexcept;
+	void GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsigned int& rMessagesReceived, unsigned int& rTxTimeouts,
+							unsigned int& rMessagesLost, unsigned int& rBusOffCount, uint32_t& rLastCancelledId) noexcept;
 
 	uint16_t ReadTimeStampCounter() noexcept
 	{
@@ -246,6 +247,7 @@ private:
 	unsigned int txTimeouts;
 	unsigned int messagesLost;									// count of received messages lost because the receive FIFO was full
 	unsigned int busOffCount;									// count of the number of times we have reset due to bus off
+	uint32_t lastCancelledId;
 
 	TxEventCallbackFunction txCallback;								// function that gets called by the ISR when a transmit event for a message with a nonzero marker occurs
 
