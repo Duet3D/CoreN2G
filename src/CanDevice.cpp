@@ -1058,19 +1058,19 @@ void CanDevice::Interrupt() noexcept
 				const unsigned int bufferNumber = LowestSetBit(transmitDone);
 				hw->REG(TXBTIE) &= ~((uint32_t)1 << bufferNumber);
 				const unsigned int waitingIndex = bufferNumber + (unsigned int)TxBufferNumber::buffer0;
-				if (waitingIndex < ARRAY_SIZE(txTaskWaiting))
+				if (waitingIndex < ARRAY_SIZE(txTaskWaiting) && txBuffersWaiting.IsBitSet(waitingIndex))
 				{
 					TaskBase::GiveFromISR(txTaskWaiting[waitingIndex]);
+					txBuffersWaiting.ClearBit(waitingIndex);
 				}
-				txBuffersWaiting.ClearBit(waitingIndex);
 			}
 
 			// Check the tx FIFO
-			if ((txBuffersWaiting.GetRaw() & 1u) != 0 && READBITS(hw, TXFQS, TFFL) != 0)
+			constexpr unsigned int fifoWaitingIndex = (unsigned int)TxBufferNumber::fifo;
+			if (txBuffersWaiting.IsBitSet(fifoWaitingIndex) && READBITS(hw, TXFQS, TFFL) != 0)
 			{
-				constexpr unsigned int waitingIndex = (unsigned int)TxBufferNumber::fifo;
-				TaskBase::GiveFromISR(txTaskWaiting[waitingIndex]);
-				txBuffersWaiting.ClearBit(waitingIndex);
+				TaskBase::GiveFromISR(txTaskWaiting[fifoWaitingIndex]);
+				txBuffersWaiting.ClearBit(fifoWaitingIndex);
 			}
 		}
 
