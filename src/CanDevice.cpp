@@ -1020,18 +1020,18 @@ void CanDevice::Interrupt() noexcept
 	{
 		hw->REG(IR) = ir;
 
-		if (ir & CAN_(IR_RF0N))
+		constexpr unsigned int rxFifo0WaitingIndex = (unsigned int)RxBufferNumber::fifo0;
+		if ((ir & CAN_(IR_RF0N)) && (rxBuffersWaiting & (1u << rxFifo0WaitingIndex)))
 		{
-			constexpr unsigned int waitingIndex = (unsigned int)RxBufferNumber::fifo0;
-			TaskBase::GiveFromISR(rxTaskWaiting[waitingIndex]);
-			rxBuffersWaiting &= ~(1u << waitingIndex);
+			TaskBase::GiveFromISR(rxTaskWaiting[rxFifo0WaitingIndex]);
+			rxBuffersWaiting &= ~(1u << rxFifo0WaitingIndex);
 		}
 
-		if (ir & CAN_(IR_RF1N))
+		constexpr unsigned int rxFifo1WaitingIndex = (unsigned int)RxBufferNumber::fifo1;
+		if ((ir & CAN_(IR_RF1N)) && (rxBuffersWaiting & (1u << rxFifo1WaitingIndex)))
 		{
-			constexpr unsigned int waitingIndex = (unsigned int)RxBufferNumber::fifo1;
-			TaskBase::GiveFromISR(rxTaskWaiting[waitingIndex]);
-			rxBuffersWaiting &= ~(1u << waitingIndex);
+			TaskBase::GiveFromISR(rxTaskWaiting[rxFifo1WaitingIndex]);
+			rxBuffersWaiting &= ~(1u << rxFifo1WaitingIndex);
 		}
 
 		if (ir & CAN_(IR_DRX))
