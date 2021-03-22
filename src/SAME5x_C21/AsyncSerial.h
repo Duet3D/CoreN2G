@@ -81,6 +81,7 @@ private:
 	const uint8_t sercomNumber;
 	const uint8_t rxPad;
     uint8_t numInterruptBytesMatched;
+    bool bufferOverrunPending;
 
     static constexpr uint8_t interruptSeq[2] = { 0xF0, 0x0F };
 };

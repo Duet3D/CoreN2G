@@ -107,6 +107,7 @@ class AsyncSerial : public Stream
 	OnEndFn onEnd;
 	Errors errors;
 	size_t numInterruptBytesMatched;
+	bool bufferOverrunPending;
 
 	static constexpr uint8_t interruptSeq[2] = { 0xF0, 0x0F };
 };
