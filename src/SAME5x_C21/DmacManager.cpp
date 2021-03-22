@@ -302,9 +302,9 @@ extern "C" void DMAC_3_Handler() noexcept
 extern "C" void DMAC_4_Handler() noexcept
 {
 	hri_dmac_intpend_reg_t intPend;
-	while ((intPend = DMAC->INTPEND.reg & DMAC_INTPEND_ID_Msk) > 3)
+	while (((intPend = DMAC->INTPEND.reg) & (DMAC_INTPEND_SUSP | DMAC_INTPEND_TCMPL | DMAC_INTPEND_TERR)) != 0)
 	{
-		CommonDmacHandler(intPend);
+		CommonDmacHandler(intPend & DMAC_INTPEND_ID_Msk);
 	}
 }
 

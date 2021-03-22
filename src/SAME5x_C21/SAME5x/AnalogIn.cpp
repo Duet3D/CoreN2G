@@ -56,7 +56,7 @@ public:
 
 	AdcClass(Adc * const p_device, DmaChannel p_dmaChan, DmaPriority txPriority, DmaPriority rxPriority, DmaTrigSource p_trigSrc) noexcept;
 
-	State GetState() const noexcept { return state; }
+	bool ConversionDone() const noexcept { return state == State::ready && dmaFinishedReason == DmaCallbackReason::complete; }
 	bool EnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
 	bool SetCallback(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
 	bool IsChannelEnabled(unsigned int chan) const noexcept;
@@ -341,8 +341,8 @@ bool AdcClass::StartConversion() noexcept
 
 void AdcClass::ExecuteCallbacks() noexcept
 {
-	Cache::InvalidateAfterDMAReceive(results, sizeof(results));
 	TaskCriticalSectionLocker lock;
+	Cache::InvalidateAfterDMAReceive(results, sizeof(results));
 	const uint32_t now = millis();
 	for (size_t i = 0; i < numChannelsConverting; ++i)
 	{
@@ -389,7 +389,7 @@ void AnalogIn::TaskLoop(void *) noexcept
 		bool conversionStarted = false;
 		for (AdcClass* adc : adcs)
 		{
-			if (adc->GetState() == AdcClass::State::ready)
+			if (adc->ConversionDone())
 			{
 				adc->ExecuteCallbacks();
 			}
