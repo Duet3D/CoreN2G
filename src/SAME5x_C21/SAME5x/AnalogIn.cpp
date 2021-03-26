@@ -304,6 +304,10 @@ bool AdcClass::StartConversion() noexcept
 		{
 			return false;
 		}
+
+		DmacManager::DisableChannel(dmaChan + 1);
+		DmacManager::DisableChannel(dmaChan);
+
 		++conversionTimeouts;
 		ReInit();
 	}
@@ -314,8 +318,6 @@ bool AdcClass::StartConversion() noexcept
 	DmacManager::DisableChannel(dmaChan + 1);
 	DmacManager::DisableChannel(dmaChan);
 
-	(void)device->RESULT.reg;							// make sure no result pending (this is necessary to make it work!)
-
 	DmacManager::SetDestinationAddress(dmaChan + 1, results);
 	DmacManager::SetDataLength(dmaChan + 1, numChannelsConverting);
 
@@ -323,7 +325,9 @@ bool AdcClass::StartConversion() noexcept
 	DmacManager::SetDataLength(dmaChan, numChannelsConverting * DmaDwordsPerChannel);
 
 	{
-		InterruptCriticalSectionLocker lock;
+		AtomicCriticalSectionLocker lock;
+
+		(void)device->RESULT.reg;							// make sure no result pending (this is necessary to make it work!)
 
 		dmaFinishedReason = DmaCallbackReason::none;
 		DmacManager::EnableCompletedInterrupt(dmaChan + 1);
