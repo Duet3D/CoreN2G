@@ -26,6 +26,7 @@ constexpr uint32_t AdcConversionTimeout = 5;		// milliseconds
 static uint32_t conversionsStarted = 0;
 static uint32_t conversionsCompleted = 0;
 static uint32_t conversionTimeouts = 0;
+static uint32_t errors = 0;
 
 // Constants that control the DMA sequencing
 // The SAME5x errata doc from Microchip say that order to use averaging, we need to include the AVGCTRL register in the sequence even if it doesn't change,
@@ -56,7 +57,7 @@ public:
 
 	AdcClass(Adc * const p_device, DmaChannel p_dmaChan, DmaPriority txPriority, DmaPriority rxPriority, DmaTrigSource p_trigSrc) noexcept;
 
-	bool ConversionDone() const noexcept { return state == State::ready && dmaFinishedReason == DmaCallbackReason::complete; }
+	bool ConversionDone() noexcept;
 	bool EnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
 	bool SetCallback(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
 	bool IsChannelEnabled(unsigned int chan) const noexcept;
@@ -366,12 +367,37 @@ void AdcClass::ExecuteCallbacks() noexcept
 // Indirect callback from the DMA controller ISR
 void AdcClass::ResultReadyCallback(DmaCallbackReason reason) noexcept
 {
-	dmaFinishedReason = reason;
+	// Check that the sequencer DMA is complete too, because if it isn't then we will have converted the wrong channels
+	dmaFinishedReason = ((DmacManager::GetAndClearChannelStatus(dmaChan) & (DMAC_CHINTFLAG_TERR | DMAC_CHINTFLAG_TCMPL)) == DMAC_CHINTFLAG_TCMPL)
+							? reason
+								: DmaCallbackReason::completeAndError;
 	state = State::ready;
 	++conversionsCompleted;
-	DmacManager::DisableChannel(dmaChan);			// disable the sequencer DMA, just in case it is out of sync
-	DmacManager::DisableChannel(dmaChan + 1);		// disable the reader DMA too
+	DmacManager::DisableChannel(dmaChan);			// disable the sequencer DMA
+	DmacManager::DisableChannel(dmaChan + 1);		// disable the reader DMA
 	TaskBase::GiveFromISR(taskToWake);
+}
+
+// Check whether the conversion was successful
+bool AdcClass::ConversionDone() noexcept
+{
+	if (state == State::ready)
+	{
+		if (   dmaFinishedReason == DmaCallbackReason::complete
+			// Also check that the input selection and average control registers are as we expect (trying to pin down spurious under-voltage events)
+			&& device->INPUTCTRL.reg == (ADC_INPUTCTRL_MUXNEG_GND | (uint32_t)GetChannel(numChannelsConverting - 1))
+			&& device->CTRLB.reg == CtrlB
+			&& device->REFCTRL.reg == RefCtrl
+			&& device->AVGCTRL.reg == AvgCtrl
+			&& device->SAMPCTRL.reg == SampCtrl
+		   )
+		{
+			return true;
+		}
+
+		++errors;
+	}
+	return false;
 }
 
 // Callback from the DMA controller ISR
@@ -407,12 +433,11 @@ void AnalogIn::TaskLoop(void *) noexcept
 		if (conversionStarted)
 		{
 			TaskBase::Take(100);
-			delay(2);
 		}
 		else
 		{
-			// No ADCs enabled yet, or all converting
-			delay(10);
+			// No ADCs enabled yet, or all converting. This should only happens during startup, before we enable the voltage monitor(s).
+			delay(2);							// don't delay too long here, we want the ADCs to start up quickly once channels are enabled
 		}
 	}
 }
@@ -506,11 +531,12 @@ bool AnalogIn::EnableTemperatureSensor(unsigned int sensorNumber, AnalogInCallba
 }
 
 // Return debug information
-void AnalogIn::GetDebugInfo(uint32_t &convsStarted, uint32_t &convsCompleted, uint32_t &convTimeouts) noexcept
+void AnalogIn::GetDebugInfo(uint32_t &convsStarted, uint32_t &convsCompleted, uint32_t &convTimeouts, uint32_t& errs) noexcept
 {
 	convsStarted = conversionsStarted;
 	convsCompleted = conversionsCompleted;
 	convTimeouts = conversionTimeouts;
+	errs = errors;
 }
 
 #endif
