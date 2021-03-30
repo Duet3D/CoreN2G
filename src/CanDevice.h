@@ -85,10 +85,11 @@ public:
 		}
 
 		// Return the number of words of memory occupied by the 11-bit filters
+		// We round this up to the next multiple of 8 bytes to reduce the chance of the Tx and Rx buffers crossing cache lines
 		constexpr size_t GetStandardFiltersMemSize() const noexcept
 		{
 			constexpr size_t StandardFilterElementSize = 1;					// one word each
-			return numShortFilterElements * StandardFilterElementSize;
+			return ((numShortFilterElements * StandardFilterElementSize) + 1u) & (~1u);
 		}
 
 		// Return the number of words of memory occupied by the 29-bit filters

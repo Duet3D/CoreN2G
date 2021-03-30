@@ -43,7 +43,8 @@ constexpr uint32_t RefCtrl = ADC_REFCTRL_REFSEL_INTVCC1;
 constexpr uint32_t AvgCtrl = ADC_AVGCTRL_SAMPLENUM_64;
 constexpr uint32_t SampCtrl = ADC_SAMPCTRL_OFFCOMP;
 
-class AdcClass
+// This class is 16-byte aligned so that the DMA buffer covers the minimum number of cache lines
+class alignas(16) AdcClass
 {
 public:
 	enum class State : uint8_t
@@ -77,15 +78,15 @@ private:
 
 	static void DmaCompleteCallback(CallbackParameter cp, DmaCallbackReason reason) noexcept;
 
-	static constexpr size_t NumAdcChannels = 32;			// number of channels per ADC including temperature sensor inputs etc.
-	static constexpr size_t MaxSequenceLength = 16;			// the maximum length of the read sequence
+	static constexpr size_t NumAdcChannels = 32;				// number of channels per ADC including temperature sensor inputs etc.
+	static constexpr size_t MaxSequenceLength = 16;				// the maximum length of the read sequence
 
 	Adc * const device;
 	const DmaChannel dmaChan;
 	const DmaPriority dmaTxPrio, dmaRxPrio;
 	const DmaTrigSource trigSrc;
 	volatile DmaCallbackReason dmaFinishedReason;
-	volatile size_t numChannelsEnabled;						// volatile because multiple tasks access it
+	volatile size_t numChannelsEnabled;							// volatile because multiple tasks access it
 	size_t numChannelsConverting;
 	volatile uint32_t channelsEnabled;
 	volatile TaskHandle taskToWake;
@@ -96,8 +97,8 @@ private:
 	uint32_t ticksPerCall[MaxSequenceLength];
 	uint32_t ticksAtLastCall[MaxSequenceLength];
 	uint32_t inputRegisters[MaxSequenceLength * DmaDwordsPerChannel];
-	volatile uint16_t results[MaxSequenceLength];
-	volatile uint16_t resultsByChannel[NumAdcChannels];		// must be large enough to handle PTAT and CTAT temperature sensor inputs
+	alignas(16) volatile uint16_t results[MaxSequenceLength];	// results are written to this buffer by DMA
+	volatile uint16_t resultsByChannel[NumAdcChannels];			// must be large enough to handle PTAT and CTAT temperature sensor inputs
 };
 
 AdcClass::AdcClass(Adc * const p_device, DmaChannel p_dmaChan, DmaPriority txPriority, DmaPriority rxPriority, DmaTrigSource p_trigSrc) noexcept
