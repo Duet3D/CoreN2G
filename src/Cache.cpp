@@ -95,10 +95,10 @@ static inline void cache_disable() noexcept
 static inline void cache_enable() noexcept
 {
 #if SAME5x
-	CMCC->CTRL.reg = CMCC_CTRL_CEN;
 # if CACHE_INSTRUCTIONS_ONLY
 	CMCC->CFG.bit.DCDIS = 1;
 # endif
+	CMCC->CTRL.reg = CMCC_CTRL_CEN;
 #elif SAM4E
 	CMCC->CMCC_CTRL = CMCC_CTRL_CEN;
 #endif
@@ -162,16 +162,14 @@ inline void cache_invalidate_region(const volatile void *start, size_t length) n
 #ifdef RTOS
 		else
 		{
-			// This may take a while, so don't disable the most critical interrupts, just disable the ones that may cause a task switch
-			// This is called from the TMC2660 ISR, so we can't use InterruptCriticalSectionLocker
-			const uint32_t oldBasePri =__get_BASEPRI();
-			__set_BASEPRI(configMAX_SYSCALL_INTERRUPT_PRIORITY);
-
-			cache_disable();
+			// Unfortunately we have to disable the cache to invalidate cache lines.
+			// We must do no data writes while the cache is disabled, or we might subsequently read stale data. Therefore interrupts must be disabled.
 			uint32_t startLine = startAddr >> CacheLineShift;					// this will have extraneous bits set, but CMCC_MAINT1_INDEX will mask those off
 			while (numLines != 0)
 			{
 				// Invalidate this cache line in all 4 ways
+				const irqflags_t flags = cpu_irq_save();
+				cache_disable();
 # if SAME5x
 				CMCC->MAINT1.reg = CMCC_MAINT1_WAY(0) | CMCC_MAINT1_INDEX(startLine);
 				CMCC->MAINT1.reg = CMCC_MAINT1_WAY(1) | CMCC_MAINT1_INDEX(startLine);
@@ -183,11 +181,12 @@ inline void cache_invalidate_region(const volatile void *start, size_t length) n
 				CMCC->CMCC_MAINT1 = CMCC_MAINT1_WAY_WAY2 | CMCC_MAINT1_INDEX(startLine);
 				CMCC->CMCC_MAINT1 = CMCC_MAINT1_WAY_WAY3 | CMCC_MAINT1_INDEX(startLine);
 # endif
+				cache_enable();
+				cpu_irq_restore(flags);
+
 				++startLine;
 				--numLines;
 			}
-			cache_enable();
-			__set_BASEPRI(oldBasePri);
 		}
 #endif
 	}
