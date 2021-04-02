@@ -236,13 +236,13 @@ size_t TwoWire::InternalTransfer(uint16_t address, uint8_t *buffer, size_t numTo
 
 TwoWire::ErrorCounts TwoWire::GetErrorCounts(bool clear) noexcept
 {
-	const irqflags_t flags = cpu_irq_save();
+	const irqflags_t flags = IrqSave();
 	const ErrorCounts ret = errorCounts;
 	if (clear)
 	{
 		errorCounts.Clear();
 	}
-	cpu_irq_restore(flags);
+	IrqRestore(flags);
 	return ret;
 }
 

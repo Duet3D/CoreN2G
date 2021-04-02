@@ -198,10 +198,10 @@ namespace LegacyAnalogIn
 			return *(ADC->ADC_CDR + GetAdcChannel(channel));
 #elif SAM4E
 			Afec * const afec = GetAfec(channel);
-			const irqflags_t flags = cpu_irq_save();
+			const irqflags_t flags = IrqSave();
 			afec->AFEC_CSELR = GetAfecChannel(channel);
 			const uint16_t rslt = afec->AFEC_CDR;
-			cpu_irq_restore(flags);
+			IrqRestore(flags);
 			return rslt;
 #elif SAME70
 			return (GetDeviceNumber(channel) == 1) ? results[(uint8_t)channel] >> 2 : results[(uint8_t)channel];		// normalise to 14-bit result
@@ -291,10 +291,10 @@ namespace LegacyAnalogIn
 		{
 			if (channelsCompleted & 1u)
 			{
-				const irqflags_t flags = cpu_irq_save();
+				const irqflags_t flags = IrqSave();
 				afec->AFEC_CSELR = channel;
 				resultArea[channel] = afec->AFEC_CDR;
-				cpu_irq_restore(flags);
+				IrqRestore(flags);
 			}
 			channelsCompleted >>= 1;
 			++channel;

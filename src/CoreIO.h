@@ -209,13 +209,13 @@ inline void memcpyf(float *dst, const float *src, size_t numFloats) noexcept
 class AtomicCriticalSectionLocker
 {
 public:
-	AtomicCriticalSectionLocker() : flags(cpu_irq_save())
+	AtomicCriticalSectionLocker() : flags(IrqSave())
 	{
 	}
 
 	~AtomicCriticalSectionLocker()
 	{
-		cpu_irq_restore(flags);
+		IrqRestore(flags);
 	}
 
 private:

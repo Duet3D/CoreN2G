@@ -153,11 +153,11 @@ static inline void cache_invalidate_region(const volatile void *start, size_t le
 		if (numLines > MaxSelectiveInvalidateCacheLines)						// if more than a small part the cache needs to be invalidated, invalidate the whole cache
 #endif
 		{
-			const irqflags_t flags = cpu_irq_save();
+			const irqflags_t flags = IrqSave();
 			cache_disable();
 			cache_invalidate_all();
 			cache_enable();
-			cpu_irq_restore(flags);
+			IrqRestore(flags);
 		}
 #ifdef RTOS
 		else
@@ -168,7 +168,7 @@ static inline void cache_invalidate_region(const volatile void *start, size_t le
 			while (numLines != 0)
 			{
 				// Invalidate this cache line in all 4 ways
-				const irqflags_t flags = cpu_irq_save();
+				const irqflags_t flags = IrqSave();
 				cache_disable();
 # if SAME5x
 				CMCC->MAINT1.reg = CMCC_MAINT1_WAY(0) | CMCC_MAINT1_INDEX(startLine);
@@ -182,7 +182,7 @@ static inline void cache_invalidate_region(const volatile void *start, size_t le
 				CMCC->CMCC_MAINT1 = CMCC_MAINT1_WAY_WAY3 | CMCC_MAINT1_INDEX(startLine);
 # endif
 				cache_enable();
-				cpu_irq_restore(flags);
+				IrqRestore(flags);
 
 				++startLine;
 				--numLines;
@@ -310,13 +310,13 @@ void Cache::Enable() noexcept
 		SCB_EnableDCache();
 	}
 #else
-	const irqflags_t flags = cpu_irq_save();
+	const irqflags_t flags = IrqSave();
 	if (!is_cache_enabled())
 	{
 		cache_invalidate_all();
 		cache_enable();
 	}
-	cpu_irq_restore(flags);
+	IrqRestore(flags);
 #endif
 }
 
@@ -333,9 +333,9 @@ bool Cache::Disable() noexcept
 	if (wasEnabled)									// if data cache is enabled
 	{
 		// Warning: this code is fragile! There must be no memory writes while flushing the data cache, hence we must disable interrupts.
-		const irqflags_t flags = cpu_irq_save();
+		const irqflags_t flags = IrqSave();
 		SCB_DisableDCache();						// this cleans it as well as disabling it
-		cpu_irq_restore(flags);
+		IrqRestore(flags);
 	}
 #else
 	const bool wasEnabled = is_cache_enabled();

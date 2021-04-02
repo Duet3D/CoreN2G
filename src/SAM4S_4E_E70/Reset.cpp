@@ -30,7 +30,7 @@ extern "C" {
 // Switch into boot mode and reset
 [[noreturn]] void EraseAndReset()
 {
-	cpu_irq_disable();
+	IrqDisable();
 
 #if SAM4S
 # define IFLASH_ADDR				IFLASH0_ADDR

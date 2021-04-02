@@ -253,21 +253,14 @@ static inline void delayMicroseconds(uint32_t usec) noexcept
 	(void)DelayCycles(GetCurrentCycles(), usec * (SystemCoreClockFreq/1000000));
 }
 
-// Functions and macros to enable/disable interrupts
-
-#if SAM4E || SAM4S || SAME70
-
-# include <interrupt/interrupt_sam_nvic.h>
-
-#else
+// Functions to enable/disable interrupts
 
 /**
  * @brief Enable interrupts unconditionally
  *
  */
-static inline void cpu_irq_enable() noexcept
+static __always_inline void IrqEnable() noexcept
 {
-	__DSB();						// make sure all memory writes complete before we enable interrupts
 	__enable_irq();
 }
 
@@ -275,20 +268,19 @@ static inline void cpu_irq_enable() noexcept
  * @brief Disable interrupts unconditionally
  *
  */
-static inline void cpu_irq_disable() noexcept
+static __always_inline void IrqDisable() noexcept
 {
 	__disable_irq();
-	__DSB();
 }
 
-typedef bool irqflags_t;	///< Type used to indicate whether interrupts were enabled/should be enabled
+typedef uint32_t irqflags_t;	///< Type used to indicate whether interrupts were enabled/should be enabled. It stores the original value of PRIMASK.
 
 /**
  * @brief Test whether interrupts are enabled
  *
  * @return True iff interrupts are enabled
  */
-static inline bool cpu_irq_is_enabled() noexcept
+static __always_inline bool IsIrqEnabled() noexcept
 {
 	return __get_PRIMASK() == 0;
 }
@@ -298,10 +290,10 @@ static inline bool cpu_irq_is_enabled() noexcept
  *
  * @return The initial interrupts enabled state
  */
-static inline irqflags_t cpu_irq_save() noexcept
+static __always_inline irqflags_t IrqSave() noexcept
 {
-	const irqflags_t flags = cpu_irq_is_enabled();
-	cpu_irq_disable();
+	const irqflags_t flags = __get_PRIMASK();
+	__disable_irq();
 	return flags;
 }
 
@@ -311,25 +303,20 @@ static inline irqflags_t cpu_irq_save() noexcept
  * @param flags Value to convert
  * @return Converted value
  */
-static inline bool cpu_irq_is_enabled_flags(irqflags_t flags) noexcept
+static __always_inline bool IsIrqEnabledFlags(irqflags_t flags) noexcept
 {
-	return flags;
+	return (flags & 0x01) == 0;
 }
 
 /**
  * @brief Re-enable interrupts if they were enabled originally
  *
- * @param flags The original interrupts enabled state returned by a call to cpu_irq_save
+ * @param flags The original interrupts enabled state returned by a call to IrqSave
  */
-static inline void cpu_irq_restore(irqflags_t flags) noexcept
+static __always_inline void IrqRestore(irqflags_t flags) noexcept
 {
-	if (cpu_irq_is_enabled_flags(flags))
-	{
-		cpu_irq_enable();
-	}
+	__set_PRIMASK(flags);
 }
-
-#endif
 
 /**
  * @brief Return true if a character is one of the digits 0 thru 9
