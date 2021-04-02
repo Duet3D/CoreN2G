@@ -141,7 +141,7 @@ static inline void cache_invalidate_all() noexcept
 // All of the short buffers fit within 5 cache lines
 constexpr uint32_t MaxSelectiveInvalidateCacheLines = 6;
 
-inline void cache_invalidate_region(const volatile void *start, size_t length) noexcept
+static inline void cache_invalidate_region(const volatile void *start, size_t length) noexcept
 {
 	if (length != 0 && is_cache_enabled())										// the following won't work if the length is zero
 	{
@@ -292,7 +292,7 @@ void Cache::Init() noexcept
 	CMCC->MCFG.reg = CMCC_MCFG_MODE_DHIT_COUNT;		// data hit mode
 	CMCC->MEN.bit.MENABLE = 1;
 #elif SAM4E
-	CMCC->CMCC_MCFG = 2;							// data hit mode
+	CMCC->CMCC_MCFG = 1;							// instruction hit mode
 	CMCC->CMCC_MEN |= CMCC_MEN_MENABLE;
 #endif
 }
