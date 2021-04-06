@@ -17,6 +17,7 @@
 
 #include <DmacManager.h>
 #include <RTOSIface/RTOSIface.h>
+#include <Cache.h>
 
 constexpr NvicPriority TempNvicPriorityDMA = 4;			// temporary DMA interrupt priority, low enough to allow FreeRTOS system calls
 
@@ -259,6 +260,7 @@ uint8_t DmacManager::GetAndClearChannelStatus(uint8_t channel) noexcept
 
 uint16_t DmacManager::GetBytesTransferred(uint8_t channel) noexcept
 {
+	Cache::InvalidateAfterDMAReceive(&write_back_section[channel].BTCNT, sizeof(write_back_section[channel].BTCNT));
 	return descriptor_section[channel].BTCNT.reg - write_back_section[channel].BTCNT.reg;
 }
 
