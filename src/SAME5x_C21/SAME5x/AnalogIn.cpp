@@ -294,8 +294,8 @@ bool AdcClass::InternalEnableChannel(unsigned int chan, AnalogInCallbackFunction
 // If no conversion is already in progress and there are channels to convert, start a conversion and return true; else return false
 bool AdcClass::StartConversion() noexcept
 {
-	numChannelsConverting = numChannelsEnabled;			// capture volatile variable to ensure we use a consistent value
-	if (numChannelsConverting == 0)
+	const size_t numEnabled = numChannelsEnabled;			// capture volatile variable to ensure we use a consistent value
+	if (numEnabled == 0)
 	{
 		return false;
 	}
@@ -304,7 +304,7 @@ bool AdcClass::StartConversion() noexcept
 	{
 		if (millis() - whenLastConversionStarted < AdcConversionTimeout)
 		{
-			return false;
+			return false;									// let the current conversion continue
 		}
 
 		DmacManager::DisableChannel(dmaChan + 1);
@@ -314,6 +314,7 @@ bool AdcClass::StartConversion() noexcept
 		ReInit();
 	}
 
+	numChannelsConverting = numEnabled;						// this is the number of channels we will convert this time
 	taskToWake = TaskBase::GetCallerTaskHandle();
 
 	// Set up DMA sequencing of the ADC
@@ -321,10 +322,10 @@ bool AdcClass::StartConversion() noexcept
 	DmacManager::DisableChannel(dmaChan);
 
 	DmacManager::SetDestinationAddress(dmaChan + 1, results);
-	DmacManager::SetDataLength(dmaChan + 1, numChannelsConverting);
+	DmacManager::SetDataLength(dmaChan + 1, numEnabled);
 
 	DmacManager::SetSourceAddress(dmaChan, inputRegisters);
-	DmacManager::SetDataLength(dmaChan, numChannelsConverting * DmaDwordsPerChannel);
+	DmacManager::SetDataLength(dmaChan, numEnabled * DmaDwordsPerChannel);
 
 	{
 		AtomicCriticalSectionLocker lock;
@@ -397,6 +398,7 @@ bool AdcClass::ConversionDone() noexcept
 		}
 
 		++errors;
+		ReInit();									// the DMA sequencing goes wrong after an error, so re-initialise everything
 	}
 	return false;
 }
