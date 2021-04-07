@@ -196,6 +196,7 @@ void DmacManager::DisableChannel(const uint8_t channel) noexcept
 {
 #if SAME5x
 	DMAC->Channel[channel].CHCTRLA.bit.ENABLE = 0;
+	while (DMAC->Channel[channel].CHCTRLA.bit.ENABLE) { }		// disabling may be delayed until the ongoing burst transfer is complete
 	DMAC->Channel[channel].CHINTENCLR.reg = DMAC_CHINTENCLR_TCMPL | DMAC_CHINTENCLR_TERR | DMAC_CHINTENCLR_SUSP;
 #elif SAMC21
 	AtomicCriticalSectionLocker lock;
