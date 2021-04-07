@@ -8,9 +8,9 @@
 #include <CoreIO.h>
 
 #if SAME5x
-# include <hri_dmac_e54.h>
+# include <hri_mclk_e54.h>
 #elif SAMC21
-# include <hri_dmac_c21.h>
+# include <hri_mclk_c21.h>
 #else
 # error Unsupported processor
 #endif
@@ -36,30 +36,30 @@ void DmacManager::Init() noexcept
 {
 	hri_mclk_set_AHBMASK_DMAC_bit(MCLK);
 
-	hri_dmac_clear_CTRL_DMAENABLE_bit(DMAC);
 #if SAME5x
-	hri_dmac_clear_CRCCTRL_reg(DMAC, DMAC_CRCCTRL_CRCSRC_Msk);
+	DMAC->CTRL.reg &= ~DMAC_CTRL_DMAENABLE;
 #elif SAMC21
-	hri_dmac_clear_CTRL_CRCENABLE_bit(DMAC);
+	DMAC->CTRL.reg &= ~(DMAC_CTRL_DMAENABLE | DMAC_CTRL_CRCENABLE);
 #else
 # error Unsupported processor
 #endif
-	hri_dmac_set_CTRL_SWRST_bit(DMAC);
-	while (hri_dmac_get_CTRL_SWRST_bit(DMAC)) { }
+	DMAC->CRCCTRL.reg = 0;
 
-	hri_dmac_write_CTRL_reg(DMAC, DMAC_CTRL_LVLEN0 | DMAC_CTRL_LVLEN1 | DMAC_CTRL_LVLEN2 | DMAC_CTRL_LVLEN3);
-	hri_dmac_write_DBGCTRL_DBGRUN_bit(DMAC, 0);
+	DMAC->CTRL.reg |= DMAC_CTRL_SWRST;
+	while ((DMAC->CTRL.reg & DMAC_CTRL_SWRST) != 0) { }
+
+	DMAC->CTRL.reg = DMAC_CTRL_LVLEN0 | DMAC_CTRL_LVLEN1 | DMAC_CTRL_LVLEN2 | DMAC_CTRL_LVLEN3;
 
 #if SAME5x
-	hri_dmac_write_PRICTRL0_reg(DMAC, DMAC_PRICTRL0_RRLVLEN0 | DMAC_PRICTRL0_RRLVLEN1 | DMAC_PRICTRL0_RRLVLEN2 | DMAC_PRICTRL0_RRLVLEN3
-									| DMAC_PRICTRL0_QOS0(0x02) | DMAC_PRICTRL0_QOS1(0x02)| DMAC_PRICTRL0_QOS2(0x02)| DMAC_PRICTRL0_QOS3(0x02));
+	DMAC->PRICTRL0.reg =  DMAC_PRICTRL0_RRLVLEN0 | DMAC_PRICTRL0_RRLVLEN1 | DMAC_PRICTRL0_RRLVLEN2 | DMAC_PRICTRL0_RRLVLEN3
+							| DMAC_PRICTRL0_QOS0(0x02) | DMAC_PRICTRL0_QOS1(0x02)| DMAC_PRICTRL0_QOS2(0x02)| DMAC_PRICTRL0_QOS3(0x02);
 #elif SAMC21
-	hri_dmac_write_PRICTRL0_reg(DMAC, DMAC_PRICTRL0_RRLVLEN0 | DMAC_PRICTRL0_RRLVLEN1 | DMAC_PRICTRL0_RRLVLEN2 | DMAC_PRICTRL0_RRLVLEN3);
-	hri_dmac_write_QOSCTRL_reg(DMAC, DMAC_QOSCTRL_WRBQOS(0x02) | DMAC_QOSCTRL_FQOS(0x02) | DMAC_QOSCTRL_DQOS(0x02));
+	DMAC->PRICTRL0.reg = DMAC_PRICTRL0_RRLVLEN0 | DMAC_PRICTRL0_RRLVLEN1 | DMAC_PRICTRL0_RRLVLEN2 | DMAC_PRICTRL0_RRLVLEN3;
+	DMAC->QOSCTRL.reg = DMAC_QOSCTRL_WRBQOS(0x02) | DMAC_QOSCTRL_FQOS(0x02) | DMAC_QOSCTRL_DQOS(0x02);
 #endif
 
-	hri_dmac_write_BASEADDR_reg(DMAC, (uint32_t)descriptor_section);
-	hri_dmac_write_WRBADDR_reg(DMAC, (uint32_t)write_back_section);
+	DMAC->BASEADDR.reg = reinterpret_cast<uint32_t>(descriptor_section);
+	DMAC->WRBADDR.reg = reinterpret_cast<uint32_t>(write_back_section);
 
 #if SAME5x
 	// SAME5x DMAC has 5 contiguous IRQ numbers
@@ -79,41 +79,39 @@ void DmacManager::Init() noexcept
 # error Unsupported processor
 #endif
 
-	hri_dmac_set_CTRL_DMAENABLE_bit(DMAC);
+	DMAC->CTRL.reg |= DMAC_CTRL_DMAENABLE;
 }
 
 void DmacManager::SetBtctrl(const uint8_t channel, const uint16_t val) noexcept
 {
-	hri_dmacdescriptor_write_BTCTRL_reg(&descriptor_section[channel], val);
+	descriptor_section[channel].BTCTRL.reg = val;
 }
 
 void DmacManager::SetDestinationAddress(const uint8_t channel, volatile void *const dst) noexcept
 {
-	hri_dmacdescriptor_write_DSTADDR_reg(&descriptor_section[channel], reinterpret_cast<uint32_t>(dst));
+	descriptor_section[channel].DSTADDR.reg = reinterpret_cast<uint32_t>(dst);
 }
 
 void DmacManager::SetSourceAddress(const uint8_t channel, const volatile void *const src) noexcept
 {
-	hri_dmacdescriptor_write_SRCADDR_reg(&descriptor_section[channel], reinterpret_cast<uint32_t>(src));
+	descriptor_section[channel].SRCADDR.reg = reinterpret_cast<uint32_t>(src);
 }
 
 void DmacManager::SetDataLength(const uint8_t channel, const uint32_t amount) noexcept
 {
-	const uint8_t beat_size = hri_dmacdescriptor_read_BTCTRL_BEATSIZE_bf(&descriptor_section[channel]);
+	const uint8_t beat_size = descriptor_section[channel].BTCTRL.bit.BEATSIZE;
 
-	const uint32_t dstAddress = hri_dmacdescriptor_read_DSTADDR_reg(&descriptor_section[channel]);
-	if (hri_dmacdescriptor_get_BTCTRL_DSTINC_bit(&descriptor_section[channel]))
+	if (descriptor_section[channel].BTCTRL.bit.DSTINC)
 	{
-		hri_dmacdescriptor_write_DSTADDR_reg(&descriptor_section[channel], dstAddress + amount * (1 << beat_size));
+		descriptor_section[channel].DSTADDR.reg += amount << beat_size;
 	}
 
-	const uint32_t srcAddress = hri_dmacdescriptor_read_SRCADDR_reg(&descriptor_section[channel]);
-	if (hri_dmacdescriptor_get_BTCTRL_SRCINC_bit(&descriptor_section[channel]))
+	if (descriptor_section[channel].BTCTRL.bit.SRCINC)
 	{
-		hri_dmacdescriptor_write_SRCADDR_reg(&descriptor_section[channel], srcAddress + amount * (1 << beat_size));
+		descriptor_section[channel].SRCADDR.reg += amount << beat_size;
 	}
 
-	hri_dmacdescriptor_write_BTCNT_reg(&descriptor_section[channel], amount);
+	descriptor_section[channel].BTCNT.reg = amount;
 }
 
 void DmacManager::SetTriggerSource(uint8_t channel, DmaTrigSource source) noexcept
@@ -176,7 +174,10 @@ void DmacManager::SetArbitrationLevel(uint8_t channel, uint8_t level) noexcept
 
 void DmacManager::EnableChannel(const uint8_t channel, DmaPriority priority) noexcept
 {
-	hri_dmacdescriptor_set_BTCTRL_VALID_bit(&descriptor_section[channel]);
+	descriptor_section[channel].DESCADDR.reg = 0;
+	descriptor_section[channel].BTCTRL.bit.VALID = 1;
+	Cache::FlushBeforeDMASend(&descriptor_section[channel], sizeof(descriptor_section[channel]));
+
 #if SAME5x
 	DMAC->Channel[channel].CHPRILVL.reg = priority;
 	DMAC->Channel[channel].CHCTRLA.bit.ENABLE = 1;
@@ -303,7 +304,7 @@ extern "C" void DMAC_3_Handler() noexcept
 
 extern "C" void DMAC_4_Handler() noexcept
 {
-	hri_dmac_intpend_reg_t intPend;
+	uint16_t intPend;
 	while (((intPend = DMAC->INTPEND.reg) & (DMAC_INTPEND_SUSP | DMAC_INTPEND_TCMPL | DMAC_INTPEND_TERR)) != 0)
 	{
 		CommonDmacHandler(intPend & DMAC_INTPEND_ID_Msk);
@@ -314,7 +315,7 @@ extern "C" void DMAC_4_Handler() noexcept
 
 extern "C" void DMAC_Handler() noexcept
 {
-	hri_dmac_intpend_reg_t intPend;
+	uint16_t intPend;
 	while (((intPend = DMAC->INTPEND.reg) & (DMAC_INTPEND_SUSP | DMAC_INTPEND_TCMPL | DMAC_INTPEND_TERR)) != 0)
 	{
 		const size_t channel = intPend & DMAC_INTPEND_ID_Msk;
