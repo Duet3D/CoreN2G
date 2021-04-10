@@ -162,13 +162,13 @@ static void InitClocks() noexcept
 		FREQM->CTRLA.reg = FREQM_CTRLA_SWRST;
 		while (FREQM->SYNCBUSY.bit.SWRST) { }
 
-		FREQM->CFGA.reg = 240;													// count for 240 cycles of the 48MHz reference clock i.e. 10us
+		FREQM->CFGA.reg = 240;													// count for 240 cycles of the 48MHz reference clock i.e. 5us
 		FREQM->CTRLA.reg = FREQM_CTRLA_ENABLE;
 		while (FREQM->SYNCBUSY.bit.ENABLE) { }
 
 		// Some 12MHz crystal oscillators are slow to start, so make sure we get a consistent result before we use it
 		int32_t freq = 0;
-		for (unsigned int count = 0; ; ++count)
+		for (unsigned int count = 1; ; ++count)
 		{
 			FREQM->STATUS.reg = FREQM_STATUS_OVF;								// clear overflow status
 			FREQM->CTRLB.reg = FREQM_CTRLB_START;								// start counting
@@ -178,7 +178,7 @@ static void InitClocks() noexcept
 			if ((count & 0x000001FF) == 0)
 			{
 				const int32_t lastFreq  = freq;
-				freq = FREQM->VALUE.reg & 0x00FFFFFF;							// get the number of crystal oscillator cycles in 5us
+				freq = FREQM->VALUE.reg & 0x00FFFFFF;							// get the number of crystal oscillator cycles measured in 5us
 				const bool overflowed = FREQM->STATUS.bit.OVF;
 				if (!overflowed && abs(freq - lastFreq) <= 2)
 				{
@@ -198,12 +198,12 @@ static void InitClocks() noexcept
 		}
 
 		// Turn off the temporary GCLK and the frequency meter to save power
-		GCLK->GENCTRL[1].reg = 0;
 		FREQM->CTRLA.reg = 0;
+		while (FREQM->SYNCBUSY.bit.ENABLE) { }
 		MCLK->APBAMASK.reg &= ~(MCLK_APBAMASK_FREQM);
 		hri_gclk_write_PCHCTRL_reg(GCLK, FREQM_GCLK_ID_REF, 0);
 		hri_gclk_write_PCHCTRL_reg(GCLK, FREQM_GCLK_ID_MSR, 0);
-
+		hri_gclk_write_GENCTRL_reg(GCLK, 1, 0);
 	}
 
 	// Initialise the XOSC
@@ -241,12 +241,12 @@ static void InitClocks() noexcept
 	}
 	else if ((xoscFrequency % 5) == 0)						// e.g. 25MHz as used on Duet 3 Mini 5+
 	{
-		divisor = 2 * (xoscFrequency/5);					// use 2.5MHz
+		divisor = 2 * (xoscFrequency/5);					// e.g. for 25MHz crystal use 2.5MHz
 		multiplier = (2 * 120)/5;
 	}
 	else
 	{
-		divisor = 2 * xoscFrequency;
+		divisor = 2 * xoscFrequency;						// use 500kHz
 		multiplier = 2 * 120;
 	}
 
