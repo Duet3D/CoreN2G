@@ -275,7 +275,7 @@ namespace DmacManager
 	void SetTriggerSourceSercomRx(DmaChannel channel, uint8_t sercomNumber) noexcept;
 	void SetArbitrationLevel(DmaChannel channel, uint8_t level) noexcept;
 	void EnableChannel(DmaChannel channel, DmaPriority priority) noexcept;
-	void DisableChannel(DmaChannel channel) noexcept;
+	bool DisableChannel(DmaChannel channel) noexcept;
 	void SetInterruptCallback(DmaChannel channel, DmaCallbackFunction fn, CallbackParameter param) noexcept;
 	void EnableCompletedInterrupt(DmaChannel channel) noexcept;
 	void DisableCompletedInterrupt(DmaChannel channel) noexcept;

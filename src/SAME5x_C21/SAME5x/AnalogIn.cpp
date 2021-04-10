@@ -28,6 +28,16 @@ static uint32_t conversionsCompleted = 0;
 static uint32_t conversionTimeouts = 0;
 static uint32_t errors = 0;
 
+#define ADC_DEBUG	1
+
+#if ADC_DEBUG
+unsigned int txDmaNotDisabledErrs = 0;
+unsigned int rxDmaNotDisabledErrs = 0;
+unsigned int wrongRxDmaFinishedStatusErrs = 0;
+unsigned int wrongTxDmaFinishedStatusErrs = 0;
+unsigned int wrongAdcRegisterErrs = 0;
+#endif
+
 // Constants that control the DMA sequencing
 // The SAME5x errata doc from Microchip say that order to use averaging, we need to include the AVGCTRL register in the sequence even if it doesn't change,
 // and that the prescaler must be <= 8 when we use DMA sequencing.
@@ -318,8 +328,13 @@ bool AdcClass::StartConversion() noexcept
 	taskToWake = TaskBase::GetCallerTaskHandle();
 
 	// Set up DMA sequencing of the ADC
+#if ADC_DEBUG
+	if (!DmacManager::DisableChannel(dmaChan + 1)) { ++txDmaNotDisabledErrs; }
+	if (!DmacManager::DisableChannel(dmaChan)) { ++rxDmaNotDisabledErrs; }
+#else
 	DmacManager::DisableChannel(dmaChan + 1);
 	DmacManager::DisableChannel(dmaChan);
+#endif
 
 	DmacManager::SetDestinationAddress(dmaChan + 1, results);
 	DmacManager::SetDataLength(dmaChan + 1, numEnabled);
@@ -369,10 +384,26 @@ void AdcClass::ExecuteCallbacks() noexcept
 // Indirect callback from the DMA controller ISR
 void AdcClass::ResultReadyCallback(DmaCallbackReason reason) noexcept
 {
+#if ADC_DEBUG
+	if (reason != DmaCallbackReason::complete)
+	{
+		++wrongRxDmaFinishedStatusErrs;
+	}
+	if ((DmacManager::GetAndClearChannelStatus(dmaChan) & (DMAC_CHINTFLAG_TERR | DMAC_CHINTFLAG_TCMPL)) == DMAC_CHINTFLAG_TCMPL)
+	{
+		dmaFinishedReason = reason;
+	}
+	else
+	{
+		++wrongTxDmaFinishedStatusErrs;
+		dmaFinishedReason = DmaCallbackReason::completeAndError;
+	}
+#else
 	// Check that the sequencer DMA is complete too, because if it isn't then we will have converted the wrong channels
 	dmaFinishedReason = ((DmacManager::GetAndClearChannelStatus(dmaChan) & (DMAC_CHINTFLAG_TERR | DMAC_CHINTFLAG_TCMPL)) == DMAC_CHINTFLAG_TCMPL)
 							? reason
 								: DmaCallbackReason::completeAndError;
+#endif
 	state = State::ready;
 	++conversionsCompleted;
 	DmacManager::DisableChannel(dmaChan);			// disable the sequencer DMA
@@ -385,6 +416,18 @@ bool AdcClass::ConversionDone() noexcept
 {
 	if (state == State::ready)
 	{
+#if ADC_DEBUG
+		if (   device->INPUTCTRL.reg != (ADC_INPUTCTRL_MUXNEG_GND | (uint32_t)GetChannel(numChannelsConverting - 1))
+			|| device->CTRLB.reg != CtrlB
+			|| device->REFCTRL.reg != RefCtrl
+			|| device->AVGCTRL.reg != AvgCtrl
+			|| device->SAMPCTRL.reg != SampCtrl
+		   )
+		{
+			++wrongAdcRegisterErrs;
+		}
+		else if (dmaFinishedReason == DmaCallbackReason::complete)
+#else
 		if (   dmaFinishedReason == DmaCallbackReason::complete
 			// Also check that the input selection and average control registers are as we expect (trying to pin down spurious under-voltage events)
 			&& device->INPUTCTRL.reg == (ADC_INPUTCTRL_MUXNEG_GND | (uint32_t)GetChannel(numChannelsConverting - 1))
@@ -393,6 +436,7 @@ bool AdcClass::ConversionDone() noexcept
 			&& device->AVGCTRL.reg == AvgCtrl
 			&& device->SAMPCTRL.reg == SampCtrl
 		   )
+#endif
 		{
 			return true;
 		}
