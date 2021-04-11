@@ -61,7 +61,6 @@ public:
 	{
 		noChannels = 0,
 		starting,
-		idle,
 		converting,
 		ready
 	};
@@ -84,6 +83,7 @@ public:
 private:
 	bool InternalEnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
 	size_t GetChannel(size_t slot) noexcept { return inputRegisters[DmaDwordsPerChannel * slot] & 0x1F; }
+	void DisableDma() noexcept;
 	void ReInit() noexcept;
 
 	static void DmaCompleteCallback(CallbackParameter cp, DmaCallbackReason reason) noexcept;
@@ -132,8 +132,7 @@ void AdcClass::Exit() noexcept
 {
 	taskToWake = nullptr;
 	DmacManager::DisableCompletedInterrupt(dmaChan + 1);		// disable the reader completed interrupt
-	DmacManager::DisableChannel(dmaChan);						// disable the sequencer DMA
-	DmacManager::DisableChannel(dmaChan + 1);					// disable the reader DMA too
+	DisableDma();
 }
 
 // Try to enable this ADC on the specified channel returning true if successful
@@ -182,18 +181,23 @@ bool AdcClass::EnableTemperatureSensor(unsigned int sensorNumber, AnalogInCallba
 	return InternalEnableChannel(sensorNumber + ADC_INPUTCTRL_MUXPOS_PTAT_Val, fn, param, p_ticksPerCall);
 }
 
+void AdcClass::DisableDma() noexcept
+{
+#if ADC_DEBUG
+	if (!DmacManager::DisableChannel(dmaChan)) { ++rxDmaNotDisabledErrs; }
+	if (!DmacManager::DisableChannel(dmaChan + 1)) { ++txDmaNotDisabledErrs; }
+#else
+	DmacManager::DisableChannel(dmaChan);
+	DmacManager::DisableChannel(dmaChan + 1);
+#endif
+}
+
 // Initialise or re-initialise the ADC and DMA channels. The ADC clock has already been enabled.
 void AdcClass::ReInit() noexcept
 {
-	if (!hri_adc_is_syncing(device, ADC_SYNCBUSY_SWRST))
-	{
-		if (hri_adc_get_CTRLA_reg(device, ADC_CTRLA_ENABLE))
-		{
-			hri_adc_clear_CTRLA_ENABLE_bit(device);
-			hri_adc_wait_for_sync(device, ADC_SYNCBUSY_ENABLE);
-		}
-		hri_adc_write_CTRLA_reg(device, ADC_CTRLA_SWRST);
-	}
+	DisableDma();
+
+	hri_adc_write_CTRLA_reg(device, ADC_CTRLA_SWRST);
 	hri_adc_wait_for_sync(device, ADC_SYNCBUSY_SWRST);
 
 	// From the SAME5x errata:
@@ -251,15 +255,14 @@ void AdcClass::ReInit() noexcept
 	hri_supc_set_VREF_TSEN_bit(SUPC);
 	hri_supc_clear_VREF_VREFOE_bit(SUPC);
 
+
 	// Initialise the DMAC. First the sequencer
-	DmacManager::DisableChannel(dmaChan);
 	DmacManager::SetDestinationAddress(dmaChan, &device->DSEQDATA.reg);
 	DmacManager::SetBtctrl(dmaChan, DMAC_BTCTRL_VALID | DMAC_BTCTRL_EVOSEL_DISABLE | DMAC_BTCTRL_BLOCKACT_INT | DMAC_BTCTRL_BEATSIZE_WORD
 								| DMAC_BTCTRL_SRCINC | DMAC_BTCTRL_STEPSEL_SRC | DMAC_BTCTRL_STEPSIZE_X1);
 	DmacManager::SetTriggerSource(dmaChan, (DmaTrigSource)((uint8_t)trigSrc + 1));
 
 	// Now the result reader
-	DmacManager::DisableChannel(dmaChan + 1);
 	DmacManager::SetSourceAddress(dmaChan + 1, const_cast<uint16_t *>(&device->RESULT.reg));
 	DmacManager::SetInterruptCallback(dmaChan + 1, DmaCompleteCallback, this);
 	DmacManager::SetBtctrl(dmaChan + 1, DMAC_BTCTRL_VALID | DMAC_BTCTRL_EVOSEL_DISABLE | DMAC_BTCTRL_BLOCKACT_INT | DMAC_BTCTRL_BEATSIZE_HWORD
@@ -317,9 +320,6 @@ bool AdcClass::StartConversion() noexcept
 			return false;									// let the current conversion continue
 		}
 
-		DmacManager::DisableChannel(dmaChan + 1);
-		DmacManager::DisableChannel(dmaChan);
-
 		++conversionTimeouts;
 		ReInit();
 	}
@@ -328,13 +328,8 @@ bool AdcClass::StartConversion() noexcept
 	taskToWake = TaskBase::GetCallerTaskHandle();
 
 	// Set up DMA sequencing of the ADC
-#if ADC_DEBUG
-	if (!DmacManager::DisableChannel(dmaChan + 1)) { ++txDmaNotDisabledErrs; }
-	if (!DmacManager::DisableChannel(dmaChan)) { ++rxDmaNotDisabledErrs; }
-#else
-	DmacManager::DisableChannel(dmaChan + 1);
-	DmacManager::DisableChannel(dmaChan);
-#endif
+	DisableDma();
+	(void)device->RESULT.reg;								// make sure no result pending (this is necessary to make it work!)
 
 	DmacManager::SetDestinationAddress(dmaChan + 1, results);
 	DmacManager::SetDataLength(dmaChan + 1, numEnabled);
@@ -404,10 +399,9 @@ void AdcClass::ResultReadyCallback(DmaCallbackReason reason) noexcept
 							? reason
 								: DmaCallbackReason::completeAndError;
 #endif
+	DisableDma();
 	state = State::ready;
 	++conversionsCompleted;
-	DmacManager::DisableChannel(dmaChan);			// disable the sequencer DMA
-	DmacManager::DisableChannel(dmaChan + 1);		// disable the reader DMA
 	TaskBase::GiveFromISR(taskToWake);
 }
 
