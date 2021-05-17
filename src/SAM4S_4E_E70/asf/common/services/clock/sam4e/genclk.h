@@ -107,21 +107,18 @@ struct genclk_config {
 	uint32_t ctrl;
 };
 
-static inline void genclk_config_defaults(struct genclk_config *p_cfg,
-		uint32_t ul_id)
+static inline void genclk_config_defaults(struct genclk_config *p_cfg, uint32_t ul_id)
 {
-	ul_id = ul_id;
+	(void)ul_id;
 	p_cfg->ctrl = 0;
 }
 
-static inline void genclk_config_read(struct genclk_config *p_cfg,
-		uint32_t ul_id)
+static inline void genclk_config_read(struct genclk_config *p_cfg, uint32_t ul_id)
 {
 	p_cfg->ctrl = PMC->PMC_PCK[ul_id];
 }
 
-static inline void genclk_config_write(const struct genclk_config *p_cfg,
-		uint32_t ul_id)
+static inline void genclk_config_write(const struct genclk_config *p_cfg, uint32_t ul_id)
 {
 	PMC->PMC_PCK[ul_id] = p_cfg->ctrl;
 }
@@ -129,8 +126,7 @@ static inline void genclk_config_write(const struct genclk_config *p_cfg,
 //! \name Programmable Clock Source and Prescaler configuration
 //@{
 
-static inline void genclk_config_set_source(struct genclk_config *p_cfg,
-		enum genclk_source e_src)
+static inline void genclk_config_set_source(struct genclk_config *p_cfg, enum genclk_source e_src)
 {
 	p_cfg->ctrl &= (~PMC_PCK_CSS_Msk);
 
@@ -162,8 +158,7 @@ static inline void genclk_config_set_source(struct genclk_config *p_cfg,
 	}
 }
 
-static inline void genclk_config_set_divider(struct genclk_config *p_cfg,
-		uint32_t e_divider)
+static inline void genclk_config_set_divider(struct genclk_config *p_cfg, uint32_t e_divider)
 {
 	p_cfg->ctrl &= ~PMC_PCK_PRES_Msk;
 	p_cfg->ctrl |= e_divider;
