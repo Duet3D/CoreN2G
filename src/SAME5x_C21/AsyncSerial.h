@@ -22,10 +22,12 @@ public:
 	union Errors
 	{
 		uint32_t all;
-		uint32_t uartOverrun : 11,
-				 framing : 11,
-				 bufferOverrun : 10;
-
+		struct
+		{
+			uint32_t uartOverrun : 11,
+					 framing : 11,
+					 bufferOverrun : 10;
+		};
 		Errors() noexcept { all = 0; }
 	};
 
