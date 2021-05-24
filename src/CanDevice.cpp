@@ -571,7 +571,7 @@ void CanDevice::CopyMessageForTransmit(CanMessageBuffer *buffer, volatile TxBuff
 	}
 
 	f->T1.bit.MM = buffer->marker;
-	f->T1.bit.EFCbit = (buffer->marker != 0);
+	f->T1.bit.EFCbit = buffer->reportInFifo;
 	uint32_t dataLength = buffer->dataLength;
 	volatile uint32_t *dataPtr = f->GetDataPointer();
 	if (dataLength <= 8)
