@@ -477,7 +477,7 @@ void CanDevice::PollTxEventFifo(TxEventCallbackFunction p_txCallback) noexcept
 	while (((txefs = hw->REG(TXEFS)) & CAN_(TXEFS_EFFL_Msk)) != 0)
 	{
 		const uint32_t index = (txefs & CAN_(TXEFS_EFGI_Msk)) >> CAN_(TXEFS_EFGI_Pos);
-		const TxEvent* elem = GetTxEvent(index);
+		const volatile TxEvent* const elem = GetTxEvent(index);
 		if (elem->R1.bit.ET == 1)
 		{
 			CanId id;
@@ -485,6 +485,7 @@ void CanDevice::PollTxEventFifo(TxEventCallbackFunction p_txCallback) noexcept
 			p_txCallback(elem->R1.bit.MM, id, elem->R1.bit.TXTS);
 		}
 		hw->REG(TXEFA) = index;
+		__DSB();					// probably not needed, but just in case
 	}
 }
 
