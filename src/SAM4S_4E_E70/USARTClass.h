@@ -103,12 +103,13 @@ class USARTClass : public AsyncSerial
 
     USARTClass(Usart* pUsart, IRQn_Type p_irqn, uint32_t p_id, size_t numTxSlots, size_t numRxSlots, OnBeginFn p_onBegin, OnEndFn p_onEnd) noexcept;
 
-    void begin(const uint32_t dwBaudRate) noexcept;
-    void begin(const uint32_t dwBaudRate, const USARTModes config) noexcept;
-    void begin(const uint32_t dwBaudRate, const UARTModes config) noexcept;
+    void begin(uint32_t dwBaudRate, USARTModes config) noexcept;
+    void begin(uint32_t dwBaudRate, UARTModes config) noexcept override;
 
   protected:
+#if 0	// the following is unused
     Usart* _pUsart;
+#endif
 };
 
 #endif // _USART_CLASS_

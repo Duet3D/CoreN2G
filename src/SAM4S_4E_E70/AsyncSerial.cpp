@@ -36,12 +36,12 @@ AsyncSerial::AsyncSerial(Uart* pUart, IRQn_Type p_irqn, uint32_t p_id, size_t nu
 
 // Public Methods //////////////////////////////////////////////////////////////
 
-void AsyncSerial::begin(const uint32_t dwBaudRate) noexcept
+void AsyncSerial::begin(uint32_t dwBaudRate) noexcept
 {
 	begin(dwBaudRate, Mode_8N1);
 }
 
-void AsyncSerial::begin(const uint32_t dwBaudRate, const UARTModes config) noexcept
+void AsyncSerial::begin(uint32_t dwBaudRate, UARTModes config) noexcept
 {
 	uint32_t modeReg = static_cast<uint32_t>(config) & 0x00000E00;
 	init(dwBaudRate, modeReg | UART_MR_CHMODE_NORMAL);

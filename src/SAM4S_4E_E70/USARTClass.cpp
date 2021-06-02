@@ -24,27 +24,24 @@
 // Constructors ////////////////////////////////////////////////////////////////
 
 USARTClass::USARTClass(Usart* pUsart, IRQn_Type p_irqn, uint32_t p_id, size_t numTxSlots, size_t numRxSlots, OnBeginFn p_onBegin, OnEndFn p_onEnd) noexcept
-  : AsyncSerial((Uart*)pUsart, p_irqn, p_id, numTxSlots, numRxSlots, p_onBegin, p_onEnd)
+  : AsyncSerial(reinterpret_cast<Uart*>(pUsart), p_irqn, p_id, numTxSlots, numRxSlots, p_onBegin, p_onEnd)
 {
+#if 0
   // In case anyone needs USART specific functionality in the future
   _pUsart=pUsart;
+#endif
 }
 
 // Public Methods //////////////////////////////////////////////////////////////
 
-void USARTClass::begin(const uint32_t dwBaudRate) noexcept
-{
-  begin(dwBaudRate, Mode_8N1);
-}
-
-void USARTClass::begin(const uint32_t dwBaudRate, const UARTModes config) noexcept
+void USARTClass::begin(uint32_t dwBaudRate, UARTModes config) noexcept
 {
   uint32_t modeReg = static_cast<uint32_t>(config);
   modeReg |= US_MR_USART_MODE_NORMAL | US_MR_USCLKS_MCK | US_MR_CHMODE_NORMAL;
   init(dwBaudRate, modeReg);
 }
 
-void USARTClass::begin(const uint32_t dwBaudRate, const USARTModes config) noexcept
+void USARTClass::begin(uint32_t dwBaudRate, USARTModes config) noexcept /*override*/
 {
   uint32_t modeReg = static_cast<uint32_t>(config);
   modeReg |= US_MR_USART_MODE_NORMAL | US_MR_USCLKS_MCK | US_MR_CHMODE_NORMAL;
