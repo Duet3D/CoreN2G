@@ -196,7 +196,7 @@ void AsyncSerial::IrqHandler() noexcept
 				numInterruptBytesMatched = 0;
 				if (interruptCallback != nullptr)
 				{
-				  interruptCallback(this);
+					interruptCallback(this);
 				}
 			}
 		}
