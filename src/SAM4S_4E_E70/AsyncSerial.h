@@ -73,9 +73,9 @@ public:
 	void begin(uint32_t dwBaudRate) noexcept;
 
 	void end() noexcept;
-	int available(void) noexcept;
-	int read() noexcept;
-	void flush() noexcept;
+	int available(void) noexcept override;
+	int read() noexcept override;
+	void flush() noexcept override;
 	size_t write(const uint8_t c) noexcept override;
 	size_t write(const uint8_t *buffer, size_t buflen) noexcept override;
 
