@@ -135,8 +135,10 @@ extern "C" [[noreturn]] void Reset_Handler() noexcept
 #endif
 
 	// Set the vector table base address
-	const uint32_t * const pSrc = (uint32_t *) & _sfixed;
-	SCB->VTOR = ((uint32_t) pSrc & SCB_VTOR_TBLOFF_Msk);
+	{
+		const uint32_t * const pSrc = (uint32_t *) & _sfixed;
+		SCB->VTOR = ((uint32_t) pSrc & SCB_VTOR_TBLOFF_Msk);
+	}
 
 	// Enable FPU
 	static_assert(__FPU_USED);
