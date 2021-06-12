@@ -150,6 +150,11 @@ public:
 	// Wait for a transmit buffer to become free, with timeout. Return true if it's free.
 	bool IsSpaceAvailable(TxBufferNumber whichBuffer, uint32_t timeout) noexcept;
 
+#if 0	// not currently used
+	// Return the number of messages waiting to be sent in the transmit FIFO
+	unsigned int NumTxMessagesPending(TxBufferNumber whichBuffer) noexcept;
+#endif
+
 	// Queue a message for sending via a buffer or FIFO. If the buffer isn't free, cancel the previous message (or oldest message in the fifo) and send it anyway.
 	void SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept;
 
