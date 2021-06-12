@@ -511,6 +511,10 @@ bool CanDevice::IsSpaceAvailable(TxBufferNumber whichBuffer, uint32_t timeout) n
 			TaskBase::ClearNotifyCount();
 			txTaskWaiting[(unsigned int)whichBuffer] = TaskBase::GetCallerTaskHandle();
 			txBuffersWaiting |= 1u << (unsigned int)whichBuffer;
+			const unsigned int bufferIndex = READBITS(hw, TXFQS, TFQPI);
+			const uint32_t trigMask = (uint32_t)1 << bufferIndex;
+			hw->REG(TXBTIE) |= trigMask;
+
 			bufferFree = (READBITS(hw, TXFQS, TFQF) == 0);
 			if (!bufferFree)
 			{
@@ -556,6 +560,22 @@ bool CanDevice::IsSpaceAvailable(TxBufferNumber whichBuffer, uint32_t timeout) n
 	}
 	return bufferFree;
 }
+
+#if 0	// not currently used
+
+// Return the number of messages waiting to be sent in the transmit FIFO
+unsigned int CanDevice::NumTxMessagesPending(TxBufferNumber whichBuffer) noexcept
+{
+	if (whichBuffer == TxBufferNumber::fifo)
+	{
+		return READBITS(hw, TXBC, TFQS) - READBITS(hw, TXFQS, TFFL);
+	}
+
+	const unsigned int bufferIndex = (unsigned int)whichBuffer - (unsigned int)TxBufferNumber::buffer0;
+	return (hw->REG(TXBRP) >> bufferIndex) & 1u;
+}
+
+#endif
 
 void CanDevice::CopyMessageForTransmit(CanMessageBuffer *buffer, volatile TxBufferHeader *f) noexcept
 {
@@ -1061,20 +1081,26 @@ void CanDevice::Interrupt() noexcept
 			{
 				const unsigned int bufferNumber = LowestSetBit(transmitDone);
 				hw->REG(TXBTIE) &= ~((uint32_t)1 << bufferNumber);
-				const unsigned int waitingIndex = bufferNumber + (unsigned int)TxBufferNumber::buffer0;
-				if (waitingIndex < ARRAY_SIZE(txTaskWaiting) && (txBuffersWaiting & (1u <<waitingIndex)))
+				if (bufferNumber < READBITS(hw, TXBC, NDTB))
 				{
-					TaskBase::GiveFromISR(txTaskWaiting[waitingIndex]);
-					txBuffersWaiting &= ~(1u << waitingIndex);
+					// Completed transmission from a dedicated transmit buffer
+					const unsigned int waitingIndex = bufferNumber + (unsigned int)TxBufferNumber::buffer0;
+					if (waitingIndex < ARRAY_SIZE(txTaskWaiting) && (txBuffersWaiting & (1u << waitingIndex)))
+					{
+						TaskBase::GiveFromISR(txTaskWaiting[waitingIndex]);
+						txBuffersWaiting &= ~(1u << waitingIndex);
+					}
 				}
-			}
-
-			// Check the tx FIFO
-			constexpr unsigned int fifoWaitingIndex = (unsigned int)TxBufferNumber::fifo;
-			if ((txBuffersWaiting & (1u << fifoWaitingIndex)) && READBITS(hw, TXFQS, TFFL) != 0)
-			{
-				TaskBase::GiveFromISR(txTaskWaiting[fifoWaitingIndex]);
-				txBuffersWaiting &= ~(1u << fifoWaitingIndex);
+				else
+				{
+					// Completed transmission from a transmit FIFO buffer
+					constexpr unsigned int fifoWaitingIndex = (unsigned int)TxBufferNumber::fifo;
+					if ((txBuffersWaiting & (1u << fifoWaitingIndex)) && READBITS(hw, TXFQS, TFFL) != 0)
+					{
+						TaskBase::GiveFromISR(txTaskWaiting[fifoWaitingIndex]);
+						txBuffersWaiting &= ~(1u << fifoWaitingIndex);
+					}
+				}
 			}
 		}
 
