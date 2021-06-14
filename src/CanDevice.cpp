@@ -291,8 +291,7 @@ inline CanDevice::TxEvent *CanDevice::GetTxEvent(uint32_t index) const noexcept 
 	dev.txBuffers = memStart;
 
 	dev.useFDMode = (p_config.dataSize > 8);							// assume we want standard CAN if the max data size is 8
-	dev.messagesQueuedForSending = dev.messagesReceived = dev.messagesLost = dev.busOffCount = dev.txTimeouts = 0;
-	dev.lastCancelledId = 0;
+	dev.messagesQueuedForSending = dev.messagesReceived = dev.messagesLost = dev.busOffCount = 0;
 #ifdef RTOS
 	for (volatile TaskHandle& h : dev.txTaskWaiting) { h = nullptr; }
 	for (volatile TaskHandle& h : dev.rxTaskWaiting) { h = nullptr; }
@@ -522,6 +521,7 @@ bool CanDevice::IsSpaceAvailable(TxBufferNumber whichBuffer, uint32_t timeout) n
 				bufferFree = (READBITS(hw, TXFQS, TFQF) == 0);
 			}
 			txBuffersWaiting &= ~(1u << (unsigned int)whichBuffer);
+			hw->REG(TXBTIE) &= ~trigMask;
 		}
 #else
 		do
@@ -651,19 +651,20 @@ void CanDevice::CopyMessageForTransmit(CanMessageBuffer *buffer, volatile TxBuff
 
 // Queue a message for sending via a buffer or FIFO. If the buffer isn't free, cancel the previous message (or oldest message in the fifo) and send it anyway.
 // On return the caller must free or re-use the buffer.
-void CanDevice::SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept
+uint32_t CanDevice::SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept
 {
+	uint32_t cancelledId = 0;
 	if ((uint32_t)whichBuffer < (uint32_t)TxBufferNumber::buffer0 + config->numTxBuffers)
 	{
 		const bool bufferFree = IsSpaceAvailable(whichBuffer, timeout);
 		const uint32_t bufferIndex = (whichBuffer == TxBufferNumber::fifo)
-										? (hw->REG(TXFQS) & CAN_(TXFQS_TFQPI_Msk)) >> CAN_(TXFQS_TFQPI_Pos)
+										? READBITS(hw, TXFQS, TFQPI)
 											: (uint32_t)whichBuffer - (uint32_t)TxBufferNumber::buffer0;
 		const uint32_t trigMask = (uint32_t)1 << bufferIndex;
 		if (!bufferFree)
 		{
 			// Retrieve details of the packet we are about to cancel
-			lastCancelledId = GetTxBuffer(bufferIndex)->T0.bit.ID;
+			cancelledId = GetTxBuffer(bufferIndex)->T0.bit.ID;
 			// Cancel transmission of the oldest packet
 			hw->REG(TXBCR) = trigMask;
 			do
@@ -671,13 +672,13 @@ void CanDevice::SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMes
 				delay(1);
 			}
 			while ((hw->REG(TXBRP) & trigMask) != 0 || (whichBuffer == TxBufferNumber::fifo && READBITS(hw, TXFQS, TFQF)));
-			++txTimeouts;
 		}
 
 		CopyMessageForTransmit(buffer, GetTxBuffer(bufferIndex));
 		__DSB();								// this is needed on the SAME70, otherwise incorrect data sometimes gets transmitted
 		hw->REG(TXBAR) = trigMask;
 	}
+	return cancelledId;
 }
 
 void CanDevice::CopyReceivedMessage(CanMessageBuffer *buffer, const volatile RxBufferHeader *f) noexcept
@@ -786,7 +787,7 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 			}
 #endif
 			// Process the received message into the buffer
-			const uint32_t getIndex = (hw->REG(RXF0S) & CAN_(RXF0S_F0GI_Msk)) >> CAN_(RXF0S_F0GI_Pos);
+			const uint32_t getIndex = READBITS(hw, RXF0S, F0GI);
 			CopyReceivedMessage(buffer, GetRxFifo0Buffer(getIndex));
 
 			// Tell the hardware that we have taken the message
@@ -825,7 +826,7 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 			}
 #endif
 			// Process the received message into the buffer
-			const uint32_t getIndex = (hw->REG(RXF1S) & CAN_(RXF1S_F1GI_Msk)) >> CAN_(RXF1S_F1GI_Pos);
+			const uint32_t getIndex = READBITS(hw, RXF1S, F1GI);
 			CopyReceivedMessage(buffer, GetRxFifo1Buffer(getIndex));
 
 			// Tell the hardware that we have taken the message
@@ -1017,8 +1018,7 @@ void CanDevice::UpdateLocalCanTiming(const CanTiming &timing) noexcept
 		| ((prescaler - 1) << CAN_(DBTP_DBRP_Pos));
 }
 
-void CanDevice::GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsigned int& rMessagesReceived, unsigned int& rTxTimeouts,
-									unsigned int& rMessagesLost, unsigned int& rBusOffCount, uint32_t& rLastCancelledId) noexcept
+void CanDevice::GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsigned int& rMessagesReceived, unsigned int& rMessagesLost, unsigned int& rBusOffCount) noexcept
 {
 	AtomicCriticalSectionLocker lock;
 
@@ -1026,10 +1026,7 @@ void CanDevice::GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsign
 	rMessagesReceived = messagesReceived;
 	rMessagesLost = messagesLost;
 	rBusOffCount = busOffCount;
-	rTxTimeouts = txTimeouts;
-	rLastCancelledId = lastCancelledId;
-	messagesQueuedForSending = messagesReceived = messagesLost = busOffCount = txTimeouts = 0;
-	lastCancelledId = 0;
+	messagesQueuedForSending = messagesReceived = messagesLost = busOffCount = 0;
 }
 
 #ifdef RTOS

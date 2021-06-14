@@ -156,7 +156,8 @@ public:
 #endif
 
 	// Queue a message for sending via a buffer or FIFO. If the buffer isn't free, cancel the previous message (or oldest message in the fifo) and send it anyway.
-	void SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept;
+	// Returns the ID of the message that was cancelled, or 0 if we didn't cancel a message.
+	uint32_t SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept;
 
 	// Receive a message in a buffer or fifo, with timeout. Returns true if successful, false if no message available even after the timeout period.
 	bool ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept;
@@ -178,8 +179,7 @@ public:
 
 	void SetLocalCanTiming(const CanTiming& timing) noexcept;
 
-	void GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsigned int& rMessagesReceived, unsigned int& rTxTimeouts,
-							unsigned int& rMessagesLost, unsigned int& rBusOffCount, uint32_t& rLastCancelledId) noexcept;
+	void GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsigned int& rMessagesReceived, unsigned int& rMessagesLost, unsigned int& rBusOffCount) noexcept;
 
 	uint16_t ReadTimeStampCounter() noexcept
 	{
@@ -250,10 +250,8 @@ private:
 
 	unsigned int messagesQueuedForSending;
 	unsigned int messagesReceived;
-	unsigned int txTimeouts;
 	unsigned int messagesLost;									// count of received messages lost because the receive FIFO was full
 	unsigned int busOffCount;									// count of the number of times we have reset due to bus off
-	uint32_t lastCancelledId;
 
 	TxEventCallbackFunction txCallback;							// function that gets called by the ISR when a transmit event for a message with a nonzero marker occurs
 
