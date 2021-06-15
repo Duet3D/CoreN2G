@@ -295,6 +295,7 @@ inline CanDevice::TxEvent *CanDevice::GetTxEvent(uint32_t index) const noexcept 
 #ifdef RTOS
 	for (volatile TaskHandle& h : dev.txTaskWaiting) { h = nullptr; }
 	for (volatile TaskHandle& h : dev.rxTaskWaiting) { h = nullptr; }
+	dev.rxBuffersWaiting = 0;
 #endif
 
 	dev.UpdateLocalCanTiming(timing);									// sets NBTP and DBTP
@@ -871,7 +872,9 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 				TaskBase::ClearNotifyCount();
 				const unsigned int waitingIndex = (unsigned int)whichBuffer;
 				rxTaskWaiting[waitingIndex] = TaskBase::GetCallerTaskHandle();
+				rxBuffersWaiting |= ndatMask;
 				const bool success = (hw->REG(NDAT1) & ndatMask) != 0 || (TaskBase::Take(timeout), (hw->REG(NDAT1) & ndatMask) != 0);
+				rxBuffersWaiting &= ~ndatMask;
 				rxTaskWaiting[waitingIndex] = nullptr;
 				if (!success)
 				{
@@ -1073,10 +1076,10 @@ void CanDevice::Interrupt() noexcept
 		{
 			// Check which receive buffers have new messages
 			uint32_t newData;
-			while ((newData = hw->REG(NDAT1)) != 0)
+			while (((newData = hw->REG(NDAT1)) & rxBuffersWaiting) != 0)
 			{
 				const unsigned int rxBufferNumber = LowestSetBit(newData);
-				hw->REG(NDAT1) = (uint32_t)1 << rxBufferNumber;
+				rxBuffersWaiting &= ~((uint32_t)1 << rxBufferNumber);
 				const unsigned int waitingIndex = rxBufferNumber + (unsigned int)RxBufferNumber::buffer0;
 				if (waitingIndex < ARRAY_SIZE(rxTaskWaiting))
 				{
