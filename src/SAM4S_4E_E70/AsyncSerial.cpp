@@ -207,7 +207,7 @@ void AsyncSerial::IrqHandler() noexcept
 
 		if (bufferOverrunPending)
 		{
-			if (txBuffer.PutItem(0x7F))
+			if (rxBuffer.PutItem(0x7F))
 			{
 				bufferOverrunPending = false;
 				(void)rxBuffer.PutItem(c);					// we don't much care whether this succeeds or not
