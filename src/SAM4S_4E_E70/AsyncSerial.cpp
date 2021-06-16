@@ -36,12 +36,12 @@ AsyncSerial::AsyncSerial(Uart* pUart, IRQn_Type p_irqn, uint32_t p_id, size_t nu
 
 // Public Methods //////////////////////////////////////////////////////////////
 
-void AsyncSerial::begin(const uint32_t dwBaudRate) noexcept
+void AsyncSerial::begin(uint32_t dwBaudRate) noexcept
 {
 	begin(dwBaudRate, Mode_8N1);
 }
 
-void AsyncSerial::begin(const uint32_t dwBaudRate, const UARTModes config) noexcept
+void AsyncSerial::begin(uint32_t dwBaudRate, UARTModes config) noexcept
 {
 	uint32_t modeReg = static_cast<uint32_t>(config) & 0x00000E00;
 	init(dwBaudRate, modeReg | UART_MR_CHMODE_NORMAL);
@@ -71,6 +71,7 @@ void AsyncSerial::init(const uint32_t dwBaudRate, const uint32_t modeReg) noexce
 	// Make sure both ring buffers are initialized back to empty.
 	txBuffer.Clear();
 	rxBuffer.Clear();
+	bufferOverrunPending = false;
 
 	// Configure interrupts
 	_pUart->UART_IDR = 0xFFFFFFFF;
@@ -195,7 +196,7 @@ void AsyncSerial::IrqHandler() noexcept
 				numInterruptBytesMatched = 0;
 				if (interruptCallback != nullptr)
 				{
-				  interruptCallback(this);
+					interruptCallback(this);
 				}
 			}
 		}
@@ -203,9 +204,19 @@ void AsyncSerial::IrqHandler() noexcept
 		{
 			numInterruptBytesMatched = 0;
 		}
-		if (!rxBuffer.PutItem(c))
+
+		if (bufferOverrunPending)
+		{
+			if (rxBuffer.PutItem(0x7F))
+			{
+				bufferOverrunPending = false;
+				(void)rxBuffer.PutItem(c);					// we don't much care whether this succeeds or not
+			}
+		}
+		else if (!rxBuffer.PutItem(c))
 		{
 			++errors.bufferOverrun;
+			bufferOverrunPending = true;
 		}
 	}
 

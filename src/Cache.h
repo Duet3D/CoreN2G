@@ -43,6 +43,16 @@ inline void Cache::Invalidate(const volatile void *start, size_t length) noexcep
 
 #elif SAM4E || SAME5x
 
+# if SAME5x
+// The SAME5x version of this cache controller allows us to disable data caching
+// Caching instructions only increases the time taken by the ADC ISR from 700ns to 750ns, so we don't do it
+#  define	CACHE_INSTRUCTIONS_ONLY		(0)
+# endif
+
+# if SAME5x && CACHE_INSTRUCTIONS_ONLY
+inline void Cache::Invalidate(const volatile void *start, size_t length) noexcept { __DSB(); }
+# endif
+
 // The SAM4E and SAME5x cache is write-through, so no need to flush it
 inline void Cache::Flush(const volatile void *start, size_t length) noexcept { __DSB(); }
 

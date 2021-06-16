@@ -15,8 +15,6 @@
 
 #include "AnalogIn.h"
 #include <RTOSIface/RTOSIface.h>
-#include <DmacManager.h>
-#include <Cache.h>
 
 #include <hri_adc_e54.h>
 
@@ -26,15 +24,11 @@ constexpr uint32_t AdcConversionTimeout = 5;		// milliseconds
 static uint32_t conversionsStarted = 0;
 static uint32_t conversionsCompleted = 0;
 static uint32_t conversionTimeouts = 0;
+static uint32_t errors = 0;
 
-// Constants that control the DMA sequencing
-// The SAME5x errata doc from Microchip say that order to use averaging, we need to include the AVGCTRL register in the sequence even if it doesn't change,
-// and that the prescaler must be <= 8 when we use DMA sequencing.
-
-// In order to use averaging, we need to include the AVGCTRL register in the sequence even if it doesn't change (see the SAME5x errata doc from Microchip).
-// We have to set the AUTOSTART bit in DmaSeqVal, otherwise the ADC requires one trigger per channel converted.
-constexpr size_t DmaDwordsPerChannel = 2;		// the number of DMA registers we write for each channel that we sample
-constexpr uint32_t DmaSeqVal = ADC_DSEQCTRL_INPUTCTRL | ADC_DSEQCTRL_AVGCTRL | ADC_DSEQCTRL_AUTOSTART;
+// DMA sequencing in this MCU is an abomination. It goes wrong in the presence of SBC SPI DMA and recovery is difficult, because we need to set the AUTOSTART bit
+// to convert a whole sequence, and that means that a new sequence will start as soon as the old one has finished.
+// So now we use one interrupt per channel so that we can avoid using DMA.
 
 // Register values we send. These are constant except for INPUTCTRL which changes to select the required ADC channel
 constexpr uint32_t CtrlB = ADC_CTRLB_RESSEL_16BIT;
@@ -49,61 +43,66 @@ public:
 	{
 		noChannels = 0,
 		starting,
-		idle,
 		converting,
 		ready
 	};
 
-	AdcClass(Adc * const p_device, DmaChannel p_dmaChan, DmaPriority txPriority, DmaPriority rxPriority, DmaTrigSource p_trigSrc) noexcept;
+	AdcClass(Adc * const p_device, IRQn irqn, NvicPriority irqPriority) noexcept;
 
-	State GetState() const noexcept { return state; }
+	bool ConversionDone() noexcept;
 	bool EnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
 	bool SetCallback(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
 	bool IsChannelEnabled(unsigned int chan) const noexcept;
 	bool StartConversion() noexcept;
 	uint16_t ReadChannel(unsigned int chan) const noexcept { return resultsByChannel[chan]; }
-	bool EnableTemperatureSensor(unsigned int sensorNumber, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall) noexcept;
+	bool EnableTemperatureSensor(unsigned int sensorNumber, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
 
-	void ResultReadyCallback(DmaCallbackReason reason) noexcept;
 	void ExecuteCallbacks() noexcept;
 
 	void Exit() noexcept;
 
+	void ResultReadyInterrupt() noexcept;
+
 private:
 	bool InternalEnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
-	size_t GetChannel(size_t slot) noexcept { return inputRegisters[DmaDwordsPerChannel * slot] & 0x1F; }
+	size_t GetChannel(size_t slot) noexcept { return inputRegisters[slot].inputCtrl & 0x1F; }
 	void ReInit() noexcept;
 
-	static void DmaCompleteCallback(CallbackParameter cp, DmaCallbackReason reason) noexcept;
+	static constexpr size_t NumAdcChannels = 32;				// number of channels per ADC including temperature sensor inputs etc.
+	static constexpr size_t MaxSequenceLength = 16;				// the maximum length of the read sequence
 
-	static constexpr size_t NumAdcChannels = 32;			// number of channels per ADC including temperature sensor inputs etc.
-	static constexpr size_t MaxSequenceLength = 16;			// the maximum length of the read sequence
+	struct InputRegisters
+	{
+		uint16_t inputCtrl;
+		uint16_t avgCtrl;
+	};
 
 	Adc * const device;
-	const DmaChannel dmaChan;
-	const DmaPriority dmaTxPrio, dmaRxPrio;
-	const DmaTrigSource trigSrc;
-	volatile DmaCallbackReason dmaFinishedReason;
-	volatile size_t numChannelsEnabled;						// volatile because multiple tasks access it
+	const IRQn irqNumber;
+	volatile size_t numChannelsEnabled;							// volatile because multiple tasks access it
 	size_t numChannelsConverting;
 	volatile uint32_t channelsEnabled;
 	volatile TaskHandle taskToWake;
 	uint32_t whenLastConversionStarted;
+	uint32_t currentChannel;
 	volatile State state;
 	AnalogInCallbackFunction callbackFunctions[MaxSequenceLength];
 	CallbackParameter callbackParams[MaxSequenceLength];
 	uint32_t ticksPerCall[MaxSequenceLength];
 	uint32_t ticksAtLastCall[MaxSequenceLength];
-	uint32_t inputRegisters[MaxSequenceLength * DmaDwordsPerChannel];
-	volatile uint16_t results[MaxSequenceLength];
-	volatile uint16_t resultsByChannel[NumAdcChannels];		// must be large enough to handle PTAT and CTAT temperature sensor inputs
+	InputRegisters inputRegisters[MaxSequenceLength];
+	volatile uint16_t results[MaxSequenceLength];				// results are written to this buffer
+	volatile uint16_t resultsByChannel[NumAdcChannels];			// must be large enough to handle PTAT and CTAT temperature sensor inputs
 };
 
-AdcClass::AdcClass(Adc * const p_device, DmaChannel p_dmaChan, DmaPriority txPriority, DmaPriority rxPriority, DmaTrigSource p_trigSrc) noexcept
-	: device(p_device), dmaChan(p_dmaChan), dmaTxPrio(txPriority), dmaRxPrio(rxPriority), trigSrc(p_trigSrc),
+AdcClass::AdcClass(Adc * const p_device, IRQn irqn, NvicPriority irqPriority) noexcept
+	: device(p_device), irqNumber(irqn),
 	  numChannelsEnabled(0), numChannelsConverting(0), channelsEnabled(0),
 	  taskToWake(nullptr), whenLastConversionStarted(0), state(State::noChannels)
 {
+	NVIC_DisableIRQ(irqn);
+	NVIC_SetPriority(irqn, irqPriority);
+
 	for (size_t i = 0; i < MaxSequenceLength; ++i)
 	{
 		callbackFunctions[i] = nullptr;
@@ -119,9 +118,8 @@ AdcClass::AdcClass(Adc * const p_device, DmaChannel p_dmaChan, DmaPriority txPri
 void AdcClass::Exit() noexcept
 {
 	taskToWake = nullptr;
-	DmacManager::DisableCompletedInterrupt(dmaChan + 1);		// disable the reader completed interrupt
-	DmacManager::DisableChannel(dmaChan);						// disable the sequencer DMA
-	DmacManager::DisableChannel(dmaChan + 1);					// disable the reader DMA too
+	device->INTENCLR.reg = 0x07;								// disable interrupts from the ADC
+	NVIC_DisableIRQ(irqNumber);
 }
 
 // Try to enable this ADC on the specified channel returning true if successful
@@ -170,18 +168,10 @@ bool AdcClass::EnableTemperatureSensor(unsigned int sensorNumber, AnalogInCallba
 	return InternalEnableChannel(sensorNumber + ADC_INPUTCTRL_MUXPOS_PTAT_Val, fn, param, p_ticksPerCall);
 }
 
-// Initialise or re-initialise the ADC and DMA channels. The ADC clock has already been enabled.
+// Initialise or re-initialise the ADC. The ADC clock has already been enabled.
 void AdcClass::ReInit() noexcept
 {
-	if (!hri_adc_is_syncing(device, ADC_SYNCBUSY_SWRST))
-	{
-		if (hri_adc_get_CTRLA_reg(device, ADC_CTRLA_ENABLE))
-		{
-			hri_adc_clear_CTRLA_ENABLE_bit(device);
-			hri_adc_wait_for_sync(device, ADC_SYNCBUSY_ENABLE);
-		}
-		hri_adc_write_CTRLA_reg(device, ADC_CTRLA_SWRST);
-	}
+	hri_adc_write_CTRLA_reg(device, ADC_CTRLA_SWRST);
 	hri_adc_wait_for_sync(device, ADC_SYNCBUSY_SWRST);
 
 	// From the SAME5x errata:
@@ -197,7 +187,7 @@ void AdcClass::ReInit() noexcept
 	hri_adc_write_CTRLA_reg(device, ADC_CTRLA_PRESCALER_DIV8);			// GCLK1 is 60MHz, divided by 8 is 7.5MHz
 	hri_adc_write_CTRLB_reg(device, CtrlB);
 	hri_adc_write_REFCTRL_reg(device,  RefCtrl);
-	hri_adc_write_EVCTRL_reg(device, ADC_EVCTRL_RESRDYEO);
+	hri_adc_write_EVCTRL_reg(device, 0);
 	hri_adc_write_INPUTCTRL_reg(device, ADC_INPUTCTRL_MUXNEG_GND);
 	hri_adc_write_AVGCTRL_reg(device, AvgCtrl);
 	hri_adc_write_SAMPCTRL_reg(device, SampCtrl);						// this also extends the sample time to 4 ADC clocks
@@ -205,6 +195,7 @@ void AdcClass::ReInit() noexcept
 	hri_adc_write_WINUT_reg(device, 0xFFFF);
 	hri_adc_write_GAINCORR_reg(device, 1u << 11);
 	hri_adc_write_OFFSETCORR_reg(device, 0);
+	hri_adc_write_DSEQCTRL_reg(device, 0);
 	hri_adc_write_DBGCTRL_reg(device, 0);
 
 	// Load CALIB with NVM data calibration results
@@ -230,8 +221,10 @@ void AdcClass::ReInit() noexcept
 		hri_adc_write_CALIB_reg(device, ADC_CALIB_BIASCOMP(biasComp) | ADC_CALIB_BIASREFBUF(biasRefbuf) | ADC_CALIB_BIASR2R(biasR2R));
 	} while (false);
 
-	// Enable DMA sequencing, updating the input, reference control and average control registers.
-	hri_adc_write_DSEQCTRL_reg(device, DmaSeqVal);
+	device->INTENCLR.reg = 0x07;										// disable all interrupts
+	NVIC_ClearPendingIRQ(irqNumber);
+	NVIC_EnableIRQ(irqNumber);
+
 	hri_adc_set_CTRLA_ENABLE_bit(device);
 
 	// Set the supply controller to on-demand mode so that we can get at both temperature sensors
@@ -239,20 +232,7 @@ void AdcClass::ReInit() noexcept
 	hri_supc_set_VREF_TSEN_bit(SUPC);
 	hri_supc_clear_VREF_VREFOE_bit(SUPC);
 
-	// Initialise the DMAC. First the sequencer
-	DmacManager::DisableChannel(dmaChan);
-	DmacManager::SetDestinationAddress(dmaChan, &device->DSEQDATA.reg);
-	DmacManager::SetBtctrl(dmaChan, DMAC_BTCTRL_VALID | DMAC_BTCTRL_EVOSEL_DISABLE | DMAC_BTCTRL_BLOCKACT_INT | DMAC_BTCTRL_BEATSIZE_WORD
-								| DMAC_BTCTRL_SRCINC | DMAC_BTCTRL_STEPSEL_SRC | DMAC_BTCTRL_STEPSIZE_X1);
-	DmacManager::SetTriggerSource(dmaChan, (DmaTrigSource)((uint8_t)trigSrc + 1));
-
-	// Now the result reader
-	DmacManager::DisableChannel(dmaChan + 1);
-	DmacManager::SetSourceAddress(dmaChan + 1, const_cast<uint16_t *>(&device->RESULT.reg));
-	DmacManager::SetInterruptCallback(dmaChan + 1, DmaCompleteCallback, this);
-	DmacManager::SetBtctrl(dmaChan + 1, DMAC_BTCTRL_VALID | DMAC_BTCTRL_EVOSEL_DISABLE | DMAC_BTCTRL_BLOCKACT_INT | DMAC_BTCTRL_BEATSIZE_HWORD
-								| DMAC_BTCTRL_DSTINC | DMAC_BTCTRL_STEPSEL_DST | DMAC_BTCTRL_STEPSIZE_X1);
-	DmacManager::SetTriggerSource(dmaChan + 1, trigSrc);
+	currentChannel = 0;
 	state = State::starting;
 }
 
@@ -269,9 +249,9 @@ bool AdcClass::InternalEnableChannel(unsigned int chan, AnalogInCallbackFunction
 		ticksPerCall[newChannelNumber] = p_ticksPerCall;
 		ticksAtLastCall[newChannelNumber] = millis();
 
-		// Set up the input registers in the DMA area
-		inputRegisters[newChannelNumber * DmaDwordsPerChannel] = (ADC_INPUTCTRL_MUXNEG_GND | (uint32_t)chan) | (CtrlB << 16);
-		inputRegisters[newChannelNumber * DmaDwordsPerChannel + 1] = RefCtrl | (AvgCtrl << 16) | (SampCtrl << 24);
+		// Set up the input registers
+		inputRegisters[newChannelNumber].inputCtrl = ADC_INPUTCTRL_MUXNEG_GND | (uint16_t)chan;
+		inputRegisters[newChannelNumber].avgCtrl = AvgCtrl;
 
 		resultsByChannel[chan] = 0;
 		channelsEnabled |= 1ul << chan;
@@ -292,8 +272,8 @@ bool AdcClass::InternalEnableChannel(unsigned int chan, AnalogInCallbackFunction
 // If no conversion is already in progress and there are channels to convert, start a conversion and return true; else return false
 bool AdcClass::StartConversion() noexcept
 {
-	numChannelsConverting = numChannelsEnabled;			// capture volatile variable to ensure we use a consistent value
-	if (numChannelsConverting == 0)
+	const size_t numEnabled = numChannelsEnabled;			// capture volatile variable to ensure we use a consistent value
+	if (numEnabled == 0)
 	{
 		return false;
 	}
@@ -302,46 +282,32 @@ bool AdcClass::StartConversion() noexcept
 	{
 		if (millis() - whenLastConversionStarted < AdcConversionTimeout)
 		{
-			return false;
+			return false;									// let the current conversion continue
 		}
+
 		++conversionTimeouts;
 		ReInit();
 	}
 
+	numChannelsConverting = numEnabled;						// this is the number of channels we will convert this time
 	taskToWake = TaskBase::GetCallerTaskHandle();
 
-	// Set up DMA sequencing of the ADC
-	DmacManager::DisableChannel(dmaChan + 1);
-	DmacManager::DisableChannel(dmaChan);
+	state = State::converting;
+	(void)device->RESULT.reg;								// make sure no result pending
+	currentChannel = numEnabled - 1;						// start with the last channel because in the ISR it's quicker to compare with zero
+	device->INPUTCTRL.reg = inputRegisters[currentChannel].inputCtrl;
+	device->AVGCTRL.reg = inputRegisters[currentChannel].avgCtrl;
+	while (device->SYNCBUSY.reg & (ADC_SYNCBUSY_INPUTCTRL | ADC_SYNCBUSY_AVGCTRL)) { }
+	device->INTENSET.reg = ADC_INTENSET_RESRDY;
+	device->SWTRIG.reg = ADC_SWTRIG_START;
 
-	(void)device->RESULT.reg;							// make sure no result pending (this is necessary to make it work!)
-
-	DmacManager::SetDestinationAddress(dmaChan + 1, results);
-	DmacManager::SetDataLength(dmaChan + 1, numChannelsConverting);
-
-	DmacManager::SetSourceAddress(dmaChan, inputRegisters);
-	DmacManager::SetDataLength(dmaChan, numChannelsConverting * DmaDwordsPerChannel);
-
-	{
-		InterruptCriticalSectionLocker lock;
-
-		dmaFinishedReason = DmaCallbackReason::none;
-		DmacManager::EnableCompletedInterrupt(dmaChan + 1);
-
-		DmacManager::EnableChannel(dmaChan + 1, dmaRxPrio);
-		DmacManager::EnableChannel(dmaChan, dmaTxPrio);
-
-		state = State::converting;
-		++conversionsStarted;
-	}
-
+	++conversionsStarted;
 	whenLastConversionStarted = millis();
 	return true;
 }
 
 void AdcClass::ExecuteCallbacks() noexcept
 {
-	Cache::InvalidateAfterDMAReceive(results, sizeof(results));
 	TaskCriticalSectionLocker lock;
 	const uint32_t now = millis();
 	for (size_t i = 0; i < numChannelsConverting; ++i)
@@ -360,24 +326,56 @@ void AdcClass::ExecuteCallbacks() noexcept
 }
 
 // Indirect callback from the DMA controller ISR
-void AdcClass::ResultReadyCallback(DmaCallbackReason reason) noexcept
+// This ISR takes 660ns to execute including blipping a port at the start and end
+// To achieve this we had to un-inline TaskBase::GiveFromIsr()
+void AdcClass::ResultReadyInterrupt() noexcept
 {
-	dmaFinishedReason = reason;
-	state = State::ready;
-	++conversionsCompleted;
-	DmacManager::DisableChannel(dmaChan);			// disable the sequencer DMA, just in case it is out of sync
-	DmacManager::DisableChannel(dmaChan + 1);		// disable the reader DMA too
-	TaskBase::GiveFromISR(taskToWake);
+#if 0	// for timing the ISR speed
+	fastDigitalWriteHigh(PortDPin(10));
+#endif
+	const uint16_t result = device->RESULT.reg;;
+	if (state == State::converting)
+	{
+		results[currentChannel] = result;
+		if (currentChannel == 0)
+		{
+			state = State::ready;
+			++conversionsCompleted;
+			TaskBase::GiveFromISR(taskToWake);
+		}
+		else
+		{
+			--currentChannel;
+			device->INPUTCTRL.reg = inputRegisters[currentChannel].inputCtrl;
+			device->AVGCTRL.reg = inputRegisters[currentChannel].avgCtrl;
+			while (device->SYNCBUSY.reg & (ADC_SYNCBUSY_INPUTCTRL | ADC_SYNCBUSY_AVGCTRL)) { }
+			device->SWTRIG.reg = ADC_SWTRIG_START;
+		}
+	}
+#if 0	// for timing the ISR speed
+	fastDigitalWriteLow(PortDPin(10));
+#endif
 }
 
-// Callback from the DMA controller ISR
-/*static*/ void AdcClass::DmaCompleteCallback(CallbackParameter cp, DmaCallbackReason reason) noexcept
+// Check whether the conversion was successful
+bool AdcClass::ConversionDone() noexcept
 {
-	static_cast<AdcClass *>(cp.vp)->ResultReadyCallback(reason);
+	return state == State::ready;
 }
 
 // ADC instances
 static AdcClass *adcs[2];
+
+// ADC ISRs
+void ADC0_1_Handler() noexcept
+{
+	adcs[0]->ResultReadyInterrupt();
+}
+
+void ADC1_1_Handler() noexcept
+{
+	adcs[1]->ResultReadyInterrupt();
+}
 
 // Main loop executed by the AIN task
 void AnalogIn::TaskLoop(void *) noexcept
@@ -389,7 +387,7 @@ void AnalogIn::TaskLoop(void *) noexcept
 		bool conversionStarted = false;
 		for (AdcClass* adc : adcs)
 		{
-			if (adc->GetState() == AdcClass::State::ready)
+			if (adc->ConversionDone())
 			{
 				adc->ExecuteCallbacks();
 			}
@@ -403,18 +401,17 @@ void AnalogIn::TaskLoop(void *) noexcept
 		if (conversionStarted)
 		{
 			TaskBase::Take(100);
-			delay(2);
 		}
 		else
 		{
-			// No ADCs enabled yet, or all converting
-			delay(10);
+			// No ADCs enabled yet, or all converting. This should only happens during startup, before we enable the voltage monitor(s).
+			delay(2);							// don't delay too long here, we want the ADCs to start up quickly once channels are enabled
 		}
 	}
 }
 
 // Initialise the analog input subsystem. Call this just once.
-void AnalogIn::Init(DmaChannel dmaChan, DmaPriority txPriority, DmaPriority rxPriority) noexcept
+void AnalogIn::Init(NvicPriority interruptPriority) noexcept
 {
 	// Enable ADC clocks
 	hri_mclk_set_APBDMASK_ADC0_bit(MCLK);
@@ -423,8 +420,8 @@ void AnalogIn::Init(DmaChannel dmaChan, DmaPriority txPriority, DmaPriority rxPr
 	hri_gclk_write_PCHCTRL_reg(GCLK, ADC1_GCLK_ID, GCLK_PCHCTRL_GEN(AdcGclkNum) | GCLK_PCHCTRL_CHEN);
 
 	// Create the device instances
-	adcs[0] = new AdcClass(ADC0, dmaChan, txPriority, rxPriority, DmaTrigSource::adc0_resrdy);
-	adcs[1] = new AdcClass(ADC1, dmaChan + 2, txPriority, rxPriority, DmaTrigSource::adc1_resrdy);
+	adcs[0] = new AdcClass(ADC0, ADC0_1_IRQn, interruptPriority);
+	adcs[1] = new AdcClass(ADC1, ADC1_1_IRQn, interruptPriority);
 }
 
 // Shut down the analog system. making it safe to terminate the AnalogIn task
@@ -502,11 +499,12 @@ bool AnalogIn::EnableTemperatureSensor(unsigned int sensorNumber, AnalogInCallba
 }
 
 // Return debug information
-void AnalogIn::GetDebugInfo(uint32_t &convsStarted, uint32_t &convsCompleted, uint32_t &convTimeouts) noexcept
+void AnalogIn::GetDebugInfo(uint32_t &convsStarted, uint32_t &convsCompleted, uint32_t &convTimeouts, uint32_t& errs) noexcept
 {
 	convsStarted = conversionsStarted;
 	convsCompleted = conversionsCompleted;
 	convTimeouts = conversionTimeouts;
+	errs = errors;
 }
 
 #endif

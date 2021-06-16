@@ -17,7 +17,7 @@
 */
 
 #ifndef SRC_HARDWARE_SAME4S_4E_E70_ASYNC_SERIAL_H_
-#define SRC_HARDWARE_SAME4S_4E_E70_UART_H_
+#define SRC_HARDWARE_SAME4S_4E_E70_ASYNC_SERIAL_H_
 
 #include <Stream.h>
 #include <General/RingBuffer.h>
@@ -41,7 +41,7 @@
 
 class AsyncSerial : public Stream
 {
-  public:
+public:
 	typedef void (*InterruptCallbackFn)(AsyncSerial*) noexcept;
 	typedef void (*OnBeginFn)(AsyncSerial*) noexcept;
 	typedef void (*OnEndFn)(AsyncSerial*) noexcept;
@@ -49,49 +49,51 @@ class AsyncSerial : public Stream
 	union Errors
 	{
 		uint32_t all;
-		uint32_t uartOverrun : 11,
-				 framing : 11,
-				 bufferOverrun : 10;
+		struct
+		{
+			uint32_t uartOverrun : 11,
+					 framing : 11,
+					 bufferOverrun : 10;
+		};
 
 		Errors() noexcept { all = 0; }
 	};
 
-    enum UARTModes {
-      Mode_8N1 = US_MR_CHRL_8_BIT | US_MR_NBSTOP_1_BIT | UART_MR_PAR_NO,
-      Mode_8E1 = US_MR_CHRL_8_BIT | US_MR_NBSTOP_1_BIT | UART_MR_PAR_EVEN,
-      Mode_8O1 = US_MR_CHRL_8_BIT | US_MR_NBSTOP_1_BIT | UART_MR_PAR_ODD,
-      Mode_8M1 = US_MR_CHRL_8_BIT | US_MR_NBSTOP_1_BIT | UART_MR_PAR_MARK,
-      Mode_8S1 = US_MR_CHRL_8_BIT | US_MR_NBSTOP_1_BIT | UART_MR_PAR_SPACE,
-    };
+	enum UARTModes {
+	  Mode_8N1 = US_MR_CHRL_8_BIT | US_MR_NBSTOP_1_BIT | UART_MR_PAR_NO,
+	  Mode_8E1 = US_MR_CHRL_8_BIT | US_MR_NBSTOP_1_BIT | UART_MR_PAR_EVEN,
+	  Mode_8O1 = US_MR_CHRL_8_BIT | US_MR_NBSTOP_1_BIT | UART_MR_PAR_ODD,
+	  Mode_8M1 = US_MR_CHRL_8_BIT | US_MR_NBSTOP_1_BIT | UART_MR_PAR_MARK,
+	  Mode_8S1 = US_MR_CHRL_8_BIT | US_MR_NBSTOP_1_BIT | UART_MR_PAR_SPACE,
+	};
 
-    AsyncSerial(Uart* pUart, IRQn_Type p_irqn, uint32_t p_id, size_t numTxSlots, size_t numRxSlots, OnBeginFn p_onBegin, OnEndFn p_onEnd) noexcept;
+	AsyncSerial(Uart* pUart, IRQn_Type p_irqn, uint32_t p_id, size_t numTxSlots, size_t numRxSlots, OnBeginFn p_onBegin, OnEndFn p_onEnd) noexcept;
 
-    void begin(const uint32_t dwBaudRate) noexcept;
-    void begin(const uint32_t dwBaudRate, const UARTModes config) noexcept;
-    void end() noexcept;
-    int available(void) noexcept;
-    int read() noexcept;
-    void flush() noexcept;
-    size_t write(const uint8_t c) noexcept override;
-    size_t write(const uint8_t *buffer, size_t buflen) noexcept override;
+	virtual void begin(uint32_t dwBaudRate, UARTModes config) noexcept;
+	void begin(uint32_t dwBaudRate) noexcept;
 
-    using Print::write;				// pull in write(str) and write(buf, size) from Print
-    size_t canWrite() noexcept override;
+	void end() noexcept;
+	int available(void) noexcept override;
+	int read() noexcept override;
+	void flush() noexcept override;
+	size_t write(const uint8_t c) noexcept override;
+	size_t write(const uint8_t *buffer, size_t buflen) noexcept override;
 
-    void setInterruptPriority(uint32_t priority) noexcept;
-    uint32_t getInterruptPriority() noexcept;
+	using Print::write;				// pull in write(str) and write(buf, size) from Print
+	size_t canWrite() noexcept override;
 
-    void IrqHandler() noexcept;
+	void setInterruptPriority(uint32_t priority) noexcept;
+	uint32_t getInterruptPriority() noexcept;
 
-    operator bool() noexcept { return true; }; // UART always active
+	void IrqHandler() noexcept;
 
-    InterruptCallbackFn SetInterruptCallback(InterruptCallbackFn f) noexcept;
+	InterruptCallbackFn SetInterruptCallback(InterruptCallbackFn f) noexcept;
 
 	// Get and clear the errors
 	Errors GetAndClearErrors() noexcept;
 
-  protected:
-    void init(const uint32_t dwBaudRate, const uint32_t config) noexcept;
+protected:
+	void init(const uint32_t dwBaudRate, const uint32_t config) noexcept;
 
 	RingBuffer<uint8_t> txBuffer;
 	RingBuffer<uint8_t> rxBuffer;
@@ -107,8 +109,9 @@ class AsyncSerial : public Stream
 	OnEndFn onEnd;
 	Errors errors;
 	size_t numInterruptBytesMatched;
+	bool bufferOverrunPending;
 
 	static constexpr uint8_t interruptSeq[2] = { 0xF0, 0x0F };
 };
 
-#endif // SRC_HARDWARE_SAME4S_4E_E70_UART_H_
+#endif // SRC_HARDWARE_SAME4S_4E_E70_ASYNC_SERIAL_H_

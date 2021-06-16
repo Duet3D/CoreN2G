@@ -25,6 +25,7 @@ void AsyncSerial::begin(uint32_t baudRate) noexcept
 {
 	txBuffer.Clear();
 	rxBuffer.Clear();
+	bufferOverrunPending = false;
 	onBegin(this);
 	Serial::InitUart(sercomNumber, baudRate, rxPad);
 	errors.all = 0;
@@ -206,9 +207,18 @@ void AsyncSerial::Interrupt2() noexcept
 		numInterruptBytesMatched = 0;
 	}
 
-	if (!rxBuffer.PutItem(c))
+	if (bufferOverrunPending)
+	{
+		if (rxBuffer.PutItem(0x7F))
+		{
+			bufferOverrunPending = false;
+			(void)rxBuffer.PutItem(c);					// we don't much care whether this succeeds or not
+		}
+	}
+	else if (!rxBuffer.PutItem(c))
 	{
 		++errors.bufferOverrun;
+		bufferOverrunPending = true;
 	}
 }
 

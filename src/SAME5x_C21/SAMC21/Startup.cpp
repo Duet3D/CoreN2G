@@ -177,7 +177,7 @@ static void InitClocks() noexcept
 
 		// Some 12MHz crystal oscillators are slow to start on the SAME5x (not sure about the SAMC21), so make sure we get a consistent result before we use it
 		int32_t freq = 0;
-		for (unsigned int count = 0; ; ++count)
+		for (unsigned int count = 1; ; ++count)
 		{
 			FREQM->STATUS.reg = FREQM_STATUS_OVF;					// clear overflow status
 			FREQM->CTRLB.reg = FREQM_CTRLB_START;					// start counting
@@ -207,11 +207,12 @@ static void InitClocks() noexcept
 		}
 
 		// Turn off the temporary GCLK and the frequency meter to save power
-		GCLK->GENCTRL[1].reg = 0;
 		FREQM->CTRLA.reg = 0;
+		while (FREQM->SYNCBUSY.bit.ENABLE) { }
 		MCLK->APBAMASK.reg &= ~(MCLK_APBAMASK_FREQM);
 		hri_gclk_write_PCHCTRL_reg(GCLK, FREQM_GCLK_ID_REF, 0);
 		hri_gclk_write_PCHCTRL_reg(GCLK, FREQM_GCLK_ID_MSR, 0);
+		hri_gclk_write_GENCTRL_reg(GCLK, 1, 0);
 	}
 
 	const int32_t gain = (xoscFrequency > 16) ? 4 : 3;		// we are assuming that the frequency is >8MHz so we always need gain at least 3

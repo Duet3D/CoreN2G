@@ -246,7 +246,9 @@ static void hsmci_dma_setup (const void* buffer, uint32_t numBytes) noexcept
 static bool WaitForDmaComplete() noexcept
 {
 	// These three constants are probably the same, but let the compiler sort that out
+#ifdef RTOS
 	constexpr uint16_t ErrorInterruptMask = SDHC_EISIER_DATTEO | SDHC_EISIER_DATCRC | SDHC_EISIER_DATEND | SDHC_EISIER_ADMA;
+#endif
 	constexpr uint16_t ErrorStatusMask =    SDHC_EISIER_DATTEO | SDHC_EISIER_DATCRC | SDHC_EISIER_DATEND | SDHC_EISIER_ADMA;
 	while (true)
 	{

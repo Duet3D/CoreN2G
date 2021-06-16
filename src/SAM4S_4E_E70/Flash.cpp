@@ -454,12 +454,12 @@ bool Flash::Unlock(uint32_t start, uint32_t length) noexcept
  *
  * \return 0 if successful; otherwise returns an error code.
  */
-bool Flash::ReadUniqueId(uint32_t pul_data[4]) noexcept
+bool Flash::ReadUniqueId(uint32_t* pul_data) noexcept
 {
 	// dc42 bBug fix: must disable interrupts while executing the EFC read command
-	const irqflags_t flags = cpu_irq_save();
+	const irqflags_t flags = IrqSave();
 	const uint32_t rc = efc_perform_read_sequence(EFC, EFC_FCMD_STUI, EFC_FCMD_SPUI, pul_data, 4);
-	cpu_irq_restore(flags);
+	IrqRestore(flags);
 	return rc == 0;
 }
 
@@ -480,9 +480,9 @@ bool Flash::ReadUserSignature(uint32_t *p_data, uint32_t ul_size) noexcept
 	}
 
 	// dc42 bug fix: must disable interrupts while executing the EFC read command
-	const irqflags_t flags = cpu_irq_save();
+	const irqflags_t flags = IrqSave();
 	const uint32_t rc = efc_perform_read_sequence(EFC, EFC_FCMD_STUS, EFC_FCMD_SPUS, p_data, ul_size);
-	cpu_irq_restore(flags);
+	IrqRestore(flags);
 	return rc == 0;
 }
 
@@ -514,6 +514,17 @@ bool Flash::EraseUserSignature() noexcept
 {
 	/* Perform the erase user signature command */
 	return efc_perform_command(EFC, EFC_FCMD_EUS, 0) == 0;
+}
+
+// Read all nine GPNVM bits. Return 0xFFFFFFFF if failed, else the GPNVM bits in bits 0 to 8.
+uint32_t Flash::ReadGpNvmBits() noexcept
+{
+	if (EFC_RC_OK != efc_perform_command(EFC, EFC_FCMD_GGPB, 0))
+	{
+		return 0xFFFFFFFF;
+	}
+
+	return efc_get_result(EFC) & ((1ul << 9) - 1ul);
 }
 
 /**

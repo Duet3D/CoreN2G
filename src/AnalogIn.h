@@ -24,11 +24,14 @@ namespace AnalogIn
 #ifdef RTOS
 	// Initialise the analog input subsystem. Call this just once.
 	// For the SAME5x we need 4 DMA channels. For the SAMC21 we need 1 DMA channel, or 2 if supporting the SDADC.
-	void Init(DmaChannel dmaChan,
+	void Init(
 #if SAME5x
-		DmaPriority txPriority,
+				NvicPriority interruptPriority
+#else
+				DmaChannel dmaChan,
+				DmaPriority rxPriority
 #endif
-		DmaPriority rxPriority) noexcept;
+			) noexcept;
 
 	// Shut down the analog system. making it safe to terminate the AnalogIn task
 	void Exit() noexcept;
@@ -53,7 +56,7 @@ namespace AnalogIn
 	uint16_t ReadChannel(AdcInput adcin) noexcept;
 
 	// Get the number of conversions that were started
-	void GetDebugInfo(uint32_t &convsStarted, uint32_t &convsCompleted, uint32_t &convTimeouts) noexcept;
+	void GetDebugInfo(uint32_t &convsStarted, uint32_t &convsCompleted, uint32_t &convTimeouts, uint32_t& errs) noexcept;
 
 #if SAME5x
 	// Enable an on-chip MCU temperature sensor. We don't use this on the SAMC21 because that chip has a separate TSENS peripheral.
@@ -78,17 +81,69 @@ namespace AnalogIn
 #endif
 }
 
+namespace LegacyAnalogIn
+{
+	// Module initialisation
+	void AnalogInInit() noexcept;
+
+	// Enable or disable a channel. Use AnalogCheckReady to make sure the ADC is ready before calling this.
+	void AnalogInEnableChannel(AnalogChannelNumber channel, bool enable) noexcept;
+
+	// Return the number of bits provided by a call to AnalogInReadChannel
+#if SAME70
+	static constexpr unsigned int AdcBits = 14;
+#else
+	static constexpr unsigned int AdcBits = 12;
+#endif
+
+	// Read the most recent result from a channel
+	uint16_t AnalogInReadChannel(AnalogChannelNumber channel) noexcept;
+
+	typedef void (*AnalogCallback_t)(void) noexcept;
+
+	// Set up a callback for when all conversions have been completed. Returns the previous callback pointer.
+	AnalogCallback_t AnalogInSetCallback(AnalogCallback_t) noexcept;
+
+	// Start converting the enabled channels, to include the specified ones. Disabled channels are ignored.
+	void AnalogInStartConversion(uint32_t channels = 0xFFFFFFFF) noexcept;
+
+	// Finalise a conversion
+#if SAME70
+	void AnalogInFinaliseConversion() noexcept;
+#else
+	static inline void AnalogInFinaliseConversion() noexcept { }
+#endif
+
+	// Check whether all conversions of the specified channels have been completed since the last call to AnalogStartConversion.
+	// Disabled channels are ignored
+	bool AnalogInCheckReady(uint32_t channels = 0xFFFFFFFF) noexcept;
+
+	// Convert a pin number to an AnalogIn channel
+	extern AnalogChannelNumber PinToAdcChannel(uint32_t pin) noexcept;
+
+	// Get the temperature measurement channel
+	extern AnalogChannelNumber GetTemperatureAdcChannel() noexcept;
+
+}
+
 #ifdef RTOS
 
 // This function is for backwards compatibility with CoreNG
 inline uint16_t AnalogInReadChannel(AdcInput adcin)
 {
+#if SAME70 || SAM4E || SAM4S
+	return LegacyAnalogIn::AnalogInReadChannel(adcin);
+#else
 	return AnalogIn::ReadChannel(adcin);
+#endif
 }
 
 // This function is for backwards compatibility with CoreNG
 inline void AnalogInEnableChannel(AdcInput adcin, bool enable)
 {
+#if SAME70 || SAM4E || SAM4S
+	LegacyAnalogIn::AnalogInEnableChannel(adcin, enable);
+#else
 	if (enable)
 	{
 		if (!AnalogIn::IsChannelEnabled(adcin))
@@ -100,6 +155,7 @@ inline void AnalogInEnableChannel(AdcInput adcin, bool enable)
 	{
 		AnalogIn::DisableChannel(adcin);
 	}
+#endif
 }
 
 #endif

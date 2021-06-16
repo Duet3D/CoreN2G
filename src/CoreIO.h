@@ -126,8 +126,11 @@ void SetPinFunction(Pin p, GpioPinFunction f) noexcept;
  */
 void ClearPinFunction(Pin p) noexcept;
 
-// Enable or disable the pullup[ resistor
-void SetPullup(Pin p, bool on) noexcept;
+// Enable the pullup resistor
+void EnablePullup(Pin p) noexcept;
+
+// Disable the pullup resistor
+void DisablePullup(Pin p) noexcept;
 
 // Set the mode of a pin with optional debouncing
 void SetPinMode(Pin pin, enum PinMode mode, uint32_t debounceCutoff) noexcept;
@@ -206,20 +209,20 @@ inline void memcpyf(float *dst, const float *src, size_t numFloats) noexcept
 class AtomicCriticalSectionLocker
 {
 public:
-	AtomicCriticalSectionLocker() : flags(cpu_irq_save())
+	AtomicCriticalSectionLocker() : flags(IrqSave())
 	{
 	}
 
 	~AtomicCriticalSectionLocker()
 	{
-		cpu_irq_restore(flags);
+		IrqRestore(flags);
 	}
 
 private:
 	irqflags_t flags;
 };
 
-#if SAME5x || SAME70
+#if SAME5x || SAM4E || SAM4S || SAME70		// SAMC21 doesn't support these
 
 // Functions to change the base priority, to shut out interrupts up to a priority level
 
@@ -401,11 +404,17 @@ enum class TcOutput : uint8_t
 	tc6_0, tc6_1,
 	tc7_0, tc7_1,
 # endif
-#elif SAME70
-	// TIO devices. Bottom bit is the output number, next 4 bits are the TOI number, bits 5 and 6 are the peripheral number
-	tioa0 = 0x20, tiob0, tioa1, tiob1, tioa2, tiob2, tioa3, tiob3, tioa4, tiob4,				// TIO 0-10 are on peripheral B
-	tioa5, tiob5, tioa6, tiob6, tioa7, tiob7, tioa8, tiob8, tioa9, tiob9, tioa10, tiob10,
-	tioa11 = 0x40, tiob11,																		// TIO11 is on peripheral C
+#elif SAME70 || SAM4E || SAM4S
+	// TIO devices. Bottom bit is the output number, next 4 bits are the TIO number, bits 5 and 6 are the peripheral number
+	tioa0 = 0x20 + (0u << 1), tiob0, tioa1, tiob1, tioa2, tiob2, tioa3, tiob3, tioa4, tiob4,	// TIO 0-10 are on peripheral B
+	tioa5, tiob5,
+# if SAME70 || SAM4E
+	tioa6, tiob6, tioa7, tiob7, tioa8, tiob8,
+# endif
+# if SAME70
+	tioa9, tiob9, tioa10, tiob10,
+	tioa11 = 0x40 + (11u << 1), tiob11,															// TIO11 is on peripheral C
+# endif
 #endif
 
 	none = 0xFF,
@@ -552,28 +561,19 @@ enum class PwmOutput : uint8_t
 	pwm1l0_c = 0x48, pwm1h0_c, pwm1l1_c, pwm1h1_c, pwm1l2_c, pwm1h2_c, pwm1l3_c, pwm1h3_c,
 	pwm1l0_d = 0x68, pwm1h0_d, pwm1l1_d, pwm1h1_d, pwm1l2_d, pwm1h2_d, pwm1l3_d, pwm1h3_d,
 #endif
-};
 
-/**
- * @brief Extract the PWM device number
- *
- * @param tcc The PwmOutput value
- * @return The PWM device number, 0 or 1
- */
-static inline constexpr unsigned int GetDeviceNumber(PwmOutput pwm) noexcept
-{
-	return ((uint8_t)pwm >> 3) & 0x01;
-}
+	none = 0xFF,
+};
 
 /**
  * @brief Extract the PWM channel number
  *
  * @param tcc The PwmOutput value
- * @return The PWM channel number, 0 to 3
+ * @return The PWM channel number, 0 to 7. On the SAME70, channels 0-3 are on PWM0, 4-7 are on PWM1.
  */
 static inline constexpr unsigned int GetChannelNumber(PwmOutput pwm) noexcept
 {
-	return ((uint8_t)pwm >> 1) & 0x03;
+	return ((uint8_t)pwm >> 1) & 0x07;
 }
 
 /**
@@ -602,18 +602,34 @@ static inline constexpr GpioPinFunction GetPeriNumber(PwmOutput pwm) noexcept
 
 /**
  * @brief ADC input identifiers, encoding both the ADC device and the ADC input number within the device.
- * On the SAMC21 we only support the first ADC and the SDADC. On the SAME5x we support both ADCs.
+ * On the SAMC21 we only support the first ADC and the SDADC. On the SAME5x, SAM4S and SAmE70 we support both ADCs.
+ * SAM4S only has one ADC.
  *
  */
 enum class AdcInput : uint8_t
 {
-	adc0_0 = 0x00, adc0_1, adc0_2, adc0_3, adc0_4, adc0_5, adc0_6, adc0_7, adc0_8, adc0_9, adc0_10, adc0_11,
-#if SAME5x
-	adc0_12, adc0_13, adc0_14, adc0_15,
-	adc1_0 = 0x10, adc1_1, adc1_2, adc1_3, adc1_4, adc1_5, adc1_6, adc1_7, adc1_8, adc1_9, adc1_10, adc1_11, adc1_12, adc1_13, adc1_14, adc1_15,
-#elif SAMC21
+	adc0_0 = 0x00, adc0_1, adc0_2, adc0_3, adc0_4, adc0_5, adc0_6, adc0_7, adc0_8, adc0_9,
+#if SAMC21
+	adc0_10, adc0_11,
 	sdadc_0 = 0x10, sdadc_1,
 #endif
+#if SAM4E || SAM4S
+	adc0_10, adc0_11, adc0_12, adc0_13, adc0_14,
+# if SAM4E
+	adc1_0 = 0x10, adc1_1, adc1_2, adc1_3, adc1_4, adc1_5, adc1_6, adc1_7,
+# endif
+	dac0 = 0x20, dac1,
+#endif
+#if SAME5x
+	adc0_10, adc0_11, adc0_12, adc0_13, adc0_14, adc0_15,
+	adc1_0 = 0x10, adc1_1, adc1_2, adc1_3, adc1_4, adc1_5, adc1_6, adc1_7,
+	adc1_8, adc1_9, adc1_10, adc1_11, adc1_12, adc1_13, adc1_14, adc1_15,
+#endif
+#if SAME70
+	adc1_0 = 0x10, adc1_1, adc1_2, adc1_3, adc1_4, adc1_5, adc1_6, adc1_7,
+	adc1_8, adc1_9, adc1_10, adc1_11,
+#endif
+
 	none = 0xFF			// this must give an out-of-range device number when passed to GetDeviceNumber
 };
 
@@ -732,6 +748,16 @@ struct PinDescriptionBase
 #endif
 };
 
+class MicrosecondsTimer
+{
+public:
+	MicrosecondsTimer() noexcept;
+	void Reset() noexcept;
+	uint32_t Read() noexcept;
+private:
+	uint32_t startMillis;
+	uint32_t startCycles;
+};
 
 /**
  * @brief Initialise the application. Called after the main clocks have been set up.

@@ -7,6 +7,10 @@
 
 #include "Cache.h"
 
+#ifdef RTOS
+# include <RTOSIface/RTOSIface.h>
+#endif
+
 #if SAM4E || SAME70 || SAME5x
 
 #if SAME70
@@ -47,7 +51,21 @@ extern uint32_t _nocache_ram_end;
 
 // SAM4E and SAME5x use fairly similar cache controllers
 
-inline bool is_cache_enabled() noexcept
+const unsigned int CacheWays = 4;
+const uint32_t CacheLineSize = 16;							// each cache line is 16 bytes long on both SAME5x and SAM4E
+const unsigned int CacheLineShift = 4; 						// how many bits we shift an address right to get the cache line number
+static_assert(CacheLineSize == 1u << CacheLineShift);
+
+# if SAME5x
+const uint32_t CacheLinesPerWay = 64;
+static_assert(CacheWays * CacheLinesPerWay * CacheLineSize == 4096);	// cache size is 4K
+# elif SAM4E
+const uint32_t CacheLinesPerWay = 32;
+static_assert(CacheWays * CacheLinesPerWay * CacheLineSize == 2048);	// cache size is 2K
+# endif
+
+// Check whether the cache is enabled
+static inline bool is_cache_enabled() noexcept
 {
 #if SAME5x
 	return CMCC->SR.bit.CSTS;
@@ -56,18 +74,8 @@ inline bool is_cache_enabled() noexcept
 #endif
 }
 
-inline void cache_invalidate_all() noexcept
-{
-#if SAME5x
-	CMCC->MAINT0.reg = CMCC_MAINT0_INVALL;
-#elif SAM4E
-	CMCC->CMCC_MAINT0 = CMCC_MAINT0_INVALL;
-#endif
-	__ISB();
-	__DSB();
-}
-
-inline void cache_disable() noexcept
+// Disable the cache
+static inline void cache_disable() noexcept
 {
 	while (is_cache_enabled())
 	{
@@ -77,24 +85,114 @@ inline void cache_disable() noexcept
 		CMCC->CMCC_CTRL = 0;
 #endif
 		__ISB();
+#if !(SAME5x && CACHE_INSTRUCTIONS_ONLY)
 		__DSB();
+#endif
 	}
 }
 
-inline void cache_enable() noexcept
+// Enable the cache. If this is called other than from an invalidate operation, the cache must be invalidated first.
+static inline void cache_enable() noexcept
 {
-	if (!is_cache_enabled())
-	{
-		cache_invalidate_all();
 #if SAME5x
-		CMCC->CTRL.reg = CMCC_CTRL_CEN;
+# if CACHE_INSTRUCTIONS_ONLY
+	CMCC->CFG.bit.DCDIS = 1;
+# endif
+	CMCC->CTRL.reg = CMCC_CTRL_CEN;
 #elif SAM4E
-		CMCC->CMCC_CTRL = CMCC_CTRL_CEN;
+	CMCC->CMCC_CTRL = CMCC_CTRL_CEN;
 #endif
-		__ISB();
-		__DSB();
+	__ISB();
+#if !(SAME5x && CACHE_INSTRUCTIONS_ONLY)
+	__DSB();
+#endif
+}
+
+// Invalidate the whole cache. Cache must be disabled first.
+static inline void cache_invalidate_all() noexcept
+{
+#if SAME5x
+	CMCC->MAINT0.reg = CMCC_MAINT0_INVALL;
+#elif SAM4E
+	CMCC->CMCC_MAINT0 = CMCC_MAINT0_INVALL;
+#endif
+	__ISB();
+#if !(SAME5x && CACHE_INSTRUCTIONS_ONLY)
+	__DSB();
+#endif
+}
+
+#if !(SAME5x && CACHE_INSTRUCTIONS_ONLY)
+
+// Invalidate a region
+// Due to the time this can take, above a certain size it is quicker to invalidate the whole cache.
+// DMA receive buffer sizes we use commonly:
+//	TMC2660 driver: 4
+//	TMC2209 driver: 20
+//	ADC on SAME5x: 32
+//	SBC header: 16
+//	SBC reply: 4
+//	SBC data: up to 8Kb
+//	WiFi header: 12
+//	WiFi data: up to 2Kb
+//	GMAC Tx or Rx descriptor on SAME5x: 8
+//	GMAC data: up to about 1500
+//	CAN buffers on SAME5x: 72 (8-byte aligned, so always fits in 5 cache lines)
+// All of the short buffers fit within 5 cache lines
+constexpr uint32_t MaxSelectiveInvalidateCacheLines = 6;
+
+static inline void cache_invalidate_region(const volatile void *start, size_t length) noexcept
+{
+	if (length != 0 && is_cache_enabled())										// the following won't work if the length is zero
+	{
+		// In non-RTOS builds, just invalidate the whole cache always
+#ifdef RTOS
+		const uint32_t startAddr = reinterpret_cast<uint32_t>(start);			// convert start address to integer
+		length += startAddr & (CacheLineSize - 1);								// round up size to start of the first cache line
+		uint32_t numLines = (length + (CacheLineSize - 1)) >> CacheLineShift;	// get the number of cache lines to be invalidated
+		if (numLines > MaxSelectiveInvalidateCacheLines)						// if more than a small part the cache needs to be invalidated, invalidate the whole cache
+#endif
+		{
+			const irqflags_t flags = IrqSave();
+			cache_disable();
+			cache_invalidate_all();
+			cache_enable();
+			IrqRestore(flags);
+		}
+#ifdef RTOS
+		else
+		{
+			// Unfortunately we have to disable the cache to invalidate cache lines.
+			// We must do no data writes while the cache is disabled, or we might subsequently read stale data. Therefore interrupts must be disabled.
+			uint32_t startLine = startAddr >> CacheLineShift;					// this will have extraneous bits set, but CMCC_MAINT1_INDEX will mask those off
+			while (numLines != 0)
+			{
+				// Invalidate this cache line in all 4 ways
+				const irqflags_t flags = IrqSave();
+				cache_disable();
+# if SAME5x
+				CMCC->MAINT1.reg = CMCC_MAINT1_WAY(0) | CMCC_MAINT1_INDEX(startLine);
+				CMCC->MAINT1.reg = CMCC_MAINT1_WAY(1) | CMCC_MAINT1_INDEX(startLine);
+				CMCC->MAINT1.reg = CMCC_MAINT1_WAY(2) | CMCC_MAINT1_INDEX(startLine);
+				CMCC->MAINT1.reg = CMCC_MAINT1_WAY(3) | CMCC_MAINT1_INDEX(startLine);
+# elif SAM4E
+				CMCC->CMCC_MAINT1 = CMCC_MAINT1_WAY_WAY0 | CMCC_MAINT1_INDEX(startLine);
+				CMCC->CMCC_MAINT1 = CMCC_MAINT1_WAY_WAY1 | CMCC_MAINT1_INDEX(startLine);
+				CMCC->CMCC_MAINT1 = CMCC_MAINT1_WAY_WAY2 | CMCC_MAINT1_INDEX(startLine);
+				CMCC->CMCC_MAINT1 = CMCC_MAINT1_WAY_WAY3 | CMCC_MAINT1_INDEX(startLine);
+# endif
+				cache_enable();
+				IrqRestore(flags);
+
+				++startLine;
+				--numLines;
+			}
+		}
+#endif
 	}
 }
+
+#endif
 
 #endif
 
@@ -194,7 +292,7 @@ void Cache::Init() noexcept
 	CMCC->MCFG.reg = CMCC_MCFG_MODE_DHIT_COUNT;		// data hit mode
 	CMCC->MEN.bit.MENABLE = 1;
 #elif SAM4E
-	CMCC->CMCC_MCFG = 2;							// data hit mode
+	CMCC->CMCC_MCFG = 1;							// instruction hit mode
 	CMCC->CMCC_MEN |= CMCC_MEN_MENABLE;
 #endif
 }
@@ -212,7 +310,13 @@ void Cache::Enable() noexcept
 		SCB_EnableDCache();
 	}
 #else
-	cache_enable();
+	const irqflags_t flags = IrqSave();
+	if (!is_cache_enabled())
+	{
+		cache_invalidate_all();
+		cache_enable();
+	}
+	IrqRestore(flags);
 #endif
 }
 
@@ -229,9 +333,9 @@ bool Cache::Disable() noexcept
 	if (wasEnabled)									// if data cache is enabled
 	{
 		// Warning: this code is fragile! There must be no memory writes while flushing the data cache, hence we must disable interrupts.
-		const irqflags_t flags = cpu_irq_save();
+		const irqflags_t flags = IrqSave();
 		SCB_DisableDCache();						// this cleans it as well as disabling it
-		cpu_irq_restore(flags);
+		IrqRestore(flags);
 	}
 #else
 	const bool wasEnabled = is_cache_enabled();
@@ -258,9 +362,10 @@ void Cache::Flush(const volatile void *start, size_t length) noexcept
 
 #endif
 
+#if !(SAME5x && CACHE_INSTRUCTIONS_ONLY)
 void Cache::Invalidate(const volatile void *start, size_t length) noexcept
 {
-#if SAME70
+# if SAME70
 	if ((SCB->CCR & SCB_CCR_DC_Msk) != 0)			// if data cache is enabled
 	{
 		// The DMA buffer should be entirely inside the non-cached RAM area
@@ -269,23 +374,12 @@ void Cache::Invalidate(const volatile void *start, size_t length) noexcept
 			vAssertCalled(__LINE__, __FILE__);
 		}
 	}
-#else
-	// We just invalidate the whole cache
-	if (is_cache_enabled())
-	{
-		// Disable interrupts to prevent a task switch, otherwise we may end up with the cache disabled in another task
-		const irqflags_t flags = cpu_irq_save();
-		cache_disable();
-		cache_invalidate_all();
-		cache_enable();
-		cpu_irq_restore(flags);
-	}
-	else
-	{
-		cache_invalidate_all();
-	}
-#endif
+# else
+	cache_invalidate_region(start, length);
+# endif
 }
+
+#endif
 
 #if SAM4E || SAME5x
 
