@@ -259,8 +259,7 @@ private:
 	// The following are all declared volatile because we care about when they are written
 	volatile TaskHandle txTaskWaiting[MaxTxBuffers + 1];		// tasks waiting for each Tx buffer to become free, first entry is for the Tx FIFO
 	volatile TaskHandle rxTaskWaiting[MaxRxBuffers + 2];		// tasks waiting for each Rx buffer to receive a message, first 2 entries are for the fifos
-	std::atomic<uint32_t> rxBuffersWaiting;						// which Rx FIFOs and buffers tasks are waiting on
-	std::atomic<uint32_t> txBuffersWaiting;						// which Tx FIFOs and buffers tasks are waiting on
+	std::atomic<uint32_t> rxBuffersWaiting;						// which buffers tasks are waiting on
 # endif
 
 #if !SAME70
