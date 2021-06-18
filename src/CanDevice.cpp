@@ -614,6 +614,8 @@ void CanDevice::CopyMessageForTransmit(CanMessageBuffer *buffer, volatile TxBuff
 		f->T0.bit.XTD = 0;
 	}
 
+	f->T0.bit.RTR = buffer->remote;
+
 	f->T1.bit.MM = buffer->marker;
 	f->T1.bit.EFCbit = buffer->reportInFifo;
 	uint32_t dataLength = buffer->dataLength;
