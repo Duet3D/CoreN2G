@@ -42,6 +42,7 @@ public:
 	{
 		fifo0 = 0, fifo1,
 		buffer0, buffer1, buffer2, buffer3,
+		none = 0xFFFF
 	};
 
 	enum class TxBufferNumber : uint32_t
@@ -165,12 +166,18 @@ public:
 	// Check whether a message is available, returning true if it is
 	bool IsMessageAvailable(RxBufferNumber whichBuffer) noexcept;
 
-	// Set a short ID field filter element. To disable the filter element, use a zero mask parameter.
+	// Disable a short ID filter element
+	void DisableShortFilterElement(unsigned int index) noexcept;
+
+	// Set a short ID field filter element
 	// If whichBuffer is a buffer number not a fifo number, the mask field is ignored except that a zero mask disables the filter element; so only the XIDAM mask filters the ID.
 	void SetShortFilterElement(unsigned int index, RxBufferNumber whichBuffer, uint32_t id, uint32_t mask) noexcept
 		pre(index < NumShortFilterElements);
 
-	// Set an extended ID field filter element. To disable the filter element, use a zero mask parameter.
+	// Disable an extended ID filter element
+	void DisableExtendedFilterElement(unsigned int index) noexcept;
+
+	// Set an extended ID field filter element
 	// If whichBuffer is a buffer number not a fifo number, the mask field is ignored except that a zero mask disables the filter element; so only the XIDAM mask filters the ID.
 	void SetExtendedFilterElement(unsigned int index, RxBufferNumber whichBuffer, uint32_t id, uint32_t mask) noexcept
 		pre(index < NumShortFilterElements);

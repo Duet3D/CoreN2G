@@ -917,14 +917,23 @@ bool CanDevice::IsMessageAvailable(RxBufferNumber whichBuffer) noexcept
 	}
 }
 
+// Disable a short ID filter element
+void CanDevice::DisableShortFilterElement(unsigned int index) noexcept
+{
+	if (index < config->numShortFilterElements)
+	{
+		rxStdFilter[index].S0.val = 0;
+	}
+}
+
 // Set a short ID field filter element. To disable the filter element, use a zero mask parameter.
 // If whichBuffer is a buffer number not a fifo number, the mask field is ignored except that a zero mask disables the filter element; so only the XIDAM mask filters the ID.
 void CanDevice::SetShortFilterElement(unsigned int index, RxBufferNumber whichBuffer, uint32_t id, uint32_t mask) noexcept
 {
-	StandardMessageFilterElement::S0Type s0;
-	s0.val = 0;										// disable filter, clear reserved fields
-	if (mask != 0)
+	if (index < config->numShortFilterElements)
 	{
+		StandardMessageFilterElement::S0Type s0;
+		s0.val = 0;										// disable filter, clear reserved fields
 		s0.bit.SFID1 = id;
 		s0.bit.SFT = 0x02;							// classic filter
 		switch (whichBuffer)
@@ -938,22 +947,40 @@ void CanDevice::SetShortFilterElement(unsigned int index, RxBufferNumber whichBu
 			s0.bit.SFID2 = mask;
 			break;
 		default:
-			s0.bit.SFEC = 0x07;						// store in buffer
-			s0.bit.SFID2 = (uint32_t)whichBuffer - (uint32_t)RxBufferNumber::buffer0;
+			if ((uint32_t)whichBuffer - (uint32_t)RxBufferNumber::buffer0 < config->numRxBuffers)
+			{
+				s0.bit.SFEC = 0x07;					// store in buffer
+				s0.bit.SFID2 = (uint32_t)whichBuffer - (uint32_t)RxBufferNumber::buffer0;
+			}
+			else
+			{
+				s0.bit.SFEC = 0x00;					// discard message
+				s0.bit.SFID2 = mask;
+			}
 			break;
 		}
+		rxStdFilter[index].S0.val = s0.val;
 	}
-	rxStdFilter[index].S0.val = s0.val;
+}
+
+// Disable an extended ID filter element
+void CanDevice::DisableExtendedFilterElement(unsigned int index) noexcept
+{
+	if (index < config->numExtendedFilterElements)
+	{
+		rxExtFilter[index].F0.val = 0;									// disable filter
+	}
 }
 
 // Set an extended ID field filter element. To disable the filter element, use a zero mask parameter.
 // If whichBuffer is a buffer number not a fifo number, the mask field is ignored except that a zero mask disables the filter element; so only the XIDAM mask filters the ID.
 void CanDevice::SetExtendedFilterElement(unsigned int index, RxBufferNumber whichBuffer, uint32_t id, uint32_t mask) noexcept
 {
-	volatile ExtendedMessageFilterElement& efp = rxExtFilter[index];
-	efp.F0.val = 0;									// disable filter
-	if (mask != 0)
+	if (index < config->numExtendedFilterElements)
 	{
+		volatile ExtendedMessageFilterElement& efp = rxExtFilter[index];
+		efp.F0.val = 0;									// disable filter
+
 		ExtendedMessageFilterElement::F0Type f0;
 		ExtendedMessageFilterElement::F1Type f1;
 		f0.val = 0;									// clear all fields
@@ -971,8 +998,16 @@ void CanDevice::SetExtendedFilterElement(unsigned int index, RxBufferNumber whic
 			f1.bit.EFID2 = mask;
 			break;
 		default:
-			f0.bit.EFEC = 0x07;
-			f1.bit.EFID2 = (uint32_t)whichBuffer - (uint32_t)RxBufferNumber::buffer0;
+			if ((uint32_t)whichBuffer - (uint32_t)RxBufferNumber::buffer0 < config->numRxBuffers)
+			{
+				f0.bit.EFEC = 0x07;
+				f1.bit.EFID2 = (uint32_t)whichBuffer - (uint32_t)RxBufferNumber::buffer0;
+			}
+			else
+			{
+				f0.bit.EFEC = 0x00;					// discard message
+				f1.bit.EFID2 = mask;
+			}
 			break;
 		}
 
