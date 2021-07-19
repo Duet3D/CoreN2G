@@ -30,7 +30,7 @@
 # define SAM4S				0
 # define SAME5x				1
 # define SAME70				0
-#elif defined(__SAME51N19A__)
+#elif defined(__SAME51N19A__) || defined(__SAME51G19A__)
 # define __ARM_ARCH_7EM__	1
 # include <same51.h>
 # define SAMC21				0
