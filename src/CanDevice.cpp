@@ -314,7 +314,7 @@ inline CanDevice::TxEvent *CanDevice::GetTxEvent(uint32_t index) const noexcept 
 	}
 #elif SAME70
 	pmc_disable_pck(PMC_PCK_5);
-	pmc_switch_pck_to_upllck(PMC_PCK_5, PMC_PCK_PRES(9));		// run PCLK5 at 48MHz
+	pmc_switch_pck_to_upllck(PMC_PCK_5, PMC_PCK_PRES(9));				// run PCLK5 at 48MHz
 	pmc_enable_pck(PMC_PCK_5);
 
 	if (p_whichPort == 0)
@@ -351,7 +351,7 @@ void CanDevice::DoHardwareInit() noexcept
 		hw->REG(CCCR) &= ~(CAN_(CCCR_FDOE) | CAN_(CCCR_BRSE));
 	}
 
-	hw->REG(CCCR) |= CAN_(CCCR_TXP);									// enable transmit pause
+	hw->REG(CCCR) |= CAN_(CCCR_TXP);										// enable transmit pause
 
 #if SAME5x || SAMC21
 	hw->MRCFG.reg = CAN_MRCFG_QOS_MEDIUM;
