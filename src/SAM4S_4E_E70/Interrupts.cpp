@@ -27,15 +27,15 @@ struct InterruptCallback
 	InterruptCallback() : func(nullptr) { }
 };
 
-static InterruptCallback callbacksPioA[32];
-static InterruptCallback callbacksPioB[32];
-static InterruptCallback callbacksPioC[32];
-#ifdef ID_PIOD
-static InterruptCallback callbacksPioD[32];
+#if defined(ID_PIOE)
+static constexpr unsigned int NumCallbacks = 5 * 32;
+#elif defined(ID_PIOD)
+static constexpr unsigned int NumCallbacks = 4 * 32;
+#else
+static constexpr unsigned int NumCallbacks = 3 * 32;
 #endif
-#ifdef ID_PIOE
-static InterruptCallback callbacksPioE[32];
-#endif
+
+static InterruptCallback pinCallbacks[NumCallbacks];
 
 /* Configure PIO interrupt sources */
 static void __initialize()
@@ -74,7 +74,7 @@ static void __initialize()
 bool attachInterrupt(Pin pin, StandardCallbackFunction callback, InterruptMode mode, CallbackParameter param) noexcept
 {
 	const PinDescriptionBase * const pinDesc = AppGetPinDescription(pin);
-	if (pinDesc == nullptr)
+	if (pinDesc == nullptr || pin >= NumCallbacks)
 	{
 		return false;
 	}
@@ -90,38 +90,10 @@ bool attachInterrupt(Pin pin, StandardCallbackFunction callback, InterruptMode m
 	Pio * const pio = GpioPort(pin);
 	const uint32_t mask = GpioMask(pin);
 	pio->PIO_IDR = mask;									// ensure the interrupt is disabled before we start changing the tables
-	const unsigned int pos = LowestSetBitNumber(mask);		// only one bit should be set
 
 	// Set callback function and parameter
-	if (pio == PIOA)
-	{
-		callbacksPioA[pos].func = callback;
-		callbacksPioA[pos].param = param;
-	}
-	else if (pio == PIOB)
-	{
-		callbacksPioB[pos].func = callback;
-		callbacksPioB[pos].param = param;
-	}
-	else if (pio == PIOC)
-	{
-		callbacksPioC[pos].func = callback;
-		callbacksPioC[pos].param = param;
-	}
-#ifdef ID_PIOD
-	else if (pio == PIOD)
-	{
-		callbacksPioD[pos].func = callback;
-		callbacksPioD[pos].param = param;
-	}
-#endif
-#ifdef ID_PIOE
-	else if (pio == PIOE)
-	{
-		callbacksPioE[pos].func = callback;
-		callbacksPioE[pos].param = param;
-	}
-#endif
+	pinCallbacks[pin].func = callback;
+	pinCallbacks[pin].param = param;
 
 	// Configure the interrupt mode
 	if (mode == InterruptMode::change)
@@ -203,30 +175,30 @@ void CommonPioHandler(Pio *pio, const InterruptCallback callbacks[])
 
 extern "C" void PIOA_Handler(void)
 {
-	CommonPioHandler(PIOA, callbacksPioA);
+	CommonPioHandler(PIOA, pinCallbacks);
 }
 
 extern "C" void PIOB_Handler(void)
 {
-	CommonPioHandler(PIOB, callbacksPioB);
+	CommonPioHandler(PIOB, pinCallbacks + 32);
 }
 
 extern "C" void PIOC_Handler(void)
 {
-	CommonPioHandler(PIOC, callbacksPioC);
+	CommonPioHandler(PIOC, pinCallbacks + (2 * 32));
 }
 
 #ifdef ID_PIOD
 extern "C" void PIOD_Handler(void)
 {
-	CommonPioHandler(PIOD, callbacksPioD);
+	CommonPioHandler(PIOD, pinCallbacks + (3 * 32));
 }
 #endif
 
 #ifdef ID_PIOE
 extern "C" void PIOE_Handler(void)
 {
-	CommonPioHandler(PIOE, callbacksPioE);
+	CommonPioHandler(PIOE, pinCallbacks + (4 * 32));
 }
 #endif
 
