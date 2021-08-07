@@ -30,8 +30,8 @@ static InterruptCallback exintCallbacks[16];
 
 void InitialiseExints() noexcept
 {
-	hri_gclk_write_PCHCTRL_reg(GCLK, EIC_GCLK_ID, GCLK_PCHCTRL_GEN(ExintGclkNum) | GCLK_PCHCTRL_CHEN);
 	hri_mclk_set_APBAMASK_EIC_bit(MCLK);
+	hri_gclk_write_PCHCTRL_reg(GCLK, EIC_GCLK_ID, GCLK_PCHCTRL_GEN(ExintGclkNum) | GCLK_PCHCTRL_CHEN);
 
 	if (!hri_eic_is_syncing(EIC, EIC_SYNCBUSY_SWRST)) {
 		if (hri_eic_get_CTRLA_reg(EIC, EIC_CTRLA_ENABLE)) {
