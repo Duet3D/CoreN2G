@@ -268,7 +268,7 @@ static inline void delayMicroseconds(uint32_t usec) noexcept
  * @brief Enable interrupts unconditionally
  *
  */
-static __attribute__(always_inline) void IrqEnable() noexcept
+static inline __attribute__((always_inline)) void IrqEnable() noexcept
 {
 	__enable_irq();
 }
@@ -277,7 +277,7 @@ static __attribute__(always_inline) void IrqEnable() noexcept
  * @brief Disable interrupts unconditionally
  *
  */
-static __attribute__(always_inline) void IrqDisable() noexcept
+static inline __attribute__((always_inline)) void IrqDisable() noexcept
 {
 	__disable_irq();
 }
@@ -289,7 +289,7 @@ typedef uint32_t irqflags_t;	///< Type used to indicate whether interrupts were 
  *
  * @return True iff interrupts are enabled
  */
-static __attribute__(always_inline) bool IsIrqEnabled() noexcept
+static inline __attribute__((always_inline)) bool IsIrqEnabled() noexcept
 {
 	return __get_PRIMASK() == 0;
 }
@@ -299,7 +299,7 @@ static __attribute__(always_inline) bool IsIrqEnabled() noexcept
  *
  * @return The initial interrupts enabled state
  */
-static __attribute__(always_inline) irqflags_t IrqSave() noexcept
+static inline __attribute__((always_inline)) irqflags_t IrqSave() noexcept
 {
 	const irqflags_t flags = __get_PRIMASK();
 	__disable_irq();
@@ -312,7 +312,7 @@ static __attribute__(always_inline) irqflags_t IrqSave() noexcept
  * @param flags Value to convert
  * @return Converted value
  */
-static __attribute__(always_inline) bool IsIrqEnabledFlags(irqflags_t flags) noexcept
+static inline __attribute__((always_inline)) bool IsIrqEnabledFlags(irqflags_t flags) noexcept
 {
 	return (flags & 0x01) == 0;
 }
@@ -322,7 +322,7 @@ static __attribute__(always_inline) bool IsIrqEnabledFlags(irqflags_t flags) noe
  *
  * @param flags The original interrupts enabled state returned by a call to IrqSave
  */
-static __attribute__(always_inline) void IrqRestore(irqflags_t flags) noexcept
+static inline __attribute__((__always_inline__)) void IrqRestore(irqflags_t flags) noexcept
 {
 	__set_PRIMASK(flags);
 }
