@@ -16,10 +16,19 @@
 // Basic CPU and I/O pin support
 
 #include "ecv.h"
-#undef array
-#undef assert
-#undef result
-#undef value
+
+#ifdef array
+# undef array
+#endif
+#ifdef assert
+# undef assert
+#endif
+#ifdef result
+# undef result
+#endif
+#ifdef value
+# undef value
+#endif
 
 #if defined(__SAME54P20A__) || defined(__SAME51P20A__)
 # define __ARM_ARCH_7EM__	1
@@ -259,7 +268,7 @@ static inline void delayMicroseconds(uint32_t usec) noexcept
  * @brief Enable interrupts unconditionally
  *
  */
-static __always_inline void IrqEnable() noexcept
+static __attribute__(always_inline) void IrqEnable() noexcept
 {
 	__enable_irq();
 }
@@ -268,7 +277,7 @@ static __always_inline void IrqEnable() noexcept
  * @brief Disable interrupts unconditionally
  *
  */
-static __always_inline void IrqDisable() noexcept
+static __attribute__(always_inline) void IrqDisable() noexcept
 {
 	__disable_irq();
 }
@@ -280,7 +289,7 @@ typedef uint32_t irqflags_t;	///< Type used to indicate whether interrupts were 
  *
  * @return True iff interrupts are enabled
  */
-static __always_inline bool IsIrqEnabled() noexcept
+static __attribute__(always_inline) bool IsIrqEnabled() noexcept
 {
 	return __get_PRIMASK() == 0;
 }
@@ -290,7 +299,7 @@ static __always_inline bool IsIrqEnabled() noexcept
  *
  * @return The initial interrupts enabled state
  */
-static __always_inline irqflags_t IrqSave() noexcept
+static __attribute__(always_inline) irqflags_t IrqSave() noexcept
 {
 	const irqflags_t flags = __get_PRIMASK();
 	__disable_irq();
@@ -303,7 +312,7 @@ static __always_inline irqflags_t IrqSave() noexcept
  * @param flags Value to convert
  * @return Converted value
  */
-static __always_inline bool IsIrqEnabledFlags(irqflags_t flags) noexcept
+static __attribute__(always_inline) bool IsIrqEnabledFlags(irqflags_t flags) noexcept
 {
 	return (flags & 0x01) == 0;
 }
@@ -313,7 +322,7 @@ static __always_inline bool IsIrqEnabledFlags(irqflags_t flags) noexcept
  *
  * @param flags The original interrupts enabled state returned by a call to IrqSave
  */
-static __always_inline void IrqRestore(irqflags_t flags) noexcept
+static __attribute__(always_inline) void IrqRestore(irqflags_t flags) noexcept
 {
 	__set_PRIMASK(flags);
 }
