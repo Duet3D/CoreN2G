@@ -79,7 +79,11 @@ public:
 	size_t write(const uint8_t c) noexcept override;
 	size_t write(const uint8_t *buffer, size_t buflen) noexcept override;
 
-	using Print::write;				// pull in write(str) and write(buf, size) from Print
+	// DC removed using declaration because eCv doesn't handle it as at 2021-09-07
+	//using Print::write;				// pull in write(str) and write(buf, size) from Print
+	size_t write(const char *str) noexcept { return Print::write(str); }
+	size_t write(const char *buffer, size_t size) noexcept { return Print::write(buffer, size); }
+
 	size_t canWrite() noexcept override;
 
 	void setInterruptPriority(uint32_t priority) noexcept;
