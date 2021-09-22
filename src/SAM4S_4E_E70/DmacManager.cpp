@@ -49,7 +49,7 @@ extern "C" void XDMAC_Handler() noexcept
 		{
 			if (DmacManager::callbackFunctions[i] != nullptr)
 			{
-				DmacManager::callbackFunctions[i](DmacManager::callbackParameters[i], DmaCallbackReason::none);	// we rely on the callback to clear the interrupt
+				DmacManager::callbackFunctions[i](DmacManager::callbackParameters[i], DmaCallbackReason::complete);	// we rely on the callback to clear the interrupt
 			}
 			else
 			{

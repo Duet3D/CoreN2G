@@ -27,7 +27,7 @@ enum class DmaCallbackReason : uint8_t
 	complete = DMAC_CHINTFLAG_TCMPL,
 	completeAndError = DMAC_CHINTFLAG_TERR | DMAC_CHINTFLAG_TCMPL
 #elif SAME70
-	//TODO
+	complete = 1
 #endif
 };
 
