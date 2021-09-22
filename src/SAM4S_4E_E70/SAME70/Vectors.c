@@ -32,6 +32,7 @@
 // Symbols defined by the linker script
 extern uint32_t _estack;
 extern uint32_t _firmware_crc;
+extern const char VersionText[];
 
 // SystemCoreClock is needed by FreeRTOS. Declaring this here also ensures that the linker includes this object file.
 uint32_t SystemCoreClock = CHIP_FREQ_MAINCK_RC_4MHZ;
@@ -144,12 +145,14 @@ const DeviceVectors exception_table = {
         .pfnBusFault_Handler			= (void*) BusFault_Handler,
         .pfnUsageFault_Handler			= (void*) UsageFault_Handler,
 #if 1
-		.pfnReserved1_Handler			= (void*) (&_firmware_crc),		/* we store a pointer to the firmware CRC here */
+		.pfnReserved1_Handler			= (void*) &_firmware_crc,		/* we store a pointer to the firmware CRC here */
+        .pfnReserved2_Handler			= (void*) VersionText,			/* firmware name and version string  */
+        .pfnReserved3_Handler			= (void*) &exception_table,		/* load offset of the start of the file so that programs can subtract this from the offsets of firmware_crc and VersionText */
 #else
         .pfnReserved1_Handler			= (void*) (0UL), /* Reserved */
-#endif
         .pfnReserved2_Handler			= (void*) (0UL), /* Reserved */
         .pfnReserved3_Handler			= (void*) (0UL), /* Reserved */
+#endif
         .pfnReserved4_Handler			= (void*) (0UL), /* Reserved */
         .pfnSVC_Handler					= (void*) SVC_Handler,
         .pfnDebugMon_Handler			= (void*) DebugMon_Handler,

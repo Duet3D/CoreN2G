@@ -124,13 +124,14 @@ const DeviceVectors exception_table = {
         .pvReservedM11          = (void*) (0UL), /* Reserved */
         .pvReservedM10          = (void*) (0UL), /* Reserved */
 #if 1
-		.pvReservedM9			= (void*) (&_firmware_crc),		/* we store a pointer to the firmware CRC here */
+		.pvReservedM9			= (void*) &_firmware_crc,		/* we store a pointer to the firmware CRC here */
         .pvReservedM8           = (void*) VersionText,			/* we store a pointer to the firmware or bootloader version text here */
+        .pvReservedM7           = (void*) &exception_table,		/* load offset of the start of the file so that programs can subtract this from the offsets of firmware_crc and VersionText */
 #else
         .pvReservedM9           = (void*) (0UL), /* Reserved */
         .pvReservedM8           = (void*) (0UL), /* Reserved */
-#endif
         .pvReservedM7           = (void*) (0UL), /* Reserved */
+#endif
         .pvReservedM6           = (void*) (0UL), /* Reserved */
         .pfnSVCall_Handler      = (void*) SVCall_Handler,
         .pvReservedM4           = (void*) (0UL), /* Reserved */
