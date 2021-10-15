@@ -47,18 +47,26 @@ void Reset_Handler() noexcept
 {
 	uint32_t *pSrc, *pDest;
 
-	/* Initialize the relocate segment */
+	// Initialize the relocate segment
 	pSrc = &_etext;
 	pDest = &_srelocate;
 
-	if (pSrc != pDest) {
-		for (; pDest < &_erelocate;) {
+	if (pSrc != pDest)
+	{
+		for (; pDest < &_erelocate; )
+		{
 			*pDest++ = *pSrc++;
 		}
 	}
 
-	/* Clear the zero segment */
-	for (pDest = &_szero; pDest < &_ezero;) {
+	// Clear the zero segment
+	// This was delaying starting the main program by 40ms as at firmware 3.4.0, which was causing an attached BLTouch to error because pin zprobe.mod took too long to go low.
+	// It doesn't matter if we overshoot the end of the zero segment, so now we do 4 dwords at a time to reduce the time taken to 14ms
+	for (pDest = &_szero; pDest < &_ezero; )
+	{
+		*pDest++ = 0;
+		*pDest++ = 0;
+		*pDest++ = 0;
 		*pDest++ = 0;
 	}
 
