@@ -450,8 +450,10 @@ static void RandomInit()
 
 void CoreInit() noexcept
 {
-#if SAME5x || SAMC21
+#if SAME5x || SAMC21 || SAME70
 	DmacManager::Init();
+#endif
+#if SAME5x || SAMC21
 	InitialiseExints();
 #endif
 
