@@ -53,8 +53,14 @@ extern "C" [[noreturn]] void Reset_Handler() noexcept
 	}
 
 	// Clear the zero segment
+	// On the SAM4S build this was delaying starting the main program by 40ms as at firmware 3.4.0, which was causing an attached BLTouch to error because pin zprobe.mod took too long to go low.
+	// Some forum posts suggest this is an issue on the SAM4E too.
+	// It doesn't matter if we overshoot the end of the zero segment, so now we do 4 dwords at a time to reduce the time taken to 14ms
 	for (pDest = &_szero; pDest < &_ezero; )
 	{
+		*pDest++ = 0;
+		*pDest++ = 0;
+		*pDest++ = 0;
 		*pDest++ = 0;
 	}
 
