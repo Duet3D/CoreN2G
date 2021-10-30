@@ -264,7 +264,7 @@ void AdcClass::ReInit() noexcept
 	DmacManager::SetBtctrl(dmaChan, DMAC_BTCTRL_VALID | DMAC_BTCTRL_EVOSEL_DISABLE | DMAC_BTCTRL_BLOCKACT_INT | DMAC_BTCTRL_BEATSIZE_HWORD
 								| DMAC_BTCTRL_DSTINC | DMAC_BTCTRL_STEPSEL_DST | DMAC_BTCTRL_STEPSIZE_X1);
 	DmacManager::SetSourceAddress(dmaChan, const_cast<uint16_t *>(&device->RESULT.reg));
-	DmacManager::SetInterruptCallback(dmaChan, DmaCompleteCallback, this);
+	DmacManager::SetInterruptCallback(dmaChan, DmaCompleteCallback, CallbackParameter(this));
 	DmacManager::SetTriggerSource(dmaChan, trigSrc);
 }
 
@@ -498,7 +498,7 @@ void SdAdcClass::ReInit() noexcept
 	DmacManager::SetBtctrl(dmaChan, DMAC_BTCTRL_VALID | DMAC_BTCTRL_EVOSEL_DISABLE | DMAC_BTCTRL_BLOCKACT_INT | DMAC_BTCTRL_BEATSIZE_HWORD
 								| DMAC_BTCTRL_DSTINC | DMAC_BTCTRL_STEPSEL_DST | DMAC_BTCTRL_STEPSIZE_X1);
 	DmacManager::SetSourceAddress(dmaChan, const_cast<uint16_t *>(reinterpret_cast<volatile uint16_t*>(&device->RESULT.reg)));
-	DmacManager::SetInterruptCallback(dmaChan, DmaCompleteCallback, this);
+	DmacManager::SetInterruptCallback(dmaChan, DmaCompleteCallback, CallbackParameter(this));
 	DmacManager::SetTriggerSource(dmaChan, trigSrc);
 }
 
