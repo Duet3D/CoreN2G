@@ -31,16 +31,16 @@ public:
 	virtual ~Print() {}
 
 	virtual size_t write(uint8_t) noexcept = 0;
-	virtual size_t write(const uint8_t *buffer, size_t size) noexcept;		// this has a default implementation, but can be overridden for efficiency
+	virtual size_t write(const uint8_t * _ecv_array buffer, size_t size) noexcept;		// this has a default implementation, but can be overridden for efficiency
 
-	size_t write(const char *str) noexcept
+	size_t write(const char * _ecv_array str) noexcept
 	{
-		return (str == NULL) ? 0 : write((const uint8_t *)str, strlen(str));
+		return (str == nullptr) ? 0 : write((const uint8_t * _ecv_array)str, strlen(str));
 	}
 
-	size_t write(const char *buffer, size_t size) noexcept
+	size_t write(const char * _ecv_array buffer, size_t size) noexcept
 	{
-		return write((const uint8_t *)buffer, size);
+		return write((const uint8_t * _ecv_array )buffer, size);
 	}
 
 	size_t print(const char *str) noexcept
@@ -48,8 +48,8 @@ public:
 		return write(str);
 	}
 
-	int printf(const char *fmt, ...) noexcept __attribute__ ((format (printf, 2, 3)));
-	int printf(const char *fmt, va_list vargs) noexcept;
+	int printf(const char * _ecv_array fmt, ...) noexcept __attribute__ ((format (printf, 2, 3)));
+	int printf(const char * _ecv_array fmt, va_list vargs) noexcept;
 };
 
 #endif

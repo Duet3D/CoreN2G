@@ -31,7 +31,7 @@ void SerialCDC::Start(Pin p_vBusPin) noexcept
 	if (vBusPin != NoPin)
 	{
 		pinMode(vBusPin, INPUT);
-		attachInterrupt(vBusPin, core_vbus_off, InterruptMode::falling, nullptr);
+		attachInterrupt(vBusPin, core_vbus_off, InterruptMode::falling, CallbackParameter(nullptr));
 	}
 
 	serialUSBDevice = this;
@@ -54,7 +54,7 @@ int SerialCDC::read() noexcept
 	return (udi_cdc_multi_is_rx_ready(0)) ? udi_cdc_multi_getc(0) : -1;
 }
 
-size_t SerialCDC::readBytes(char *buffer, size_t length) noexcept
+size_t SerialCDC::readBytes(char * _ecv_array buffer, size_t length) noexcept
 {
 	return (isConnected) ? udi_cdc_multi_read_no_polling(0, buffer, length) : 0;
 }
@@ -74,7 +74,7 @@ size_t SerialCDC::write(uint8_t c) noexcept
 }
 
 // Non-blocking write to USB. Returns number of bytes written. If we are not connected, pretend that all bytes have been written.
-size_t SerialCDC::write(const uint8_t *buffer, size_t size) noexcept
+size_t SerialCDC::write(const uint8_t * _ecv_array buffer, size_t size) noexcept
 {
 	if (isConnected && size != 0)
 	{

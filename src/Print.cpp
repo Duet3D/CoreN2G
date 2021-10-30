@@ -7,7 +7,7 @@
 #include <cstdarg>
 
 // This default implementation may be overridden in derived classes for optimisation purposes
-size_t Print::write(const uint8_t *buffer, size_t size) noexcept
+size_t Print::write(const uint8_t * _ecv_array buffer, size_t size) noexcept
 {
 	size_t n = 0;
 	while (size--)
@@ -17,7 +17,7 @@ size_t Print::write(const uint8_t *buffer, size_t size) noexcept
 	return n;
 }
 
-int Print::printf(const char *fmt, ...) noexcept
+int Print::printf(const char * _ecv_array fmt, ...) noexcept
 {
 	va_list vargs;
 	va_start(vargs, fmt);
@@ -26,7 +26,7 @@ int Print::printf(const char *fmt, ...) noexcept
 	return ret;
 }
 
-int Print::printf(const char *fmt, va_list vargs) noexcept
+int Print::printf(const char * _ecv_array fmt, va_list vargs) noexcept
 {
 	return vuprintf([this](char c)->bool
 					{

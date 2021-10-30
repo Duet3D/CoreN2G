@@ -258,11 +258,11 @@ union CallbackParameter
 	uint32_t u32;
 	int32_t i32;
 
-	CallbackParameter(void *pp) noexcept : vp(pp) { }
-	CallbackParameter(uint32_t pp) noexcept : u32(pp) { }
-	CallbackParameter(unsigned int p) noexcept { u32 = p; }
-	CallbackParameter(int32_t pp) noexcept : i32(pp) { }
-	CallbackParameter(int p) noexcept { i32 = p; }
+	explicit CallbackParameter(void *pp) noexcept : vp(pp) { }
+	explicit CallbackParameter(uint32_t pp) noexcept : u32(pp) { }
+	explicit CallbackParameter(unsigned int p) noexcept { u32 = p; }
+	explicit CallbackParameter(int32_t pp) noexcept : i32(pp) { }
+	explicit CallbackParameter(int p) noexcept { i32 = p; }
 	CallbackParameter() noexcept : u32(0) { }
 };
 
