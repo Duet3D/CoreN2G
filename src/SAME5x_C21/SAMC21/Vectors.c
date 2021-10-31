@@ -27,6 +27,7 @@
  *
  */
 
+#include <ecv_duet3d.h>
 #include "samc21.h"
 #include <Core.h>
 

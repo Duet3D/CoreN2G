@@ -36,6 +36,8 @@
 /**
  * \brief Assert function
  */
+#if 1	// dc not used
+#else
 void assert(const bool condition, const char *const file, const int line)
 {
 	if (!(condition)) {
@@ -44,3 +46,4 @@ void assert(const bool condition, const char *const file, const int line)
 	(void)file;
 	(void)line;
 }
+#endif

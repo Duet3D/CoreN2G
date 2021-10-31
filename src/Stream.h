@@ -16,9 +16,9 @@ public:
 	virtual int read() noexcept = 0;
 	virtual void flush() noexcept = 0;
 	virtual size_t canWrite() noexcept = 0;
-	virtual size_t readBytes(char *buffer, size_t length) noexcept;	// this one has a default implementation, but can be overridden
+	virtual size_t readBytes(char * _ecv_array buffer, size_t length) noexcept;	// this one has a default implementation, but can be overridden
 
-	size_t readBytes( uint8_t *buffer, size_t length) noexcept { return readBytes((char *)buffer, length); }
+	size_t readBytes(uint8_t * _ecv_array buffer, size_t length) noexcept { return readBytes((char * _ecv_array)buffer, length); }
 };
 
 #endif

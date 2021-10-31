@@ -44,6 +44,8 @@
 #ifndef _COMPILER_H
 #define _COMPILER_H
 
+#include <ecv_duet3d.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

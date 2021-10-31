@@ -1300,15 +1300,15 @@ __STATIC_FORCEINLINE int32_t __SSAT(int32_t val, uint32_t sat)
 {
   if ((sat >= 1U) && (sat <= 32U))
   {
-    const int32_t max = (int32_t)((1U << (sat - 1U)) - 1U);
-    const int32_t min = -1 - max ;
-    if (val > max)
+    const int32_t imax = (int32_t)((1U << (sat - 1U)) - 1U);
+    const int32_t imin = -1 - imax ;
+    if (val > imax)
     {
-      return max;
+      return imax;
     }
-    else if (val < min)
+    else if (val < imin)
     {
-      return min;
+      return imin;
     }
   }
   return val;
@@ -1325,10 +1325,10 @@ __STATIC_FORCEINLINE uint32_t __USAT(int32_t val, uint32_t sat)
 {
   if (sat <= 31U)
   {
-    const uint32_t max = ((1U << sat) - 1U);
-    if (val > (int32_t)max)
+    const uint32_t umax = ((1U << sat) - 1U);
+    if (val > (int32_t)umax)
     {
-      return max;
+      return umax;
     }
     else if (val < 0)
     {

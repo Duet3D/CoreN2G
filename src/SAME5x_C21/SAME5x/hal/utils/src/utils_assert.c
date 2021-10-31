@@ -33,6 +33,8 @@
 
 #include <utils_assert.h>
 
+#if 1	// dc not used
+#else
 /**
  * \brief Assert function
  */
@@ -44,3 +46,4 @@ void assert(const bool condition, const char *const file, const int line)
 	(void)file;
 	(void)line;
 }
+#endif

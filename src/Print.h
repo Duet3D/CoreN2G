@@ -33,7 +33,7 @@ public:
 	virtual size_t write(uint8_t) noexcept = 0;
 	virtual size_t write(const uint8_t * _ecv_array buffer, size_t size) noexcept;		// this has a default implementation, but can be overridden for efficiency
 
-	size_t write(const char * _ecv_array str) noexcept
+	size_t write(const char * _ecv_array _ecv_null str) noexcept
 	{
 		return (str == nullptr) ? 0 : write((const uint8_t * _ecv_array)str, strlen(str));
 	}
@@ -43,7 +43,7 @@ public:
 		return write((const uint8_t * _ecv_array )buffer, size);
 	}
 
-	size_t print(const char *str) noexcept
+	size_t print(const char * _ecv_array str) noexcept
 	{
 		return write(str);
 	}

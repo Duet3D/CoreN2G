@@ -15,20 +15,7 @@
 
 // Basic CPU and I/O pin support
 
-#include "ecv.h"
-
-#ifdef array
-# undef array
-#endif
-#ifdef assert
-# undef assert
-#endif
-#ifdef result
-# undef result
-#endif
-#ifdef value
-# undef value
-#endif
+#include <ecv_duet3d.h>
 
 #if defined(__SAME54P20A__) || defined(__SAME51P20A__)
 # define __ARM_ARCH_7EM__	1
@@ -244,7 +231,7 @@ static inline uint32_t GetElapsedCycles(uint32_t startCycles) noexcept
  *
  * @param How many microseconds to delay for
  */
-static inline void delayMicroseconds(uint32_t) noexcept __attribute__((always_inline, unused));
+static inline void delayMicroseconds(uint32_t usec) noexcept __attribute__((always_inline, unused));
 static inline void delayMicroseconds(uint32_t usec) noexcept
 {
 	(void)DelayCycles(GetCurrentCycles(), usec * (SystemCoreClockFreq/1000000));

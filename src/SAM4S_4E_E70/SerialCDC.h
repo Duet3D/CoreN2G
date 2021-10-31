@@ -31,13 +31,13 @@ public:
 
 	int available() noexcept override;
 	int read() noexcept override;
-	size_t readBytes(char *buffer, size_t length) noexcept override;
+	size_t readBytes(char * _ecv_array buffer, size_t length) noexcept override;
 	void flush() noexcept override;
 	size_t write(uint8_t) noexcept override;
-	size_t write(const uint8_t *buffer, size_t size) noexcept override;
+	size_t write(const uint8_t *_ecv_array buffer, size_t size) noexcept override;
 
-	size_t write(const char *str) noexcept { return Print::write(str); }
-    size_t write(const char *buffer, size_t size) noexcept { return write((const uint8_t *)buffer, size); }
+	size_t write(const char * _ecv_array null str) noexcept { return Print::write(str); }
+    size_t write(const char * _ecv_array buffer, size_t size) noexcept { return write((const uint8_t * _ecv_array)buffer, size); }
 
 	size_t canWrite() noexcept override;	// Function added by DC42 so that we can tell how many characters we can write without blocking (for Duet)
 	bool IsConnected() const noexcept;

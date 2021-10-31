@@ -40,6 +40,11 @@ extern "C" {
 
 #include <compiler.h>
 
+#if 1	// dc
+#include <ecv_duet3d.h>
+#define ASSERT(_x)	_ecv_assert(_x)
+#else
+
 #ifndef USE_SIMPLE_ASSERT
 //# define USE_SIMPLE_ASSERT
 #endif
@@ -86,6 +91,8 @@ extern "C" {
  * \param[in] line Line number
  */
 void assert(const bool condition, const char *const file, const int line);
+
+#endif	// dc
 
 #ifdef __cplusplus
 }

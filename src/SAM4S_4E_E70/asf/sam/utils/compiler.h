@@ -37,6 +37,8 @@
 #ifndef UTILS_COMPILER_H
 #define UTILS_COMPILER_H
 
+#include <ecv_duet3d.h>
+
 /**
  * \defgroup group_sam_utils Compiler abstraction layer and code utilities
  *

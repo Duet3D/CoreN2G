@@ -27,6 +27,7 @@
  *
  */
 
+#include <ecv_duet3d.h>
 #include "same54.h"
 #include <Core.h>
 
