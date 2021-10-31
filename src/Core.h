@@ -310,7 +310,7 @@ static inline __attribute__((__always_inline__)) void IrqRestore(irqflags_t flag
  */
 static inline bool isDigit(char c) noexcept
 {
-	return isdigit(c) != 0;
+	return isdigit((int)c) != 0;
 }
 
 /**

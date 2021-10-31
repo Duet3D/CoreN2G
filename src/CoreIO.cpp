@@ -502,7 +502,7 @@ void WatchdogResetSecondary() noexcept
 
 #endif
 
-void Reset() noexcept
+void ResetProcessor() noexcept
 {
 #if SAME70 || SAM4E || SAM4S
 	rstc_start_software_reset(RSTC);

@@ -384,7 +384,7 @@ inline bool fastDigitalRead(uint32_t pin) noexcept
  * @brief Reset the microcontroller
  *
  */
-[[noreturn]] void Reset() noexcept;
+[[noreturn]] void ResetProcessor() noexcept;
 
 /**
  * @brief TC output identifiers used in pin tables
