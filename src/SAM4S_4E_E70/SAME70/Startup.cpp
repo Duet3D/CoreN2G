@@ -120,7 +120,7 @@ extern "C" [[noreturn]] void Reset_Handler() noexcept
 		{
 			__asm volatile("nop");
 		}
-		Reset();
+		ResetProcessor();
 	}
 
 	// Now it's safe to reset the stack pointer to the top of memory
