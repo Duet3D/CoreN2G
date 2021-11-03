@@ -200,6 +200,21 @@ inline void memcpyf(float *dst, const float *src, size_t numFloats) noexcept
 	memcpyu32(reinterpret_cast<uint32_t*>(dst), reinterpret_cast<const uint32_t*>(src), numFloats);
 }
 
+// Get the stack pointer
+#ifdef __ECV__
+
+// eCv doesn't accept the GCC syntax used to get the stack pointer, so leave it undefined
+extern const uint32_t *_ecv_array GetStackPointer() noexcept;
+
+#else
+
+static inline const uint32_t *_ecv_array GetStackPointer() noexcept
+{
+	register const uint32_t * stack_ptr asm ("sp");
+	return stack_ptr;
+}
+
+#endif
 
 // Atomic section locker, alternative to InterruptCriticalSectionLocker (is safe to call from within an ISR, and may be faster)
 /**

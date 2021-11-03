@@ -105,7 +105,7 @@ namespace LegacyAnalogIn
 	AnalogCallback_t AnalogInSetCallback(AnalogCallback_t) noexcept;
 
 	// Start converting the enabled channels, to include the specified ones. Disabled channels are ignored.
-	void AnalogInStartConversion(uint32_t channels = 0xFFFFFFFF) noexcept;
+	void AnalogInStartConversion(uint32_t channels = 0xFFFFFFFFu) noexcept;
 
 	// Finalise a conversion
 #if SAME70
@@ -116,7 +116,7 @@ namespace LegacyAnalogIn
 
 	// Check whether all conversions of the specified channels have been completed since the last call to AnalogStartConversion.
 	// Disabled channels are ignored
-	bool AnalogInCheckReady(uint32_t channels = 0xFFFFFFFF) noexcept;
+	bool AnalogInCheckReady(uint32_t channels = 0xFFFFFFFFu) noexcept;
 
 	// Convert a pin number to an AnalogIn channel
 	extern AnalogChannelNumber PinToAdcChannel(uint32_t pin) noexcept;
