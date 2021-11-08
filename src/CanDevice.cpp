@@ -711,63 +711,66 @@ void CanDevice::CopyReceivedMessage(CanMessageBuffer *buffer, const volatile RxB
 	// The CAN has written the message directly to memory, so we must invalidate the cache before we read it
 	Cache::InvalidateAfterDMAReceive(f, sizeof(RxBufferHeader) + 64);						// flush the header and up to 64 bytes of data
 
-	buffer->extId = f->R0.bit.XTD;
-	buffer->id.SetReceivedId((buffer->extId) ? f->R0.bit.ID : f->R0.bit.ID >> 18);			// a standard identifier is stored into ID[28:18]
-	buffer->remote = f->R0.bit.RTR;
-
-	const volatile uint32_t *data = f->GetDataPointer();
-	buffer->timeStamp = f->R1.bit.RXTS;
-	const uint8_t dlc = f->R1.bit.DLC;
-	static constexpr uint8_t dlc2len[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 24, 32, 48, 64};
-
-	switch (dlc)
+	if (buffer != nullptr)
 	{
-	case 4:
-	case 5:
-	case 6:
-	case 7:
-	case 8:
-		buffer->msg.raw32[1] = data[1];
-		// no break
-	case 0:
-	case 1:
-	case 2:
-	case 3:
-		buffer->msg.raw32[0] = data[0];
-		buffer->dataLength = dlc;
-		break;
+		buffer->extId = f->R0.bit.XTD;
+		buffer->id.SetReceivedId((buffer->extId) ? f->R0.bit.ID : f->R0.bit.ID >> 18);			// a standard identifier is stored into ID[28:18]
+		buffer->remote = f->R0.bit.RTR;
 
-	case 15:		// 64 bytes
-		buffer->msg.raw32[12] = data[12];
-		buffer->msg.raw32[13] = data[13];
-		buffer->msg.raw32[14] = data[14];
-		buffer->msg.raw32[15] = data[15];
-		// no break
-	case 14:		// 48 bytes
-		buffer->msg.raw32[8] = data[8];
-		buffer->msg.raw32[9] = data[9];
-		buffer->msg.raw32[10] = data[10];
-		buffer->msg.raw32[11] = data[11];
-		// no break
-	case 13:		// 32 bytes
-		buffer->msg.raw32[6] = data[6];
-		buffer->msg.raw32[7] = data[7];
-		// no break
-	case 12:		// 24 bytes
-		buffer->msg.raw32[5] = data[5];
-		// no break
-	case 11:		// 20 bytes
-		buffer->msg.raw32[4] = data[4];
-		// no break
-	case 10:		// 16 bytes
-		buffer->msg.raw32[3] = data[3];
-		// no break
-	case 9:			// 12 bytes
-		buffer->msg.raw32[0] = data[0];
-		buffer->msg.raw32[1] = data[1];
-		buffer->msg.raw32[2] = data[2];
-		buffer->dataLength = dlc2len[dlc];
-	}
+		const volatile uint32_t *data = f->GetDataPointer();
+		buffer->timeStamp = f->R1.bit.RXTS;
+		const uint8_t dlc = f->R1.bit.DLC;
+		static constexpr uint8_t dlc2len[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 24, 32, 48, 64};
+
+		switch (dlc)
+		{
+		case 4:
+		case 5:
+		case 6:
+		case 7:
+		case 8:
+			buffer->msg.raw32[1] = data[1];
+			// no break
+		case 0:
+		case 1:
+		case 2:
+		case 3:
+			buffer->msg.raw32[0] = data[0];
+			buffer->dataLength = dlc;
+			break;
+
+		case 15:		// 64 bytes
+			buffer->msg.raw32[12] = data[12];
+			buffer->msg.raw32[13] = data[13];
+			buffer->msg.raw32[14] = data[14];
+			buffer->msg.raw32[15] = data[15];
+			// no break
+		case 14:		// 48 bytes
+			buffer->msg.raw32[8] = data[8];
+			buffer->msg.raw32[9] = data[9];
+			buffer->msg.raw32[10] = data[10];
+			buffer->msg.raw32[11] = data[11];
+			// no break
+		case 13:		// 32 bytes
+			buffer->msg.raw32[6] = data[6];
+			buffer->msg.raw32[7] = data[7];
+			// no break
+		case 12:		// 24 bytes
+			buffer->msg.raw32[5] = data[5];
+			// no break
+		case 11:		// 20 bytes
+			buffer->msg.raw32[4] = data[4];
+			// no break
+		case 10:		// 16 bytes
+			buffer->msg.raw32[3] = data[3];
+			// no break
+		case 9:			// 12 bytes
+			buffer->msg.raw32[0] = data[0];
+			buffer->msg.raw32[1] = data[1];
+			buffer->msg.raw32[2] = data[2];
+			buffer->dataLength = dlc2len[dlc];
+		}
+  }
 
 	++messagesReceived;
 }
