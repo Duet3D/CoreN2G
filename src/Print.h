@@ -35,7 +35,7 @@ public:
 
 	size_t write(const char * _ecv_array _ecv_null str) noexcept
 	{
-		return (str == nullptr) ? 0 : write((const uint8_t * _ecv_array)str, strlen(str));
+		return (str == nullptr) ? 0 : write((const uint8_t * _ecv_array)not_null(str), strlen(not_null(str)));
 	}
 
 	size_t write(const char * _ecv_array buffer, size_t size) noexcept
