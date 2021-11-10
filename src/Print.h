@@ -49,7 +49,7 @@ public:
 	}
 
 	int printf(const char * _ecv_array fmt, ...) noexcept __attribute__ ((format (printf, 2, 3)));
-	int printf(const char * _ecv_array fmt, va_list vargs) noexcept;
+	int vprintf(const char * _ecv_array fmt, va_list vargs) noexcept;
 };
 
 #endif

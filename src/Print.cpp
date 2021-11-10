@@ -26,7 +26,7 @@ int Print::printf(const char * _ecv_array fmt, ...) noexcept
 	return ret;
 }
 
-int Print::printf(const char * _ecv_array fmt, va_list vargs) noexcept
+int Print::vprintf(const char * _ecv_array fmt, va_list vargs) noexcept
 {
 	return vuprintf([this](char c)->bool
 					{
