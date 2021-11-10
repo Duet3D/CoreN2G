@@ -161,7 +161,7 @@ public:
 	uint32_t SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept;
 
 	// Receive a message in a buffer or fifo, with timeout. Returns true if successful, false if no message available even after the timeout period.
-	bool ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept;
+	bool ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *null buffer) noexcept;
 
 	// Check whether a message is available, returning true if it is
 	bool IsMessageAvailable(RxBufferNumber whichBuffer) noexcept;
@@ -236,7 +236,7 @@ private:
 	TxEvent *GetTxEvent(uint32_t index) const noexcept;
 
 	void CopyMessageForTransmit(CanMessageBuffer *buffer, volatile TxBufferHeader *f) noexcept;
-	void CopyReceivedMessage(CanMessageBuffer *buffer, const volatile RxBufferHeader *f) noexcept;
+	void CopyReceivedMessage(CanMessageBuffer *null buffer, const volatile RxBufferHeader *f) noexcept;
 
 	Can *hw;													// address of the CAN peripheral we are using
 
