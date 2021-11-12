@@ -18,7 +18,6 @@
 #include <ecv_duet3d.h>
 
 #if defined(__SAME54P20A__) || defined(__SAME51P20A__)
-# define __ARM_ARCH_7EM__	1
 # include <same54.h>
 # define SAMC21				0
 # define SAM3XA				0
@@ -27,7 +26,6 @@
 # define SAME5x				1
 # define SAME70				0
 #elif defined(__SAME51N19A__) || defined(__SAME51G19A__)
-# define __ARM_ARCH_7EM__	1
 # include <same51.h>
 # define SAMC21				0
 # define SAM3XA				0
@@ -36,7 +34,6 @@
 # define SAME5x				1
 # define SAME70				0
 #elif defined(__SAMC21G18A__)
-# define __ARM_ARCH_6M__	1
 # include <samc21.h>
 # define SAMC21				1
 # define SAM3XA				0
