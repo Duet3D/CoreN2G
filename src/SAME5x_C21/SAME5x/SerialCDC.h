@@ -27,8 +27,6 @@ public:
     size_t write(uint8_t) noexcept override;
     size_t write(const uint8_t *buffer, size_t size) noexcept override;		// this has a default implementation, but can be overridden for efficiency
 
-    using Print::write;		// pull in write(str) and write(buf, size) from Print
-
     void Start() noexcept;
     bool IsConnected() const noexcept;
 
