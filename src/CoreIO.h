@@ -330,7 +330,7 @@ void CoreInit() noexcept;
  * @param howbig Upper limit
  * @return The number, in the range 0 to (howbig - 1)
  */
-static inline int32_t random(uint32_t howbig) noexcept
+static inline uint32_t random(uint32_t howbig) noexcept
 {
 	return (howbig == 0) ? 0 : random32() % howbig;
 }
