@@ -203,18 +203,8 @@ namespace AnalogOut
 				tccdev->PER.bit.PER = tccTop[device];
 
 				// Some TCCs have more outputs than compare channels. So we can't always use the compare channel that corresponds to the output.
-				// As we only use one output per TCC, we can program the output matrix (if there is one) to duplicate compare channel 0 to all outputs.
-				if (output >= NumChannels[device])
-				{
-					tccdev->WEXCTRL.bit.OTMX = 0x02;
-					tccdev->CCBUF[0].bit.CCBUF = cc;
-					tccdev->CC[0].bit.CC = cc;
-				}
-				else
-				{
-					tccdev->CCBUF[output].bit.CCBUF = cc;
-					tccdev->CC[output].bit.CC = cc;
-				}
+				tccdev->CCBUF[output % NumChannels[device]].bit.CCBUF = cc;
+				tccdev->CC[output % NumChannels[device]].bit.CC = cc;
 
 				hri_tcc_set_CTRLA_ENABLE_bit(tccdev);
 				hri_tcc_write_COUNT_reg(tccdev, 0);

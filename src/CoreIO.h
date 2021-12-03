@@ -517,7 +517,7 @@ enum class TccOutput : uint8_t
 	tcc2_0E = 0x10, tcc2_1E,
 	// TCC devices on peripheral F
 	tcc0_0F = 0x80, tcc0_1F, tcc0_2F, tcc0_3F, tcc0_4F, tcc0_5F, tcc0_6F, tcc0_7F,
-	tcc1_0F = 0x88, tcc1_1F,		// TCC1 also has outputs 2 and 3, but they are not available for PWM because they don't have corresponding compare registers
+	tcc1_0F = 0x88, tcc1_1F, tcc1_2F, tcc1_3F,
 #endif
 
 	none = 0xFF
