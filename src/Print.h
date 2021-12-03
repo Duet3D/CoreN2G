@@ -31,20 +31,20 @@ public:
 	virtual ~Print() {}
 
 	virtual size_t write(uint8_t) noexcept = 0;
-	virtual size_t write(const uint8_t * _ecv_array buffer, size_t size) noexcept;		// this has a default implementation, but can be overridden for efficiency
+	virtual size_t write(const uint8_t *_ecv_array buffer, size_t size) noexcept;		// this has a default implementation, but can be overridden for efficiency
 
-	size_t print(const char * _ecv_array buffer, size_t size) noexcept
+	size_t print(const char *_ecv_array buffer, size_t size) noexcept
 	{
-		return write((const uint8_t * _ecv_array)buffer, size);
+		return write(reinterpret_cast<const uint8_t *_ecv_array>(buffer), size);
 	}
 
-	size_t print(const char * _ecv_array str) noexcept
+	size_t print(const char *_ecv_array str) noexcept
 	{
 		return print(str, strlen(str));
 	}
 
-	int printf(const char * _ecv_array fmt, ...) noexcept __attribute__ ((format (printf, 2, 3)));
-	int vprintf(const char * _ecv_array fmt, va_list vargs) noexcept;
+	int printf(const char *_ecv_array fmt, ...) noexcept __attribute__ ((format (printf, 2, 3)));
+	int vprintf(const char *_ecv_array fmt, va_list vargs) noexcept;
 };
 
 #endif
