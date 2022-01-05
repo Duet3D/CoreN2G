@@ -35,6 +35,12 @@ static constexpr unsigned int NumCallbacks = 4 * 32;
 static constexpr unsigned int NumCallbacks = 3 * 32;
 #endif
 
+#if SAM4E
+static constexpr unsigned int NumPins = (4 * 32) + 6;		// SAM4E uses pin numbers 134 and higher to represent pins on the DueX. We must not attempt to assign interrupts to them.
+#else
+static constexpr unsigned int NumPins = NumCallbacks;
+#endif
+
 static InterruptCallback pinCallbacks[NumCallbacks];
 
 /* Configure PIO interrupt sources */
@@ -74,7 +80,7 @@ static void __initialize()
 bool attachInterrupt(Pin pin, StandardCallbackFunction callback, InterruptMode mode, CallbackParameter param) noexcept
 {
 	const PinDescriptionBase * const pinDesc = AppGetPinDescription(pin);
-	if (pinDesc == nullptr || pin >= NumCallbacks)
+	if (pinDesc == nullptr || pin >= NumPins)
 	{
 		return false;
 	}
@@ -147,7 +153,7 @@ bool attachInterrupt(Pin pin, StandardCallbackFunction callback, InterruptMode m
 void detachInterrupt(Pin pin) noexcept
 {
 	const PinDescriptionBase * const pinDesc = AppGetPinDescription(pin);
-	if (pinDesc != nullptr)
+	if (pinDesc != nullptr && pin < NumPins)
 	{
 		// Retrieve pin information
 		Pio * const pio = GpioPort(pin);
