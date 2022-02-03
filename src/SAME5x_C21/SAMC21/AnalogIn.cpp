@@ -77,17 +77,17 @@ protected:
 	static constexpr size_t NumAdcChannels = 12;		// number of channels per ADC
 	static constexpr size_t MaxSequenceLength = 12;		// the maximum length of the read sequence
 
-	const DmaChannel dmaChan;
-	const DmaPriority dmaPrio;
-	const DmaTrigSource trigSrc;
-
-	volatile DmaCallbackReason dmaFinishedReason;
-	volatile size_t numChannelsEnabled;
 	volatile uint32_t channelsEnabled;
 	volatile TaskHandle taskToWake;
 	uint32_t whenLastConversionStarted;
+
+	const DmaChannel dmaChan;
+	const DmaPriority dmaPrio;
+	const DmaTrigSource trigSrc;
+	volatile uint8_t numChannelsEnabled;
 	volatile State state;
-	bool justStarted;
+	volatile DmaCallbackReason dmaFinishedReason;
+
 	AnalogInCallbackFunction callbackFunctions[NumAdcChannels];
 	CallbackParameter callbackParams[NumAdcChannels];
 	uint32_t ticksPerCall[NumAdcChannels];
@@ -97,9 +97,8 @@ protected:
 };
 
 AdcBase::AdcBase(DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept
-	: dmaChan(p_dmaChan), dmaPrio(priority), trigSrc(p_trigSrc),
-	  numChannelsEnabled(0), channelsEnabled(0),
-	  taskToWake(nullptr), whenLastConversionStarted(0), state(State::noChannels)
+	: channelsEnabled(0), taskToWake(nullptr), whenLastConversionStarted(0),
+	  dmaChan(p_dmaChan), dmaPrio(priority), trigSrc(p_trigSrc), numChannelsEnabled(0), state(State::noChannels)
 {
 	for (size_t i = 0; i < NumAdcChannels; ++i)
 	{
@@ -355,10 +354,10 @@ void AdcClass::ExecuteCallbacks() noexcept
 
 	const uint32_t now = millis();
 	const volatile uint16_t *p = results;
-	const uint32_t channelsPreviouslyEnabled = device->SEQCTRL.reg;
+	uint32_t channelsPreviouslyEnabled = device->SEQCTRL.reg;
 	for (size_t i = 0; i < NumAdcChannels; ++i)
 	{
-		if ((channelsPreviouslyEnabled & (1ul << i)) != 0)
+		if ((channelsPreviouslyEnabled & 1u) != 0)
 		{
 			const uint16_t currentResult = *p++;
 			resultsByChannel[i] = currentResult;
@@ -372,6 +371,7 @@ void AdcClass::ExecuteCallbacks() noexcept
 				}
 			}
 		}
+		channelsPreviouslyEnabled >>= 1;
 	}
 }
 
