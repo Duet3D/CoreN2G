@@ -431,6 +431,33 @@ void __attribute__ ((__optimize__ ("-fno-tree-loop-distribute-patterns"))) memcp
 	}
 }
 
+// Optimised version of memmove for when we know that the source and destination are 32-bit aligned and a whole number of 32-bit words are to be copied
+void __attribute__ ((__optimize__ ("-fno-tree-loop-distribute-patterns"))) memmoveu32(uint32_t *_ecv_array dst, const uint32_t *_ecv_array src, size_t numWords) noexcept
+{
+	dst += numWords;
+	src += numWords;
+
+	while (numWords >= 4)
+	{
+		*--dst = *--src;
+		*--dst = *--src;
+		*--dst = *--src;
+		*--dst = *--src;
+		numWords -= 4;
+	}
+
+	if ((numWords & 2) != 0)
+	{
+		*--dst = *--src;
+		*--dst = *--src;
+	}
+
+	if ((numWords & 1) != 0)
+	{
+		*--dst = *--src;
+	}
+}
+
 #if SAME5x || SAME70
 
 // Random number generator

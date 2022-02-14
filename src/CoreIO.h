@@ -200,6 +200,26 @@ inline void memcpyf(float *_ecv_array dst, const float *_ecv_array src, size_t n
 	memcpyu32(reinterpret_cast<uint32_t *_ecv_array>(dst), reinterpret_cast<const uint32_t *_ecv_array>(src), numFloats);
 }
 
+// Optimised version of memmove for use when the source and destination are known to be 32-bit aligned and a whole number of 32-bit words is to be copied
+void memmoveu32(uint32_t *_ecv_array dst, const uint32_t *_ecv_array src, size_t numWords) noexcept;
+
+// memmove for int32_t arrays
+inline void memmovei32(int32_t *_ecv_array dst, const int32_t *_ecv_array src, size_t numWords) noexcept
+{
+	static_assert(sizeof(int32_t) == sizeof(uint32_t));
+	static_assert(alignof(int32_t) == alignof(uint32_t));
+	memmoveu32(reinterpret_cast<uint32_t *_ecv_array>(dst), reinterpret_cast<const uint32_t *_ecv_array>(src), numWords);
+}
+
+// memmove for float arrays
+inline void memmovef(float *_ecv_array dst, const float *_ecv_array src, size_t numFloats) noexcept
+{
+	static_assert(sizeof(float) == sizeof(uint32_t));
+	static_assert(alignof(float) == alignof(uint32_t));
+	memmoveu32(reinterpret_cast<uint32_t *_ecv_array>(dst), reinterpret_cast<const uint32_t *_ecv_array>(src), numFloats);
+}
+
+
 // Get the stack pointer
 #ifdef __ECV__
 
