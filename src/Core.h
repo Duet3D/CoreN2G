@@ -224,7 +224,7 @@ static inline uint32_t GetElapsedCycles(uint32_t startCycles) noexcept
 }
 
 /**
- * @brief Delay or at least the specified number of microseconds
+ * @brief Delay for at least the specified number of microseconds
  *
  * @param How many microseconds to delay for
  */
