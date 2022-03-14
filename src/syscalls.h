@@ -21,13 +21,13 @@ int errno;
 #endif
 
 extern char _end;								// defined by the linker script
-extern char _estack;
+extern uint32_t _estack;
 
 [[noreturn]] void OutOfMemoryHandler() noexcept;				// this must be provided by the client application
 
-const char *sysStackLimit = &_estack - SystemStackSize;
+const char *sysStackLimit = (const char*)&_estack - SystemStackSize;
 
-const char *heapLimit = &_estack - SystemStackSize;
+const char *heapLimit = (const char*)&_estack - SystemStackSize;
 char *heapTop = &_end;
 
 /**
