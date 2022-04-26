@@ -32,7 +32,7 @@
  */
 
 //#ifdef _SAME54_GCLK_COMPONENT_
-#if defined(_SAME54_GCLK_COMPONENT_) || defined(_SAME51_GCLK_COMPONENT_)	// dc42 same54 and same51 versions were identical except for this line and GMAC-related functions
+#if defined(_SAME54_GCLK_COMPONENT_) || defined(_SAME51_GCLK_COMPONENT_) || defined(_SAMD51_GCLK_COMPONENT_)	// dc42 same54 and same51 versions were identical except for this line and GMAC-related functions
 #ifndef _HRI_GCLK_E54_H_INCLUDED_
 #define _HRI_GCLK_E54_H_INCLUDED_
 

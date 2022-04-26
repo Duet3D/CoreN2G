@@ -32,7 +32,7 @@
  */
 
 //#ifdef _SAME54_MCLK_COMPONENT_
-#if defined(_SAME54_MCLK_COMPONENT_) || defined(_SAME51_MCLK_COMPONENT_)	// dc42 same54 and same51 versions were identical except for this line and GMAC-related functions
+#if defined(_SAME54_MCLK_COMPONENT_) || defined(_SAME51_MCLK_COMPONENT_) || defined(_SAMD51_MCLK_COMPONENT_)	// dc42 same54 and same51 versions were identical except for this line and GMAC-related functions
 #ifndef _HRI_MCLK_E54_H_INCLUDED_
 #define _HRI_MCLK_E54_H_INCLUDED_
 
@@ -952,6 +952,8 @@ static inline void hri_mclk_toggle_AHBMASK_SDHC1_bit(const void *const hw)
 
 #endif
 
+#if defined(_SAME54_MCLK_COMPONENT_) || defined(_SAME51_MCLK_COMPONENT_)	// only these devices have CAN
+
 static inline void hri_mclk_set_AHBMASK_CAN0_bit(const void *const hw)
 {
 	MCLK_CRITICAL_SECTION_ENTER();
@@ -1031,6 +1033,8 @@ static inline void hri_mclk_toggle_AHBMASK_CAN1_bit(const void *const hw)
 	((Mclk *)hw)->AHBMASK.reg ^= MCLK_AHBMASK_CAN1;
 	MCLK_CRITICAL_SECTION_LEAVE();
 }
+
+#endif
 
 static inline void hri_mclk_set_AHBMASK_ICM_bit(const void *const hw)
 {
