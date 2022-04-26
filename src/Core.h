@@ -33,6 +33,14 @@
 # define SAM4S				0
 # define SAME5x				1
 # define SAME70				0
+#elif defined(__SAMD51N19A__)
+# include <samd51.h>
+# define SAMC21				0
+# define SAM3XA				0
+# define SAM4E				0
+# define SAM4S				0
+# define SAME5x				1
+# define SAME70				0
 #elif defined(__SAMC21G18A__)
 # include <samc21.h>
 # define SAMC21				1
