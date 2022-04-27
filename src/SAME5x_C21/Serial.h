@@ -27,7 +27,7 @@ namespace Serial
 	static Sercom * const Sercoms[] =
 	{
 		SERCOM0, SERCOM1, SERCOM2, SERCOM3, SERCOM4, SERCOM5,
-#if SAME5x && (defined(__SAME54P20A__) || defined(__SAME51N19A__))
+#if SAME5x && (defined(__SAME54P20A__) || defined(__SAME51N19A__) || defined(__SAMD51N19A__))
 		SERCOM6, SERCOM7
 #endif
 	};
@@ -38,7 +38,7 @@ namespace Serial
 		SERCOM0_IRQn, SERCOM1_IRQn, SERCOM2_IRQn, SERCOM3_IRQn, SERCOM4_IRQn, SERCOM5_IRQn
 #elif SAME5x
 		SERCOM0_0_IRQn, SERCOM1_0_IRQn, SERCOM2_0_IRQn, SERCOM3_0_IRQn, SERCOM4_0_IRQn, SERCOM5_0_IRQn,
-# if defined(__SAME54P20A__) || defined(__SAME51N19A__)
+# if defined(__SAME54P20A__) || defined(__SAME51N19A__) || defined(__SAMD51N19A__)
 		SERCOM6_0_IRQn, SERCOM7_0_IRQn
 # endif
 #endif
