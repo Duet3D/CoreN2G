@@ -73,7 +73,7 @@ extern "C" {
  *
  *  \return Operation status.
  */
-void hsmci_init() noexcept;
+void hsmci_init(Sdhc *p_hw, enum IRQn irqn) noexcept;
 
 /**
  *  \brief Select a device and initialize it

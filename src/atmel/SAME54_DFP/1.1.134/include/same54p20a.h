@@ -546,7 +546,7 @@ void TRNG_Handler                ( void );
 void ICM_Handler                 ( void );
 void PUKCC_Handler               ( void );
 void QSPI_Handler                ( void );
-void SDHC0_Handler               ( void );
+void SDHC0_Handler               ( void ) noexcept;
 void SDHC1_Handler               ( void ) noexcept;
 
 /*

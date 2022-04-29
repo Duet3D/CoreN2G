@@ -38,9 +38,7 @@
 #include <CoreIO.h>
 
 // Define which SDHC controller we are using
-Sdhc* const hw = SDHC1;
-constexpr IRQn SDHC_IRQn = SDHC1_IRQn;
-#define SDHC_ISR	SDHC1_Handler
+Sdhc* hw;
 
 #define HSMCI_SLOT_0_SIZE 		4
 #define CONF_SDHC_CLK_GEN_SEL	0
@@ -409,8 +407,10 @@ static bool hsmci_send_cmd_execute(uint32_t cmdr, uint32_t cmd, uint32_t arg) no
  *  \brief Initialize MCI low level driver.
  *  If using RTOS then the client must also set the NVIC interrupt priority during initialisation to a value low enough to allow the ISR to make FreeRTOS calls
  */
-void hsmci_init() noexcept
+void hsmci_init(Sdhc *p_hw, enum IRQn irqn) noexcept
 {
+	hw = p_hw;
+
 	hw->SRR.reg |= SDHC_SRR_SWRSTALL;
 	while ((hw->SRR.reg & SDHC_SRR_SWRSTALL) != 0) { }
 
@@ -426,8 +426,8 @@ void hsmci_init() noexcept
 #ifdef RTOS
 	hw->NISIER.reg = 0;					// disable normal interrupts
 	hw->EISIER.reg = 0;					// disable error interrupts
-	NVIC_ClearPendingIRQ(SDHC_IRQn);
-	NVIC_EnableIRQ(SDHC_IRQn);
+	NVIC_ClearPendingIRQ(irqn);
+	NVIC_EnableIRQ(irqn);
 #endif
 }
 
@@ -793,7 +793,7 @@ bool hsmci_wait_end_of_write_blocks() noexcept
 
 #ifdef RTOS
 
-void SDHC_ISR() noexcept
+void SDHC0_Handler() noexcept
 {
 	hw->NISIER.reg = 0;					// disable normal interrupts
 	hw->EISIER.reg = 0;					// disable error interrupts
@@ -803,6 +803,8 @@ void SDHC_ISR() noexcept
 		sdhcWaitingTask = nullptr;
 	}
 }
+
+void SDHC1_Handler() noexcept __attribute__ ((alias("SDHC0_Handler")));
 
 #endif
 
