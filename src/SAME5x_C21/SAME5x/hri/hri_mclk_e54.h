@@ -908,7 +908,7 @@ static inline void hri_mclk_toggle_AHBMASK_SDHC0_bit(const void *const hw)
 	MCLK_CRITICAL_SECTION_LEAVE();
 }
 
-#ifdef _SAME54_MCLK_COMPONENT_		// SAME54 only
+#if defined(_SAME54_MCLK_COMPONENT_) || defined(_SAMD51_MCLK_COMPONENT_)		// SAME54 and SAMD51 only
 
 static inline void hri_mclk_set_AHBMASK_SDHC1_bit(const void *const hw)
 {
