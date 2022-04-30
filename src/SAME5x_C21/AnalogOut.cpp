@@ -69,6 +69,7 @@ namespace AnalogOut
 			TC5, TC6, TC7
 #endif
 		};
+
 		static uint16_t tcFreq[ARRAY_SIZE(TcDevices)] = { 0 };
 		static uint32_t tcTop[ARRAY_SIZE(TcDevices)] = { 0 };
 
@@ -140,16 +141,17 @@ namespace AnalogOut
 		return false;
 	}
 
+	static volatile Tcc* const TccDevices[] =
+	{
+		TCC0, TCC1, TCC2,
+#if SAME5x
+		TCC3, TCC4
+#endif
+	};
+
 	// Write PWM to the specified TCC device. 'output' may be 0..5.
 	static bool AnalogWriteTcc(Pin pin, unsigned int device, unsigned int output, GpioPinFunction peri, float val, PwmFrequency freq) noexcept
 	{
-		static volatile Tcc* const TccDevices[] =
-		{
-			TCC0, TCC1, TCC2,
-#if SAME5x
-			TCC3, TCC4
-#endif
-		};
 		static constexpr unsigned int TccCounterBits[ARRAY_SIZE(TccDevices)] =
 		{
 			24, 24, 16,
@@ -277,5 +279,36 @@ void AnalogOut::Write(Pin pin, float val, PwmFrequency freq) noexcept
 	// Fall back to digital write
 	pinMode(pin, (val < 0.5) ? OUTPUT_LOW : OUTPUT_HIGH);
 }
+
+#if SAME5x || SAMC21
+
+// Set the beeper to produce a tone using two TCC output pins as differential outputs. Set frequency to zero to stop the beeper.
+// Caution! This does not check that the pins are valid.
+void AnalogOut::Beep(Pin pin1, Pin pin2, PwmFrequency freq) noexcept
+{
+	if (freq == 0)
+	{
+		ClearPinFunction(pin1);
+		fastDigitalWriteLow(pin1);
+		ClearPinFunction(pin2);
+		fastDigitalWriteLow(pin2);
+	}
+	else
+	{
+		const PinDescriptionBase * const pd1 = AppGetPinDescription(pin1);
+		const PinDescriptionBase * const pd2 = AppGetPinDescription(pin2);
+		const TccOutput tcc = pd1->tcc;
+		if (tcc != TccOutput::none)
+		{
+			AnalogWriteTcc(pin1, GetDeviceNumber(tcc), GetOutputNumber(tcc), GetPeriNumber(tcc), 0.5, freq);
+			volatile Tcc * const tccdev = TccDevices[GetDeviceNumber(tcc)];
+			tccdev->DRVCTRL.reg = TCC_DRVCTRL_INVEN0 << GetOutputNumber(tcc);		// invert the output on the first pin, don't invert any other outputs
+			SetPinFunction(pin2, GetPeriNumber(pd2->tcc));							// enable the other output pin
+			return;
+		}
+	}
+}
+
+#endif
 
 // End
