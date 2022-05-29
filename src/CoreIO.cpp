@@ -178,6 +178,16 @@ void DisablePullup(Pin pin) noexcept
 #endif
 }
 
+#if SAME5x || SAMC21
+
+// Set high driver strength on an output pin
+void SetHighDriveStrength(Pin p) noexcept
+{
+	PORT->Group[GpioPortNumber(p)].PINCFG[GpioPinNumber(p)].reg |= PORT_PINCFG_DRVSTR;
+}
+
+#endif
+
 // IoPort::SetPinMode calls this
 // Warning! Changing pin mode will reset the output drive strength to normal.
 void SetPinMode(Pin pin, enum PinMode mode, uint32_t debounceCutoff = 0) noexcept
