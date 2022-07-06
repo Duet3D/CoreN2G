@@ -242,6 +242,17 @@ static inline void delayMicroseconds(uint32_t usec) noexcept
 	(void)DelayCycles(GetCurrentCycles(), usec * (SystemCoreClockFreq/1000000));
 }
 
+/**
+ * @brief Delay for at least the specified number of nanoseconds
+ *
+ * @param How many nanoseconds to delay for
+ */
+static inline void delayNanoseconds(uint32_t nsec) noexcept __attribute__((always_inline, unused));
+static inline void delayNanoseconds(uint32_t nsec) noexcept
+{
+	(void)DelayCycles(GetCurrentCycles(), (nsec * (SystemCoreClockFreq/1000000))/1000);
+}
+
 // Functions to enable/disable interrupts
 
 /**
