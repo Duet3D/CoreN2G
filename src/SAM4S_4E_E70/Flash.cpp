@@ -46,6 +46,7 @@
 
 #include <Core.h>
 #include <Flash.h>
+#include <Cache.h>
 #include <efc/efc.h>
 #include <cstring>
 
@@ -481,6 +482,9 @@ bool Flash::ReadUserSignature(uint32_t *p_data, uint32_t ul_size) noexcept
 
 	// dc42 bug fix: must disable interrupts while executing the EFC read command
 	const irqflags_t flags = IrqSave();
+	// Ideally the cache invalidate call would be inside function efc_perform_read_sequence,
+	// but here will do because we have disabled interrupts and this code won't be within 512b of the start of flash memory
+	Cache::InvalidateAfterDMAReceive(reinterpret_cast<const void*>(IFLASH_ADDR), FLASH_USER_SIG_SIZE);
 	const uint32_t rc = efc_perform_read_sequence(EFC, EFC_FCMD_STUS, EFC_FCMD_SPUS, p_data, ul_size);
 	IrqRestore(flags);
 	return rc == 0;
