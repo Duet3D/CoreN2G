@@ -33,6 +33,7 @@ public:
 	void AppendCharsToString(const StringRef& str) const noexcept;
 
 	const uint8_t *_ecv_array GetRaw() const { return (const uint8_t *_ecv_array)data; }
+	const uint32_t *_ecv_array GetDwords() const { return data; }
 
 protected:
 	void SetChecksumWord() noexcept;
