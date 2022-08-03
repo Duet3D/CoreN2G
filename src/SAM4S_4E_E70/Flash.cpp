@@ -360,7 +360,7 @@ bool Flash::Write(uint32_t start, uint32_t length, const uint32_t *data) noexcep
 		}
 
 		/* Progression */
-		data += IFLASH_PAGE_SIZE;
+		data += IFLASH_PAGE_SIZE/sizeof(uint32_t);
 		length -= IFLASH_PAGE_SIZE;
 		us_page++;
 	}
