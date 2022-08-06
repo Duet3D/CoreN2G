@@ -84,7 +84,7 @@ extern "C" {
 #define GMAC_TXD_LEN_MASK       (0x1FFF)     /**< Length of buffer */
 
 /** The MAC can support frame lengths up to 1536 bytes */
-#define GMAC_FRAME_LENTGH_MAX   1536
+#define GMAC_FRAME_LENGTH_MAX   1536
 
 #define GMAC_RX_UNITSIZE        128     /**< Fixed size for RX buffer  */
 #define GMAC_TX_UNITSIZE        1518    /**< Size for ETH frame length */
@@ -1150,7 +1150,7 @@ static inline void gmac_enable_cbsque_b(Gmac* p_gmac, uint8_t uc_enable)
  * \param idleslope_a   Value for queue A in bytes/second
  */
 static inline void gmac_config_idleslope_a(Gmac* p_gmac, uint32_t idleslope_a)
-{    
+{
 	p_gmac->GMAC_CBSISQA = idleslope_a;
 }
 
@@ -1161,7 +1161,7 @@ static inline void gmac_config_idleslope_a(Gmac* p_gmac, uint32_t idleslope_a)
  * \param idleslope_b   Value for queue B in bytes/second
  */
 static inline void gmac_config_idleslope_b(Gmac* p_gmac, uint32_t idleslope_b)
-{    
+{
 	p_gmac->GMAC_CBSISQB = idleslope_b;
 }
 
