@@ -353,7 +353,7 @@ void Cache::Flush(const volatile void *start, size_t length) noexcept
 	if ((SCB->CCR & SCB_CCR_DC_Msk) != 0)			// if data cache is enabled
 	{
 		// The DMA buffer should be entirely inside the non-cached RAM area
-		if ((const char *)start < (const char *)&_nocache_ram_start || (const char *)start + length >= (const char *)&_nocache_ram_end)
+		if ((const char *)start < (const char *)&_nocache_ram_start || (const char *)start + length > (const char *)&_nocache_ram_end)
 		{
 			vAssertCalled(__LINE__, __FILE__);
 		}
@@ -369,7 +369,7 @@ void Cache::Invalidate(const volatile void *start, size_t length) noexcept
 	if ((SCB->CCR & SCB_CCR_DC_Msk) != 0)			// if data cache is enabled
 	{
 		// The DMA buffer should be entirely inside the non-cached RAM area, unless we are reading the user signature area
-		if ((const char *)start < (const char *)&_nocache_ram_start || (const char *)start + length >= (const char *)&_nocache_ram_end)
+		if ((const char *)start < (const char *)&_nocache_ram_start || (const char *)start + length > (const char *)&_nocache_ram_end)
 		{
 			if (reinterpret_cast<uint32_t>(start) == IFLASH_ADDR)
 			{
