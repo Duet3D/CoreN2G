@@ -238,6 +238,16 @@ enum class DmaTrigSource : uint8_t
 	i2sc1txr,
 	i2sc1rxr,
 	numPeripheralIds
+#elif RP2040
+	pio0tx0, pio0tx1, pio0tx2, pio0tx3,
+	pio0rx0, pio0rx1, pio0rx2, pio0rx3,
+	pio1tx0, pio1tx1, pio1tx2, pio1tx3,
+	pio1rx0, pio1rx1, pio1rx2, pio1rx3,
+	spi0tx, spi0rx, spi1tx, spi1rx,
+	uart0tx, uart0rx, uart1tx, uart1rx,
+	pwmwrap0, pwmwrap1, pwmwrap2, pwmwrap3, pwmwrap4, pwmwrap5, pwmwrap6, pwmwrap7,
+	i2c0tx, i2c0rx, i2c1tx, i2c1rx,
+	adc, xipstream, xipssitx, xipssirx
 #else
 # error Unsupported processor
 #endif

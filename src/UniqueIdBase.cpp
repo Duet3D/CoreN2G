@@ -10,6 +10,8 @@
 
 #if SAM4E || SAM4S || SAME70
 # include <Flash.h>
+#elif RP2040
+# include <pico/unique_id.h>
 #endif
 
 // Constructor initialises it to all zeros
@@ -24,13 +26,21 @@ void UniqueIdBase::Clear() noexcept
 // Test if we have a valid ID. We assume a valid ID cannot be all zeros.
 bool UniqueIdBase::IsValid() const noexcept
 {
+#if RP2040
+	return (data[0] | data[1]) != 0;
+#else
 	return (data[0] | data[1] | data[2] | data[3]) != 0;
+#endif
 }
 
 // Get a 32-bit hash of the ID. Used for pseudo random number generation.
 uint32_t UniqueIdBase::GetHash() const noexcept
 {
+#if RP2040
+	return data[0] ^ data[1];
+#else
 	return data[0] ^ data[1] ^ data[2] ^ data[3];
+#endif
 }
 
 // Set the ID to the ID of the board that this code is running on
@@ -54,6 +64,12 @@ void UniqueIdBase::SetFromCurrentBoard() noexcept
 	{
 		SetChecksumWord();
 	}
+#elif RP2040
+	pico_unique_board_id_t uniqueId;
+	pico_get_unique_board_id(&uniqueId);
+	static_assert(sizeof(uniqueId.id) == 8);
+	memcpy(data, uniqueId.id, 8);
+	SetChecksumWord();
 #else
 # error Unsupported processor
 #endif
@@ -111,7 +127,11 @@ void UniqueIdBase::AppendCharsTo(function_ref<void(char) /*noexcept*/> fn) const
 		fn(c);
 
 		++i;
-		if (i == 30)
+#if RP2040
+		if (i == 15)		// print 15 characters
+#else
+		if (i == 30)		// print 30 characters
+#endif
 		{
 			break;
 		}
@@ -132,9 +152,15 @@ void UniqueIdBase::AppendCharsToString(const StringRef &str) const noexcept
 // Set the checksum word of the unique ID
 void UniqueIdBase::SetChecksumWord() noexcept
 {
-	// We only print 30 5-bit characters = 128 data bits + 22 checksum bits. So compress the 32 checksum bits into 22.
+#if RP2040
+	// We print 15 5-bit characters = 64 data bits + 11 checksum bits. So compress the 32 checksum bits into 11.
+	data[2] = data[0] ^ data[1];
+	data[2] ^= (data[2] >> 11) | (data[2] >> 21);
+#else
+	// We print 30 5-bit characters = 128 data bits + 22 checksum bits. So compress the 32 checksum bits into 22.
 	data[4] = data[0] ^ data[1] ^ data[2] ^ data[3];
 	data[4] ^= (data[4] >> 10);
+#endif
 }
 
 // End

@@ -7,7 +7,7 @@
 
 #include "CanDevice.h"
 
-#if SUPPORT_CAN
+#if SUPPORT_CAN && !RP2040
 
 #include <Cache.h>
 #include <CanSettings.h>

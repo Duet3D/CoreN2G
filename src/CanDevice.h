@@ -10,7 +10,7 @@
 
 #include <CoreIO.h>
 
-#if SUPPORT_CAN
+#if SUPPORT_CAN && !RP2040
 
 # include <CanId.h>
 # include <General/Bitmap.h>

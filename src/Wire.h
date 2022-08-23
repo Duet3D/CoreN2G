@@ -19,7 +19,7 @@
 
 #include "CoreIO.h"
 
-#if SAME70
+#if SAME70 || RP2040
 // TWI disabled for now
 #else
 

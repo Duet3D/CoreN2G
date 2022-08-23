@@ -35,6 +35,8 @@ constexpr unsigned int NumTotalPins = (4 * 32) + 6;		// SAM4E8E goes up to PE5
 constexpr unsigned int NumTotalPins = 3 * 32;			// SAM4S8C goes up to PC31
 #elif SAME70
 constexpr unsigned int NumTotalPins = (4 * 32) + 6;		// SAME70 goes up to PE5
+#elif RP2040
+constexpr unsigned int NumTotalPins = 30;				// RP2040 goes up to GPIO29
 #else
 # error Unsupported processor
 #endif
@@ -382,6 +384,8 @@ inline void fastDigitalWriteHigh(uint32_t pin) noexcept
 	PORT->Group[GpioPortNumber(pin)].OUTSET.reg = GpioMask(pin);
 #elif SAME70 || SAM4E || SAM4S
 	GpioPort(pin)->PIO_SODR = GpioMask(pin);
+#elif RP2040
+	gpio_put(pin, true);			//TODO can we optimise this?
 #else
 # error Unsupported processor
 #endif
@@ -398,6 +402,8 @@ inline void fastDigitalWriteLow(uint32_t pin) noexcept
 	PORT->Group[GpioPortNumber(pin)].OUTCLR.reg = GpioMask(pin);
 #elif SAME70 || SAM4E || SAM4S
 	GpioPort(pin)->PIO_CODR = GpioMask(pin);
+#elif RP2040
+	gpio_put(pin, false);			//TODO can we optimise this?
 #else
 # error Unsupported processor
 #endif
@@ -414,6 +420,8 @@ inline bool fastDigitalRead(uint32_t pin) noexcept
 	return PORT->Group[GpioPortNumber(pin)].IN.reg & GpioMask(pin);
 #elif SAME70 || SAM4E || SAM4S
 	return GpioPort(pin)->PIO_PDSR & GpioMask(pin);
+#elif RP2040
+	return gpio_get(pin);			//TODO can we optimise this?
 #else
 # error Unsupported processor
 #endif
@@ -424,6 +432,8 @@ inline bool fastDigitalRead(uint32_t pin) noexcept
  *
  */
 [[noreturn]] void ResetProcessor() noexcept;
+
+#if !RP2040
 
 /**
  * @brief TC output identifiers used in pin tables
@@ -454,6 +464,8 @@ enum class TcOutput : uint8_t
 	tioa9, tiob9, tioa10, tiob10,
 	tioa11 = 0x40 + (11u << 1), tiob11,															// TIO11 is on peripheral C
 # endif
+#else
+# error Unsupported processor
 #endif
 
 	none = 0xFF,
@@ -509,6 +521,8 @@ static inline constexpr GpioPinFunction GetPeriNumber(TcOutput tc) noexcept
  * @param gclkNum The GCLK number to use
  */
 void EnableTcClock(unsigned int tcNumber, unsigned int gclkNum) noexcept;
+
+#endif
 
 #if SAME5x || SAMC21
 
@@ -586,19 +600,24 @@ static inline constexpr GpioPinFunction GetPeriNumber(TccOutput tcc) noexcept
  */
 void EnableTccClock(unsigned int tccNumber, unsigned int gclkNum) noexcept;
 
-#elif SAME70 || SAM4E || SAM4S
+#elif SAME70 || SAM4E || SAM4S || RP2040
 
 enum class PwmOutput : uint8_t
 {
+#if RP2040
+	pwm0a = 0x00, pwm0b, pwm1a, pwm1b, pwm2a, pwm2b, pwm3a, pwm3b,
+		   pwm4a, pwm4b, pwm5a, pwm5b, pwm6a, pwm6b, pwm7a, pwm7b,
+#else
 	pwm0l0_a = 0x00, pwm0h0_a, pwm0l1_a, pwm0h1_a, pwm0l2_a, pwm0h2_a, pwm0l3_a, pwm0h3_a,
 	pwm0l0_b = 0x20, pwm0h0_b, pwm0l1_b, pwm0h1_b, pwm0l2_b, pwm0h2_b, pwm0l3_b, pwm0h3_b,
 	pwm0l0_c = 0x40, pwm0h0_c, pwm0l1_c, pwm0h1_c, pwm0l2_c, pwm0h2_c, pwm0l3_c, pwm0h3_c,
 	pwm0l0_d = 0x60, pwm0h0_d, pwm0l1_d, pwm0h1_d, pwm0l2_d, pwm0h2_d, pwm0l3_d, pwm0h3_d,
-#if SAME70
+# if SAME70
 	pwm1l0_a = 0x08, pwm1h0_a, pwm1l1_a, pwm1h1_a, pwm1l2_a, pwm1h2_a, pwm1l3_a, pwm1h3_a,
 	pwm1l0_b = 0x28, pwm1h0_b, pwm1l1_b, pwm1h1_b, pwm1l2_b, pwm1h2_b, pwm1l3_b, pwm1h3_b,
 	pwm1l0_c = 0x48, pwm1h0_c, pwm1l1_c, pwm1h1_c, pwm1l2_c, pwm1h2_c, pwm1l3_c, pwm1h3_c,
 	pwm1l0_d = 0x68, pwm1h0_d, pwm1l1_d, pwm1h1_d, pwm1l2_d, pwm1h2_d, pwm1l3_d, pwm1h3_d,
+# endif
 #endif
 
 	none = 0xFF,
@@ -784,6 +803,13 @@ struct PinDescriptionBase
 	PwmOutput pwm;					///< The PWM output that is connected to this pin and available for PWM generation, or PwmOutput::none
 	AdcInput adc;					///< The ADC input that is connected to this pin and available, or AdcInput::none
 
+#elif RP2040
+
+	PwmOutput pwm;					///< The PWM output that is connected to this pin and available for PWM generation, or PwmOutput::none
+	AdcInput adc;					///< The ADC input that is connected to this pin and available, or AdcInput::none
+
+#else
+# error Unsupported processor
 #endif
 };
 

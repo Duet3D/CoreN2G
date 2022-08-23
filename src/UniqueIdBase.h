@@ -38,7 +38,11 @@ public:
 protected:
 	void SetChecksumWord() noexcept;
 
-	uint32_t data[5];
+#if RP2040
+	uint32_t data[3];			// 64-bit unique ID plus checksum
+#else
+	uint32_t data[5];			// 128-bit unique ID plus checksum
+#endif
 };
 
 #endif /* SRC_UNIQUEIDBASE_H_ */
