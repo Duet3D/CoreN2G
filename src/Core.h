@@ -33,6 +33,14 @@
 # define SAM4S				0
 # define SAME5x				1
 # define SAME70				0
+#elif defined(__SAMD51N19A__)
+# include <samd51.h>
+# define SAMC21				0
+# define SAM3XA				0
+# define SAM4E				0
+# define SAM4S				0
+# define SAME5x				1
+# define SAME70				0
 #elif defined(__SAMC21G18A__)
 # include <samc21.h>
 # define SAMC21				1
@@ -232,6 +240,17 @@ static inline void delayMicroseconds(uint32_t usec) noexcept __attribute__((alwa
 static inline void delayMicroseconds(uint32_t usec) noexcept
 {
 	(void)DelayCycles(GetCurrentCycles(), usec * (SystemCoreClockFreq/1000000));
+}
+
+/**
+ * @brief Delay for at least the specified number of nanoseconds
+ *
+ * @param How many nanoseconds to delay for
+ */
+static inline void delayNanoseconds(uint32_t nsec) noexcept __attribute__((always_inline, unused));
+static inline void delayNanoseconds(uint32_t nsec) noexcept
+{
+	(void)DelayCycles(GetCurrentCycles(), (nsec * (SystemCoreClockFreq/1000000))/1000);
 }
 
 // Functions to enable/disable interrupts

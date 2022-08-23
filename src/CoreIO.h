@@ -119,6 +119,10 @@ enum class GpioPinFunction : uint8_t
  */
 void SetPinFunction(Pin p, GpioPinFunction f) noexcept;
 
+#if SAME5x || SAMC21
+void SetHighDriveStrength(Pin p) noexcept;
+#endif
+
 /**
  * @brief Set a pin back to ordinary digital I/O
  *

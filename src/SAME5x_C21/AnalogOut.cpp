@@ -69,6 +69,7 @@ namespace AnalogOut
 			TC5, TC6, TC7
 #endif
 		};
+
 		static uint16_t tcFreq[ARRAY_SIZE(TcDevices)] = { 0 };
 		static uint32_t tcTop[ARRAY_SIZE(TcDevices)] = { 0 };
 
@@ -123,7 +124,7 @@ namespace AnalogOut
 				tcdev->COUNT16.CC[output].bit.CC = cc;
 				tcdev->COUNT16.CCBUF[output].bit.CCBUF = cc;
 				hri_tc_set_CTRLA_ENABLE_bit(tcdev);
-				hri_tccount16_write_COUNT_COUNT_bf(tcdev, 0);
+				tcdev->COUNT16.CTRLBSET.reg = TC_CTRLBSET_CMD_RETRIGGER;
 				tcFreq[device] = freq;
 			}
 			else
@@ -140,16 +141,18 @@ namespace AnalogOut
 		return false;
 	}
 
-	// Write PWM to the specified TCC device. 'output' may be 0..5.
-	static bool AnalogWriteTcc(Pin pin, unsigned int device, unsigned int output, GpioPinFunction peri, float val, PwmFrequency freq) noexcept
+	static volatile Tcc* const TccDevices[] =
 	{
-		static volatile Tcc* const TccDevices[] =
-		{
-			TCC0, TCC1, TCC2,
+		TCC0, TCC1, TCC2,
 #if SAME5x
-			TCC3, TCC4
+		TCC3, TCC4
 #endif
-		};
+	};
+
+	// Write PWM to the specified TCC device. 'output' may be 0..5.]
+	// If 'bipolar' is true then 'output must be 0, and we invert output 0 but no other outputs.
+	static bool AnalogWriteTcc(Pin pin, unsigned int device, unsigned int output, GpioPinFunction peri, float val, PwmFrequency freq, bool bipolar) noexcept
+	{
 		static constexpr unsigned int TccCounterBits[ARRAY_SIZE(TccDevices)] =
 		{
 			24, 24, 16,
@@ -177,6 +180,7 @@ namespace AnalogOut
 			}
 
 			volatile Tcc * const tccdev = TccDevices[device];
+			const unsigned int outputToUse = output % NumChannels[device];		// some TCCs have more outputs than compare channels, so we can't always use the compare channel that corresponds to the output
 			if (freq != tccFreq[device])
 			{
 				const uint32_t prescaler = ChoosePrescaler(freq, TccCounterBits[device], tccTop[device]);
@@ -202,26 +206,24 @@ namespace AnalogOut
 				tccdev->PERBUF.bit.PERBUF = tccTop[device];
 				tccdev->PER.bit.PER = tccTop[device];
 
-				// Some TCCs have more outputs than compare channels. So we can't always use the compare channel that corresponds to the output.
-				tccdev->CCBUF[output % NumChannels[device]].bit.CCBUF = cc;
-				tccdev->CC[output % NumChannels[device]].bit.CC = cc;
+				tccdev->CCBUF[outputToUse].bit.CCBUF = cc;
+				tccdev->CC[outputToUse].bit.CC = cc;
+
+				if (bipolar)
+				{
+					tccdev->WEXCTRL.reg = TCC_WEXCTRL_OTMX(2);								// distribute channel 0 to all outputs
+					tccdev->DRVCTRL.reg = TCC_DRVCTRL_INVEN0 << output;						// invert the output on the first pin, don't invert any other outputs
+				}
 
 				hri_tcc_set_CTRLA_ENABLE_bit(tccdev);
-				hri_tcc_write_COUNT_reg(tccdev, 0);
+				tccdev->CTRLBSET.reg = TCC_CTRLBSET_CMD_RETRIGGER;							// if we don't do this then there is a delay before PWM starts
 				tccFreq[device] = freq;
 			}
 			else
 			{
 				// Just update the compare register
 				const uint32_t cc = ConvertRange(val, tccTop[device]);
-				if (output >= NumChannels[device])
-				{
-					tccdev->CCBUF[0].bit.CCBUF = cc;
-				}
-				else
-				{
-					tccdev->CCBUF[output].bit.CCBUF = cc;
-				}
+				tccdev->CCBUF[outputToUse].bit.CCBUF = cc;
 			}
 
 			SetPinFunction(pin, peri);
@@ -266,7 +268,7 @@ void AnalogOut::Write(Pin pin, float val, PwmFrequency freq) noexcept
 			const TccOutput tcc = pd->tcc;
 			if (tcc != TccOutput::none)
 			{
-				if (AnalogWriteTcc(pin, GetDeviceNumber(tcc), GetOutputNumber(tcc), GetPeriNumber(tcc), val, freq))
+				if (AnalogWriteTcc(pin, GetDeviceNumber(tcc), GetOutputNumber(tcc), GetPeriNumber(tcc), val, freq, false))
 				{
 					return;
 				}
@@ -277,5 +279,34 @@ void AnalogOut::Write(Pin pin, float val, PwmFrequency freq) noexcept
 	// Fall back to digital write
 	pinMode(pin, (val < 0.5) ? OUTPUT_LOW : OUTPUT_HIGH);
 }
+
+#if SAME5x || SAMC21
+
+// Set the beeper to produce a tone using two TCC output pins as differential outputs. Set frequency to zero to stop the beeper.
+// Pin1 must be a TCCx.0 pin. Pin2 must be a TXXx.y pin for the same x and y /= 0.
+// Caution! This does not check that the pins are valid.
+void AnalogOut::Beep(Pin pin1, Pin pin2, PwmFrequency freq) noexcept
+{
+	if (freq == 0)
+	{
+		SetPinMode(pin1, OUTPUT_LOW, 0);
+		SetPinMode(pin2, OUTPUT_LOW, 0);
+	}
+	else
+	{
+		const PinDescriptionBase * const pd1 = AppGetPinDescription(pin1);
+		const PinDescriptionBase * const pd2 = AppGetPinDescription(pin2);
+		const TccOutput tcc = pd1->tcc;
+		if (tcc != TccOutput::none)
+		{
+			// Writing to the DRVCTRL and WEXCTRL registers works when the device is not enabled, so do it first
+			SetPinFunction(pin2, GetPeriNumber(pd2->tcc));							// enable the other output pin
+			AnalogWriteTcc(pin1, GetDeviceNumber(tcc), GetOutputNumber(tcc), GetPeriNumber(tcc), 0.5, freq, true);
+			return;
+		}
+	}
+}
+
+#endif
 
 // End

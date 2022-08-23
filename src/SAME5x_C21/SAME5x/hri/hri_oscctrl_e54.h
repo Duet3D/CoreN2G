@@ -32,7 +32,7 @@
  */
 
 //#ifdef _SAME54_OSCCTRL_COMPONENT_
-#if defined(_SAME54_OSCCTRL_COMPONENT_) || defined(_SAME51_OSCCTRL_COMPONENT_)	// dc42 same54 and same51 versions were identical except for this line
+#if defined(_SAME54_OSCCTRL_COMPONENT_) || defined(_SAME51_OSCCTRL_COMPONENT_) || defined(_SAMD51_OSCCTRL_COMPONENT_)	// dc42 same54 and same51 versions were identical except for this line
 #ifndef _HRI_OSCCTRL_E54_H_INCLUDED_
 #define _HRI_OSCCTRL_E54_H_INCLUDED_
 
