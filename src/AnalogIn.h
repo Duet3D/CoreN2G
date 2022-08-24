@@ -65,7 +65,7 @@ namespace AnalogIn
 	bool EnableTemperatureSensor(unsigned int sensorNumber, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall, unsigned int adcnum) noexcept;
 #endif
 
-#if SAMC21
+#if SAMC21 || RP2040
 	void EnableTemperatureSensor(AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall) noexcept;
 #endif
 

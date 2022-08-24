@@ -28,6 +28,8 @@
 # include <pmc/pmc.h>
 # include <pio/pio.h>
 # include <rstc/rstc.h>
+#elif RP2040
+# include <hardware/watchdog.h>
 #endif
 
 
@@ -560,6 +562,10 @@ void WatchdogInit() noexcept
 	// This assumes the slow clock is running at 32.768 kHz, watchdog frequency is therefore 32768 / 128 = 256 Hz
 	constexpr uint16_t watchdogTicks = 256;						// about 1 second
 	WDT->WDT_MR = WDT_MR_WDRSTEN | WDT_MR_WDV(watchdogTicks) | WDT_MR_WDD(watchdogTicks);
+#elif RP2040
+	watchdog_enable(750, true);									// we reset the timer to run at 750kHz instead of 1MHz, so 1 second is 750 "milliseconds"
+#else
+# error Unsupported processor
 #endif
 }
 
@@ -573,6 +579,10 @@ void WatchdogReset() noexcept
 	}
 #elif SAME70 || SAM4E || SAM4S
 	WDT->WDT_CR = WDT_CR_KEY_PASSWD | WDT_CR_WDRSTT;
+#elif RP2040
+	watchdog_update();
+#else
+# error Unsupported processor
 #endif
 }
 

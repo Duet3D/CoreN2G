@@ -41,6 +41,12 @@ constexpr unsigned int NumTotalPins = 30;				// RP2040 goes up to GPIO29
 # error Unsupported processor
 #endif
 
+#if RP2040
+
+inline constexpr Pin GpioPin(unsigned int n) noexcept { return n; }
+
+#else
+
 inline uint32_t GpioPortNumber(Pin p) { return p >> 5; }
 inline constexpr uint32_t GpioPinNumber(Pin p) { return p & 0x1F; }
 inline constexpr uint32_t GpioMask(Pin p) { return (uint32_t)1 << GpioPinNumber(p); }
@@ -101,15 +107,23 @@ inline constexpr Pin PortEPin(unsigned int n) noexcept { return 128+n; }
 
 #endif
 
+#endif	// !RP2040
+
 /**
  * @brief Pin function numbers for calls to SetPinFunction
  *
  */
 enum class GpioPinFunction : uint8_t
 {
+#if RP2040
+    Xip = 0, Spi = 1, Uart = 2, I2c = 3, Pwm = 4,
+    Sio = 5, Pio0 = 6, Pio1 = 7, Gpck = 8, Usb = 9,
+    None = 0x1f
+#else
 	A = 0, B, C, D,
-#if SAME5x || SAMC21
+# if SAME5x || SAMC21
 	E, F, G, H, I, J, K, L, M, N
+# endif
 #endif
 };
 
@@ -666,7 +680,10 @@ static inline constexpr GpioPinFunction GetPeriNumber(PwmOutput pwm) noexcept
  */
 enum class AdcInput : uint8_t
 {
-	adc0_0 = 0x00, adc0_1, adc0_2, adc0_3, adc0_4, adc0_5, adc0_6, adc0_7, adc0_8, adc0_9,
+	adc0_0 = 0x00, adc0_1, adc0_2, adc0_3,
+#if !RP2040
+	adc0_4, adc0_5, adc0_6, adc0_7, adc0_8, adc0_9,
+#endif
 #if SAMC21
 	adc0_10, adc0_11,
 	sdadc_0 = 0x10, sdadc_1,
@@ -730,6 +747,8 @@ AnalogChannelNumber PinToSdAdcChannel(Pin p) noexcept;
 
 #endif
 
+#if !RP2040
+
 /**
  * @brief SERCOM identifier. This encodes a SERCOM number and the peripheral that it is on.
  *
@@ -768,6 +787,8 @@ static inline constexpr unsigned int GetDeviceNumber(SercomIo sercom) noexcept {
  * @return The peripheral ID
  */
 static inline constexpr GpioPinFunction GetPeriNumber(SercomIo sercom) noexcept { return ((uint8_t)sercom >= 0x80) ? GpioPinFunction::D : GpioPinFunction::C; }
+
+#endif
 
 // Addresses of unique ID dwords
 #if SAME5x

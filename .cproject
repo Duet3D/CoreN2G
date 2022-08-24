@@ -2215,6 +2215,7 @@
 									<listOptionValue builtIn="false" value="&quot;${PicoSdkPath}/src/rp2_common/hardware_irq/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${PicoSdkPath}/src/rp2_common/hardware_sync/Include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${PicoSdkPath}/src/rp2_common/hardware_timer/Include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${PicoSdkPath}/src/rp2_common/hardware_watchdog/Include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${PicoSdkPath}/src/rp2_common/pico_platform/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${PicoSdkPath}/src/rp2_common/pico_unique_id/Include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${PicoSdkPath}/src/rp2_common/cmsis/include&quot;"/>
