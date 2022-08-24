@@ -10,7 +10,7 @@
 
 #include <CoreIO.h>
 
-#if SUPPORT_CAN && !RP2040
+#if SUPPORT_CAN
 
 # include <CanId.h>
 # include <General/Bitmap.h>
@@ -188,6 +188,7 @@ public:
 
 	void GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsigned int& rMessagesReceived, unsigned int& rMessagesLost, unsigned int& rBusOffCount) noexcept;
 
+#if !RP2040
 	uint16_t ReadTimeStampCounter() noexcept
 	{
 #if SAME70
@@ -196,6 +197,7 @@ public:
 		return hw->TSCV.reg;
 #endif
 	}
+#endif
 
 #if !SAME70
 	uint16_t GetTimeStampPeriod() noexcept
@@ -238,7 +240,9 @@ private:
 	void CopyMessageForTransmit(CanMessageBuffer *buffer, volatile TxBufferHeader *f) noexcept;
 	void CopyReceivedMessage(CanMessageBuffer *null buffer, const volatile RxBufferHeader *f) noexcept;
 
+#if !RP2040
 	Can *hw;													// address of the CAN peripheral we are using
+#endif
 
 	unsigned int whichCan;										// which CAN device we are
 	unsigned int whichPort;										// which CAN port number we use, 0 or 1
