@@ -27,7 +27,7 @@ namespace AnalogIn
 	// Initialise the analog input subsystem. Call this just once.
 	// For the SAME5x we need 4 DMA channels. For the SAMC21 we need 1 DMA channel, or 2 if supporting the SDADC.
 	void Init(
-#if SAME5x
+#if SAME5x || RP2040
 				NvicPriority interruptPriority
 #else
 				DmaChannel dmaChan,

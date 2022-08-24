@@ -30,6 +30,8 @@ const char *sysStackLimit = (const char*)&_estack - SystemStackSize;
 const char *heapLimit = (const char*)&_estack - SystemStackSize;
 char *heapTop = &_end;
 
+#if !RP2040
+
 /**
  * \brief Replacement of C library of _sbrk
  */
@@ -49,6 +51,8 @@ extern "C" void * _sbrk(ptrdiff_t incr) noexcept
 	errno = ENOMEM;
 	return reinterpret_cast<void*>(-1);
 }
+
+#endif
 
 /**
  * \brief Allocate memory permanently. In multi-threaded environments, take the malloc mutex before calling this.
@@ -111,6 +115,8 @@ extern "C" int _lseek(int file, int ptr, int dir) noexcept
 	return 0;
 }
 
+#if !RP2040
+
 /**
  * \brief Replacement of C library of _exit
  */
@@ -118,6 +124,8 @@ extern "C" void _exit(int status) noexcept
 {
 	for (;;) { }
 }
+
+#endif
 
 /**
  * \brief Replacement of C library of _kill
