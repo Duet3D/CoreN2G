@@ -19,6 +19,8 @@ namespace AnalogIn
 	constexpr unsigned int AdcBits = 16;
 #elif SAME5x
 	constexpr unsigned int AdcBits = 16;
+#elif RP2040
+	constexpr unsigned int AdcBits = 12;
 #endif
 
 #ifdef RTOS
