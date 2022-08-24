@@ -19,6 +19,10 @@
 #  include <RTOSIface/RTOSIface.h>
 # endif
 
+#if RP2040
+# include <hardware/structs/timer.h>
+#endif
+
 constexpr unsigned int MaxTxBuffers = 6;			// maximum number of dedicated transmit buffers supported by this driver
 constexpr unsigned int MaxRxBuffers = 4;			// maximum number of dedicated receive buffers supported by this driver
 
@@ -188,16 +192,16 @@ public:
 
 	void GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsigned int& rMessagesReceived, unsigned int& rMessagesLost, unsigned int& rBusOffCount) noexcept;
 
-#if !RP2040
 	uint16_t ReadTimeStampCounter() noexcept
 	{
-#if SAME70
+#if RP2040
+		return timer_hw->timerawl;									// read lower 32 bits of the hardware timer, which we also use for CAN time stamping
+#elif SAME70
 		return hw->MCAN_TSCV;
 #else
 		return hw->TSCV.reg;
 #endif
 	}
-#endif
 
 #if !SAME70
 	uint16_t GetTimeStampPeriod() noexcept
