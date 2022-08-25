@@ -178,13 +178,15 @@ void CanDevice::DoHardwareInit() noexcept
 	// Leave the device disabled. Client must call Enable() to enable it after setting up the receive filters.
 }
 
+#endif
+
 // Set the extended ID mask. May only be used while the interface is disabled.
 void CanDevice::SetExtendedIdMask(uint32_t mask) noexcept
 {
+#if 0
 	hw->REG(XIDAM) = mask;
-}
-
 #endif
+}
 
 // Stop and free this device and the CAN port it uses
 void CanDevice::DeInit() noexcept
