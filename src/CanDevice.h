@@ -203,7 +203,7 @@ public:
 #endif
 	}
 
-#if !SAME70
+#if !SAME70 && !RP2040
 	uint16_t GetTimeStampPeriod() noexcept
 	{
 		return bitPeriod;
@@ -222,15 +222,26 @@ public:
 	static constexpr size_t Can0DataSize = 64;
 
 private:
+	static CanDevice devices[NumCanDevices];
+
+	CanDevice() noexcept { }
+
+#if RP2040
+	unsigned int messagesQueuedForSending;
+	unsigned int messagesReceived;
+	unsigned int messagesLost;									// count of received messages lost because the receive FIFO was full
+	unsigned int busOffCount;									// count of the number of times we have reset due to bus off
+
+	TxEventCallbackFunction txCallback;							// function that gets called by the ISR when a transmit event for a message with a nonzero marker occurs
+	const Config *config;										//!< Configuration parameters
+	bool inUse = false;
+#else
 	struct TxEvent;
 	struct StandardMessageFilterElement;
 	struct ExtendedMessageFilterElement;
 	class RxBufferHeader;
 	class TxBufferHeader;
 
-	static CanDevice devices[NumCanDevices];
-
-	CanDevice() noexcept { }
 	void DoHardwareInit() noexcept;
 	void UpdateLocalCanTiming(const CanTiming& timing) noexcept;
 	uint32_t GetRxBufferSize() const noexcept;
@@ -244,9 +255,7 @@ private:
 	void CopyMessageForTransmit(CanMessageBuffer *buffer, volatile TxBufferHeader *f) noexcept;
 	void CopyReceivedMessage(CanMessageBuffer *null buffer, const volatile RxBufferHeader *f) noexcept;
 
-#if !RP2040
-	Can *hw;													// address of the CAN peripheral we are using
-#endif
+	Can *hw = nullptr;											// address of the CAN peripheral we are using
 
 	unsigned int whichCan;										// which CAN device we are
 	unsigned int whichPort;										// which CAN port number we use, 0 or 1
@@ -282,6 +291,7 @@ private:
 #endif
 
 	bool useFDMode;
+#endif
 };
 
 #endif
