@@ -127,7 +127,7 @@ static const uint32_t SystemCoreClockFreq = 300000000;	///< The processor clock 
 
 #elif RP2040
 
-static const uint32_t SystemCoreClockFreq = 133000000;	///< The processor clock frequency after initialisation
+static const uint32_t SystemCoreClockFreq = 125000000;	///< The processor clock frequency after initialisation
 
 #else
 # error unsupported processor

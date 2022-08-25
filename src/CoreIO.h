@@ -667,7 +667,11 @@ static inline constexpr unsigned int GetOutputNumber(PwmOutput pwm) noexcept
  */
 static inline constexpr GpioPinFunction GetPeriNumber(PwmOutput pwm) noexcept
 {
+#if RP2040
+	return GpioPinFunction::Pwm;
+#else
 	return (GpioPinFunction)((uint8_t)pwm >> 5);
+#endif
 }
 
 #endif
