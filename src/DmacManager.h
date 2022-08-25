@@ -16,6 +16,8 @@ constexpr unsigned int NumDmaChannelsSupported = 15;	// max is 32
 constexpr unsigned int NumDmaChannelsSupported = 8;		// max is 12
 #elif SAME70
 constexpr unsigned int NumDmaChannelsSupported = 10;	// max for SAME70 is 24
+#elif RP2040
+constexpr unsigned int NumDmaChannelsSupported = 8;		// max is 12
 #endif
 
 // Status code indicating why a DMAC callback is happening
@@ -28,6 +30,10 @@ enum class DmaCallbackReason : uint8_t
 	completeAndError = DMAC_CHINTFLAG_TERR | DMAC_CHINTFLAG_TCMPL
 #elif SAME70
 	complete = 1
+#elif RP2040
+	complete = 1,
+	error = 2,
+	completeAndError = 3
 #endif
 };
 
@@ -276,21 +282,33 @@ static inline uint8_t GetSercomRxTrigSource(uint8_t sercomNumber) noexcept
 namespace DmacManager
 {
 	void Init() noexcept;
+#if RP2040
+	void SetBtctrl(DmaChannel channel, uint32_t val) noexcept;								// warning: call SetBtctrl, SetSourceAddress and SetDestinationAddress BEFORE SetDataLength!
+#else
 	void SetBtctrl(DmaChannel channel, uint16_t val) noexcept;								// warning: call SetBtctrl, SetSourceAddress and SetDestinationAddress BEFORE SetDataLength!
+#endif
 	void SetSourceAddress(DmaChannel channel, const volatile void *const src) noexcept;		// warning: call SetBtctrl, SetSourceAddress and SetDestinationAddress BEFORE SetDataLength!
 	void SetDestinationAddress(DmaChannel channel, volatile void *const dst) noexcept;		// warning: call SetBtctrl, SetSourceAddress and SetDestinationAddress BEFORE SetDataLength!
 	void SetDataLength(DmaChannel channel, uint32_t amount) noexcept;						// warning: call SetBtctrl, SetSourceAddress and SetDestinationAddress BEFORE SetDataLength!
 	void SetTriggerSource(DmaChannel channel, DmaTrigSource source) noexcept;
+
+#if !RP2040
 	void SetTriggerSourceSercomTx(DmaChannel channel, uint8_t sercomNumber) noexcept;
 	void SetTriggerSourceSercomRx(DmaChannel channel, uint8_t sercomNumber) noexcept;
 	void SetArbitrationLevel(DmaChannel channel, uint8_t level) noexcept;
+	uint16_t GetBytesTransferred(DmaChannel channel) noexcept;
+#endif
+
 	void EnableChannel(DmaChannel channel, DmaPriority priority) noexcept;
 	bool DisableChannel(DmaChannel channel) noexcept;
 	void SetInterruptCallback(DmaChannel channel, DmaCallbackFunction fn, CallbackParameter param) noexcept;
 	void EnableCompletedInterrupt(DmaChannel channel) noexcept;
 	void DisableCompletedInterrupt(DmaChannel channel) noexcept;
+#if RP2040
+	uint32_t GetAndClearChannelStatus(DmaChannel channel) noexcept;
+#else
 	uint8_t GetAndClearChannelStatus(DmaChannel channel) noexcept;
-	uint16_t GetBytesTransferred(DmaChannel channel) noexcept;
+#endif
 }
 
 #endif /* SRC_HARDWARE_DMACMANAGER_H_ */

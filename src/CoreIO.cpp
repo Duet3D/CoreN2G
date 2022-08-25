@@ -30,6 +30,7 @@
 # include <rstc/rstc.h>
 #elif RP2040
 # include <hardware/watchdog.h>
+# include <hardware/adc.h>
 #endif
 
 
@@ -339,8 +340,7 @@ void SetPinMode(Pin pin, enum PinMode mode, uint32_t debounceCutoff = 0) noexcep
 			// Ideally we should record which pins are being used as analog inputs, then we can disable the clock
 			// on any PIO that is being used solely for outputs and ADC inputs. But for now we don't do that.
 #elif RP2040
-			gpio_disable_pulls(pin);
-			gpio_set_function(pin, GPIO_FUNC_NULL);
+			adc_gpio_init(pin);
 #else
 			PORT->Group[GpioPortNumber(pin)].DIRCLR.reg = GpioMask(pin);
 			PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].reg = 0;

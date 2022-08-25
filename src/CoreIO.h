@@ -680,7 +680,7 @@ static inline constexpr GpioPinFunction GetPeriNumber(PwmOutput pwm) noexcept
  */
 enum class AdcInput : uint8_t
 {
-	adc0_0 = 0x00, adc0_1, adc0_2, adc0_3,
+	adc0_0 = 0x00, adc0_1, adc0_2, adc0_3, adc0_tempSense,
 #if !RP2040
 	adc0_4, adc0_5, adc0_6, adc0_7, adc0_8, adc0_9,
 #endif
@@ -711,6 +711,8 @@ enum class AdcInput : uint8_t
 typedef AdcInput AnalogChannelNumber;						///< for backwards compatibility
 constexpr AnalogChannelNumber NO_ADC = AdcInput::none;		///< for backwards compatibility
 
+#if !RP2040
+
 /**
  * @brief Get the ADC number that an ADC input is on
  *
@@ -719,13 +721,22 @@ constexpr AnalogChannelNumber NO_ADC = AdcInput::none;		///< for backwards compa
  */
 static inline constexpr unsigned int GetDeviceNumber(AdcInput ain) noexcept { return (uint8_t)ain >> 4; }
 
+#endif
+
 /**
  * @brief Get the ADC input number that an ADC input is on
  *
  * @param ain The AdcInput
  * @return The input number within the ADC
  */
-static inline constexpr unsigned int GetInputNumber(AdcInput ain) noexcept { return (uint8_t)ain & 0x0F; }
+static inline constexpr unsigned int GetInputNumber(AdcInput ain) noexcept
+{
+#if RP2040
+	return (uint8_t)ain;
+#else
+	return (uint8_t)ain & 0x0F;
+#endif
+}
 
 /**
  * @brief Return the AdcInput that is attached to a pin

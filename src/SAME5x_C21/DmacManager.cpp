@@ -19,7 +19,7 @@
 #include <RTOSIface/RTOSIface.h>
 #include <Cache.h>
 
-constexpr NvicPriority TempNvicPriorityDMA = 4;			// temporary DMA interrupt priority, low enough to allow FreeRTOS system calls
+constexpr NvicPriority TempNvicPriorityDMA = 2;			// temporary DMA interrupt priority, low enough to allow FreeRTOS system calls
 
 // Descriptors for all used DMAC channels
 alignas(16) static DmacDescriptor descriptor_section[NumDmaChannelsSupported];
