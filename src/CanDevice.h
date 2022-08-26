@@ -45,14 +45,18 @@ public:
 	enum class RxBufferNumber : uint32_t
 	{
 		fifo0 = 0, fifo1,
+#if !RP2040
 		buffer0, buffer1, buffer2, buffer3,
+#endif
 		none = 0xFFFF
 	};
 
 	enum class TxBufferNumber : uint32_t
 	{
 		fifo = 0,
+#if !RP2040
 		buffer0, buffer1, buffer2, buffer3, buffer4, buffer5,
+#endif
 	};
 
 	// Struct used to pass configuration constants, with default values
@@ -140,8 +144,10 @@ public:
 	// Initialise one of the CAN interfaces and return a pointer to the corresponding device. Returns null if device is already in use or device number is out of range.
 	static CanDevice *Init(unsigned int p_whichCan, unsigned int p_whichPort, const Config& p_config, uint32_t *memStart, const CanTiming& timing, TxEventCallbackFunction p_txCallback) noexcept;
 
+#if !RP2040
 	// Set the extended ID mask. May only be used while the interface is disabled.
 	void SetExtendedIdMask(uint32_t mask) noexcept;
+#endif
 
 	// Free the device
 	void DeInit() noexcept;
