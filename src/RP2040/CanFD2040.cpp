@@ -1310,4 +1310,9 @@ bool CanFD2040::tx_check_local_message() noexcept
     return false;
 }
 
+extern "C" void Core1Entry() noexcept
+{
+	//TODO
+}
+
 // End

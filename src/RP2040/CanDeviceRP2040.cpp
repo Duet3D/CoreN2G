@@ -102,7 +102,10 @@ inline CanDevice::TxBufferHeader *CanDevice::GetTxBuffer(uint32_t index) const n
 // Virtual registers, shared between the two cores
 VirtualCanRegisters virtualRegs;
 
+static bool core1Initialised = false;
+
 extern "C" void CAN_Handler() noexcept;
+extern "C" void Core1Entry() noexcept;
 
 // Initialise a CAN device and return a pointer to it
 /*static*/ CanDevice* CanDevice::Init(unsigned int p_whichCan, unsigned int p_whichPort, const Config& p_config, uint32_t *memStart, const CanTiming &timing, TxEventCallbackFunction p_txCallback) noexcept
@@ -155,6 +158,7 @@ extern "C" void CAN_Handler() noexcept;
 void CanDevice::DoHardwareInit() noexcept
 {
 	Disable();
+	virtualRegs.Init();
 
 	virtualRegs.rxFifo0Size = config->rxFifo0Size + 1;									// number of entries
 	virtualRegs.rxFifo0Addr = rx0Fifo;													// address
@@ -167,6 +171,12 @@ void CanDevice::DoHardwareInit() noexcept
 	virtualRegs.shortFiltersAddr = rxStdFilter;											// short filter start address
 	virtualRegs.numExtendedFilterElements = config->numExtendedFilterElements;			// number of extended filter elements
 	virtualRegs.extendedFiltersAddr = rxExtFilter;										// extended filter start address
+
+	if (!core1Initialised)
+	{
+		multicore_launch_core1(Core1Entry);
+		core1Initialised = true;
+	}
 
 	multicore_fifo_drain();
 
