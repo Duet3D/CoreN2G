@@ -143,65 +143,6 @@ struct CanDevice::TxEvent
 	} R1;
 };
 
-/**
- * \brief CAN standard message ID filter element structure.
- *
- *  Common element structure for standard message ID filter element.
- */
-struct CanDevice::StandardMessageFilterElement
-{
-	union S0Type
-	{
-		struct
-		{
-			uint32_t SFID2 : 11; /*!< Standard Filter ID 2 */
-			uint32_t : 5;        /*!< Reserved */
-			uint32_t SFID1 : 11; /*!< Standard Filter ID 1 */
-			uint32_t SFEC : 3;   /*!< Standard Filter Configuration */
-			uint32_t SFT : 2;    /*!< Standard Filter Type */
-		} bit;
-		uint32_t val; /*!< Type used for register access */
-	};
-
-	__IO S0Type S0;
-};
-
-static_assert(sizeof(CanDevice::StandardMessageFilterElement) == CanDevice::Config::StandardFilterElementSize * sizeof(uint32_t));
-
-/**
- * \brief CAN extended message ID filter element structure.
- *
- *  Common element structure for extended message ID filter element.
- */
-struct CanDevice::ExtendedMessageFilterElement
-{
-	union F0Type
-	{
-		struct
-		{
-			uint32_t EFID1 : 29;	//!< bit: Extended Filter ID 1
-			uint32_t EFEC : 3;		//!< bit: Extended Filter Configuration
-		} bit;
-		uint32_t val;				//!< Type used for register access
-	};
-
-	union F1Type
-	{
-		struct
-		{
-			uint32_t EFID2 : 29;	//!< bit: Extended Filter ID 2
-			uint32_t : 1;			//!< bit: Reserved
-			uint32_t EFT : 2;		//!< bit: Extended Filter Type
-		} bit;
-		uint32_t val;				//!< Type used for register access
-	};
-
-	__IO union F0Type F0;
-	__IO union F1Type F1;
-};
-
-static_assert(sizeof(CanDevice::ExtendedMessageFilterElement) == CanDevice::Config::ExtendedFilterElementSize * sizeof(uint32_t));
-
 // Macros to handle the differing naming of registers and fields between the SAME70 and the SAME5x/C21
 #if SAME5x || SAMC21
 
@@ -280,9 +221,9 @@ inline CanDevice::TxEvent *CanDevice::GetTxEvent(uint32_t index) const noexcept 
 	}
 #endif
 
-	dev.rxStdFilter = (StandardMessageFilterElement*)memStart;
+	dev.rxStdFilter = (CanStandardMessageFilterElement*)memStart;
 	memStart += p_config.GetStandardFiltersMemSize();
-	dev.rxExtFilter = (ExtendedMessageFilterElement*)memStart;
+	dev.rxExtFilter = (CanExtendedMessageFilterElement*)memStart;
 	memStart += p_config.GetExtendedFiltersMemSize();
 	dev.rx0Fifo = memStart;
 	memStart += p_config.rxFifo0Size * p_config.GetRxBufferSize();
@@ -939,7 +880,7 @@ void CanDevice::SetShortFilterElement(unsigned int index, RxBufferNumber whichBu
 {
 	if (index < config->numShortFilterElements)
 	{
-		StandardMessageFilterElement::S0Type s0;
+		CanStandardMessageFilterElement::S0Type s0;
 		s0.val = 0;										// disable filter, clear reserved fields
 		s0.bit.SFID1 = id;
 		s0.bit.SFT = 0x02;							// classic filter
@@ -985,11 +926,11 @@ void CanDevice::SetExtendedFilterElement(unsigned int index, RxBufferNumber whic
 {
 	if (index < config->numExtendedFilterElements)
 	{
-		volatile ExtendedMessageFilterElement& efp = rxExtFilter[index];
+		volatile CanExtendedMessageFilterElement& efp = rxExtFilter[index];
 		efp.F0.val = 0;									// disable filter
 
-		ExtendedMessageFilterElement::F0Type f0;
-		ExtendedMessageFilterElement::F1Type f1;
+		CanExtendedMessageFilterElement::F0Type f0;
+		CanExtendedMessageFilterElement::F1Type f1;
 		f0.val = 0;									// clear all fields
 		f1.val = 0;									// clear all fields
 		f1.bit.EFT  = 0x02;							// classic filter

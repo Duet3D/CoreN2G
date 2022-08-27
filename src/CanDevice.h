@@ -13,6 +13,7 @@
 #if SUPPORT_CAN
 
 # include <CanId.h>
+# include "CanFilterElements.h"
 # include <General/Bitmap.h>
 
 # ifdef RTOS
@@ -79,8 +80,8 @@ public:
 		unsigned int txEventFifoSize = 16;
 #endif
 
-		static constexpr size_t StandardFilterElementSize = 1;				// one word each
-		static constexpr size_t ExtendedFilterElementSize = 2;				// two words
+		static constexpr size_t StandardFilterElementSize = sizeof(CanStandardMessageFilterElement)/sizeof(uint32_t);				// one word each
+		static constexpr size_t ExtendedFilterElementSize = sizeof(CanExtendedMessageFilterElement)/sizeof(uint32_t);				// two words
 
 		// Test whether the data size is supported by the CAN hardware
 		constexpr bool ValidDataSize() const noexcept
@@ -102,14 +103,15 @@ public:
 #if RP2040
 				&& numTxBuffers == 0										// our RP2040 code doesn't support dedicated Tx buffers
 				&& txEventFifoSize == 0										// our RP2040 code doesn't support the transmit event FIFO
+				&& numRxBuffers <= 6;										// we encode the destination in 3 bits, allowing 2 FIFOs and 6 buffers
 #else
 				&& numTxBuffers + txFifoSize <= 32							// maximum total Tx buffers supported is 32
 				&& numTxBuffers <= MaxTxBuffers								// our code only allows 31 buffers + the FIFO
 				&& rxFifo0Size <= 64										// max 64 entries per receive FIFO
 				&& rxFifo1Size <= 64										// max 64 entries per receive FIFO
 				&& txEventFifoSize <= 32									// max 32 entries in transmit event FIFO
+				&& numRxBuffers <= MaxRxBuffers;							// the peripheral supports up to 64 buffers but our code only allows 30 buffers + the two FIFOs
 #endif
-				&& numRxBuffers <= MaxRxBuffers;								// the peripheral supports up to 64 buffers but our code only allows 30 buffers + the two FIFOs
 		}
 
 		// Return the number of words of memory occupied by the 11-bit filters
@@ -254,9 +256,6 @@ public:
 	// Configuration constants. Need to be public because they are used to size static data in CanDevice.cpp
 	static constexpr size_t Can0DataSize = 64;
 
-	struct StandardMessageFilterElement;
-	struct ExtendedMessageFilterElement;
-
 private:
 #if !RP2040
 	struct TxEvent;
@@ -304,8 +303,8 @@ private:
 #if !RP2040
 	TxEvent *txEventFifo;										//!< Transfer event fifo
 #endif
-	StandardMessageFilterElement *rxStdFilter;					//!< Standard filter List
-	ExtendedMessageFilterElement *rxExtFilter;					//!< Extended filter List
+	CanStandardMessageFilterElement *rxStdFilter;				//!< Standard filter List
+	CanExtendedMessageFilterElement *rxExtFilter;				//!< Extended filter List
 
 	unsigned int messagesQueuedForSending;
 	unsigned int messagesReceived;
