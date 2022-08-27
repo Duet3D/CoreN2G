@@ -36,7 +36,7 @@
 /**
  * \brief CAN receive FIFO element.
  */
-struct CanDevice::RxBufferHeader
+struct CanRxBufferHeader
 {
 	union
 	{
@@ -67,15 +67,10 @@ struct CanDevice::RxBufferHeader
 	const volatile uint32_t *GetDataPointer() const volatile { return (volatile uint32_t*)this + (sizeof(*this)/sizeof(uint32_t)); }
 };
 
-template<size_t DataLength> struct CanRxBufferEntry : public CanDevice::RxBufferHeader
-{
-	uint8_t data[DataLength];
-};
-
 /**
  * \brief CAN transmit FIFO element.
  */
-struct CanDevice::TxBufferHeader
+struct CanTxBufferHeader
 {
 	union
 	{
@@ -104,11 +99,6 @@ struct CanDevice::TxBufferHeader
 	} T1;
 
 	volatile uint32_t *GetDataPointer() volatile { return (volatile uint32_t*)this + (sizeof(*this)/sizeof(uint32_t)); }
-};
-
-template<size_t DataLength> struct CanTxBufferEntry : public CanDevice::TxBufferHeader
-{
-	uint8_t data[DataLength];
 };
 
 /**@}*/
@@ -173,12 +163,12 @@ static CanDevice *devicesByPort[2] = { nullptr, nullptr };
 
 static CanDevice devices[NumCanDevices];
 
-inline uint32_t CanDevice::GetRxBufferSize() const noexcept { return sizeof(RxBufferHeader)/sizeof(uint32_t) + (config->dataSize >> 2); }
-inline uint32_t CanDevice::GetTxBufferSize() const noexcept { return sizeof(TxBufferHeader)/sizeof(uint32_t) + (config->dataSize >> 2); }
-inline CanDevice::RxBufferHeader *CanDevice::GetRxFifo0Buffer(uint32_t index) const noexcept { return (RxBufferHeader*)(rx0Fifo + (index * GetRxBufferSize())); }
-inline CanDevice::RxBufferHeader *CanDevice::GetRxFifo1Buffer(uint32_t index) const noexcept { return (RxBufferHeader*)(rx1Fifo + (index * GetRxBufferSize())); }
-inline CanDevice::RxBufferHeader *CanDevice::GetRxBuffer(uint32_t index) const noexcept { return (RxBufferHeader*)(rxBuffers + (index * GetRxBufferSize())); }
-inline CanDevice::TxBufferHeader *CanDevice::GetTxBuffer(uint32_t index) const noexcept { return (TxBufferHeader*)(txBuffers + (index * GetTxBufferSize())); }
+inline uint32_t CanDevice::GetRxBufferSize() const noexcept { return sizeof(CanRxBufferHeader)/sizeof(uint32_t) + (config->dataSize >> 2); }
+inline uint32_t CanDevice::GetTxBufferSize() const noexcept { return sizeof(CanTxBufferHeader)/sizeof(uint32_t) + (config->dataSize >> 2); }
+inline CanRxBufferHeader *CanDevice::GetRxFifo0Buffer(uint32_t index) const noexcept { return (CanRxBufferHeader*)(rx0Fifo + (index * GetRxBufferSize())); }
+inline CanRxBufferHeader *CanDevice::GetRxFifo1Buffer(uint32_t index) const noexcept { return (CanRxBufferHeader*)(rx1Fifo + (index * GetRxBufferSize())); }
+inline CanRxBufferHeader *CanDevice::GetRxBuffer(uint32_t index) const noexcept { return (CanRxBufferHeader*)(rxBuffers + (index * GetRxBufferSize())); }
+inline CanTxBufferHeader *CanDevice::GetTxBuffer(uint32_t index) const noexcept { return (CanTxBufferHeader*)(txBuffers + (index * GetTxBufferSize())); }
 inline CanDevice::TxEvent *CanDevice::GetTxEvent(uint32_t index) const noexcept { return &txEventFifo[index]; }
 
 // Initialise a CAN device and return a pointer to it
@@ -545,7 +535,7 @@ unsigned int CanDevice::NumTxMessagesPending(TxBufferNumber whichBuffer) noexcep
 
 #endif
 
-void CanDevice::CopyMessageForTransmit(CanMessageBuffer *buffer, volatile TxBufferHeader *f) noexcept
+void CanDevice::CopyMessageForTransmit(CanMessageBuffer *buffer, volatile CanTxBufferHeader *f) noexcept
 {
 	if (buffer->extId)
 	{
@@ -651,10 +641,10 @@ uint32_t CanDevice::SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, Ca
 	return cancelledId;
 }
 
-void CanDevice::CopyReceivedMessage(CanMessageBuffer *null buffer, const volatile RxBufferHeader *f) noexcept
+void CanDevice::CopyReceivedMessage(CanMessageBuffer *null buffer, const volatile CanRxBufferHeader *f) noexcept
 {
 	// The CAN has written the message directly to memory, so we must invalidate the cache before we read it
-	Cache::InvalidateAfterDMAReceive(f, sizeof(RxBufferHeader) + 64);						// flush the header and up to 64 bytes of data
+	Cache::InvalidateAfterDMAReceive(f, sizeof(CanRxBufferHeader) + 64);						// flush the header and up to 64 bytes of data
 
 	if (buffer != nullptr)
 	{

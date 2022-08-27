@@ -40,6 +40,8 @@ constexpr unsigned int NumCanDevices = 1;			// on other MCUs we only support one
 
 class CanMessageBuffer;
 class CanTiming;
+class CanRxBufferHeader;
+class CanTxBufferHeader;
 
 class CanDevice
 {
@@ -261,25 +263,22 @@ private:
 	struct TxEvent;
 #endif
 
-	class RxBufferHeader;
-	class TxBufferHeader;
-
 	void DoHardwareInit() noexcept;
 #if !RP2040
 	void UpdateLocalCanTiming(const CanTiming& timing) noexcept;
 #endif
 	uint32_t GetRxBufferSize() const noexcept;
 	uint32_t GetTxBufferSize() const noexcept;
-	RxBufferHeader *GetRxFifo0Buffer(uint32_t index) const noexcept;
-	RxBufferHeader *GetRxFifo1Buffer(uint32_t index) const noexcept;
-	RxBufferHeader *GetRxBuffer(uint32_t index) const noexcept;
-	TxBufferHeader *GetTxBuffer(uint32_t index) const noexcept;
+	CanRxBufferHeader *GetRxFifo0Buffer(uint32_t index) const noexcept;
+	CanRxBufferHeader *GetRxFifo1Buffer(uint32_t index) const noexcept;
+	CanRxBufferHeader *GetRxBuffer(uint32_t index) const noexcept;
+	CanTxBufferHeader *GetTxBuffer(uint32_t index) const noexcept;
 #if !RP2040
 	TxEvent *GetTxEvent(uint32_t index) const noexcept;
 #endif
 
-	void CopyMessageForTransmit(CanMessageBuffer *buffer, volatile TxBufferHeader *f) noexcept;
-	void CopyReceivedMessage(CanMessageBuffer *null buffer, const volatile RxBufferHeader *f) noexcept;
+	void CopyMessageForTransmit(CanMessageBuffer *buffer, volatile CanTxBufferHeader *f) noexcept;
+	void CopyReceivedMessage(CanMessageBuffer *null buffer, const volatile CanRxBufferHeader *f) noexcept;
 
 #if RP2040
 	VirtualCanRegisters registers;								// virtual register set used to pass info between cores

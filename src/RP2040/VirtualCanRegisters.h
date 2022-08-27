@@ -11,6 +11,75 @@
 #include <CoreIO.h>
 #include <CanFilterElements.h>
 
+/**@}*/
+/**
+ * \brief CAN receive FIFO element.
+ */
+struct CanRxBufferHeader
+{
+	union
+	{
+		struct
+		{
+			uint32_t ID : 29; /*!< Identifier */
+			uint32_t RTR : 1; /*!< Remote Transmission Request */
+			uint32_t XTD : 1; /*!< Extended Identifier */
+			uint32_t ESI : 1; /*!< Error State Indicator */
+		} bit;
+		uint32_t val; /*!< Type used for register access */
+	} R0;
+	union
+	{
+		struct
+		{
+			uint32_t RXTS : 16; /*!< Rx Timestamp */
+			uint32_t DLC : 4;   /*!< Data Length Code */
+			uint32_t BRS : 1;   /*!< Bit Rate Switch */
+			uint32_t FDF : 1;   /*!< FD Format */
+			uint32_t : 2;       /*!< Reserved */
+			uint32_t FIDX : 7;  /*!< Filter Index */
+			uint32_t ANMF : 1;  /*!< Accepted Non-matching Frame */
+		} bit;
+		uint32_t val; /*!< Type used for register access */
+	} R1;
+
+	const volatile uint32_t *GetDataPointer() const volatile { return (volatile uint32_t*)this + (sizeof(*this)/sizeof(uint32_t)); }
+};
+
+/**
+ * \brief CAN transmit FIFO element.
+ */
+struct CanTxBufferHeader
+{
+	union
+	{
+		struct
+		{
+			uint32_t ID : 29; /*!< Identifier */
+			uint32_t RTR : 1; /*!< Remote Transmission Request */
+			uint32_t XTD : 1; /*!< Extended Identifier */
+			uint32_t ESI : 1; /*!< Error State Indicator */
+		} bit;
+		uint32_t val; /*!< Type used for register access */
+	} T0;
+	union
+	{
+		struct
+		{
+			uint32_t : 16;    /*!< Reserved */
+			uint32_t DLC : 4; /*!< Data Length Code */
+			uint32_t BRS : 1; /*!< Bit Rate Switch */
+			uint32_t FDF : 1; /*!< FD Format */
+			uint32_t : 1;     /*!< Reserved */
+			uint32_t EFCbit : 1; /*!< Event FIFO Control */
+			uint32_t MM : 8;  /*!< Message Marker */
+		} bit;
+		uint32_t val; /*!< Type used for register access */
+	} T1;
+
+	volatile uint32_t *GetDataPointer() volatile { return (volatile uint32_t*)this + (sizeof(*this)/sizeof(uint32_t)); }
+};
+
 struct VirtualCanRegisters
 {
 	// The following configuration registers are written by the main processor while CAN is disabled, and never changed while CAN is enabled

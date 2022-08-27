@@ -6,6 +6,7 @@
  */
 
 #include "CanFD2040.h"
+#include "VirtualCanRegisters.h"
 
 #include "hardware/regs/dreq.h" // DREQ_PIO0_RX1
 #include "hardware/structs/dma.h" // dma_hw
@@ -15,6 +16,8 @@
 #include "hardware/structs/resets.h" // RESETS_RESET_PIO0_BITS
 
 #include <cstring>
+
+extern VirtualCanRegisters regs;
 
 /****************************************************************
  * rp2040 and low-level helper functions
@@ -241,8 +244,58 @@ int BitUnstuffer::unstuf_pull_bits() noexcept
  * Bit stuffing
  ****************************************************************/
 
+// State storage for building bit stuffed transmit messages
+class BitStuffer
+{
+public:
+	BitStuffer(uint32_t *p_buf) noexcept : prev_stuffed(1), bitpos(0), buf(p_buf) { }
+	void pushraw(uint32_t data, uint32_t count) noexcept;
+	void push(uint32_t data, uint32_t count) noexcept;
+	uint32_t finalize() noexcept;
+	static uint32_t stuff(uint32_t *pb, uint32_t num_bits) noexcept;
+
+private:
+    uint32_t prev_stuffed, bitpos, *buf;
+};
+
+// Push 'count' bits of 'data' into stuffer without performing bit stuffing
+void BitStuffer::pushraw(uint32_t data, uint32_t count) noexcept
+{
+    uint32_t wp = bitpos / 32, bitused = bitpos % 32, bitavail = 32 - bitused;
+    uint32_t *fb = &buf[wp];
+    if (bitavail >= count) {
+        fb[0] |= data << (bitavail - count);
+    } else {
+        fb[0] |= data >> (count - bitavail);
+        fb[1] |= data << (32 - (count - bitavail));
+    }
+    bitpos += count;
+}
+
+// Push 'count' bits of 'data' into stuffer
+void BitStuffer::push(uint32_t data, uint32_t count) noexcept
+{
+    data &= (1 << count) - 1;
+    uint32_t stuf = (prev_stuffed << count) | data;
+    uint32_t newcount = stuff(&stuf, count);
+    pushraw(stuf, newcount);
+    prev_stuffed = stuf;
+}
+
+// Pad final word of stuffer with high bits
+uint32_t BitStuffer::finalize() noexcept
+{
+    uint32_t words = DIV_ROUND_UP(bitpos, 32);
+    uint32_t extra = words * 32 - bitpos;
+    if (extra)
+    {
+        buf[words - 1] |= (1 << extra) - 1;
+    }
+    return words;
+}
+
 // Stuff 'num_bits' bits in '*pb' - upper bits must already be stuffed
-static uint32_t bitstuff(uint32_t *pb, uint32_t num_bits) noexcept
+/*static*/ uint32_t BitStuffer::stuff(uint32_t *pb, uint32_t num_bits) noexcept
 {
     uint32_t b = *pb, count = num_bits;
     for (;;) {
@@ -277,47 +330,6 @@ static uint32_t bitstuff(uint32_t *pb, uint32_t num_bits) noexcept
 done:
     *pb = b;
     return count;
-}
-
-// State storage for building bit stuffed transmit messages
-struct bitstuffer_s {
-    uint32_t prev_stuffed, bitpos, *buf;
-};
-
-// Push 'count' bits of 'data' into stuffer without performing bit stuffing
-static void bs_pushraw(struct bitstuffer_s *bs, uint32_t data, uint32_t count) noexcept
-{
-    uint32_t bitpos = bs->bitpos;
-    uint32_t wp = bitpos / 32, bitused = bitpos % 32, bitavail = 32 - bitused;
-    uint32_t *fb = &bs->buf[wp];
-    if (bitavail >= count) {
-        fb[0] |= data << (bitavail - count);
-    } else {
-        fb[0] |= data >> (count - bitavail);
-        fb[1] |= data << (32 - (count - bitavail));
-    }
-    bs->bitpos = bitpos + count;
-}
-
-// Push 'count' bits of 'data' into stuffer
-static void bs_push(struct bitstuffer_s *bs, uint32_t data, uint32_t count) noexcept
-{
-    data &= (1 << count) - 1;
-    uint32_t stuf = (bs->prev_stuffed << count) | data;
-    uint32_t newcount = bitstuff(&stuf, count);
-    bs_pushraw(bs, stuf, newcount);
-    bs->prev_stuffed = stuf;
-}
-
-// Pad final word of stuffer with high bits
-static uint32_t bs_finalize(struct bitstuffer_s *bs) noexcept
-{
-    uint32_t bitpos = bs->bitpos;
-    uint32_t words = DIV_ROUND_UP(bitpos, 32);
-    uint32_t extra = words * 32 - bitpos;
-    if (extra)
-        bs->buf[words - 1] |= (1 << extra) - 1;
-    return words;
 }
 
 // Set up a message ready to be queued for transmission. The callback function is set to null.
@@ -358,7 +370,7 @@ void CanFD2040TransmitBuffer::Populate(uint32_t p_id, const uint8_t *data, unsig
 
     // Calculate crc and stuff bits
     memset(stuffed_data, 0, sizeof(stuffed_data));
-    bitstuffer_s bs = { 1, 0, stuffed_data };
+    BitStuffer bs(stuffed_data);
     uint32_t locCrc = 0;
     if (p_id & CanFD2040ReceiveBuffer::IdExtraBits::ID_EFF)
     {
@@ -368,31 +380,31 @@ void CanFD2040TransmitBuffer::Populate(uint32_t p_id, const uint8_t *data, unsig
         const uint32_t h2 = ((eid & 0x1fff) << 7) | dlc;
         locCrc = crc_bytes(locCrc, h1 >> 4, 2);
         locCrc = crc_bytes(locCrc, ((h1 & 0x0f) << 20) | h2, 3);
-        bs_push(&bs, h1, 19);
-        bs_push(&bs, h2, 20);
+        bs.push(h1, 19);
+        bs.push(h2, 20);
     }
     else
     {
         // Standard header
         uint32_t hdr = ((p_id & 0x7ff) << 7) | dlc;
         locCrc = crc_bytes(locCrc, hdr, 3);
-        bs_push(&bs, hdr, 19);
+        bs.push(hdr, 19);
     }
 
     for (size_t i = 0; i < numBytes; i++)
     {
         locCrc = crc_byte(locCrc, data[i]);
-        bs_push(&bs, data[i], 8);
+        bs.push(data[i], 8);
     }
     for (size_t i = 0; i < padding; i++)
     {
         locCrc = crc_byte(locCrc, 0);
-        bs_push(&bs, 0, 8);
+        bs.push(0, 8);
     }
     crc = locCrc & 0x7fff;
-    bs_push(&bs, crc, 15);
-    bs_pushraw(&bs, 1, 1);
-    stuffed_words = bs_finalize(&bs);
+    bs.push(crc, 15);
+    bs.pushraw(1, 1);
+    stuffed_words = bs.finalize();
 
 	completionCallback = nullptr;
 }
@@ -872,7 +884,7 @@ void CanFD2040::report_note_crc_start() noexcept
     uint32_t cs = unstuf.GetStuffCount();
     uint32_t crcstart_bitpos = raw_bit_count - cs - 1;
     uint32_t last = ((unstuf.GetStuffedBits() >> cs) << 15) | parse_crc;
-    uint32_t crc_bitcount = bitstuff(&last, 15 + 1) - 1;
+    uint32_t crc_bitcount = BitStuffer::stuff(&last, 15 + 1) - 1;
     uint32_t crcend_bitpos = crcstart_bitpos + crc_bitcount;
 
     bool ret = tx_check_local_message();

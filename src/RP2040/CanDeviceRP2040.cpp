@@ -21,83 +21,14 @@
 #include <pico/multicore.h>
 #include <hardware/irq.h>
 
-/**@}*/
-/**
- * \brief CAN receive FIFO element.
- */
-struct CanDevice::RxBufferHeader
-{
-	union
-	{
-		struct
-		{
-			uint32_t ID : 29; /*!< Identifier */
-			uint32_t RTR : 1; /*!< Remote Transmission Request */
-			uint32_t XTD : 1; /*!< Extended Identifier */
-			uint32_t ESI : 1; /*!< Error State Indicator */
-		} bit;
-		uint32_t val; /*!< Type used for register access */
-	} R0;
-	union
-	{
-		struct
-		{
-			uint32_t RXTS : 16; /*!< Rx Timestamp */
-			uint32_t DLC : 4;   /*!< Data Length Code */
-			uint32_t BRS : 1;   /*!< Bit Rate Switch */
-			uint32_t FDF : 1;   /*!< FD Format */
-			uint32_t : 2;       /*!< Reserved */
-			uint32_t FIDX : 7;  /*!< Filter Index */
-			uint32_t ANMF : 1;  /*!< Accepted Non-matching Frame */
-		} bit;
-		uint32_t val; /*!< Type used for register access */
-	} R1;
-
-	const volatile uint32_t *GetDataPointer() const volatile { return (volatile uint32_t*)this + (sizeof(*this)/sizeof(uint32_t)); }
-};
-
-/**
- * \brief CAN transmit FIFO element.
- */
-struct CanDevice::TxBufferHeader
-{
-	union
-	{
-		struct
-		{
-			uint32_t ID : 29; /*!< Identifier */
-			uint32_t RTR : 1; /*!< Remote Transmission Request */
-			uint32_t XTD : 1; /*!< Extended Identifier */
-			uint32_t ESI : 1; /*!< Error State Indicator */
-		} bit;
-		uint32_t val; /*!< Type used for register access */
-	} T0;
-	union
-	{
-		struct
-		{
-			uint32_t : 16;    /*!< Reserved */
-			uint32_t DLC : 4; /*!< Data Length Code */
-			uint32_t BRS : 1; /*!< Bit Rate Switch */
-			uint32_t FDF : 1; /*!< FD Format */
-			uint32_t : 1;     /*!< Reserved */
-			uint32_t EFCbit : 1; /*!< Event FIFO Control */
-			uint32_t MM : 8;  /*!< Message Marker */
-		} bit;
-		uint32_t val; /*!< Type used for register access */
-	} T1;
-
-	volatile uint32_t *GetDataPointer() volatile { return (volatile uint32_t*)this + (sizeof(*this)/sizeof(uint32_t)); }
-};
-
 static CanDevice devices[NumCanDevices];
 
-inline uint32_t CanDevice::GetRxBufferSize() const noexcept { return sizeof(RxBufferHeader)/sizeof(uint32_t) + (64 >> 2); }
-inline uint32_t CanDevice::GetTxBufferSize() const noexcept { return sizeof(TxBufferHeader)/sizeof(uint32_t) + (64 >> 2); }
-inline CanDevice::RxBufferHeader *CanDevice::GetRxFifo0Buffer(uint32_t index) const noexcept { return (RxBufferHeader*)(rx0Fifo + (index * GetRxBufferSize())); }
-inline CanDevice::RxBufferHeader *CanDevice::GetRxFifo1Buffer(uint32_t index) const noexcept { return (RxBufferHeader*)(rx1Fifo + (index * GetRxBufferSize())); }
-inline CanDevice::RxBufferHeader *CanDevice::GetRxBuffer(uint32_t index) const noexcept { return (RxBufferHeader*)(rxBuffers + (index * GetRxBufferSize())); }
-inline CanDevice::TxBufferHeader *CanDevice::GetTxBuffer(uint32_t index) const noexcept { return (TxBufferHeader*)(txBuffers + (index * GetTxBufferSize())); }
+inline uint32_t CanDevice::GetRxBufferSize() const noexcept { return sizeof(CanRxBufferHeader)/sizeof(uint32_t) + (64 >> 2); }
+inline uint32_t CanDevice::GetTxBufferSize() const noexcept { return sizeof(CanTxBufferHeader)/sizeof(uint32_t) + (64 >> 2); }
+inline CanRxBufferHeader *CanDevice::GetRxFifo0Buffer(uint32_t index) const noexcept { return (CanRxBufferHeader*)(rx0Fifo + (index * GetRxBufferSize())); }
+inline CanRxBufferHeader *CanDevice::GetRxFifo1Buffer(uint32_t index) const noexcept { return (CanRxBufferHeader*)(rx1Fifo + (index * GetRxBufferSize())); }
+inline CanRxBufferHeader *CanDevice::GetRxBuffer(uint32_t index) const noexcept { return (CanRxBufferHeader*)(rxBuffers + (index * GetRxBufferSize())); }
+inline CanTxBufferHeader *CanDevice::GetTxBuffer(uint32_t index) const noexcept { return (CanTxBufferHeader*)(txBuffers + (index * GetTxBufferSize())); }
 
 // Virtual registers, shared between the two cores
 VirtualCanRegisters virtualRegs;
@@ -277,7 +208,7 @@ unsigned int CanDevice::NumTxMessagesPending(TxBufferNumber whichBuffer) noexcep
 
 #endif
 
-void CanDevice::CopyMessageForTransmit(CanMessageBuffer *buffer, volatile TxBufferHeader *f) noexcept
+void CanDevice::CopyMessageForTransmit(CanMessageBuffer *buffer, volatile CanTxBufferHeader *f) noexcept
 {
 	if (buffer->extId)
 	{
@@ -382,15 +313,15 @@ uint32_t CanDevice::SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, Ca
 	return cancelledId;
 }
 
-void CanDevice::CopyReceivedMessage(CanMessageBuffer *null buffer, const volatile RxBufferHeader *f) noexcept
+void CanDevice::CopyReceivedMessage(CanMessageBuffer *null buffer, const volatile CanRxBufferHeader *f) noexcept
 {
 	// The CAN has written the message directly to memory, so we must invalidate the cache before we read it
-	Cache::InvalidateAfterDMAReceive(f, sizeof(RxBufferHeader) + 64);						// flush the header and up to 64 bytes of data
+	Cache::InvalidateAfterDMAReceive(f, sizeof(CanRxBufferHeader) + 64);					// flush the header and up to 64 bytes of data
 
 	if (buffer != nullptr)
 	{
 		buffer->extId = f->R0.bit.XTD;
-		buffer->id.SetReceivedId((buffer->extId) ? f->R0.bit.ID : f->R0.bit.ID >> 18);			// a standard identifier is stored into ID[28:18]
+		buffer->id.SetReceivedId((buffer->extId) ? f->R0.bit.ID : f->R0.bit.ID >> 18);		// a standard identifier is stored into ID[28:18]
 		buffer->remote = f->R0.bit.RTR;
 
 		const volatile uint32_t *data = f->GetDataPointer();
