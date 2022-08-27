@@ -110,6 +110,12 @@ struct VirtualCanRegisters
 	volatile bool cancelTransmission;
 	volatile bool canEnabled;										// CAN enable/disable flag, set by main proc to enable CAN after writing other registers, cleared by main proc to disable CAN
 
+	// The following are written by the main processor prior to initial setup
+	uint32_t bitrate;
+	Pin txPin;
+	Pin rxPin;
+	uint8_t pioNumber;
+
 	// Bit assignments in the pseudo-interrupt message received by the main processor via the inter-processor fifo from the CAN processor
 	static constexpr uint32_t recdFifo0 = 0x01;						// message received in fifo0
 	static constexpr uint32_t recdFifo1 = 0x02;						// message received in fifo0
@@ -118,6 +124,7 @@ struct VirtualCanRegisters
 	static constexpr uint32_t rxOvfFifo0 = 0x10;					// lost message destined for fifo0 because fifo was full
 	static constexpr uint32_t rxOvfFifo1 = 0x20;					// lost message destined for fifo1 because fifo was full
 
+	// Initialise the registers prior to starting or restarting
 	void Init() noexcept
 	{
 		canEnabled = false;
@@ -126,7 +133,6 @@ struct VirtualCanRegisters
 		rxFifo0PutIndex = rxFifo1PutIndex = txFifoPutIndex = 0;
 		rxFifo0GetIndex = rxFifo1GetIndex = txFifoGetIndex = 0;
 	}
-
 };
 
 #endif /* SRC_RP2040_VIRTUALCANREGISTERS_H_ */

@@ -39,15 +39,8 @@ extern "C" void CAN_Handler() noexcept;
 extern "C" void Core1Entry() noexcept;
 
 // Initialise a CAN device and return a pointer to it
-/*static*/ CanDevice* CanDevice::Init(unsigned int p_whichCan, unsigned int p_whichPort, const Config& p_config, uint32_t *memStart, const CanTiming &timing, TxEventCallbackFunction p_txCallback) noexcept
+/*static*/ CanDevice* CanDevice::Init(Pin p_txPin, Pin p_rxPin, uint8_t p_pioNumber, const Config& p_config, uint32_t *memStart, const CanTiming &timing, TxEventCallbackFunction p_txCallback) noexcept
 {
-	if (   p_whichCan >= NumCanDevices									// device number out of range
-		|| p_whichPort != 0												// CAN instance number out of range
-	   )
-	{
-		return nullptr;
-	}
-
 	CanDevice& dev = devices[0];
 	if (dev.inUse)														// device instance already in use
 	{
@@ -81,6 +74,11 @@ extern "C" void Core1Entry() noexcept;
 	dev.rxBuffersWaiting = 0;
 #endif
 
+	virtualRegs.bitrate = 1000000;
+	virtualRegs.txPin = p_txPin;
+	virtualRegs.rxPin = p_rxPin;
+	virtualRegs.pioNumber = p_pioNumber;
+
 	dev.DoHardwareInit();
 	return &dev;
 }
@@ -105,6 +103,7 @@ void CanDevice::DoHardwareInit() noexcept
 
 	if (!core1Initialised)
 	{
+
 		multicore_launch_core1(Core1Entry);
 		core1Initialised = true;
 	}

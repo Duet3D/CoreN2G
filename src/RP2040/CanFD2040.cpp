@@ -6,18 +6,14 @@
  */
 
 #include "CanFD2040.h"
-#include "VirtualCanRegisters.h"
 
 #include "hardware/regs/dreq.h" // DREQ_PIO0_RX1
 #include "hardware/structs/dma.h" // dma_hw
 #include "hardware/structs/iobank0.h" // iobank0_hw
 #include "hardware/structs/padsbank0.h" // padsbank0_hw
-#include "hardware/structs/pio.h" // pio0_hw
 #include "hardware/structs/resets.h" // RESETS_RESET_PIO0_BITS
 
 #include <cstring>
-
-extern VirtualCanRegisters regs;
 
 /****************************************************************
  * rp2040 and low-level helper functions
@@ -463,31 +459,21 @@ void CanIdFilter::ExecuteCallback(unsigned int filterNumber) const noexcept
 }
 
 // CanFD2040 members
-CanFD2040::CanFD2040(uint8_t p_pio_num, Pin txPin, Pin rxPin) noexcept
-	: pio_num(p_pio_num), gpio_rx(rxPin), gpio_tx(txPin),
-	  txFreelist(nullptr), rxFreelist(nullptr),
-	  filters(nullptr), parse_msg(nullptr), tx_queue(nullptr)
-{
-    pio_hw = (pio_num) ? pio1_hw : pio0_hw;
-}
-
 // Start CAN-FD running
-void CanFD2040::Start(uint32_t sys_clock, uint32_t bitrate, unsigned int numTxBuffers, unsigned int numRxBuffers) noexcept
+void CanFD2040::Entry() noexcept
 {
-	critical_section_init(&txQueueCriticalSection);
-	critical_section_init(&rxQueueCriticalSection);
-	while (numTxBuffers != 0)
-	{
-		txFreelist = new CanFD2040TransmitBuffer(txFreelist);
-		--numTxBuffers;
-	}
-	while (numRxBuffers != 0)
-	{
-		rxFreelist = new CanFD2040ReceiveBuffer(rxFreelist);
-		--numRxBuffers;
-	}
-	pio_setup(sys_clock, bitrate);
-    data_state_go_discard();
+    for (;;)
+    {
+    	while (!regs->canEnabled) { }
+
+    	pio_setup();										// Set up the PIO and pins
+        data_state_go_discard();
+
+    	while (regs->canEnabled) { }
+
+    	// Disable CAN - set output to recessive
+    	//TODO
+    }
 }
 
 // Add a filter to the end of the current list. There is currently no facility to remove a filter.
@@ -552,44 +538,43 @@ void CanFD2040::ReleaseReceiveBuffer(CanFD2040ReceiveBuffer *buf) noexcept
 	critical_section_exit(&rxQueueCriticalSection);
 }
 
-void CanFD2040::pio_setup(uint32_t sys_clock, uint32_t bitrate) noexcept
+void CanFD2040::pio_setup() noexcept
 {
 	constexpr int PIO_FUNC = 6;
 
     // Configure pio0 clock
-    uint32_t rb = pio_num ? RESETS_RESET_PIO1_BITS : RESETS_RESET_PIO0_BITS;
+    uint32_t rb = regs->pioNumber ? RESETS_RESET_PIO1_BITS : RESETS_RESET_PIO0_BITS;
     rp2040_clear_reset(rb);
 
     // Setup and sync pio state machine clocks
-    uint32_t div = (256 / PIO_CLOCK_PER_BIT) * sys_clock / bitrate;
-    int i;
-    for (i=0; i<4; i++)
+    const uint32_t div = (256 / PIO_CLOCK_PER_BIT) * SystemCoreClockFreq / regs->bitrate;
+    for (unsigned int i = 0; i < 4; i++)
     {
-    	((pio_hw_t*)pio_hw)->sm[i].clkdiv = div << PIO_SM0_CLKDIV_FRAC_LSB;
+    	pio_hw->sm[i].clkdiv = div << PIO_SM0_CLKDIV_FRAC_LSB;
     }
 
     // Configure state machines
     pio_sm_setup();
 
     // Map Rx/Tx gpios
-    rp2040_gpio_peripheral(gpio_rx, PIO_FUNC, 1);
-    rp2040_gpio_peripheral(gpio_tx, PIO_FUNC, 0);
+    rp2040_gpio_peripheral(regs->rxPin, PIO_FUNC, 1);
+    rp2040_gpio_peripheral(regs->txPin, PIO_FUNC, 0);
 }
 
 // Setup PIO "sync" state machine (state machine 0)
 void CanFD2040::pio_sync_setup() noexcept
 {
-    struct pio_sm_hw *sm = &((pio_hw_t*)pio_hw)->sm[0];
+    struct pio_sm_hw *sm = &pio_hw->sm[0];
     sm->execctrl = (
-        gpio_rx << PIO_SM0_EXECCTRL_JMP_PIN_LSB
+        regs->rxPin << PIO_SM0_EXECCTRL_JMP_PIN_LSB
         | (can2040_offset_sync_end - 1) << PIO_SM0_EXECCTRL_WRAP_TOP_LSB
         | can2040_offset_sync_signal_start << PIO_SM0_EXECCTRL_WRAP_BOTTOM_LSB);
     sm->pinctrl = (
         1 << PIO_SM0_PINCTRL_SET_COUNT_LSB
-        | gpio_rx << PIO_SM0_PINCTRL_SET_BASE_LSB);
+        | regs->rxPin << PIO_SM0_PINCTRL_SET_BASE_LSB);
     sm->instr = 0xe080; // set pindirs, 0
     sm->pinctrl = 0;
-    ((pio_hw_t*)pio_hw)->txf[0] = PIO_CLOCK_PER_BIT / 2 * 8 - 5 - 1;
+    pio_hw->txf[0] = PIO_CLOCK_PER_BIT / 2 * 8 - 5 - 1;
     sm->instr = 0x80a0; // pull block
     sm->instr = can2040_offset_sync_entry; // jmp sync_entry
 }
@@ -597,11 +582,11 @@ void CanFD2040::pio_sync_setup() noexcept
 // Setup PIO "rx" state machine (state machine 1)
 void CanFD2040::pio_rx_setup() noexcept
 {
-    struct pio_sm_hw *sm = &((pio_hw_t*)pio_hw)->sm[1];
+    struct pio_sm_hw *sm = &pio_hw->sm[1];
     sm->execctrl = (
         (can2040_offset_shared_rx_end - 1) << PIO_SM0_EXECCTRL_WRAP_TOP_LSB
         | can2040_offset_shared_rx_read << PIO_SM0_EXECCTRL_WRAP_BOTTOM_LSB);
-    sm->pinctrl = gpio_rx << PIO_SM0_PINCTRL_IN_BASE_LSB;
+    sm->pinctrl = regs->rxPin << PIO_SM0_PINCTRL_IN_BASE_LSB;
     sm->shiftctrl = 0; // flush fifo on a restart
     sm->shiftctrl = (PIO_SM0_SHIFTCTRL_FJOIN_RX_BITS
                      | 8 << PIO_SM0_SHIFTCTRL_PUSH_THRESH_LSB
@@ -612,11 +597,11 @@ void CanFD2040::pio_rx_setup() noexcept
 // Setup PIO "match" state machine (state machine 2)
 void CanFD2040::pio_match_setup() noexcept
 {
-     struct pio_sm_hw *sm = &((pio_hw_t*)pio_hw)->sm[2];
+     struct pio_sm_hw *sm = &pio_hw->sm[2];
     sm->execctrl = (
         (can2040_offset_match_end - 1) << PIO_SM0_EXECCTRL_WRAP_TOP_LSB
         | can2040_offset_shared_rx_read << PIO_SM0_EXECCTRL_WRAP_BOTTOM_LSB);
-    sm->pinctrl = gpio_rx << PIO_SM0_PINCTRL_IN_BASE_LSB;
+    sm->pinctrl = regs->rxPin << PIO_SM0_PINCTRL_IN_BASE_LSB;
     sm->shiftctrl = 0;
     sm->instr = 0xe040; // set y, 0
     sm->instr = 0xa0e2; // mov osr, y
@@ -627,14 +612,14 @@ void CanFD2040::pio_match_setup() noexcept
 // Setup PIO "tx" state machine (state machine 3)
 void CanFD2040::pio_tx_setup() noexcept
 {
-    struct pio_sm_hw *sm = &((pio_hw_t*)pio_hw)->sm[3];
-    sm->execctrl = gpio_rx << PIO_SM0_EXECCTRL_JMP_PIN_LSB;
+    struct pio_sm_hw *sm = &pio_hw->sm[3];
+    sm->execctrl = regs->rxPin << PIO_SM0_EXECCTRL_JMP_PIN_LSB;
     sm->shiftctrl = (PIO_SM0_SHIFTCTRL_FJOIN_TX_BITS
                      | PIO_SM0_SHIFTCTRL_AUTOPULL_BITS);
     sm->pinctrl = (1 << PIO_SM0_PINCTRL_SET_COUNT_LSB
                    | 1 << PIO_SM0_PINCTRL_OUT_COUNT_LSB
-                   | gpio_tx << PIO_SM0_PINCTRL_SET_BASE_LSB
-                   | gpio_tx << PIO_SM0_PINCTRL_OUT_BASE_LSB);
+                   | regs->txPin << PIO_SM0_PINCTRL_SET_BASE_LSB
+                   | regs->txPin << PIO_SM0_PINCTRL_OUT_BASE_LSB);
     sm->instr = 0xe001; // set pins, 1
     sm->instr = 0xe081; // set pindirs, 1
 }
@@ -643,32 +628,32 @@ void CanFD2040::pio_tx_setup() noexcept
 void CanFD2040::pio_sync_normal_start_signal() noexcept
 {
     uint32_t eom_idx = can2040_offset_sync_found_end_of_message;
-    ((pio_hw_t*)pio_hw)->instr_mem[eom_idx] = 0xe13a; // set x, 26 [1]
+    pio_hw->instr_mem[eom_idx] = 0xe13a; // set x, 26 [1]
 }
 
 // Set PIO "sync" machine to signal "may transmit" (sm irq 0) on 17 idle bits
 void CanFD2040::pio_sync_slow_start_signal() noexcept
 {
     uint32_t eom_idx = can2040_offset_sync_found_end_of_message;
-    ((pio_hw_t*)pio_hw)->instr_mem[eom_idx] = 0xa127; // mov x, osr [1]
+    pio_hw->instr_mem[eom_idx] = 0xa127; // mov x, osr [1]
 }
 
 // Test if PIO "rx" state machine has overflowed its fifos
 int CanFD2040::pio_rx_check_stall() noexcept
 {
-    return ((pio_hw_t*)pio_hw)->fdebug & (1 << (PIO_FDEBUG_RXSTALL_LSB + 1));
+    return pio_hw->fdebug & (1 << (PIO_FDEBUG_RXSTALL_LSB + 1));
 }
 
 // Report number of bytes still pending in PIO "rx" fifo queue
 int CanFD2040::pio_rx_fifo_level() noexcept
 {
-    return (((pio_hw_t*)pio_hw)->flevel & PIO_FLEVEL_RX1_BITS) >> PIO_FLEVEL_RX1_LSB;
+    return (pio_hw->flevel & PIO_FLEVEL_RX1_BITS) >> PIO_FLEVEL_RX1_LSB;
 }
 
 // Set PIO "match" state machine to raise a "matched" signal on a bit sequence
 void CanFD2040::pio_match_check(uint32_t match_key) noexcept
 {
-    ((pio_hw_t*)pio_hw)->txf[2] = match_key;
+    pio_hw->txf[2] = match_key;
 }
 
 // Calculate pos+bits identifier for PIO "match" state machine
@@ -686,16 +671,16 @@ void CanFD2040::pio_match_clear() noexcept
 // Flush and halt PIO "tx" state machine
 void CanFD2040::pio_tx_reset() noexcept
 {
-    ((pio_hw_t*)pio_hw)->ctrl = ((0x07 << PIO_CTRL_SM_ENABLE_LSB)
+    pio_hw->ctrl = ((0x07 << PIO_CTRL_SM_ENABLE_LSB)
                     | (0x08 << PIO_CTRL_SM_RESTART_LSB));
-    ((pio_hw_t*)pio_hw)->irq = (1 << 2) | (1<< 3); // clear "matched" and "ack done" signals
+    pio_hw->irq = (1 << 2) | (1<< 3); // clear "matched" and "ack done" signals
     // Clear tx fifo
-    struct pio_sm_hw *sm = &((pio_hw_t*)pio_hw)->sm[3];
+    struct pio_sm_hw *sm = &pio_hw->sm[3];
     sm->shiftctrl = 0;
     sm->shiftctrl = (PIO_SM0_SHIFTCTRL_FJOIN_TX_BITS
                      | PIO_SM0_SHIFTCTRL_AUTOPULL_BITS);
     // Must reset again after clearing fifo
-    ((pio_hw_t*)pio_hw)->ctrl = ((0x07 << PIO_CTRL_SM_ENABLE_LSB)
+    pio_hw->ctrl = ((0x07 << PIO_CTRL_SM_ENABLE_LSB)
                     | (0x08 << PIO_CTRL_SM_RESTART_LSB));
 }
 
@@ -703,29 +688,29 @@ void CanFD2040::pio_tx_reset() noexcept
 void CanFD2040::pio_tx_send(uint32_t *data, uint32_t count) noexcept
 {
     pio_tx_reset();
-    ((pio_hw_t*)pio_hw)->instr_mem[can2040_offset_tx_got_recessive] = 0xa242; // nop [2]
-    for (unsigned int i=0; i<count; i++)
+    pio_hw->instr_mem[can2040_offset_tx_got_recessive] = 0xa242; // nop [2]
+    for (unsigned int i = 0; i < count; i++)
     {
-    	((pio_hw_t*)pio_hw)->txf[3] = data[i];
+    	pio_hw->txf[3] = data[i];
     }
-    struct pio_sm_hw *sm = &((pio_hw_t*)pio_hw)->sm[3];
+    struct pio_sm_hw *sm = &pio_hw->sm[3];
     sm->instr = 0xe001; // set pins, 1
     sm->instr = can2040_offset_tx_start; // jmp tx_start
     sm->instr = 0x20c0; // wait 1 irq, 0
-    ((pio_hw_t*)pio_hw)->ctrl = 0x0f << PIO_CTRL_SM_ENABLE_LSB;
+    pio_hw->ctrl = 0x0f << PIO_CTRL_SM_ENABLE_LSB;
 }
 
 // Set PIO "tx" state machine to inject an ack after a CRC match
 void CanFD2040::pio_tx_inject_ack(uint32_t match_key) noexcept
 {
     pio_tx_reset();
-    ((pio_hw_t*)pio_hw)->instr_mem[can2040_offset_tx_got_recessive] = 0xc023; // irq wait 3
-    ((pio_hw_t*)pio_hw)->txf[3] = 0x7fffffff;
-    struct pio_sm_hw *sm = &((pio_hw_t*)pio_hw)->sm[3];
+    pio_hw->instr_mem[can2040_offset_tx_got_recessive] = 0xc023; // irq wait 3
+    pio_hw->txf[3] = 0x7fffffff;
+    struct pio_sm_hw *sm = &pio_hw->sm[3];
     sm->instr = 0xe001; // set pins, 1
     sm->instr = can2040_offset_tx_start; // jmp tx_start
     sm->instr = 0x20c2; // wait 1 irq, 2
-    ((pio_hw_t*)pio_hw)->ctrl = 0x0f << PIO_CTRL_SM_ENABLE_LSB;
+    pio_hw->ctrl = 0x0f << PIO_CTRL_SM_ENABLE_LSB;
 
     pio_match_check(match_key);
 }
@@ -733,52 +718,52 @@ void CanFD2040::pio_tx_inject_ack(uint32_t match_key) noexcept
 // Check if the PIO "tx" state machine stopped due to passive/dominant conflict
 int CanFD2040::pio_tx_did_conflict() noexcept
 {
-    return ((pio_hw_t*)pio_hw)->sm[3].addr == can2040_offset_tx_conflict;
+    return pio_hw->sm[3].addr == can2040_offset_tx_conflict;
 }
 
 // Enable host irq on a "may transmit" signal (sm irq 0)
 void CanFD2040::pio_irq_set_maytx() noexcept
 {
-    ((pio_hw_t*)pio_hw)->inte0 = PIO_IRQ0_INTE_SM0_BITS | PIO_IRQ0_INTE_SM1_RXNEMPTY_BITS;
+    pio_hw->inte0 = PIO_IRQ0_INTE_SM0_BITS | PIO_IRQ0_INTE_SM1_RXNEMPTY_BITS;
 }
 
 // Enable host irq on a "may transmit" or "matched" signal (sm irq 0 or 2)
 void CanFD2040::pio_irq_set_maytx_matched() noexcept
 {
-    ((pio_hw_t*)pio_hw)->inte0 = (PIO_IRQ0_INTE_SM0_BITS | PIO_IRQ0_INTE_SM2_BITS
+    pio_hw->inte0 = (PIO_IRQ0_INTE_SM0_BITS | PIO_IRQ0_INTE_SM2_BITS
                      | PIO_IRQ0_INTE_SM1_RXNEMPTY_BITS);
 }
 
 // Enable host irq on a "may transmit" or "ack done" signal (sm irq 0 or 3)
 void CanFD2040::pio_irq_set_maytx_ackdone() noexcept
 {
-    ((pio_hw_t*)pio_hw)->inte0 = (PIO_IRQ0_INTE_SM0_BITS | PIO_IRQ0_INTE_SM3_BITS
+    pio_hw->inte0 = (PIO_IRQ0_INTE_SM0_BITS | PIO_IRQ0_INTE_SM3_BITS
                      | PIO_IRQ0_INTE_SM1_RXNEMPTY_BITS);
 }
 
 // Atomically enable "may transmit" signal (sm irq 0)
 void CanFD2040::pio_irq_atomic_set_maytx() noexcept
 {
-    hw_set_bits(&((pio_hw_t*)pio_hw)->inte0, PIO_IRQ0_INTE_SM0_BITS);
+    hw_set_bits(&pio_hw->inte0, PIO_IRQ0_INTE_SM0_BITS);
 }
 
 // Disable PIO host irqs (except for normal data read irq)
 void CanFD2040::pio_irq_set_none() noexcept
 {
-    ((pio_hw_t*)pio_hw)->inte0 = PIO_IRQ0_INTE_SM1_RXNEMPTY_BITS;
+    pio_hw->inte0 = PIO_IRQ0_INTE_SM1_RXNEMPTY_BITS;
 }
 
 // Setup PIO state machines
 void CanFD2040::pio_sm_setup() noexcept
 {
     // Reset state machines
-    ((pio_hw_t*)pio_hw)->ctrl = PIO_CTRL_SM_RESTART_BITS | PIO_CTRL_CLKDIV_RESTART_BITS;
-    ((pio_hw_t*)pio_hw)->fdebug = 0xffffffff;
+    pio_hw->ctrl = PIO_CTRL_SM_RESTART_BITS | PIO_CTRL_CLKDIV_RESTART_BITS;
+    pio_hw->fdebug = 0xffffffff;
 
     // Load pio program
     for (unsigned int i=0; i<ARRAY_SIZE(can2040_program_instructions); i++)
     {
-    	((pio_hw_t*)pio_hw)->instr_mem[i] = can2040_program_instructions[i];
+    	pio_hw->instr_mem[i] = can2040_program_instructions[i];
     }
 
     // Set initial state machine state
@@ -788,7 +773,7 @@ void CanFD2040::pio_sm_setup() noexcept
     pio_tx_setup();
 
     // Start state machines
-    ((pio_hw_t*)pio_hw)->ctrl = 0x07 << PIO_CTRL_SM_ENABLE_LSB;
+    pio_hw->ctrl = 0x07 << PIO_CTRL_SM_ENABLE_LSB;
 }
 
 // Report error to calling code (via callback interface)
@@ -1322,9 +1307,12 @@ bool CanFD2040::tx_check_local_message() noexcept
     return false;
 }
 
+extern VirtualCanRegisters virtualRegs;
+
 extern "C" void Core1Entry() noexcept
 {
-	//TODO
+	CanFD2040 canFdDevice(&virtualRegs);
+	canFdDevice.Entry();
 }
 
 // End

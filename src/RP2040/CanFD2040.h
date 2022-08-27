@@ -11,9 +11,12 @@
 #include <CoreIO.h>
 #undef from				// 'from' is used as an identifier in the Pico SDK
 
+#include "VirtualCanRegisters.h"
+
 extern "C" {
 #include <pico.h>
 #include <pico/critical_section.h>
+#include <hardware/structs/pio.h>				// for pio_hw_t
 }
 
 #define SUPPORT_CAN_FD	0
@@ -139,10 +142,10 @@ private:
 class CanFD2040
 {
 public:
-	CanFD2040(uint8_t p_pio_num, Pin txPin, Pin rxPin) noexcept;
+	CanFD2040(VirtualCanRegisters *p_regs) noexcept : regs(p_regs) { }
 
 	// Start CAN-FD running
-	void Start(uint32_t sys_clock, uint32_t bitrate, unsigned int numTxBuffers, unsigned int numRxBuffers) noexcept;
+	void Entry() noexcept;
 
 	// Add a filter to the end of the current list. There is currently no facility to remove a filter.
 	void AddFilter(CanIdFilter *p_filter) noexcept;
@@ -158,7 +161,7 @@ public:
 
 private:
 	// Low level PIO control functions
-	void pio_setup(uint32_t sys_clock, uint32_t bitrate) noexcept;
+	void pio_setup() noexcept;
 	void pio_sm_setup() noexcept;
 	void pio_sync_setup() noexcept;
 	void pio_rx_setup() noexcept;
@@ -226,9 +229,8 @@ private:
 	void data_state_update(uint32_t data) noexcept;
 
 	// Setup
-	uint8_t pio_num;
-	Pin gpio_rx, gpio_tx;
-	void *pio_hw;
+	VirtualCanRegisters *regs;
+	pio_hw_t *pio_hw;
 
 	// Buffer freelists
 	CanFD2040TransmitBuffer *txFreelist;

@@ -171,7 +171,13 @@ public:
 
 	// Initialise one of the CAN interfaces and return a pointer to the corresponding device. Returns null if device is already in use or device number is out of range.
 	// IMPORTANT: the CanDevice stores a copy of the p_config reference. The Config structure that is refers to must remain available and unchanged while the CanDevice is being used!
-	static CanDevice *Init(unsigned int p_whichCan, unsigned int p_whichPort, const Config& p_config, uint32_t *memStart, const CanTiming& timing, TxEventCallbackFunction p_txCallback) noexcept;
+	static CanDevice *Init(
+#if RP2040
+							Pin p_txPin, Pin p_rxPin, uint8_t p_pioNumber,
+#else
+							unsigned int p_whichCan, unsigned int p_whichPort,
+#endif
+							const Config& p_config, uint32_t *memStart, const CanTiming& timing, TxEventCallbackFunction p_txCallback) noexcept;
 
 #if !RP2040
 	// Set the extended ID mask. May only be used while the interface is disabled. Only needed when using dedicated buffers.
