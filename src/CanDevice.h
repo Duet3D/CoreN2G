@@ -21,6 +21,7 @@
 
 #if RP2040
 # include <hardware/structs/timer.h>
+# include <RP2040/VirtualCanRegisters.h>
 #endif
 
 constexpr unsigned int MaxTxBuffers = 6;			// maximum number of dedicated transmit buffers supported by this driver
@@ -45,9 +46,7 @@ public:
 	enum class RxBufferNumber : uint32_t
 	{
 		fifo0 = 0, fifo1,
-#if !RP2040
 		buffer0, buffer1, buffer2, buffer3,
-#endif
 		none = 0xFFFF
 	};
 
@@ -63,48 +62,66 @@ public:
 	struct Config
 	{
 		unsigned int dataSize = 64;											// must be one of: 8, 12, 16, 20, 24, 32, 48, 64
+#if RP2040
+		unsigned int numTxBuffers = 0;
+#else
 		unsigned int numTxBuffers = 2;
+#endif
 		unsigned int txFifoSize = 4;
 		unsigned int numRxBuffers = 0;
 		unsigned int rxFifo0Size = 16;
 		unsigned int rxFifo1Size = 16;
 		unsigned int numShortFilterElements = 0;
 		unsigned int numExtendedFilterElements = 3;
+#if RP2040
+		unsigned int txEventFifoSize = 0;
+#else
 		unsigned int txEventFifoSize = 16;
+#endif
+
+		static constexpr size_t StandardFilterElementSize = 1;				// one word each
+		static constexpr size_t ExtendedFilterElementSize = 2;				// two words
 
 		// Test whether the data size is supported by the CAN hardware
 		constexpr bool ValidDataSize() const noexcept
 		{
+#if RP2040
+			return dataSize == 64;
+#else
 			return dataSize >= 8
 				&& (   (dataSize <= 24 && (dataSize & 3) == 0)
 					|| (dataSize <= 64 && (dataSize & 15) == 0)
 				   );
+#endif
 		}
 
 		// Test whether this is a valid CAN configuration. Use this in a static_assert to check that a specified configuration is valid.
 		constexpr bool IsValid() const noexcept
 		{
 			return ValidDataSize()
+#if RP2040
+				&& numTxBuffers == 0										// our RP2040 code doesn't support dedicated Tx buffers
+				&& txEventFifoSize == 0										// our RP2040 code doesn't support the transmit event FIFO
+#else
 				&& numTxBuffers + txFifoSize <= 32							// maximum total Tx buffers supported is 32
 				&& numTxBuffers <= MaxTxBuffers								// our code only allows 31 buffers + the FIFO
-				&& numRxBuffers <= MaxRxBuffers								// the peripheral supports up to 64 buffers but our code only allows 30 buffers + the two FIFOs
 				&& rxFifo0Size <= 64										// max 64 entries per receive FIFO
 				&& rxFifo1Size <= 64										// max 64 entries per receive FIFO
-				&& txEventFifoSize <= 32;									// max 32 entries in transmit event FIFO
+				&& txEventFifoSize <= 32									// max 32 entries in transmit event FIFO
+#endif
+				&& numRxBuffers <= MaxRxBuffers;								// the peripheral supports up to 64 buffers but our code only allows 30 buffers + the two FIFOs
 		}
 
 		// Return the number of words of memory occupied by the 11-bit filters
 		// We round this up to the next multiple of 8 bytes to reduce the chance of the Tx and Rx buffers crossing cache lines
 		constexpr size_t GetStandardFiltersMemSize() const noexcept
 		{
-			constexpr size_t StandardFilterElementSize = 1;					// one word each
 			return ((numShortFilterElements * StandardFilterElementSize) + 1u) & (~1u);
 		}
 
 		// Return the number of words of memory occupied by the 29-bit filters
 		constexpr size_t GetExtendedFiltersMemSize() const noexcept
 		{
-			constexpr size_t ExtendedFilterElementSize = 2;					// two words
 			return numExtendedFilterElements * ExtendedFilterElementSize;
 		}
 
@@ -130,11 +147,18 @@ public:
 		// Return the total amount of buffer memory needed in 32-bit words. Must be constexpr so we can allocate memory statically in the correct segment.
 		constexpr size_t GetMemorySize() const noexcept
 		{
-			return (numTxBuffers + txFifoSize) * GetTxBufferSize()
+			return
+#if RP2040
+				// The RP2040 implementation wastes one slot in each FIFO
+				  (txFifoSize + 1) * GetTxBufferSize()
+				+ (numRxBuffers + rxFifo0Size + rxFifo1Size + 2) * GetRxBufferSize()
+#else
+				  (numTxBuffers + txFifoSize) * GetTxBufferSize()
 				+ (numRxBuffers + rxFifo0Size + rxFifo1Size) * GetRxBufferSize()
+				+ GetTxEventFifoMemSize()
+#endif
 				+ GetStandardFiltersMemSize()
-				+ GetExtendedFiltersMemSize()
-				+ GetTxEventFifoMemSize();
+				+ GetExtendedFiltersMemSize();
 		}
 	};
 
@@ -142,10 +166,11 @@ public:
 	typedef void (*TxEventCallbackFunction)(uint8_t marker, CanId id, uint16_t timeStamp) noexcept;
 
 	// Initialise one of the CAN interfaces and return a pointer to the corresponding device. Returns null if device is already in use or device number is out of range.
+	// IMPORTANT: the CanDevice stores a copy of the p_config reference. The Config structure that is refers to must remain available and unchanged while the CanDevice is being used!
 	static CanDevice *Init(unsigned int p_whichCan, unsigned int p_whichPort, const Config& p_config, uint32_t *memStart, const CanTiming& timing, TxEventCallbackFunction p_txCallback) noexcept;
 
 #if !RP2040
-	// Set the extended ID mask. May only be used while the interface is disabled.
+	// Set the extended ID mask. May only be used while the interface is disabled. Only needed when using dedicated buffers.
 	void SetExtendedIdMask(uint32_t mask) noexcept;
 #endif
 
@@ -216,7 +241,9 @@ public:
 	}
 #endif
 
+#if !RP2040
 	void PollTxEventFifo(TxEventCallbackFunction p_txCallback) noexcept;
+#endif
 
 	uint32_t GetErrorRegister() const noexcept;
 
@@ -227,46 +254,46 @@ public:
 	// Configuration constants. Need to be public because they are used to size static data in CanDevice.cpp
 	static constexpr size_t Can0DataSize = 64;
 
-private:
-	static CanDevice devices[NumCanDevices];
-
-	CanDevice() noexcept { }
-
-#if RP2040
-	unsigned int messagesQueuedForSending;
-	unsigned int messagesReceived;
-	unsigned int messagesLost;									// count of received messages lost because the receive FIFO was full
-	unsigned int busOffCount;									// count of the number of times we have reset due to bus off
-
-	TxEventCallbackFunction txCallback;							// function that gets called by the ISR when a transmit event for a message with a nonzero marker occurs
-	const Config *config;										//!< Configuration parameters
-	bool inUse = false;
-#else
-	struct TxEvent;
 	struct StandardMessageFilterElement;
 	struct ExtendedMessageFilterElement;
+
+private:
+#if !RP2040
+	struct TxEvent;
+#endif
+
 	class RxBufferHeader;
 	class TxBufferHeader;
 
 	void DoHardwareInit() noexcept;
+#if !RP2040
 	void UpdateLocalCanTiming(const CanTiming& timing) noexcept;
+#endif
 	uint32_t GetRxBufferSize() const noexcept;
 	uint32_t GetTxBufferSize() const noexcept;
 	RxBufferHeader *GetRxFifo0Buffer(uint32_t index) const noexcept;
 	RxBufferHeader *GetRxFifo1Buffer(uint32_t index) const noexcept;
 	RxBufferHeader *GetRxBuffer(uint32_t index) const noexcept;
 	TxBufferHeader *GetTxBuffer(uint32_t index) const noexcept;
+#if !RP2040
 	TxEvent *GetTxEvent(uint32_t index) const noexcept;
+#endif
 
 	void CopyMessageForTransmit(CanMessageBuffer *buffer, volatile TxBufferHeader *f) noexcept;
 	void CopyReceivedMessage(CanMessageBuffer *null buffer, const volatile RxBufferHeader *f) noexcept;
 
+#if RP2040
+	VirtualCanRegisters registers;								// virtual register set used to pass info between cores
+	bool inUse = false;
+#else
 	Can *hw = nullptr;											// address of the CAN peripheral we are using
-
 	unsigned int whichCan;										// which CAN device we are
 	unsigned int whichPort;										// which CAN port number we use, 0 or 1
+
 	uint32_t nbtp;												//!< The NBTP register that gives the required normal bit timing
 	uint32_t dbtp;												//!< The DBTP register that gives the required bit timing when we use BRS
+#endif
+
 	uint32_t statusMask;
 
 	const Config *config;										//!< Configuration parameters
@@ -274,7 +301,9 @@ private:
 	volatile uint32_t *rx1Fifo;									//!< Receive message fifo start
 	volatile uint32_t *rxBuffers;								//!< Receive direct buffers start
 	uint32_t *txBuffers;										//!< Transmit direct buffers start (the Tx fifo buffers follow them)
+#if !RP2040
 	TxEvent *txEventFifo;										//!< Transfer event fifo
+#endif
 	StandardMessageFilterElement *rxStdFilter;					//!< Standard filter List
 	ExtendedMessageFilterElement *rxExtFilter;					//!< Extended filter List
 
@@ -283,7 +312,9 @@ private:
 	unsigned int messagesLost;									// count of received messages lost because the receive FIFO was full
 	unsigned int busOffCount;									// count of the number of times we have reset due to bus off
 
+#if !RP2040	// we don't emulate the transmit event fifo on the RP2040
 	TxEventCallbackFunction txCallback;							// function that gets called by the ISR when a transmit event for a message with a nonzero marker occurs
+#endif
 
 # ifdef RTOS
 	// The following are all declared volatile because we care about when they are written
@@ -292,14 +323,14 @@ private:
 	std::atomic<uint32_t> rxBuffersWaiting;						// which buffers tasks are waiting on
 # endif
 
-#if !SAME70
+#if !SAME70 && !RP2040
 	uint16_t bitPeriod;											// how many clocks in a CAN normal bit
 #endif
 
+#if !RP2040
 	bool useFDMode;
 #endif
-};
-
 #endif
+};
 
 #endif /* SRC_CANDEVICE_H_ */

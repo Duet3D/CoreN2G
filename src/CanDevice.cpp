@@ -166,6 +166,8 @@ struct CanDevice::StandardMessageFilterElement
 	__IO S0Type S0;
 };
 
+static_assert(sizeof(CanDevice::StandardMessageFilterElement) == CanDevice::Config::StandardFilterElementSize * sizeof(uint32_t));
+
 /**
  * \brief CAN extended message ID filter element structure.
  *
@@ -198,6 +200,8 @@ struct CanDevice::ExtendedMessageFilterElement
 	__IO union F1Type F1;
 };
 
+static_assert(sizeof(CanDevice::ExtendedMessageFilterElement) == CanDevice::Config::ExtendedFilterElementSize * sizeof(uint32_t));
+
 // Macros to handle the differing naming of registers and fields between the SAME70 and the SAME5x/C21
 #if SAME5x || SAMC21
 
@@ -226,7 +230,7 @@ static Can * const CanPorts[2] = { CAN0, CAN1 };
 static const IRQn IRQnsByPort[2] = { CAN0_IRQn, CAN1_IRQn };
 static CanDevice *devicesByPort[2] = { nullptr, nullptr };
 
-CanDevice CanDevice::devices[NumCanDevices];
+static CanDevice devices[NumCanDevices];
 
 inline uint32_t CanDevice::GetRxBufferSize() const noexcept { return sizeof(RxBufferHeader)/sizeof(uint32_t) + (config->dataSize >> 2); }
 inline uint32_t CanDevice::GetTxBufferSize() const noexcept { return sizeof(TxBufferHeader)/sizeof(uint32_t) + (config->dataSize >> 2); }
@@ -1100,18 +1104,21 @@ void CanDevice::Interrupt() noexcept
 	{
 		hw->REG(IR) = ir;
 
+		// Test whether messages have been received into fifo 0
 		constexpr unsigned int rxFifo0WaitingIndex = (unsigned int)RxBufferNumber::fifo0;
 		if ((ir & CAN_(IR_RF0N)) != 0)
 		{
 			TaskBase::GiveFromISR(rxTaskWaiting[rxFifo0WaitingIndex]);
 		}
 
+		// Test whether messages have been received into fifo 1
 		constexpr unsigned int rxFifo1WaitingIndex = (unsigned int)RxBufferNumber::fifo1;
 		if ((ir & CAN_(IR_RF1N)) != 0)
 		{
 			TaskBase::GiveFromISR(rxTaskWaiting[rxFifo1WaitingIndex]);
 		}
 
+		// Test whether messages have been received into receive buffers
 		if (ir & CAN_(IR_DRX))
 		{
 			// Check which receive buffers have new messages
@@ -1128,6 +1135,7 @@ void CanDevice::Interrupt() noexcept
 			}
 		}
 
+		// Test whether any messages have been transmitted
 		if (ir & CAN_(IR_TC))
 		{
 			// Check which transmit buffers have finished transmitting
@@ -1153,6 +1161,7 @@ void CanDevice::Interrupt() noexcept
 			}
 		}
 
+		// Test for bus off condition
 		if (ir & CAN_(IR_BO))
 		{
 			++busOffCount;
@@ -1161,11 +1170,13 @@ void CanDevice::Interrupt() noexcept
 			return;
 		}
 
+		// Test for messages lost due to receive fifo full
 		if (ir & (CAN_(IR_RF0L) | CAN_(IR_RF1L)))
 		{
 			++messagesLost;
 		}
 
+		// Test whether there are any events in the transmit event fifo
 		if (ir & CAN_(IR_TEFN))
 		{
 			uint32_t txefs;
