@@ -86,10 +86,10 @@ struct VirtualCanRegisters
 	unsigned int rxFifo0Size;										// number of entries in fifo 0
 	unsigned int rxFifo1Size;										// number of entries in fifo 1
 	unsigned int txFifoSize;										// number of entries in transmit fifo
-	volatile void *rxFifo0Addr;										// fifo 0 start address
-	volatile void *rxFifo1Addr;										// fifo 1 start address
-	volatile void *rxBuffersAddr;									// dedicated receive buffers start address
-	volatile void *txFifoAddr;										// transmit fifo address
+	volatile uint32_t *rxFifo0Addr;									// fifo 0 start address
+	volatile uint32_t *rxFifo1Addr;									// fifo 1 start address
+	volatile uint32_t *rxBuffersAddr;								// dedicated receive buffers start address
+	volatile uint32_t *txFifoAddr;									// transmit fifo address
 	unsigned int numShortFilterElements;
 	unsigned int numExtendedFilterElements;
 	CanStandardMessageFilterElement *shortFiltersAddr;				// start address of short filter elements

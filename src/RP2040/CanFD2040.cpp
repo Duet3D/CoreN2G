@@ -12,8 +12,11 @@
 #include "hardware/structs/iobank0.h" // iobank0_hw
 #include "hardware/structs/padsbank0.h" // padsbank0_hw
 #include "hardware/structs/resets.h" // RESETS_RESET_PIO0_BITS
+#include <RP2040.h>
 
 #include <cstring>
+
+extern "C" void PIO_isr() noexcept;
 
 /****************************************************************
  * rp2040 and low-level helper functions
@@ -36,6 +39,7 @@ static void rp2040_clear_reset(uint32_t reset_bit)
 }
 
 // Helper to set the mode and extended function of a pin
+//TODO use SetPinFunction instead
 static void rp2040_gpio_peripheral(uint32_t gpio, int func, int pull_up)
 {
     padsbank0_hw->io[gpio] = (
@@ -45,7 +49,6 @@ static void rp2040_gpio_peripheral(uint32_t gpio, int func, int pull_up)
         | (pull_up < 0 ? PADS_BANK0_GPIO0_PDE_BITS : 0));
     iobank0_hw->io[gpio].ctrl = func << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
 }
-
 
 /****************************************************************
  * rp2040 PIO support
@@ -156,84 +159,136 @@ static inline uint32_t crc_bytes(uint32_t crc, uint32_t data, uint32_t num)
     return crc;
 }
 
+// Calculate CRC17 on a number of bits
+uint32_t Crc17(uint32_t initialValue, const uint32_t *buf, unsigned int numBits) noexcept
+{
+	//TODO
+	return initialValue;		//temporary!
+}
+
+// Calculate CRC21 on a number of bits
+uint32_t Crc21(uint32_t initialValue, const uint32_t *buf, unsigned int numBits) noexcept
+{
+	//TODO
+	return initialValue;		//temporary!
+}
+
 /****************************************************************
  * Bit unstuffing
  ****************************************************************/
 
-// Add 'count' number of bits from 'data' to the 'bu' unstuffer
-void BitUnstuffer::unstuf_add_bits(uint32_t data, uint32_t count) noexcept
+// Add 'count' number of bits from 'data' to the unstuffer
+// The bits are shifted left into stuffed_bits, and count_stuff is set to the number of bits added
+void BitUnstuffer::AddBits(uint32_t data, uint32_t count) noexcept
 {
-    const uint32_t mask = (1 << count) - 1;
+    const uint32_t mask = (1u << count) - 1;
     stuffed_bits = (stuffed_bits << count) | (data & mask);
     count_stuff = count;
 }
 
 // Reset state and set the next desired 'count' unstuffed bits to extract
-void BitUnstuffer::unstuf_set_count(uint32_t count) noexcept
+void BitUnstuffer::SetCount(uint32_t count) noexcept
 {
     unstuffed_bits = 0;
     count_unstuff = count;
 }
 
 // Clear bitstuffing state (used after crc field to avoid bitstuffing ack field)
-void BitUnstuffer::unstuf_clear_state() noexcept
+void BitUnstuffer::ClearState() noexcept
 {
-    const uint32_t lb = 1 << count_stuff;
+    const uint32_t lb = 1u << count_stuff;
     stuffed_bits = (stuffed_bits & (lb - 1)) | lb;
 }
 
-// Pull bits from unstuffer (as specified in unstuf_set_count() )
-int BitUnstuffer::unstuf_pull_bits() noexcept
+// Pull bits from unstuffer (as specified in unstuf_set_count())
+// Return 0 if successful, 1 if need more data, -1 or -2 or -3 if there was an unstuffing error
+int BitUnstuffer::PullBits() noexcept
 {
-    uint32_t sb = stuffed_bits, edges = sb ^ (sb >> 1);
-    uint32_t e2 = edges | (edges >> 1), e4 = e2 | (e2 >> 2), rm_bits = ~e4;
-    uint32_t cs = count_stuff, cu = count_unstuff;
-    if (!cs)
+    const uint32_t sb = stuffed_bits;
+    if (usingFixedStuffBits)
     {
-        // Need more data
-        return 1;
+    	while (count_unstuff != 0 && count_stuff != 0)
+    	{
+    		if (bitsUntilFixedStuffBit == 0)
+    		{
+    			// Check that this is the inverse of the previous bit
+    			if (((unstuffed_bits ^ (unstuffed_bits >> 1)) & (1u << (count_stuff - 1))) == 0)
+    			{
+    				return -3;
+    			}
+    			--count_stuff;
+    		}
+    		else
+    		{
+    			const uint32_t toExtract = min<uint32_t>(count_unstuff, min<uint32_t>(count_stuff, bitsUntilFixedStuffBit));
+    			unstuffed_bits = (unstuffed_bits << toExtract)
+    							| ((stuffed_bits >> (count_stuff - toExtract)) & ((1u << toExtract) - 1));
+    			count_stuff -= toExtract;
+    			count_unstuff -= toExtract;
+     		}
+    	}
+    	return unstuffed_bits;
     }
-    while (true)
-    {
-        uint32_t try_cnt = cs > cu ? cu : cs;
-        for (;;)
-        {
-            const uint32_t try_mask = ((1 << try_cnt) - 1) << (cs + 1 - try_cnt);
-            if (likely(!(rm_bits & try_mask)))
-            {
-                // No stuff bits in try_cnt bits - copy into unstuffed_bits
-                count_unstuff = cu = cu - try_cnt;
-                count_stuff = cs = cs - try_cnt;
-                unstuffed_bits |= ((sb >> cs) & ((1 << try_cnt) - 1)) << cu;
-                if (! cu)
-                {
-                    // Extracted desired bits
-                    return 0;
-                }
-                break;
-            }
-            count_stuff = cs = cs - 1;
-            if (rm_bits & (1 << (cs + 1)))
-            {
-                // High bit of try_cnt a stuff bit
-                if (unlikely(rm_bits & (1 << cs)))
-                {
-                    // Six consecutive bits - a bitstuff error
-                    return ((sb >> cs) & 1) ? -1 : -2;
-                }
-                break;
-            }
-            // High bit not a stuff bit - limit try_cnt and retry
-            count_unstuff = cu = cu - 1;
-            unstuffed_bits |= ((sb >> cs) & 1) << cu;
-            try_cnt /= 2;
-        }
-        if (likely(!cs))
-        {
-            // Need more data
-            return 1;
-        }
-    }
+
+    const uint32_t edges = sb ^ (sb >> 1);
+	const uint32_t e2 = edges | (edges >> 1);
+	const uint32_t e4 = e2 | (e2 >> 2);
+	const uint32_t rm_bits = ~e4;
+	uint32_t cs = count_stuff;
+	uint32_t cu = count_unstuff;
+	if (!cs)
+	{
+		// Need more data
+		return 1;
+	}
+	while (true)
+	{
+		uint32_t try_cnt = cs > cu ? cu : cs;
+		for (;;)
+		{
+			const uint32_t try_mask = ((1 << try_cnt) - 1) << (cs + 1 - try_cnt);
+			if (likely((rm_bits & try_mask) == 0))
+			{
+				// No stuff bits in try_cnt bits - copy into unstuffed_bits
+				count_unstuff = cu = cu - try_cnt;
+				count_stuff = cs = cs - try_cnt;
+				unstuffed_bits |= ((sb >> cs) & ((1u << try_cnt) - 1)) << cu;
+				if (cu == 0)
+				{
+					// Extracted desired bits
+					return 0;
+				}
+				break;
+			}
+			count_stuff = cs = cs - 1;
+			if (rm_bits & (1u << (cs + 1)))
+			{
+				// High bit of try_cnt a stuff bit
+				if (unlikely(rm_bits & (1u << cs)))
+				{
+					// Six consecutive bits - a bitstuff error
+					return ((sb >> cs) & 1u) ? -1 : -2;
+				}
+				break;
+			}
+			// High bit not a stuff bit - limit try_cnt and retry
+			count_unstuff = cu = cu - 1;
+			unstuffed_bits |= ((sb >> cs) & 1) << cu;
+			try_cnt /= 2;
+		}
+		if (likely(cs == 0))
+		{
+			// Need more data
+			return 1;
+		}
+	}
+}
+
+// Signal the bit stuffer to expect a stuff bit next and another after every 4 bits subsequently
+void BitUnstuffer::UseFixedStuffBits() noexcept
+{
+	usingFixedStuffBits = true;
+	bitsUntilFixedStuffBit = 0;
 }
 
 /****************************************************************
@@ -244,36 +299,51 @@ int BitUnstuffer::unstuf_pull_bits() noexcept
 class BitStuffer
 {
 public:
-	BitStuffer(uint32_t *p_buf) noexcept : prev_stuffed(1), bitpos(0), buf(p_buf) { }
+	BitStuffer(uint32_t *p_buf) noexcept : prev_stuffed(1), bitpos(0), totalStuffBits(0), buf(p_buf) { }
 	void pushraw(uint32_t data, uint32_t count) noexcept;
 	void push(uint32_t data, uint32_t count) noexcept;
+	void AddFixedStuffBit() noexcept;
 	uint32_t finalize() noexcept;
-	static uint32_t stuff(uint32_t *pb, uint32_t num_bits) noexcept;
+	uint32_t stuff(uint32_t& pb, uint32_t num_bits) noexcept;
+	uint32_t GetTotalStuffBits() const noexcept { return totalStuffBits; }
+	uint32_t GetTotalBits() const noexcept { return bitpos; }
 
 private:
-    uint32_t prev_stuffed, bitpos, *buf;
+    uint32_t prev_stuffed;		// the previous 5 (or more) bits we have stored in the buffer, so we can tell whether stuffing is needed when we store more bits
+    uint32_t bitpos;			// how many bits we have stored in the buffer already
+    uint32_t totalStuffBits;
+    uint32_t *buf;				// the buffer we are stuffing into
 };
 
 // Push 'count' bits of 'data' into stuffer without performing bit stuffing
 void BitStuffer::pushraw(uint32_t data, uint32_t count) noexcept
+pre(count <= 32)
 {
-    uint32_t wp = bitpos / 32, bitused = bitpos % 32, bitavail = 32 - bitused;
-    uint32_t *fb = &buf[wp];
-    if (bitavail >= count) {
-        fb[0] |= data << (bitavail - count);
-    } else {
-        fb[0] |= data >> (count - bitavail);
-        fb[1] |= data << (32 - (count - bitavail));
+    const uint32_t wp = bitpos / 32;					// current index into the buffer
+    const uint32_t bitavail = 32 - (bitpos % 32);		// number of bits available in the word at the current index, 1 to 32
+    if (bitavail == 32)
+    {
+    	buf[wp] = data << (32 - count);
+    }
+    else if (bitavail >= count)
+    {
+    	buf[wp] |= data << (bitavail - count);
+    }
+    else
+    {
+    	buf[wp] |= data >> (count - bitavail);
+    	buf[wp + 1] = data << (32 - (count - bitavail));
     }
     bitpos += count;
 }
 
-// Push 'count' bits of 'data' into stuffer
+// Push 'count' (max 26) bits of 'data' into stuffer
 void BitStuffer::push(uint32_t data, uint32_t count) noexcept
+pre(count <= 26)										// the stuffer may expand 26 bits to 32
 {
-    data &= (1 << count) - 1;
+    data &= (1 << count) - 1;							// clear the high bits
     uint32_t stuf = (prev_stuffed << count) | data;
-    uint32_t newcount = stuff(&stuf, count);
+    const uint32_t newcount = stuff(stuf, count);
     pushraw(stuf, newcount);
     prev_stuffed = stuf;
 }
@@ -281,8 +351,8 @@ void BitStuffer::push(uint32_t data, uint32_t count) noexcept
 // Pad final word of stuffer with high bits
 uint32_t BitStuffer::finalize() noexcept
 {
-    uint32_t words = DIV_ROUND_UP(bitpos, 32);
-    uint32_t extra = words * 32 - bitpos;
+    const uint32_t words = DIV_ROUND_UP(bitpos, 32);
+    const uint32_t extra = words * 32 - bitpos;
     if (extra)
     {
         buf[words - 1] |= (1 << extra) - 1;
@@ -290,172 +360,58 @@ uint32_t BitStuffer::finalize() noexcept
     return words;
 }
 
-// Stuff 'num_bits' bits in '*pb' - upper bits must already be stuffed
-/*static*/ uint32_t BitStuffer::stuff(uint32_t *pb, uint32_t num_bits) noexcept
+// Add a fixed stuff bit, not included in the count of total stuff bits
+void BitStuffer::AddFixedStuffBit() noexcept
 {
-    uint32_t b = *pb, count = num_bits;
-    for (;;) {
-        uint32_t try_cnt = num_bits, edges = b ^ (b >> 1);
-        uint32_t e2 = edges | (edges >> 1), e4 = e2 | (e2 >> 2), add_bits = ~e4;
-        for (;;) {
-            uint32_t try_mask = ((1 << try_cnt) - 1) << (num_bits - try_cnt);
-            if (!(add_bits & try_mask)) {
+	prev_stuffed = (prev_stuffed << 1) | ((prev_stuffed & 1u) ^ 1u);
+	pushraw(prev_stuffed & 1u, 1);
+}
+
+// Stuff 'num_bits' (max 26) bits in 'pb' - upper bits must already be stuffed. Return the count of bits generated.
+uint32_t BitStuffer::stuff(uint32_t& pb, uint32_t num_bits) noexcept
+pre(count <= 26)
+{
+    uint32_t b = pb;
+    uint32_t count = num_bits;
+    for (;;)
+    {
+        uint32_t try_cnt = num_bits;
+        const uint32_t edges = b ^ (b >> 1);
+        const uint32_t e2 = edges | (edges >> 1), e4 = e2 | (e2 >> 2);
+        const uint32_t add_bits = ~e4;
+        for (;;)
+        {
+            const uint32_t try_mask = ((1 << try_cnt) - 1) << (num_bits - try_cnt);
+            if (!(add_bits & try_mask))
+            {
                 // No stuff bits needed in try_cnt bits
-                if (try_cnt >= num_bits)
-                    goto done;
+                if (try_cnt >= num_bits) { goto done; }
                 num_bits -= try_cnt;
                 try_cnt = (num_bits + 1) / 2;
-                continue;
             }
-            if (add_bits & (1 << (num_bits - 1))) {
-                // A stuff bit must be inserted prior to the high bit
-                uint32_t low_mask = (1 << num_bits) - 1, low = b & low_mask;
-                uint32_t high = (b & ~(low_mask >> 1)) << 1;
-                b = high ^ low ^ (1 << (num_bits - 1));
-                count += 1;
-                if (num_bits <= 4)
-                    goto done;
-                num_bits -= 4;
-                break;
+            else
+            {
+				if (add_bits & (1 << (num_bits - 1)))
+				{
+					// A stuff bit must be inserted prior to the high bit
+					const uint32_t low_mask = (1 << num_bits) - 1, low = b & low_mask;
+					const uint32_t high = (b & ~(low_mask >> 1)) << 1;
+					b = high ^ low ^ (1 << (num_bits - 1));
+					++count;
+					++totalStuffBits;
+					if (num_bits <= 4) { goto done; }
+					num_bits -= 4;
+					break;
+				}
+				// High bit doesn't need stuff bit - accept it, limit try_cnt, retry
+				num_bits--;
+				try_cnt /= 2;
             }
-            // High bit doesn't need stuff bit - accept it, limit try_cnt, retry
-            num_bits--;
-            try_cnt /= 2;
         }
     }
 done:
-    *pb = b;
+    pb = b;
     return count;
-}
-
-// Set up a message ready to be queued for transmission. The callback function is set to null.
-void CanFD2040TransmitBuffer::Populate(uint32_t p_id, const uint8_t *data, unsigned int numBytes) noexcept
-{
-	if (numBytes > 64)
-	{
-		numBytes = 64;				// prevent things going horribly wrong if the caller made a mistake
-	}
-
-	// Set up the ID field
-    if (p_id & CanFD2040ReceiveBuffer::IdExtraBits::ID_EFF)
-    {
-        id = p_id & ~0x20000000;
-    }
-    else
-    {
-        id = p_id & 0x7ff;			// we don't support RTR
-    }
-
-    // Set up the dlc field and compute how many padding btyes we need to add
-    size_t padding;
-    if (numBytes <= 8)
-    {
-    	dlc = numBytes;
-    	padding = 0;
-    }
-    else if (numBytes <= 24)
-    {
-    	padding = 4 - (numBytes & 0x03);
-    	dlc = ((numBytes + padding) >> 2) + 6;
-    }
-    else
-    {
-    	padding = 16 - (numBytes & 0x0F);
-    	dlc = ((numBytes + padding) >> 4) + 11;
-    }
-
-    // Calculate crc and stuff bits
-    memset(stuffed_data, 0, sizeof(stuffed_data));
-    BitStuffer bs(stuffed_data);
-    uint32_t locCrc = 0;
-    if (p_id & CanFD2040ReceiveBuffer::IdExtraBits::ID_EFF)
-    {
-        // Extended header
-        const uint32_t eid = p_id;
-        const uint32_t h1 = ((eid & 0x1ffc0000) >> 11) | 0x60 | ((eid & 0x3e000) >> 13);
-        const uint32_t h2 = ((eid & 0x1fff) << 7) | dlc;
-        locCrc = crc_bytes(locCrc, h1 >> 4, 2);
-        locCrc = crc_bytes(locCrc, ((h1 & 0x0f) << 20) | h2, 3);
-        bs.push(h1, 19);
-        bs.push(h2, 20);
-    }
-    else
-    {
-        // Standard header
-        uint32_t hdr = ((p_id & 0x7ff) << 7) | dlc;
-        locCrc = crc_bytes(locCrc, hdr, 3);
-        bs.push(hdr, 19);
-    }
-
-    for (size_t i = 0; i < numBytes; i++)
-    {
-        locCrc = crc_byte(locCrc, data[i]);
-        bs.push(data[i], 8);
-    }
-    for (size_t i = 0; i < padding; i++)
-    {
-        locCrc = crc_byte(locCrc, 0);
-        bs.push(0, 8);
-    }
-    crc = locCrc & 0x7fff;
-    bs.push(crc, 15);
-    bs.pushraw(1, 1);
-    stuffed_words = bs.finalize();
-
-	completionCallback = nullptr;
-}
-
-// Set up the callback. Call this after populating the buffer but before queueing it for transmission.
-void CanFD2040TransmitBuffer::SetCallback(CanTransmitCallback fn, uint32_t param) noexcept
-{
-	completionCallback = fn;
-	completionParam = param;
-}
-
-// CanIdFilter members
-CanIdFilter::CanIdFilter(uint32_t p_id, uint32_t p_mask, CanReceiveCallback p_callback) noexcept
-	: id(p_id), mask(p_mask), callback(p_callback), receivedMessages(nullptr)
-{
-}
-
-// Offer a message to the filter. Returns true if the message is accepted and added to the list.
-bool CanIdFilter::Offer(const CanFD2040ReceiveBuffer *msg) const noexcept
-{
-	return (msg->id & mask) == id;
-}
-
-// Add a message to the queue
-// Caller must already have entered the critical section that guards the buffer list.
-void CanIdFilter::AddMessage(CanFD2040ReceiveBuffer *msg) noexcept
-{
-	msg->next = nullptr;
-	CanFD2040ReceiveBuffer **bufp = &receivedMessages;
-	while (*bufp != nullptr)
-	{
-		bufp = &((*bufp)->next);
-	}
-	*bufp = msg;
-}
-
-// Get the message at the head of the receive queue. The caller becomes responsible for releasing the buffer.
-// Caller must already have entered the critical section that guards the buffer list.
-CanFD2040ReceiveBuffer* CanIdFilter::GetMessage() noexcept
-{
-	CanFD2040ReceiveBuffer *const buf = receivedMessages;
-	if (buf != nullptr)
-	{
-		receivedMessages = buf->next;
-	}
-	return buf;
-}
-
-// Execute the callback
-void CanIdFilter::ExecuteCallback(unsigned int filterNumber) const noexcept
-{
-	if (callback != nullptr)
-	{
-		callback(filterNumber);
-	}
 }
 
 // CanFD2040 members
@@ -476,66 +432,90 @@ void CanFD2040::Entry() noexcept
     }
 }
 
-// Add a filter to the end of the current list. There is currently no facility to remove a filter.
-void CanFD2040::AddFilter(CanIdFilter *p_filter) noexcept
+// Set up a message ready to be transmitted
+void CanFD2040::PopulateTransmitBuffer() noexcept
 {
-	p_filter->next = nullptr;
-	CanIdFilter **fpp = &filters;
-	while (*fpp != nullptr)
+	const uint32_t* txBufferPtr = const_cast<const uint32_t*>(regs->txFifoAddr);
+	const CanTxBufferHeader *const txHdr = reinterpret_cast<const CanTxBufferHeader *>(reinterpret_cast<const uint8_t*>(txBufferPtr) + (sizeof(CanTxBufferHeader) + 64) * regs->txFifoGetIndex);
+
+	txId = txHdr->T0.bit.ID;
+	txDlc = txHdr->T1.bit.DLC;
+
+	// Push the header through the stuffer
+	BitStuffer bs(txMessage);
+	if (txHdr->T0.bit.XTD)
 	{
-		fpp = &(*fpp)->next;
+		// Extended header
+		const uint32_t h1 = ((txId & 0x1ffc0000) >> 16) | 0x03;
+		const uint32_t h2 = ((txId & 0x3ffff) << 9) | 0x80 | txDlc;
+		bs.push(h1, 19);
+		bs.push(h2, 20);
 	}
-	*fpp = p_filter;
-}
-
-// Queue a message for transmission. After transmission or failure, the callback will be made if non-null and then the buffer will be released.
-void CanFD2040::QueueForTransmit(CanFD2040TransmitBuffer *buf) noexcept
-{
-	buf->next = nullptr;
-	CanFD2040TransmitBuffer **bufp = &tx_queue;
-	critical_section_enter_blocking(&txQueueCriticalSection);
-	while (*bufp != nullptr)
+	else
 	{
-		bufp = &((*bufp)->next);
+		// Standard header
+		uint32_t hdr = ((txId & 0x7ff) << 10) | 0x80 | txDlc;
+		bs.push(hdr, 21);
 	}
-	*bufp = buf;
-	critical_section_exit(&txQueueCriticalSection);
 
-    // Wakeup if in TS_IDLE state
-    pio_irq_atomic_set_maytx();
-}
-
-// Get the message at the head of the receive queue for the specified filter number. The caller must release the buffer.
-CanFD2040ReceiveBuffer *CanFD2040::GetMessage(unsigned int filterNumber) noexcept
-{
-	CanIdFilter *filter = filters;
-	for (;;)
+	// Push the data
+	const uint8_t *data8 = reinterpret_cast<const uint8_t*>(txHdr) + sizeof(txHdr);
+	if (txDlc < 8)
 	{
-		if (filter == nullptr)
+		for (size_t i = 0; i < txDlc; i++)
 		{
-			return nullptr;
+			bs.push(data8[i], 8);
 		}
-		if (filterNumber == 0)
+	}
+	else
+	{
+		const uint16_t *data16 = reinterpret_cast<const uint16_t*>(data8);
+		if (txDlc <= 12)
 		{
-			break;
+			for (size_t i = 0; i < 2 * (txDlc - 6); i++)
+			{
+				bs.push(data16[i], 16);
+			}
 		}
-		--filterNumber;
-		filter = filter->next;
+		else
+		{
+			for (size_t i = 0; i < 8 * (txDlc - 11); i++)
+			{
+				bs.push(data16[i], 16);
+			}
+		}
 	}
 
-	critical_section_enter_blocking(&rxQueueCriticalSection);
-	CanFD2040ReceiveBuffer *ret = filter->GetMessage();
-	critical_section_exit(&rxQueueCriticalSection);
-	return ret;
-}
+	// Push the stuff count
+	// 3-bit Gray code table, shifted left 1 bit with lower parity bit added
+	constexpr uint8_t GrayTable[] = { 0b0000, 0b0011, 0b0110, 0b0101, 0b1100, 0b1111, 0b1010, 0b1001 };
+	bs.AddFixedStuffBit();
+	bs.push(GrayTable[bs.GetTotalStuffBits() & 7], 4);
 
-// Free a receive buffer that was returned by GetMessage
-void CanFD2040::ReleaseReceiveBuffer(CanFD2040ReceiveBuffer *buf) noexcept
-{
-	critical_section_enter_blocking(&rxQueueCriticalSection);
-	buf->next = rxFreelist;
-	rxFreelist = buf;
-	critical_section_exit(&rxQueueCriticalSection);
+	// CRC everything stored so far and store the CRC
+	if (txDlc > 10)
+	{
+		txCrc = Crc21(1u << 20, txMessage, bs.GetTotalBits());
+		bs.AddFixedStuffBit();
+		bs.pushraw((txCrc >> 17) & 0x0f, 4);
+	}
+	else
+	{
+		txCrc = Crc17(1u << 16, txMessage, bs.GetTotalBits());
+	}
+
+	bs.AddFixedStuffBit();
+	bs.pushraw((txCrc >> 13) & 0x0f, 4);
+	bs.AddFixedStuffBit();
+	bs.pushraw((txCrc >> 9) & 0x0f, 4);
+	bs.AddFixedStuffBit();
+	bs.pushraw((txCrc >> 5) & 0x0f, 4);
+	bs.AddFixedStuffBit();
+	bs.pushraw((txCrc >> 1) & 0x0f, 4);
+	bs.AddFixedStuffBit();
+	bs.pushraw(txCrc & 0x01, 1);
+
+	txStuffedWords = bs.finalize();
 }
 
 void CanFD2040::pio_setup() noexcept
@@ -543,7 +523,7 @@ void CanFD2040::pio_setup() noexcept
 	constexpr int PIO_FUNC = 6;
 
     // Configure pio0 clock
-    uint32_t rb = regs->pioNumber ? RESETS_RESET_PIO1_BITS : RESETS_RESET_PIO0_BITS;
+    const uint32_t rb = (regs->pioNumber) ? RESETS_RESET_PIO1_BITS : RESETS_RESET_PIO0_BITS;
     rp2040_clear_reset(rb);
 
     // Setup and sync pio state machine clocks
@@ -559,6 +539,8 @@ void CanFD2040::pio_setup() noexcept
     // Map Rx/Tx gpios
     rp2040_gpio_peripheral(regs->rxPin, PIO_FUNC, 1);
     rp2040_gpio_peripheral(regs->txPin, PIO_FUNC, 0);
+
+    irq_set_exclusive_handler ((unsigned int)((regs->pioNumber) ? PIO1_IRQ_0_IRQn : PIO0_IRQ_0_IRQn), PIO_isr);
 }
 
 // Setup PIO "sync" state machine (state machine 0)
@@ -597,9 +579,9 @@ void CanFD2040::pio_rx_setup() noexcept
 // Setup PIO "match" state machine (state machine 2)
 void CanFD2040::pio_match_setup() noexcept
 {
-     struct pio_sm_hw *sm = &pio_hw->sm[2];
+    struct pio_sm_hw *sm = &pio_hw->sm[2];
     sm->execctrl = (
-        (can2040_offset_match_end - 1) << PIO_SM0_EXECCTRL_WRAP_TOP_LSB
+          (can2040_offset_match_end - 1) << PIO_SM0_EXECCTRL_WRAP_TOP_LSB
         | can2040_offset_shared_rx_read << PIO_SM0_EXECCTRL_WRAP_BOTTOM_LSB);
     sm->pinctrl = regs->rxPin << PIO_SM0_PINCTRL_IN_BASE_LSB;
     sm->shiftctrl = 0;
@@ -785,45 +767,13 @@ void CanFD2040::report_callback_error(uint32_t error_code) noexcept
 // Report a received message to calling code (via callback interface)
 void CanFD2040::report_callback_rx_msg() noexcept
 {
-	// Scan the filters to see if there is a matching one
-	unsigned int filterNumber = 0;
-	for (CanIdFilter *f = filters; f != nullptr; f = f->next)
-	{
-		if (f->Offer(parse_msg))
-		{
-			critical_section_enter_blocking(&rxQueueCriticalSection);
-			f->AddMessage(parse_msg);
-			parse_msg = rxFreelist;
-			if (parse_msg != nullptr)
-			{
-				rxFreelist = parse_msg->next;
-			}
-			critical_section_exit(&rxQueueCriticalSection);
-			f->ExecuteCallback(filterNumber);
-			return;
-		}
-		++filterNumber;
-	}
-
-	// If we get here then no filter accepted the message, so re-use the buffer
+	//TODO
 }
 
 // Report a message that was successfully transmitted (via callback interface)
 void CanFD2040::report_callback_tx_msg() noexcept
 {
-	CanFD2040TransmitBuffer *txb = tx_queue;
-	if (txb != nullptr)			// should always be true
-	{
-		if (txb->completionCallback != nullptr)
-		{
-			txb->completionCallback(true, txb->completionParam);
-		}
-		critical_section_enter_blocking(&txQueueCriticalSection);
-		tx_queue = txb->next;
-		txb->next = txFreelist;
-		txFreelist = txb;
-		critical_section_exit(&txQueueCriticalSection);
-	}
+	// We don't support the Tx event fifo yet
 }
 
 // EOF phase complete - report message (rx or tx) to calling code
@@ -866,35 +816,51 @@ void CanFD2040::report_note_message_start() noexcept
 // Setup for ack injection (if receiving) or ack confirmation (if transmit)
 void CanFD2040::report_note_crc_start() noexcept
 {
-    uint32_t cs = unstuf.GetStuffCount();
-    uint32_t crcstart_bitpos = raw_bit_count - cs - 1;
-    uint32_t last = ((unstuf.GetStuffedBits() >> cs) << 15) | parse_crc;
-    uint32_t crc_bitcount = BitStuffer::stuff(&last, 15 + 1) - 1;
-    uint32_t crcend_bitpos = crcstart_bitpos + crc_bitcount;
+	// Get 19 bits of expected data (lower 15 bits of CRC plus 4 stuff bits)
+	uint32_t expectedData = (parse_crc & 0x01)						// bit 0 of CRC
+						  | (~parse_crc & 0x02)						// fixed stuff bit = inverse of bit 1
+						  | ((parse_crc & 0x1e) << 1)				// bits 1-4 of CRC
+						  | ((~parse_crc & 0x20) << 1)				// fixed stuff bit = inverse of bit 5
+						  | ((parse_crc & 0x1e0) << 2)				// bits 5-8 of CRC
+						  | ((~parse_crc & 0x0200) << 2)			// fixed stuff bit = inverse of bit 9
+						  | ((parse_crc & 0x1e00) << 3)				// bits 9-12 of CRC
+						  | ((~parse_crc & 0x2000) << 3)			// fixed stuff bit = inverse of bit 13
+						  | ((parse_crc & 0x6000) << 4);			// bits 13-14 of CRC
+    const uint32_t cs = unstuf.GetStuffCount();
+    const uint32_t crcstart_bitpos = raw_bit_count - cs - 1;
+    const uint32_t crcend_bitpos = crcstart_bitpos + 19;
 
-    bool ret = tx_check_local_message();
-    if (ret)
+    if (tx_check_local_message())
     {
         // This is a self transmit - setup tx eof "matched" signal
         report_state = (ReportState)(ReportState::RS_IN_MSG | ReportState::RS_IS_TX);
-        last = (last << 10) | 0x02ff;
-        pio_match_check(pio_match_calc_key(last, crcend_bitpos + 10));
-        return;
+        expectedData = (expectedData << 10) | 0x02ff;
+        pio_match_check(pio_match_calc_key(expectedData, crcend_bitpos + 10));
     }
-
-    // Inject ack
-    report_state = ReportState::RS_IN_MSG;
-    last = (last << 1) | 0x01;
-    ret = tx_inject_ack(pio_match_calc_key(last, crcend_bitpos + 1));
-    if (ret)
+    else
     {
-        // Ack couldn't be scheduled (due to lagged parsing state)
-        return;
+		// Inject ack
+		report_state = ReportState::RS_IN_MSG;
+		expectedData = (expectedData << 1) | 0x01;
+		const uint32_t match_key = pio_match_calc_key(expectedData, crcend_bitpos + 1);
+	    if (   tx_state == TS_QUEUED
+	    	&& !pio_tx_did_conflict()
+	        && pio_rx_fifo_level() > 1
+		   )
+	    {
+	        // Rx state is behind - acking wont succeed and may halt active tx
+	    }
+	    else
+	    {
+			tx_state = TS_ACKING_RX;
+			pio_tx_inject_ack(match_key);
+			pio_irq_set_maytx_ackdone();
+
+			// Setup for future rx eof "matched" signal
+			expectedData = (expectedData << 8) | 0x7f;
+			report_eof_key = pio_match_calc_key(expectedData, crcend_bitpos + 9);
+		}
     }
-    pio_irq_set_maytx_ackdone();
-    // Setup for future rx eof "matched" signal
-    last = (last << 8) | 0x7f;
-    report_eof_key = pio_match_calc_key(last, crcend_bitpos + 9);
 }
 
 // Parser found successful ack
@@ -965,7 +931,7 @@ void CanFD2040::report_line_maytx() noexcept
 void CanFD2040::data_state_go_next(ParseState state, uint32_t bits) noexcept
 {
     parse_state = state;
-    unstuf.unstuf_set_count(bits);
+    unstuf.SetCount(bits);
 }
 
 // Transition to the MS_DISCARD state - drop all bits until 6 passive bits
@@ -998,191 +964,183 @@ void CanFD2040::data_state_line_passive() noexcept
     {
         // Bitstuff error
         data_state_go_discard();
-        return;
     }
-
-    uint32_t stuffed_bits = unstuf.GetStuffedBits() >> unstuf.GetStuffCount();
-    if (stuffed_bits == 0xffffffff)
+    else
     {
-        // Counter overflow in "sync" state machine - reset it
-        pio_sync_setup();
-        unstuf.ClearStuffedBits();
-        data_state_go_discard();
-        return;
+		const uint32_t stuffed_bits = unstuf.GetStuffedBits() >> unstuf.GetStuffCount();
+		if (stuffed_bits == 0xffffffff)
+		{
+			// Counter overflow in "sync" state machine - reset it
+			pio_sync_setup();
+			unstuf.ClearStuffedBits();
+			data_state_go_discard();
+		}
+		else if (((stuffed_bits + 1) & 0x1ff) == 0)		// look for sof after 9 passive bits (most "PIO sync" will produce)
+		{
+			data_state_go_next(MS_START, 1);
+		}
+		else
+		{
+			data_state_go_discard();
+		}
     }
-
-    // Look for sof after 9 passive bits (most "PIO sync" will produce)
-    if (((stuffed_bits + 1) & 0x1ff) == 0)
-    {
-        data_state_go_next(MS_START, 1);
-        return;
-    }
-
-    data_state_go_discard();
-}
-
-// Transition to MS_CRC state - await 16 bits of crc
-void CanFD2040::data_state_go_crc() noexcept
-{
-    parse_crc &= 0x7fff;
-    report_note_crc_start();
-    data_state_go_next(MS_CRC, 16);
 }
 
 // Transition to MS_DATA0 state (if applicable) - await data bits
-void CanFD2040::data_state_go_data(uint32_t id, uint32_t data) noexcept
+void CanFD2040::data_state_go_data() noexcept
 {
-    if (data & (0x03 << 4)) {
-        // Not a supported header
-        data_state_go_discard();
-        return;
+	if (parse_dlc == 0)
+    {
+        data_state_go_stuff_count();						// no data in packet
     }
-    parse_msg->data32[0] = parse_msg->data32[1] = 0;
-    parse_dlc = data & 0x0f;
-    if (data & (1 << 6)) {
-    	parse_dlc = 0;
-        id |= CanFD2040ReceiveBuffer::IdExtraBits::ID_RTR;
-    }
-    parse_msg->id = id;
-    if (parse_dlc)
-        data_state_go_next(MS_DATA0, (parse_dlc >= 4) ? 32 : parse_dlc * 8);
-    else
-        data_state_go_crc();
+	else
+	{
+		parse_bytesReceived = 0;
+		parse_bytesLeft = (parse_dlc <= 8) ? parse_dlc
+							: (parse_dlc <= 12) ? (parse_dlc - 6) << 2
+								: (parse_dlc - 11) << 4;
+		data_state_go_next(MS_DATA, 8 * min<uint32_t>(parse_bytesLeft, 4));
+	}
+}
+
+// Transition to MS_STUFFCOUNT state
+void CanFD2040::data_state_go_stuff_count() noexcept
+{
+	unstuf.UseFixedStuffBits();								// tell the unstuffer that the next bit and then every 4 bits are forced stuff bits
+	data_state_go_next(MS_STUFFCOUNT, (parse_dlc >= 10) ? 10 : 6);	// receive the 4 stuff count bits + the first 2 or 6 CRC bits (and 2 fixed stuff bits)
 }
 
 // Handle reception of first bit of header (after start-of-frame (SOF))
 void CanFD2040::data_state_update_start(uint32_t data) noexcept
 {
-#if SUPPORT_CAN_FD
-	//TODO save the time stamp for later
-#endif
-    parse_msg->id = data;
+	rxTimeStamp = timer_hw->timerawl;						// save time stamp for later
+    parse_id = data;										// store the first data bit (MSbit of ID)
     report_note_message_start();
     data_state_go_next(MS_HEADER, 17);
 }
 
-// Handle reception of next 17 header bits which for CAN frame with short ID takes us up to and including the DLC bits
+// Handle reception of next 20 header bits which for CAN-FD frame with short ID takes us up to and including the DLC bits
 void CanFD2040::data_state_update_header(uint32_t data) noexcept
 {
-    data |= parse_msg->id << 17;							// or in the most significant ID bit
-    if ((data & 0x60) == 0x60) {
-        // Extended header
-        parse_msg->id = data;								// this is now the first 11 bits of the ID field shifted left 7 bits
-        data_state_go_next(MS_EXT_HEADER, 20);
-        return;
+    data |= parse_id << 20;									// or in the most significant ID bit
+    if ((data & 0x0300) == 0x0300)							// if SRR and ID are both set
+    {
+        // Extended ID
+        parse_id = (data & 0x1ffc00) << 8;					// this is now the top 11 bits of the ID field
+        data_state_go_next(MS_EXT_HEADER, 19);
     }
-#if SUPPORT_CAN_FD
-    const uint32_t id = (data >> 7) & 0x7ff;
-    if (data & 0x10) {										// if FDF bit is set
-    	data_state_go_dlc(id, data, 3);						// we need to read 3 more bits to get the complete DLC
-    	if (data & (1u << 2)) {								// if BRS bit is set
-            data_state_go_discard();
-            return;
-    	}
-    	parse_msg.id = id | CAN2040_ID_FDF;
-    	parse_scratch = data << 3;							// save for when we know which CRC algorithm to use
-    	data_state_go_next(MS_DLC, 3);
-    } else {
-    	cd->parse_crc = crc_bytes(0, data, 3);				// CRC the complete header (18 bits)
-    	data_state_go_data(id, data);
+    else if ((data & 0x3e0) == 0x80)						// if r1 and IDE are both clear, FDF is set, r0 and and BRS are clear
+    {
+		// Short ID
+		parse_id = (data >> 10) & 0x7ff;					// save the complete ID
+		//TODO filter it
+		parse_dlc = data & 0x0F;
+		data_state_go_data();
     }
-#else
-    parse_crc = crc_bytes(0, data, 3);
-    data_state_go_data((data >> 7) & 0x7ff, data);
-#endif
-}
-
-// Handle reception of additional 20 bits of "extended header"
-void CanFD2040::data_state_update_ext_header(uint32_t data) noexcept
-{
-    uint32_t hdr1 = parse_msg->id;
-#if SUPPORT_CAN_FD
-    uint32_t id = (((hdr1 << 11) & 0x1ffc0000) | ((hdr1 << 13) & 0x3e000)
-                   | (data >> 7) | CAN2040_ID_EFF);
-    if (data & 0x20) {										// if FDF bit is set
-    	if (data & 0x08) {									// if BRS bit is set
-            data_state_go_discard(cd);
-            return;
-    	}
-    	cd->parse_msg.id = id | CAN2040_ID_FDF;
-    	cd->parse_scratch = data << 2;						// save for when we know which CRC algorithm to use
-    	data_state_go_next(cd, MS_DLC, 2);
-    } else {
-        uint32_t crc = crc_bytes(0, hdr1 >> 4, 2);
-        cd->parse_crc = crc_bytes(crc, ((hdr1 & 0x0f) << 20) | data, 3);
-        data_state_go_data(cd, id, data);
-    }
-#else
-    uint32_t crc = crc_bytes(0, hdr1 >> 4, 2);
-    parse_crc = crc_bytes(crc, ((hdr1 & 0x0f) << 20) | data, 3);
-    uint32_t id = (((hdr1 << 11) & 0x1ffc0000) | ((hdr1 << 13) & 0x3e000)
-                   | (data >> 7) | CanFD2040ReceiveBuffer::IdExtraBits::ID_EFF);
-    data_state_go_data(id, data);
-#endif
-}
-
-#if SUPPORT_CAN_FD
-
-// Handle reception of the last 2 bits of the DLC field in a CAN-FD message
-void CanFD2040::data_state_update_dlc(uint32_t data) noexcept
-{
-	data |= parse_scratch;
-	parse_dlc = data & 0x0f;
-	if (dlc >= 8) {
-		crc = qq;
-		dwordsLeft = (parse_dlc <= 12) ? parse_dlc - 6 : (parse_dlc - 11) << 2;
-		qq;
-	} else {
-	    parse_msg->data32[0] = parse_msg->data32[1] = 0;
-	    if (parse_dlc)
-	        data_state_go_next(MS_DATA0, parse_dlc >= 4 ? 32 : parse_dlc * 8);
-	    else
-	        data_state_go_crc();
+	else
+	{
+		data_state_go_discard();							// not a message format we can parse
 	}
 }
 
-#endif
-
-// Handle reception of first 1-4 bytes of data content
-void CanFD2040::data_state_update_data0(uint32_t data) noexcept
+// Handle reception of additional 19 bits of "extended header" which takes us to the end of the DLC field
+void CanFD2040::data_state_update_ext_header(uint32_t data) noexcept
 {
-    uint32_t bits = parse_dlc >= 4 ? 32 : parse_dlc * 8;
-    parse_crc = crc_bytes(parse_crc, data, parse_dlc);
-    parse_msg->data32[0] = __builtin_bswap32(data << (32 - bits));
-    if (parse_dlc > 4)
-        data_state_go_next(MS_DATA1, parse_dlc >= 8 ? 32 : (parse_dlc - 4) * 8);
-    else
-        data_state_go_crc();
+	if ((data & 0x1e0) == 0x80)								// if FDF bit is set, and r1, BRS and r0 are not set
+	{
+		parse_id |= (data >> 9) & 0x03ffff;					// or-in the bottom 18 bits of the ID
+		//TODO filter it
+		parse_dlc = data & 0x0F;
+		data_state_go_data();
+	}
+	else
+	{
+		data_state_go_discard();
+	}
 }
 
-// Handle reception of bytes 5-8 of data content
-void CanFD2040::data_state_update_data1(uint32_t data) noexcept
+// Handle reception of data content
+void CanFD2040::data_state_update_data(uint32_t data) noexcept
 {
-    uint32_t bits = parse_dlc >= 8 ? 32 : (parse_dlc - 4) * 8;
-    parse_crc = crc_bytes(parse_crc, data, parse_dlc - 4);
-    parse_msg->data32[1] = __builtin_bswap32(data << (32 - bits));
-#if SUPPORT_CAN_FD
-    if (parse_msg.id & CAN2040_ID_FDF) {
-    qq;
-    } else {
-    	data_state_go_crc();
-    }
+	if (parse_bytesLeft < 4)
+	{
+	    rxMessage[parse_bytesReceived/4] = __builtin_bswap32(data << (32 - (8 * parse_bytesLeft)));
+	    data_state_go_stuff_count();
+	}
+	else
+	{
+		rxMessage[parse_bytesReceived/4] = __builtin_bswap32(data);
+		parse_bytesReceived += 4;
+		parse_bytesLeft -= 4;
+		if (parse_bytesLeft != 0)
+		{
+			data_state_go_next(MS_DATA, 8 * min<uint32_t>(parse_bytesLeft, 4));
+		}
+		else
+		{
+			data_state_go_stuff_count();
+		}
+	}
+}
+
+// Handle reception of 4 bits of message stuff count
+void CanFD2040::data_state_update_stuffCount(uint32_t data) noexcept
+{
+	uint32_t stuffCount;
+	uint32_t crcBits;
+	if (parse_dlc >= 10)
+	{
+		parse_crc = unstuf.GetCrc21();		// set up the expected CRC
+		stuffCount = data >> 6;				// get stuff count and parity bit
+		crcBits = data & 0x3f;				// get top 6 bits of CRC
+	}
+	else
+	{
+		parse_crc = unstuf.GetCrc17();		// set up the expected CRC
+		stuffCount = data >> 2;				// get stuff count and parity bit
+		crcBits = data & 0x03;				// get top 2 bits of CRC
+	}
+
+	// Check stuff count parity and stuff count
+	uint32_t parity = stuffCount ^ (stuffCount >> 2);
+	parity ^= (parity >> 1);
+#if 0	//TODO
+	if (   (parity & 1)							//TODO should parity be even or odd?
+		|| InverseGrayTable(stuffCount >> 1) != unstuff.GetTotalStuffBits()
+	   )
+	{
+		data_state_go_discard();
+	}
+	else
 #else
-    data_state_go_crc();
+	(void)parity;
 #endif
+	if ((parse_crc >> 15) == crcBits)
+	{
+		// Transition to MS_CRC state - await another 15 bits of crc + delimiter
+		report_note_crc_start();
+		data_state_go_next(MS_CRC, 16);						// read 15 CRC bits (plus fixed stuffing bits) plus delimiter
+	}
+	else
+	{
+		data_state_go_discard();
+	}
 }
 
 // Handle reception of 16 bits of message CRC (15 crc bits + crc delimiter)
 void CanFD2040::data_state_update_crc(uint32_t data) noexcept
 {
-    if (((parse_crc << 1) | 1) != data)
+#if 0	//TODO don't check CRC
+    if ((((parse_crc & 0x7fff) << 1) | 1) != data)
     {
         data_state_go_discard();
-        return;
     }
-
-    unstuf.unstuf_clear_state();
-    data_state_go_next(MS_ACK, 2);
+    else
+#endif
+    {
+		unstuf.ClearState();
+		data_state_go_next(MS_ACK, 2);
+    }
 }
 
 // Handle reception of 2 bits of ack phase (ack, ack delimiter)
@@ -1205,7 +1163,7 @@ void CanFD2040::data_state_update_eof0(uint32_t data) noexcept
         data_state_go_discard();
         return;
     }
-    unstuf.unstuf_clear_state();
+    unstuf.ClearState();
     data_state_go_next(MS_EOF1, 4);
 }
 
@@ -1237,20 +1195,88 @@ void CanFD2040::data_state_update_discard(uint32_t data) noexcept
 // Update parsing state after reading the bits of the current field
 void CanFD2040::data_state_update(uint32_t data) noexcept
 {
-    switch (parse_state) {
-    case MS_START: data_state_update_start(data); break;
-    case MS_HEADER: data_state_update_header(data); break;
-    case MS_EXT_HEADER: data_state_update_ext_header(data); break;
-    case MS_DATA0: data_state_update_data0(data); break;
-    case MS_DATA1: data_state_update_data1(data); break;
-#if SUPPORT_CAN_FD
-    case MS_DLC: data_state_update_dlc(data); break;
-#endif
-    case MS_CRC: data_state_update_crc(data); break;
-    case MS_ACK: data_state_update_ack(data); break;
-    case MS_EOF0: data_state_update_eof0(data); break;
-    case MS_EOF1: data_state_update_eof1(data); break;
-    case MS_DISCARD: data_state_update_discard(data); break;
+	switch (parse_state)
+	{
+	case MS_START:		data_state_update_start(data); break;
+	case MS_HEADER:		data_state_update_header(data); break;
+	case MS_EXT_HEADER:	data_state_update_ext_header(data); break;
+	case MS_DATA:		data_state_update_data(data); break;
+	case MS_STUFFCOUNT:	data_state_update_stuffCount(data); break;
+	case MS_CRC:		data_state_update_crc(data); break;
+	case MS_ACK:		data_state_update_ack(data); break;
+	case MS_EOF0:		data_state_update_eof0(data); break;
+	case MS_EOF1:		data_state_update_eof1(data); break;
+	case MS_DISCARD:	data_state_update_discard(data); break;
+	}
+}
+
+/****************************************************************
+ * Input processing
+ ****************************************************************/
+
+// Process an incoming byte of data from PIO "rx" state machine
+void CanFD2040::process_rx(uint32_t rx_byte) noexcept
+{
+	unstuf.AddBits(rx_byte, 8);
+    raw_bit_count += 8;
+
+    // undo bit stuffing
+    for (;;)
+    {
+        int ret = unstuf.PullBits();
+        if (likely(ret > 0))
+        {
+            // Need more data
+            break;
+        } else if (likely(!ret))
+        {
+            // Pulled the next field - process it
+            data_state_update(unstuf.GetUnstuffedBits());
+        } else
+        {
+            if (ret == -1)
+            {
+                // 6 consecutive high bits
+                data_state_line_passive();
+            }
+            else
+            {
+                // 6 consecutive low bits
+                data_state_line_error();
+            }
+        }
+    }
+}
+
+// Main API irq notification function
+void CanFD2040::pio_irq_handler() noexcept
+{
+    uint32_t ints = pio_hw->ints0;
+    while (likely(ints & PIO_IRQ0_INTE_SM1_RXNEMPTY_BITS))
+    {
+        uint8_t rx_byte = pio_hw->rxf[1];
+        process_rx(rx_byte);
+        ints = pio_hw->ints0;
+        if (likely(!ints))
+        {
+            return;
+        }
+    }
+
+    if (ints & PIO_IRQ0_INTE_SM3_BITS)
+    {
+        // Ack of received message completed successfully
+        report_line_ackdone();
+    }
+    else if (ints & PIO_IRQ0_INTE_SM2_BITS)
+    {
+        // Transmit message completed successfully
+        report_line_matched();
+    }
+    else if (ints & PIO_IRQ0_INTE_SM0_BITS)
+    {
+        // Bus is idle, but not all bits may have been flushed yet
+        report_line_maytx();
     }
 }
 
@@ -1266,39 +1292,20 @@ void CanFD2040::tx_schedule_transmit() noexcept
         // Already queued or actively transmitting
         return;
     }
-    if (tx_queue == nullptr)
+    if (txStuffedWords == 0)
     {
         // No new messages to transmit
         tx_state = TS_IDLE;
         return;
     }
     tx_state = TS_QUEUED;
-    pio_tx_send(tx_queue->stuffed_data, tx_queue->stuffed_words);
-}
-
-// Setup PIO state for ack injection
-int CanFD2040::tx_inject_ack(uint32_t match_key) noexcept
-{
-    if (tx_state == TS_QUEUED && !pio_tx_did_conflict()
-        && pio_rx_fifo_level() > 1)
-    {
-        // Rx state is behind - acking wont succeed and may halt active tx
-        return -1;
-    }
-    tx_state = TS_ACKING_RX;
-    pio_tx_inject_ack(match_key);
-    return 0;
+    pio_tx_send(txMessage, txStuffedWords);
 }
 
 // Check if the current parsed message is feedback from current transmit
 bool CanFD2040::tx_check_local_message() noexcept
 {
-    if (tx_state != TS_QUEUED)
-    {
-        return false;
-    }
-    CanFD2040TransmitBuffer *qt = tx_queue;
-    if (qt->crc == parse_crc && qt->id == parse_msg->id && qt->dlc == parse_dlc)		// ideally we would check the data here too
+    if (tx_state == TS_QUEUED && txStuffedWords != 0 && txCrc == parse_crc && txId == parse_id && txDlc == parse_dlc)		// ideally we would check the data here too
     {
         // Received our own transmission
         tx_state = TS_CONFIRM_TX;
@@ -1308,11 +1315,17 @@ bool CanFD2040::tx_check_local_message() noexcept
 }
 
 extern VirtualCanRegisters virtualRegs;
+static CanFD2040 *canFdDevice;
 
-extern "C" void Core1Entry() noexcept
+extern "C" [[noreturn]]void Core1Entry() noexcept
 {
-	CanFD2040 canFdDevice(&virtualRegs);
-	canFdDevice.Entry();
+	canFdDevice = new CanFD2040(&virtualRegs);
+	canFdDevice->Entry();
+}
+
+extern "C" void PIO_isr() noexcept
+{
+	canFdDevice->pio_irq_handler();
 }
 
 // End

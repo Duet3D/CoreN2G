@@ -22,6 +22,11 @@ struct CanStandardMessageFilterElement
 			 whichBuffer : 3,
 			 mask : 11,
 			 enabled : 1;
+
+	bool Matches(uint32_t msgId) const noexcept
+	{
+		return enabled && (msgId & mask) == id;
+	}
 #else
 	union S0Type
 	{
@@ -52,6 +57,11 @@ struct CanExtendedMessageFilterElement
 			 whichBuffer : 3,
 			 mask : 29,
 			 enabled : 1;
+
+	bool Matches(uint32_t msgId) const noexcept
+	{
+		return enabled && (msgId & mask) == id;
+	}
 #else
 	union F0Type
 	{
