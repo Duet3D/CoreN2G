@@ -54,10 +54,10 @@ private:
 class CanFD2040
 {
 public:
-	CanFD2040(VirtualCanRegisters *p_regs) noexcept : regs(p_regs) { }
+	CanFD2040() noexcept { }
 
 	// Start CAN-FD running
-	[[noreturn]] void Entry() noexcept;
+	[[noreturn]] void Entry(VirtualCanRegisters *p_regs) noexcept;
 	void pio_irq_handler() noexcept;
 
 private:

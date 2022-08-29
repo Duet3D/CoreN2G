@@ -230,13 +230,14 @@ int BitUnstuffer::PullBits() noexcept
     	return unstuffed_bits;
     }
 
+    // Else using variable stuff bits
     const uint32_t edges = sb ^ (sb >> 1);
 	const uint32_t e2 = edges | (edges >> 1);
 	const uint32_t e4 = e2 | (e2 >> 2);
 	const uint32_t rm_bits = ~e4;
 	uint32_t cs = count_stuff;
 	uint32_t cu = count_unstuff;
-	if (!cs)
+	if (cs == 0)
 	{
 		// Need more data
 		return 1;
@@ -416,8 +417,9 @@ done:
 
 // CanFD2040 members
 // Start CAN-FD running
-void CanFD2040::Entry() noexcept
+void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
 {
+	regs = p_regs;
     for (;;)
     {
     	while (!regs->canEnabled) { }
@@ -1315,17 +1317,16 @@ bool CanFD2040::tx_check_local_message() noexcept
 }
 
 extern VirtualCanRegisters virtualRegs;
-static CanFD2040 *canFdDevice;
+static CanFD2040 canFdDevice;
 
 extern "C" [[noreturn]]void Core1Entry() noexcept
 {
-	canFdDevice = new CanFD2040(&virtualRegs);
-	canFdDevice->Entry();
+	canFdDevice.Entry(&virtualRegs);
 }
 
 extern "C" void PIO_isr() noexcept
 {
-	canFdDevice->pio_irq_handler();
+	canFdDevice.pio_irq_handler();
 }
 
 // End
