@@ -87,13 +87,11 @@ extern "C" void Core1Entry() noexcept;
 void CanDevice::DoHardwareInit() noexcept
 {
 	Disable();
-	virtualRegs.Init();
 
 	virtualRegs.rxFifo0Size = config->rxFifo0Size + 1;									// number of entries
 	virtualRegs.rxFifo0Addr = rx0Fifo;													// address
 	virtualRegs.rxFifo1Size = config->rxFifo1Size + 1;									// number of entries
 	virtualRegs.rxFifo1Addr = rx1Fifo;													// address
-	virtualRegs.rxBuffersAddr = rxBuffers;												// dedicated buffers start address
 	virtualRegs.txFifoSize = config->txFifoSize + 1;									// number of entries
 	virtualRegs.txFifoAddr = txBuffers;													// address of transmit fifo - we have no dedicated Tx buffers
 	virtualRegs.numShortFilterElements = config->numShortFilterElements;				// number of short filter elements
@@ -143,7 +141,7 @@ void CanDevice::Enable() noexcept
 // Disable this device
 void CanDevice::Disable() noexcept
 {
-	virtualRegs.canEnabled = false;
+	virtualRegs.Init();
 }
 
 uint32_t CanDevice::GetErrorRegister() const noexcept
@@ -477,48 +475,6 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 		return true;
 
 	default:
-		if ((uint32_t)whichBuffer < (uint32_t)RxBufferNumber::buffer0 + config->numRxBuffers)
-		{
-			// Check for a received message and wait if necessary
-			// We assume that not more than 32 dedicated receive buffers have been configured, so we only need to look at the NDAT1 register
-			const uint32_t bufferNumber = (unsigned int)whichBuffer - (unsigned int)RxBufferNumber::buffer0;
-			const uint32_t ndatMask = (uint32_t)1 << bufferNumber;
-#ifdef RTOS
-			if (virtualRegs.rxBuffersReceivedMap == 0)
-			{
-				if (timeout == 0)
-				{
-					return false;
-				}
-				TaskBase::ClearNotifyCount();
-				const unsigned int waitingIndex = (unsigned int)whichBuffer;
-				rxTaskWaiting[waitingIndex] = TaskBase::GetCallerTaskHandle();
-				rxBuffersWaiting |= ndatMask;
-				const bool success = (virtualRegs.rxBuffersReceivedMap & ndatMask) != 0 || (TaskBase::Take(timeout), (virtualRegs.rxBuffersReceivedMap & ndatMask) != 0);
-				rxBuffersWaiting &= ~ndatMask;
-				rxTaskWaiting[waitingIndex] = nullptr;
-				if (!success)
-				{
-					return false;
-				}
-			}
-#else
-			while (virtualRegs.rxBuffersReceivedMap & ndatMask) == 0)
-			{
-				if (millis() - start >= timeout)
-				{
-					return false;
-				}
-			}
-#endif
-			// Process the received message into the buffer
-			CopyReceivedMessage(buffer, GetRxBuffer(bufferNumber));
-
-			// Tell the hardware that we have taken the message
-			//TODO critical section
-			hw_clear_bits(&virtualRegs.rxBuffersReceivedMap, ndatMask);
-			return true;
-		}
 		return false;
 	}
 }
@@ -532,8 +488,7 @@ bool CanDevice::IsMessageAvailable(RxBufferNumber whichBuffer) noexcept
 	case RxBufferNumber::fifo1:
 		return virtualRegs.rxFifo1GetIndex != virtualRegs.rxFifo1PutIndex;
 	default:
-		// We assume that not more than 32 dedicated receive buffers have been configured, so we only need to look at the NDAT1 register
-		return (virtualRegs.rxBuffersReceivedMap & ((uint32_t)1 << ((uint32_t)whichBuffer - (uint32_t)RxBufferNumber::buffer0))) != 0;
+		return false;
 	}
 }
 
@@ -683,23 +638,6 @@ void CanDevice::Interrupt() noexcept
 		if (ir & VirtualCanRegisters::recdFifo1)
 		{
 			TaskBase::GiveFromISR(rxTaskWaiting[rxFifo1WaitingIndex]);
-		}
-
-		// Test whether messages have been received into receive buffers
-		if (ir & VirtualCanRegisters::recdBuff)
-		{
-			// Check which receive buffers have new messages
-			uint32_t newData;
-			while (((newData = virtualRegs.rxBuffersReceivedMap) & rxBuffersWaiting) != 0)
-			{
-				const unsigned int rxBufferNumber = LowestSetBit(newData);
-				rxBuffersWaiting &= ~((uint32_t)1 << rxBufferNumber);
-				const unsigned int waitingIndex = rxBufferNumber + (unsigned int)RxBufferNumber::buffer0;
-				if (waitingIndex < ARRAY_SIZE(rxTaskWaiting))
-				{
-					TaskBase::GiveFromISR(rxTaskWaiting[waitingIndex]);
-				}
-			}
 		}
 
 		// Test whether any messages have been transmitted

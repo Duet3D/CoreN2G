@@ -88,7 +88,6 @@ struct VirtualCanRegisters
 	unsigned int txFifoSize;										// number of entries in transmit fifo
 	volatile uint32_t *rxFifo0Addr;									// fifo 0 start address
 	volatile uint32_t *rxFifo1Addr;									// fifo 1 start address
-	volatile uint32_t *rxBuffersAddr;								// dedicated receive buffers start address
 	volatile uint32_t *txFifoAddr;									// transmit fifo address
 	unsigned int numShortFilterElements;
 	unsigned int numExtendedFilterElements;
@@ -96,7 +95,6 @@ struct VirtualCanRegisters
 	CanExtendedMessageFilterElement *extendedFiltersAddr;			// start address of short filter elements
 
 	// The following are written only by CAN
-	volatile uint32_t rxBuffersReceivedMap;							// bitmap of dedicated receive buffers containing received messages
 	volatile unsigned int rxFifo0PutIndex;
 	volatile unsigned int rxFifo1PutIndex;
 	volatile unsigned int txFifoGetIndex;
@@ -119,17 +117,15 @@ struct VirtualCanRegisters
 	// Bit assignments in the pseudo-interrupt message received by the main processor via the inter-processor fifo from the CAN processor
 	static constexpr uint32_t recdFifo0 = 0x01;						// message received in fifo0
 	static constexpr uint32_t recdFifo1 = 0x02;						// message received in fifo0
-	static constexpr uint32_t recdBuff = 0x04;						// message received in dedicated buffer
 	static constexpr uint32_t txDone = 0x08;						// transmission complete
 	static constexpr uint32_t rxOvfFifo0 = 0x10;					// lost message destined for fifo0 because fifo was full
 	static constexpr uint32_t rxOvfFifo1 = 0x20;					// lost message destined for fifo1 because fifo was full
 
-	// Initialise the registers prior to starting or restarting
+	// Disable CAN and initialise the virtual registers
 	void Init() noexcept
 	{
 		canEnabled = false;
 		cancelTransmission = txFifoNotFullInterruptEnabled = false;
-		rxBuffersReceivedMap = 0;
 		rxFifo0PutIndex = rxFifo1PutIndex = txFifoPutIndex = 0;
 		rxFifo0GetIndex = rxFifo1GetIndex = txFifoGetIndex = 0;
 	}

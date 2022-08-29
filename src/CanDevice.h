@@ -49,7 +49,9 @@ public:
 	enum class RxBufferNumber : uint32_t
 	{
 		fifo0 = 0, fifo1,
+#if !RP2040
 		buffer0, buffer1, buffer2, buffer3,
+#endif
 		none = 0xFFFF
 	};
 
@@ -105,7 +107,7 @@ public:
 #if RP2040
 				&& numTxBuffers == 0										// our RP2040 code doesn't support dedicated Tx buffers
 				&& txEventFifoSize == 0										// our RP2040 code doesn't support the transmit event FIFO
-				&& numRxBuffers <= 6;										// we encode the destination in 3 bits, allowing 2 FIFOs and 6 buffers
+				&& numRxBuffers == 0;										// our RP2040 code doesn't support dedicates receive buffers
 #else
 				&& numTxBuffers + txFifoSize <= 32							// maximum total Tx buffers supported is 32
 				&& numTxBuffers <= MaxTxBuffers								// our code only allows 31 buffers + the FIFO
@@ -153,9 +155,9 @@ public:
 		{
 			return
 #if RP2040
-				// The RP2040 implementation wastes one slot in each FIFO
+				// The RP2040 implementation wastes one slot in each FIFO and has no dedicated buffers
 				  (txFifoSize + 1) * GetTxBufferSize()
-				+ (numRxBuffers + rxFifo0Size + rxFifo1Size + 2) * GetRxBufferSize()
+				+ (rxFifo0Size + rxFifo1Size + 2) * GetRxBufferSize()
 #else
 				  (numTxBuffers + txFifoSize) * GetTxBufferSize()
 				+ (numRxBuffers + rxFifo0Size + rxFifo1Size) * GetRxBufferSize()
