@@ -73,7 +73,7 @@ void SerialCDC::Start() noexcept
 
 void SerialCDC::end() noexcept
 {
-	//TODO
+	running = false;
 }
 
 bool SerialCDC::IsConnected() const noexcept
