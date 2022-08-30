@@ -558,7 +558,7 @@ void WatchdogInit() noexcept
 	hri_wdt_write_EWCTRL_reg(WDT, WDT_EWCTRL_EWOFFSET_CYC512);	// early warning control, about 0.5 second
 	hri_wdt_set_INTEN_EW_bit(WDT);								// enable early earning interrupt
 	hri_wdt_write_CTRLA_reg(WDT, WDT_CTRLA_ENABLE);
-#elif SAME70
+#elif SAME70 || SAM4E || SAM4S
 	// This assumes the slow clock is running at 32.768 kHz, watchdog frequency is therefore 32768 / 128 = 256 Hz
 	constexpr uint16_t watchdogTicks = 256;						// about 1 second
 	WDT->WDT_MR = WDT_MR_WDRSTEN | WDT_MR_WDV(watchdogTicks) | WDT_MR_WDD(watchdogTicks);

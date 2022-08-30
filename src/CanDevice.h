@@ -336,7 +336,8 @@ private:
 #if !RP2040
 	bool useFDMode;
 #endif
-#endif
 };
+
+#endif	// SUPPORT_CAN
 
 #endif /* SRC_CANDEVICE_H_ */
