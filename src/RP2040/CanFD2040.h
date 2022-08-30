@@ -120,7 +120,6 @@ private:
 	void data_state_update_data(uint32_t data) noexcept;
 	void data_state_update_stuffCount(uint32_t data) noexcept;
 	void data_state_update_crc(uint32_t data) noexcept;
-void data_state_update_crc21(uint32_t data) noexcept;
 	void data_state_update_ack(uint32_t data) noexcept;
 	void data_state_update_eof0(uint32_t data) noexcept;
 	void data_state_update_eof1(uint32_t data) noexcept;
@@ -130,6 +129,7 @@ void data_state_update_crc21(uint32_t data) noexcept;
 	void process_rx(uint32_t rx_byte) noexcept;
 
 	void PopulateTransmitBuffer() noexcept;
+	void SendInterrupts() noexcept;
 
 	// Setup
 	VirtualCanRegisters *regs;
@@ -148,6 +148,7 @@ void data_state_update_crc21(uint32_t data) noexcept;
     uint32_t parse_bytesReceived;
 	uint32_t parse_bytesLeft;				// how many bytes of data are left to receive
 	uint32_t *rxMessage;
+	int rxFifoNumber;
 
 	// Reporting
 	// Report state flags (stored in report_state)
@@ -170,8 +171,9 @@ void data_state_update_crc21(uint32_t data) noexcept;
 	uint32_t txStuffedWords;
 	TxState tx_state;
 
-	// Critical sections
-	critical_section_t rxQueueCriticalSection;
+	uint32_t pendingIrqs;
+
+	uint32_t rxDummyMessage[64/sizeof(uint32_t)];
 };
 
 #endif /* SRC_CANFD2040_H_ */

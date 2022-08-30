@@ -7,14 +7,18 @@
 
 #include "CanFD2040.h"
 
+#define PICO_MUTEX_ENABLE_SDK120_COMPATIBILITY	0	// used by mutex.h which is included by multicore.h
 #include "hardware/regs/dreq.h" // DREQ_PIO0_RX1
 #include "hardware/structs/dma.h" // dma_hw
 #include "hardware/structs/iobank0.h" // iobank0_hw
 #include "hardware/structs/padsbank0.h" // padsbank0_hw
 #include "hardware/structs/resets.h" // RESETS_RESET_PIO0_BITS
+#include <pico/multicore.h>
 #include <RP2040.h>
 
 #include <cstring>
+
+extern "C" void debugPrintf(const char *fmt, ...) noexcept;
 
 extern "C" void PIO_isr() noexcept;
 
@@ -424,6 +428,7 @@ void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
     {
     	while (!regs->canEnabled) { }
 
+    	pendingIrqs = 0;
     	pio_setup();										// Set up the PIO and pins
         data_state_go_discard();
 
@@ -517,6 +522,15 @@ void CanFD2040::PopulateTransmitBuffer() noexcept
 	txStuffedWords = bs.finalize();
 }
 
+void CanFD2040::SendInterrupts() noexcept
+{
+	if (pendingIrqs != 0 && multicore_fifo_wready())
+	{
+		multicore_fifo_push_blocking(pendingIrqs);
+		pendingIrqs = 0;
+	}
+}
+
 void CanFD2040::pio_setup() noexcept
 {
 	constexpr int PIO_FUNC = 6;
@@ -539,7 +553,12 @@ void CanFD2040::pio_setup() noexcept
     rp2040_gpio_peripheral(regs->rxPin, PIO_FUNC, 1);
     rp2040_gpio_peripheral(regs->txPin, PIO_FUNC, 0);
 
-    irq_set_exclusive_handler ((unsigned int)((regs->pioNumber) ? PIO1_IRQ_0_IRQn : PIO0_IRQ_0_IRQn), PIO_isr);
+    const IRQn_Type irqn = (regs->pioNumber) ? PIO1_IRQ_0_IRQn : PIO0_IRQ_0_IRQn;
+	NVIC_DisableIRQ(irqn);
+	NVIC_ClearPendingIRQ(irqn);
+	NVIC_SetPriority(irqn, 1);
+    irq_set_exclusive_handler ((unsigned int)irqn, PIO_isr);
+	NVIC_EnableIRQ(irqn);
 }
 
 // Setup PIO "sync" state machine (state machine 0)
@@ -766,7 +785,46 @@ void CanFD2040::report_callback_error(uint32_t error_code) noexcept
 // Report a received message to calling code (via callback interface)
 void CanFD2040::report_callback_rx_msg() noexcept
 {
-	//TODO
+	switch (rxFifoNumber)
+	{
+	case 0:
+		{
+			unsigned int putPointer = regs->rxFifo0PutIndex;
+			CanRxBuffer& rxBuffer = const_cast<CanRxBuffer&>(regs->rxFifo0Addr[putPointer]);
+			rxBuffer.R0.bit.ID = parse_id;
+			rxBuffer.R1.bit.DLC = parse_dlc;
+			++putPointer;
+			if (putPointer == regs->rxFifo0Size)
+			{
+				putPointer = 0;
+			}
+			regs->rxFifo0PutIndex = putPointer;
+			pendingIrqs |= VirtualCanRegisters::recdFifo0;
+		}
+		break;
+
+	case 1:
+		{
+			unsigned int putPointer = regs->rxFifo1PutIndex;
+			CanRxBuffer& rxBuffer = const_cast<CanRxBuffer&>(regs->rxFifo1Addr[putPointer]);
+			rxBuffer.R0.bit.ID = parse_id;
+			rxBuffer.R1.bit.DLC = parse_dlc;
+			++putPointer;
+			if (putPointer == regs->rxFifo1Size)
+			{
+				putPointer = 0;
+			}
+			regs->rxFifo1PutIndex = putPointer;
+			pendingIrqs |= VirtualCanRegisters::recdFifo1;
+		}
+		break;
+
+	default:
+		break;
+	}
+
+	SendInterrupts();
+	debugPrintf("id=%08" PRIx32 " fifo=%u\n", parse_id, rxFifoNumber);
 }
 
 // Report a message that was successfully transmitted (via callback interface)
@@ -836,7 +894,7 @@ void CanFD2040::report_note_crc_start() noexcept
         expectedData = (expectedData << 10) | 0x02ff;
         pio_match_check(pio_match_calc_key(expectedData, crcend_bitpos + 10));
     }
-    else
+    else if (rxFifoNumber >= 0)
     {
 		// Inject ack
 		report_state = ReportState::RS_IN_MSG;
@@ -1032,8 +1090,34 @@ void CanFD2040::data_state_update_header(uint32_t data) noexcept
     {
 		// Short ID
 		parse_id = (data >> 10) & 0x7ff;					// save the complete ID
-		//TODO filter it
 		parse_dlc = data & 0x0F;
+
+		// See if we are interested in this message
+		rxFifoNumber = -1;
+		for (unsigned int filterNumber = 0; filterNumber < regs->numShortFilterElements; ++filterNumber)
+		{
+			const CanStandardMessageFilterElement& f = const_cast<const CanStandardMessageFilterElement&>(regs->shortFiltersAddr[filterNumber]);
+			if (f.Matches(parse_id))
+			{
+				rxFifoNumber = f.whichBuffer;
+				break;
+			}
+			switch (rxFifoNumber)
+			{
+			case 0:
+				rxMessage = const_cast<uint32_t*>(regs->rxFifo0Addr[regs->rxFifo0PutIndex].data);
+				break;
+
+			case 1:
+				rxMessage = const_cast<uint32_t*>(regs->rxFifo1Addr[regs->rxFifo1PutIndex].data);
+				break;
+
+			default:
+				rxMessage = rxDummyMessage;
+				break;
+			}
+		}
+
 		data_state_go_data();
     }
 	else
@@ -1048,8 +1132,34 @@ void CanFD2040::data_state_update_ext_header(uint32_t data) noexcept
 	if ((data & 0x1e0) == 0x80)								// if FDF bit is set, and r1, BRS and r0 are not set
 	{
 		parse_id |= (data >> 9) & 0x03ffff;					// or-in the bottom 18 bits of the ID
-		//TODO filter it
 		parse_dlc = data & 0x0F;
+		// See if we are interested in this message
+
+		rxFifoNumber = -1;
+		for (unsigned int filterNumber = 0; filterNumber < regs->numShortFilterElements; ++filterNumber)
+		{
+			const CanExtendedMessageFilterElement& f = const_cast<const CanExtendedMessageFilterElement&>(regs->extendedFiltersAddr[filterNumber]);
+			if (f.Matches(parse_id))
+			{
+				rxFifoNumber = f.whichBuffer;
+				break;
+			}
+			switch (rxFifoNumber)
+			{
+			case 0:
+				rxMessage = const_cast<uint32_t*>(regs->rxFifo0Addr[regs->rxFifo0PutIndex].data);
+				break;
+
+			case 1:
+				rxMessage = const_cast<uint32_t*>(regs->rxFifo1Addr[regs->rxFifo1PutIndex].data);
+				break;
+
+			default:
+				rxMessage = rxDummyMessage;
+				break;
+			}
+		}
+
 		data_state_go_data();
 	}
 	else
