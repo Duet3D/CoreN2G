@@ -179,6 +179,19 @@ size_t SerialCDC::write(const uint8_t *buf, size_t length) noexcept
     return written;
 }
 
+void SerialCDC::Spin() noexcept
+{
+#if DONT_USE_TIMER
+    // if the mutex is already owned, then we are in user code
+    // in this file which will do a tud_task itself, so we'll just do nothing
+    // until the next tick; we won't starve
+    if (mutex_try_enter(&__usb_mutex, NULL)) {
+        tud_task();
+        mutex_exit(&__usb_mutex);
+    }
 #endif
+}
+
+#endif	// SUPPORT_USB
 
 // End

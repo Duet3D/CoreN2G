@@ -23,6 +23,8 @@
 #undef from
 #include <pico/mutex.h>
 
+#define DONT_USE_TIMER		1
+
 // Weak function definitions for each type of endpoint
 extern void __USBInstallSerial() __attribute__((weak));
 extern void __USBInstallKeyboard() __attribute__((weak));

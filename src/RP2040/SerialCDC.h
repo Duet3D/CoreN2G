@@ -30,6 +30,8 @@ public:
     void Start() noexcept;
     bool IsConnected() const noexcept;
 
+    void Spin() noexcept;			// TEMPORARY until we have a FreeRTOS task to do this
+
 	// Compatibility functions
 	void end() noexcept;
 
