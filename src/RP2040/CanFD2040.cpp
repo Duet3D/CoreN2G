@@ -440,7 +440,7 @@ void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
     		{
     			debugPrintf("%" PRIu32 " irqs, state %u\n", numInterrupts, parse_state);
     		}
-    		if ((numInterrupts % 997) == 1)
+    		if ((numInterrupts % 997) == 5)
     		{
     			debugPrintf("%" PRIu32 " irqs, state %u\n", numInterrupts, parse_state);
     		}
@@ -1077,7 +1077,7 @@ void CanFD2040::data_state_go_data() noexcept
 void CanFD2040::data_state_go_stuff_count() noexcept
 {
 	unstuf.UseFixedStuffBits();								// tell the unstuffer that the next bit and then every 4 bits are forced stuff bits
-	data_state_go_next(MS_STUFFCOUNT, (parse_dlc >= 10) ? 10 : 6);	// receive the 4 stuff count bits + the first 2 or 6 CRC bits (and 2 fixed stuff bits)
+	data_state_go_next(MS_STUFFCOUNT, (parse_dlc > 10) ? 10 : 6);	// receive the 4 stuff count bits + the first 2 or 6 CRC bits (and 2 fixed stuff bits)
 }
 
 // Handle reception of first bit of header (after start-of-frame (SOF))
@@ -1086,7 +1086,7 @@ void CanFD2040::data_state_update_start(uint32_t data) noexcept
 	rxTimeStamp = timer_hw->timerawl;						// save time stamp for later
     parse_id = data;										// store the first data bit (MSbit of ID)
     report_note_message_start();
-    data_state_go_next(MS_HEADER, 17);
+    data_state_go_next(MS_HEADER, 20);
 }
 
 // Handle reception of next 20 header bits which for CAN-FD frame with short ID takes us up to and including the DLC bits
@@ -1115,20 +1115,21 @@ void CanFD2040::data_state_update_header(uint32_t data) noexcept
 				rxFifoNumber = f.whichBuffer;
 				break;
 			}
-			switch (rxFifoNumber)
-			{
-			case 0:
-				rxMessage = const_cast<uint32_t*>(regs->rxFifo0Addr[regs->rxFifo0PutIndex].data);
-				break;
+		}
 
-			case 1:
-				rxMessage = const_cast<uint32_t*>(regs->rxFifo1Addr[regs->rxFifo1PutIndex].data);
-				break;
+		switch (rxFifoNumber)
+		{
+		case 0:
+			rxMessage = const_cast<uint32_t*>(regs->rxFifo0Addr[regs->rxFifo0PutIndex].data);
+			break;
 
-			default:
-				rxMessage = rxDummyMessage;
-				break;
-			}
+		case 1:
+			rxMessage = const_cast<uint32_t*>(regs->rxFifo1Addr[regs->rxFifo1PutIndex].data);
+			break;
+
+		default:
+			rxMessage = rxDummyMessage;
+			break;
 		}
 
 		data_state_go_data();
@@ -1146,10 +1147,10 @@ void CanFD2040::data_state_update_ext_header(uint32_t data) noexcept
 	{
 		parse_id |= (data >> 9) & 0x03ffff;					// or-in the bottom 18 bits of the ID
 		parse_dlc = data & 0x0F;
-		// See if we are interested in this message
 
+		// See if we are interested in this message
 		rxFifoNumber = -1;
-		for (unsigned int filterNumber = 0; filterNumber < regs->numShortFilterElements; ++filterNumber)
+		for (unsigned int filterNumber = 0; filterNumber < regs->numExtendedFilterElements; ++filterNumber)
 		{
 			const CanExtendedMessageFilterElement& f = const_cast<const CanExtendedMessageFilterElement&>(regs->extendedFiltersAddr[filterNumber]);
 			if (f.Matches(parse_id))
@@ -1157,20 +1158,21 @@ void CanFD2040::data_state_update_ext_header(uint32_t data) noexcept
 				rxFifoNumber = f.whichBuffer;
 				break;
 			}
-			switch (rxFifoNumber)
-			{
-			case 0:
-				rxMessage = const_cast<uint32_t*>(regs->rxFifo0Addr[regs->rxFifo0PutIndex].data);
-				break;
+		}
 
-			case 1:
-				rxMessage = const_cast<uint32_t*>(regs->rxFifo1Addr[regs->rxFifo1PutIndex].data);
-				break;
+		switch (rxFifoNumber)
+		{
+		case 0:
+			rxMessage = const_cast<uint32_t*>(regs->rxFifo0Addr[regs->rxFifo0PutIndex].data);
+			break;
 
-			default:
-				rxMessage = rxDummyMessage;
-				break;
-			}
+		case 1:
+			rxMessage = const_cast<uint32_t*>(regs->rxFifo1Addr[regs->rxFifo1PutIndex].data);
+			break;
+
+		default:
+			rxMessage = rxDummyMessage;
+			break;
 		}
 
 		data_state_go_data();
@@ -1210,7 +1212,7 @@ void CanFD2040::data_state_update_stuffCount(uint32_t data) noexcept
 {
 	uint32_t stuffCount;
 	uint32_t crcBits;
-	if (parse_dlc >= 10)
+	if (parse_dlc > 10)
 	{
 		parse_crc = unstuf.GetCrc21();		// set up the expected CRC
 		stuffCount = data >> 6;				// get stuff count and parity bit

@@ -59,15 +59,25 @@ extern "C" void Core1Entry() noexcept;
 	dev.rxExtFilter = (CanExtendedMessageFilterElement*)memStart;
 	memStart += p_config.GetExtendedFiltersMemSize();
 	dev.rx0Fifo = memStart;
-	memStart += p_config.rxFifo0Size * p_config.GetRxBufferSize();
+	memStart += (p_config.rxFifo0Size + 1) * p_config.GetRxBufferSize();
 	dev.rx1Fifo = memStart;
-	memStart += p_config.rxFifo1Size * p_config.GetRxBufferSize();
+	memStart += (p_config.rxFifo1Size + 1) * p_config.GetRxBufferSize();
 	dev.rxBuffers = memStart;
 	memStart += p_config.numRxBuffers * p_config.GetRxBufferSize();
 	memStart += p_config.GetTxEventFifoMemSize();
 	dev.txBuffers = memStart;
 
 	dev.messagesQueuedForSending = dev.messagesReceived = dev.messagesLost = dev.busOffCount = 0;
+
+	for (unsigned int i = 0; i < p_config.numShortFilterElements; ++i)
+	{
+		dev.rxStdFilter[i].enabled = false;
+	}
+	for (unsigned int i = 0; i < p_config.numExtendedFilterElements; ++i)
+	{
+		dev.rxExtFilter[i].enabled = false;
+	}
+
 #ifdef RTOS
 	for (volatile TaskHandle& h : dev.txTaskWaiting) { h = nullptr; }
 	for (volatile TaskHandle& h : dev.rxTaskWaiting) { h = nullptr; }
@@ -86,7 +96,7 @@ extern "C" void Core1Entry() noexcept;
 // Do the low level hardware initialisation
 void CanDevice::DoHardwareInit() noexcept
 {
-	Disable();
+	Disable();			// this also clears some of the virtual registers
 
 	virtualRegs.rxFifo0Size = config->rxFifo0Size + 1;									// number of entries
 	virtualRegs.rxFifo0Addr = reinterpret_cast<volatile CanRxBuffer*>(rx0Fifo);			// address

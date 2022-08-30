@@ -107,7 +107,7 @@ struct VirtualCanRegisters
 	volatile unsigned int numShortFilterElements;
 	volatile unsigned int numExtendedFilterElements;
 	volatile CanStandardMessageFilterElement *volatile shortFiltersAddr;	// start address of short filter elements
-	volatile CanExtendedMessageFilterElement *volatile extendedFiltersAddr;	// start address of short filter elements
+	volatile CanExtendedMessageFilterElement *volatile extendedFiltersAddr;	// start address of extended filter elements
 
 	// The following are written only by CAN
 	volatile unsigned int rxFifo0PutIndex;
