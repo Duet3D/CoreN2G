@@ -113,6 +113,7 @@ void CanDevice::DoHardwareInit() noexcept
 	NVIC_DisableIRQ(irqn);
 	NVIC_ClearPendingIRQ(irqn);
 	irq_set_exclusive_handler(irqn, CAN_Handler);
+	NVIC_SetPriority(irqn, 3);
 	NVIC_EnableIRQ(irqn);
 #endif
 	// Leave the device disabled. Client must call Enable() to enable it after setting up the receive filters.

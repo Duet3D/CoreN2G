@@ -174,6 +174,8 @@ private:
 	uint32_t pendingIrqs;
 
 	uint32_t rxDummyMessage[64/sizeof(uint32_t)];
+
+	uint32_t numInterrupts;
 };
 
 #endif /* SRC_CANFD2040_H_ */

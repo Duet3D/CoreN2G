@@ -424,6 +424,8 @@ done:
 void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
 {
 	regs = p_regs;
+	numInterrupts = 0;
+	IrqEnable();
     for (;;)
     {
     	while (!regs->canEnabled) { }
@@ -432,7 +434,17 @@ void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
     	pio_setup();										// Set up the PIO and pins
         data_state_go_discard();
 
-    	while (regs->canEnabled) { }
+    	while (regs->canEnabled)
+    	{
+    		if (parse_state != MS_DISCARD && parse_state > MS_EXT_HEADER)
+    		{
+    			debugPrintf("%" PRIu32 " irqs, state %u\n", numInterrupts, parse_state);
+    		}
+    		if ((numInterrupts % 997) == 1)
+    		{
+    			debugPrintf("%" PRIu32 " irqs, state %u\n", numInterrupts, parse_state);
+    		}
+    	}
 
     	// Disable CAN - set output to recessive
     	//TODO
@@ -529,36 +541,6 @@ void CanFD2040::SendInterrupts() noexcept
 		multicore_fifo_push_blocking(pendingIrqs);
 		pendingIrqs = 0;
 	}
-}
-
-void CanFD2040::pio_setup() noexcept
-{
-	constexpr int PIO_FUNC = 6;
-
-    // Configure pio0 clock
-    const uint32_t rb = (regs->pioNumber) ? RESETS_RESET_PIO1_BITS : RESETS_RESET_PIO0_BITS;
-    rp2040_clear_reset(rb);
-
-    // Setup and sync pio state machine clocks
-    const uint32_t div = (256 / PIO_CLOCK_PER_BIT) * SystemCoreClockFreq / regs->bitrate;
-    for (unsigned int i = 0; i < 4; i++)
-    {
-    	pio_hw->sm[i].clkdiv = div << PIO_SM0_CLKDIV_FRAC_LSB;
-    }
-
-    // Configure state machines
-    pio_sm_setup();
-
-    // Map Rx/Tx gpios
-    rp2040_gpio_peripheral(regs->rxPin, PIO_FUNC, 1);
-    rp2040_gpio_peripheral(regs->txPin, PIO_FUNC, 0);
-
-    const IRQn_Type irqn = (regs->pioNumber) ? PIO1_IRQ_0_IRQn : PIO0_IRQ_0_IRQn;
-	NVIC_DisableIRQ(irqn);
-	NVIC_ClearPendingIRQ(irqn);
-	NVIC_SetPriority(irqn, 1);
-    irq_set_exclusive_handler ((unsigned int)irqn, PIO_isr);
-	NVIC_EnableIRQ(irqn);
 }
 
 // Setup PIO "sync" state machine (state machine 0)
@@ -774,6 +756,37 @@ void CanFD2040::pio_sm_setup() noexcept
 
     // Start state machines
     pio_hw->ctrl = 0x07 << PIO_CTRL_SM_ENABLE_LSB;
+}
+
+void CanFD2040::pio_setup() noexcept
+{
+	pio_hw = (regs->pioNumber) ? pio1_hw : pio0_hw;
+
+    // Configure pio0 clock
+    const uint32_t rb = (regs->pioNumber) ? RESETS_RESET_PIO1_BITS : RESETS_RESET_PIO0_BITS;
+    rp2040_clear_reset(rb);
+
+    // Setup and sync pio state machine clocks
+    const uint32_t div = (256 / PIO_CLOCK_PER_BIT) * SystemCoreClockFreq / regs->bitrate;
+    for (unsigned int i = 0; i < 4; i++)
+    {
+    	pio_hw->sm[i].clkdiv = div << PIO_SM0_CLKDIV_FRAC_LSB;
+    }
+
+    // Configure state machines
+    pio_sm_setup();
+
+    // Map Rx/Tx gpios
+	const int PioFunc = (regs->pioNumber) ? 7 : 6;
+    rp2040_gpio_peripheral(regs->rxPin, PioFunc, 1);
+    rp2040_gpio_peripheral(regs->txPin, PioFunc, 0);
+
+    const IRQn_Type irqn = (regs->pioNumber) ? PIO1_IRQ_0_IRQn : PIO0_IRQ_0_IRQn;
+	NVIC_DisableIRQ(irqn);
+	NVIC_ClearPendingIRQ(irqn);
+	NVIC_SetPriority(irqn, 1);
+    irq_set_exclusive_handler ((unsigned int)irqn, PIO_isr);
+	NVIC_EnableIRQ(irqn);
 }
 
 // Report error to calling code (via callback interface)
@@ -1360,6 +1373,7 @@ void CanFD2040::process_rx(uint32_t rx_byte) noexcept
 // Main API irq notification function
 void CanFD2040::pio_irq_handler() noexcept
 {
+	++numInterrupts;
     uint32_t ints = pio_hw->ints0;
     while (likely(ints & PIO_IRQ0_INTE_SM1_RXNEMPTY_BITS))
     {
