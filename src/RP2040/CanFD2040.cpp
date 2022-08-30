@@ -437,15 +437,14 @@ void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
 // Set up a message ready to be transmitted
 void CanFD2040::PopulateTransmitBuffer() noexcept
 {
-	const uint32_t* txBufferPtr = const_cast<const uint32_t*>(regs->txFifoAddr);
-	const CanTxBufferHeader *const txHdr = reinterpret_cast<const CanTxBufferHeader *>(reinterpret_cast<const uint8_t*>(txBufferPtr) + (sizeof(CanTxBufferHeader) + 64) * regs->txFifoGetIndex);
+	const volatile CanTxBuffer *const txBuf = &regs->txFifoAddr[regs->txFifoGetIndex];
 
-	txId = txHdr->T0.bit.ID;
-	txDlc = txHdr->T1.bit.DLC;
+	txId = txBuf->T0.bit.ID;
+	txDlc = txBuf->T1.bit.DLC;
 
 	// Push the header through the stuffer
 	BitStuffer bs(txMessage);
-	if (txHdr->T0.bit.XTD)
+	if (txBuf->T0.bit.XTD)
 	{
 		// Extended header
 		const uint32_t h1 = ((txId & 0x1ffc0000) >> 16) | 0x03;
@@ -461,29 +460,27 @@ void CanFD2040::PopulateTransmitBuffer() noexcept
 	}
 
 	// Push the data
-	const uint8_t *data8 = reinterpret_cast<const uint8_t*>(txHdr) + sizeof(txHdr);
 	if (txDlc < 8)
 	{
 		for (size_t i = 0; i < txDlc; i++)
 		{
-			bs.push(data8[i], 8);
+			bs.push(txBuf->data8[i], 8);
 		}
 	}
 	else
 	{
-		const uint16_t *data16 = reinterpret_cast<const uint16_t*>(data8);
 		if (txDlc <= 12)
 		{
 			for (size_t i = 0; i < 2 * (txDlc - 6); i++)
 			{
-				bs.push(data16[i], 16);
+				bs.push(txBuf->data16[i], 16);
 			}
 		}
 		else
 		{
 			for (size_t i = 0; i < 8 * (txDlc - 11); i++)
 			{
-				bs.push(data16[i], 16);
+				bs.push(txBuf->data16[i], 16);
 			}
 		}
 	}

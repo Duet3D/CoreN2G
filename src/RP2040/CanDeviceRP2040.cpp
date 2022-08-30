@@ -89,11 +89,11 @@ void CanDevice::DoHardwareInit() noexcept
 	Disable();
 
 	virtualRegs.rxFifo0Size = config->rxFifo0Size + 1;									// number of entries
-	virtualRegs.rxFifo0Addr = rx0Fifo;													// address
+	virtualRegs.rxFifo0Addr = reinterpret_cast<volatile CanRxBuffer*>(rx0Fifo);			// address
 	virtualRegs.rxFifo1Size = config->rxFifo1Size + 1;									// number of entries
-	virtualRegs.rxFifo1Addr = rx1Fifo;													// address
+	virtualRegs.rxFifo1Addr = reinterpret_cast<volatile CanRxBuffer*>(rx1Fifo);			// address
 	virtualRegs.txFifoSize = config->txFifoSize + 1;									// number of entries
-	virtualRegs.txFifoAddr = txBuffers;													// address of transmit fifo - we have no dedicated Tx buffers
+	virtualRegs.txFifoAddr = reinterpret_cast<CanTxBuffer*>(txBuffers);					// address of transmit fifo - we have no dedicated Tx buffers
 	virtualRegs.numShortFilterElements = config->numShortFilterElements;				// number of short filter elements
 	virtualRegs.shortFiltersAddr = rxStdFilter;											// short filter start address
 	virtualRegs.numExtendedFilterElements = config->numExtendedFilterElements;			// number of extended filter elements

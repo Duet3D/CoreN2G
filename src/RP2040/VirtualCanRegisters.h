@@ -46,6 +46,11 @@ struct CanRxBufferHeader
 	const volatile uint32_t *GetDataPointer() const volatile { return (volatile uint32_t*)this + (sizeof(*this)/sizeof(uint32_t)); }
 };
 
+struct CanRxBuffer : public CanRxBufferHeader
+{
+	uint32_t data[64/4];
+};
+
 /**
  * \brief CAN transmit FIFO element.
  */
@@ -80,19 +85,29 @@ struct CanTxBufferHeader
 	volatile uint32_t *GetDataPointer() volatile { return (volatile uint32_t*)this + (sizeof(*this)/sizeof(uint32_t)); }
 };
 
+struct CanTxBuffer : public CanTxBufferHeader
+{
+	union
+	{
+		uint8_t data8[64];
+		uint16_t data16[64/2];
+		uint32_t data32[64/4];
+	};
+};
+
 struct VirtualCanRegisters
 {
 	// The following configuration registers are written by the main processor while CAN is disabled, and never changed while CAN is enabled
-	unsigned int rxFifo0Size;										// number of entries in fifo 0
-	unsigned int rxFifo1Size;										// number of entries in fifo 1
-	unsigned int txFifoSize;										// number of entries in transmit fifo
-	volatile uint32_t *rxFifo0Addr;									// fifo 0 start address
-	volatile uint32_t *rxFifo1Addr;									// fifo 1 start address
-	volatile uint32_t *txFifoAddr;									// transmit fifo address
-	unsigned int numShortFilterElements;
-	unsigned int numExtendedFilterElements;
-	CanStandardMessageFilterElement *shortFiltersAddr;				// start address of short filter elements
-	CanExtendedMessageFilterElement *extendedFiltersAddr;			// start address of short filter elements
+	volatile unsigned int rxFifo0Size;										// number of entries in fifo 0
+	volatile unsigned int rxFifo1Size;										// number of entries in fifo 1
+	volatile unsigned int txFifoSize;										// number of entries in transmit fifo
+	volatile CanRxBuffer *volatile rxFifo0Addr;								// fifo 0 start address
+	volatile CanRxBuffer *volatile rxFifo1Addr;								// fifo 1 start address
+	volatile CanTxBuffer *volatile txFifoAddr;								// transmit fifo address
+	volatile unsigned int numShortFilterElements;
+	volatile unsigned int numExtendedFilterElements;
+	volatile CanStandardMessageFilterElement *volatile shortFiltersAddr;	// start address of short filter elements
+	volatile CanExtendedMessageFilterElement *volatile extendedFiltersAddr;	// start address of short filter elements
 
 	// The following are written only by CAN
 	volatile unsigned int rxFifo0PutIndex;
