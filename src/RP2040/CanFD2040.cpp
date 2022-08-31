@@ -208,7 +208,6 @@ void BitUnstuffer::ClearState() noexcept
 // Return 0 if successful, 1 if need more data, -1 or -2 or -3 if there was an unstuffing error
 int BitUnstuffer::PullBits() noexcept
 {
-    const uint32_t sb = stuffed_bits;
     if (usingFixedStuffBits)
     {
     	while (count_unstuff != 0 && count_stuff != 0)
@@ -216,7 +215,7 @@ int BitUnstuffer::PullBits() noexcept
     		if (bitsUntilFixedStuffBit == 0)
     		{
     			// Check that this is the inverse of the previous bit
-    			if (((unstuffed_bits ^ (unstuffed_bits >> 1)) & (1u << (count_stuff - 1))) == 0)
+    			if (((stuffed_bits ^ (stuffed_bits >> 1)) & (1u << (count_stuff - 1))) == 0)
     			{
     				return -3;
     			}
@@ -233,10 +232,11 @@ int BitUnstuffer::PullBits() noexcept
     			bitsUntilFixedStuffBit -= toExtract;
      		}
     	}
-    	return unstuffed_bits;
+    	return (count_unstuff == 0) ? 0 : 1;
     }
 
     // Else using variable stuff bits
+    const uint32_t sb = stuffed_bits;
     const uint32_t edges = sb ^ (sb >> 1);
 	const uint32_t e2 = edges | (edges >> 1);
 	const uint32_t e4 = e2 | (e2 >> 2);
@@ -438,7 +438,7 @@ void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
 
     	while (regs->canEnabled)
     	{
-    		if (parse_state != MS_DISCARD && parse_state > MS_DATA)
+    		if (parse_state != MS_DISCARD && parse_state > MS_STUFFCOUNT)
     		{
     			debugPrintf("%" PRIu32 " irqs, state %u\n", numInterrupts, parse_state);
     		}
@@ -1210,7 +1210,7 @@ void CanFD2040::data_state_update_data(uint32_t data) noexcept
 	}
 }
 
-// Handle reception of 4 bits of message stuff count
+// Handle reception of 4 bits of message stuff count and 2 or 6 bytes of CRC
 void CanFD2040::data_state_update_stuffCount(uint32_t data) noexcept
 {
 	uint32_t stuffCount;
