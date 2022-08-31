@@ -21,13 +21,14 @@
 #include <pico/multicore.h>
 #include <hardware/irq.h>
 
+extern "C" void debugPrintf(const char *fmt, ...) noexcept;
+
 static CanDevice devices[NumCanDevices];
 
 inline uint32_t CanDevice::GetRxBufferSize() const noexcept { return sizeof(CanRxBufferHeader)/sizeof(uint32_t) + (64 >> 2); }
 inline uint32_t CanDevice::GetTxBufferSize() const noexcept { return sizeof(CanTxBufferHeader)/sizeof(uint32_t) + (64 >> 2); }
 inline CanRxBufferHeader *CanDevice::GetRxFifo0Buffer(uint32_t index) const noexcept { return (CanRxBufferHeader*)(rx0Fifo + (index * GetRxBufferSize())); }
 inline CanRxBufferHeader *CanDevice::GetRxFifo1Buffer(uint32_t index) const noexcept { return (CanRxBufferHeader*)(rx1Fifo + (index * GetRxBufferSize())); }
-inline CanRxBufferHeader *CanDevice::GetRxBuffer(uint32_t index) const noexcept { return (CanRxBufferHeader*)(rxBuffers + (index * GetRxBufferSize())); }
 inline CanTxBufferHeader *CanDevice::GetTxBuffer(uint32_t index) const noexcept { return (CanTxBufferHeader*)(txBuffers + (index * GetTxBufferSize())); }
 
 // Virtual registers, shared between the two cores
@@ -111,7 +112,6 @@ void CanDevice::DoHardwareInit() noexcept
 
 	if (!core1Initialised)
 	{
-
 		multicore_launch_core1(Core1Entry);
 		core1Initialised = true;
 	}
@@ -324,13 +324,13 @@ uint32_t CanDevice::SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, Ca
 void CanDevice::CopyReceivedMessage(CanMessageBuffer *null buffer, const volatile CanRxBufferHeader *f) noexcept
 {
 	// The CAN has written the message directly to memory, so we must invalidate the cache before we read it
-	Cache::InvalidateAfterDMAReceive(f, sizeof(CanRxBufferHeader) + 64);					// flush the header and up to 64 bytes of data
+	Cache::InvalidateAfterDMAReceive(f, sizeof(CanRxBuffer));					// flush the header data
 
 	if (buffer != nullptr)
 	{
 		buffer->extId = f->R0.bit.XTD;
-		buffer->id.SetReceivedId((buffer->extId) ? f->R0.bit.ID : f->R0.bit.ID >> 18);		// a standard identifier is stored into ID[28:18]
-		buffer->remote = f->R0.bit.RTR;
+		buffer->id.SetReceivedId(f->R0.bit.ID);
+		buffer->remote = false;
 
 		const volatile uint32_t *data = f->GetDataPointer();
 		buffer->timeStamp = f->R1.bit.RXTS;
@@ -385,7 +385,9 @@ void CanDevice::CopyReceivedMessage(CanMessageBuffer *null buffer, const volatil
 			buffer->msg.raw32[2] = data[2];
 			buffer->dataLength = dlc2len[dlc];
 		}
-  }
+//		debugPrintf("Rx typ %u src %u dst %u len %u\n", (unsigned int)buffer->id.MsgType(), buffer->id.Src(), buffer->id.Dst(), buffer->dataLength);
+//		delay(100);
+	}
 
 	++messagesReceived;
 }
@@ -429,7 +431,7 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 		}
 #endif
 		// Process the received message into the buffer
-		CopyReceivedMessage(buffer, GetRxFifo0Buffer(fifo.getIndex));
+		CopyReceivedMessage(buffer, &fifo.buffers[fifo.getIndex]);
 
 		// Tell the hardware that we have taken the message
 		++getIndex;

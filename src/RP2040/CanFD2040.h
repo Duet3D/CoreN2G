@@ -131,7 +131,7 @@ private:
 
 	void PopulateTransmitBuffer() noexcept;
 	void SendInterrupts() noexcept;
-	void SetupToReceive(unsigned int whichFifo) noexcept;
+	void SetupToReceive(unsigned int whichFifo, bool extendedId) noexcept;
 
 	// Setup
 	VirtualCanRegisters *regs;

@@ -433,11 +433,14 @@ void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
     	while (!regs->canEnabled) { }
 
     	pendingIrqs = 0;
+    	txStuffedWords = 0;
+    	tx_state = TS_IDLE;
     	pio_setup();										// Set up the PIO and pins
         data_state_go_discard();
 
     	while (regs->canEnabled)
     	{
+#if 0
     		if (parse_state != MS_DISCARD && parse_state > MS_STUFFCOUNT)
     		{
     			debugPrintf("%" PRIu32 " irqs, state %u\n", numInterrupts, parse_state);
@@ -446,6 +449,7 @@ void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
     		{
     			debugPrintf("%" PRIu32 " irqs, state %u\n", numInterrupts, parse_state);
     		}
+#endif
     	}
 
     	// Disable CAN - set output to recessive
@@ -1070,7 +1074,7 @@ void CanFD2040::data_state_update_start(uint32_t data) noexcept
 }
 
 // If there is space in receive fifo 'whichFifo', set rxMessage and FifoNumber accordingly, else leave them alone and flag the overflow
-void CanFD2040::SetupToReceive(unsigned int whichFifo) noexcept
+void CanFD2040::SetupToReceive(unsigned int whichFifo, bool extendedId) noexcept
 {
 	if (whichFifo < VirtualCanRegisters::NumRxFifos)
 	{
@@ -1083,7 +1087,10 @@ void CanFD2040::SetupToReceive(unsigned int whichFifo) noexcept
 		}
 		if (nextPutIndex != fifo.getIndex)
 		{
-			rxMessage = const_cast<uint32_t*>(fifo.buffers[putIndex].data);
+			CanRxBuffer& rxBuffer = const_cast<CanRxBuffer&>(fifo.buffers[putIndex]);
+			rxBuffer.R0.bit.XTD = extendedId;
+			rxBuffer.R1.bit.RXTS = rxTimeStamp;
+			rxMessage = rxBuffer.data;
 			rxFifoNumber = whichFifo;
 		}
 		else
@@ -1101,7 +1108,7 @@ void CanFD2040::data_state_update_header(uint32_t data) noexcept
     if ((data & 0x0300) == 0x0300)							// if SRR and ID are both set
     {
         // Extended ID
-        parse_id = (data & 0x1ffc00) << 8;					// this is now the top 11 bits of the ID field
+        parse_id = ((data & 0x1ffc00) << 8) | ((data & 0x00ff) << 10);	// this is now the top 19 bits of the ID field
         data_state_go_next(MS_EXT_HEADER, 19);
     }
     else if ((data & 0x3e0) == 0x80)						// if r1 and IDE are both clear, FDF is set, r0 and and BRS are clear
@@ -1118,7 +1125,7 @@ void CanFD2040::data_state_update_header(uint32_t data) noexcept
 			const CanStandardMessageFilterElement& f = const_cast<const CanStandardMessageFilterElement&>(regs->shortFiltersAddr[filterNumber]);
 			if (f.Matches(parse_id))
 			{
-				SetupToReceive(f.whichBuffer);
+				SetupToReceive(f.whichBuffer, false);
 				break;
 			}
 		}
@@ -1147,7 +1154,7 @@ void CanFD2040::data_state_update_ext_header(uint32_t data) noexcept
 			const CanExtendedMessageFilterElement& f = const_cast<const CanExtendedMessageFilterElement&>(regs->extendedFiltersAddr[filterNumber]);
 			if (f.Matches(parse_id))
 			{
-				SetupToReceive(f.whichBuffer);
+				SetupToReceive(f.whichBuffer, true);
 				break;
 			}
 		}

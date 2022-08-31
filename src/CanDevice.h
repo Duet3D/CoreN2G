@@ -279,7 +279,9 @@ private:
 	uint32_t GetTxBufferSize() const noexcept;
 	CanRxBufferHeader *GetRxFifo0Buffer(uint32_t index) const noexcept;
 	CanRxBufferHeader *GetRxFifo1Buffer(uint32_t index) const noexcept;
+#if !RP2040
 	CanRxBufferHeader *GetRxBuffer(uint32_t index) const noexcept;
+#endif
 	CanTxBufferHeader *GetTxBuffer(uint32_t index) const noexcept;
 #if !RP2040
 	TxEvent *GetTxEvent(uint32_t index) const noexcept;
