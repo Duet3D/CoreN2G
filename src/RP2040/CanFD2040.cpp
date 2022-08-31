@@ -456,7 +456,7 @@ void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
 // Set up a message ready to be transmitted
 void CanFD2040::PopulateTransmitBuffer() noexcept
 {
-	const volatile CanTxBuffer *const txBuf = &regs->txFifoAddr[regs->txFifoGetIndex];
+	const volatile CanTxBuffer *const txBuf = &regs->txFifo.buffers[regs->txFifo.getIndex];
 
 	txId = txBuf->T0.bit.ID;
 	txDlc = txBuf->T1.bit.DLC;
@@ -538,9 +538,10 @@ void CanFD2040::PopulateTransmitBuffer() noexcept
 
 void CanFD2040::SendInterrupts() noexcept
 {
-	if (pendingIrqs != 0 && multicore_fifo_wready())
+	if (pendingIrqs != 0 && (sio_hw->fifo_st & SIO_FIFO_ST_RDY_BITS) != 0)
 	{
-		multicore_fifo_push_blocking(pendingIrqs);
+		sio_hw->fifo_wr = pendingIrqs;
+		__sev();
 		pendingIrqs = 0;
 	}
 }
@@ -800,46 +801,22 @@ void CanFD2040::report_callback_error(uint32_t error_code) noexcept
 // Report a received message to calling code (via callback interface)
 void CanFD2040::report_callback_rx_msg() noexcept
 {
-	switch (rxFifoNumber)
+	if (rxFifoNumber < VirtualCanRegisters::NumRxFifos)
 	{
-	case 0:
+		VirtualCanRegisters::RxFifo& fifo = regs->rxFifos[rxFifoNumber];
+		unsigned int putPointer = fifo.putIndex;
+		CanRxBuffer& rxBuffer = const_cast<CanRxBuffer&>(fifo.buffers[putPointer]);
+		rxBuffer.R0.bit.ID = parse_id;
+		rxBuffer.R1.bit.DLC = parse_dlc;
+		++putPointer;
+		if (putPointer == fifo.size)
 		{
-			unsigned int putPointer = regs->rxFifo0PutIndex;
-			CanRxBuffer& rxBuffer = const_cast<CanRxBuffer&>(regs->rxFifo0Addr[putPointer]);
-			rxBuffer.R0.bit.ID = parse_id;
-			rxBuffer.R1.bit.DLC = parse_dlc;
-			++putPointer;
-			if (putPointer == regs->rxFifo0Size)
-			{
-				putPointer = 0;
-			}
-			regs->rxFifo0PutIndex = putPointer;
-			pendingIrqs |= VirtualCanRegisters::recdFifo0;
+			putPointer = 0;
 		}
-		break;
-
-	case 1:
-		{
-			unsigned int putPointer = regs->rxFifo1PutIndex;
-			CanRxBuffer& rxBuffer = const_cast<CanRxBuffer&>(regs->rxFifo1Addr[putPointer]);
-			rxBuffer.R0.bit.ID = parse_id;
-			rxBuffer.R1.bit.DLC = parse_dlc;
-			++putPointer;
-			if (putPointer == regs->rxFifo1Size)
-			{
-				putPointer = 0;
-			}
-			regs->rxFifo1PutIndex = putPointer;
-			pendingIrqs |= VirtualCanRegisters::recdFifo1;
-		}
-		break;
-
-	default:
-		break;
+		fifo.putIndex = putPointer;
+		pendingIrqs |= VirtualCanRegisters::recdFifo0 << rxFifoNumber;
+		SendInterrupts();
 	}
-
-	SendInterrupts();
-	debugPrintf("id=%08" PRIx32 " fifo=%u\n", parse_id, rxFifoNumber);
 }
 
 // Report a message that was successfully transmitted (via callback interface)
@@ -909,7 +886,7 @@ void CanFD2040::report_note_crc_start() noexcept
         expectedData = (expectedData << 10) | 0x02ff;
         pio_match_check(pio_match_calc_key(expectedData, crcend_bitpos + 10));
     }
-    else if (rxFifoNumber >= 0)
+    else if (rxFifoNumber < VirtualCanRegisters::NumRxFifos)
     {
 		// Inject ack
 		report_state = ReportState::RS_IN_MSG;
@@ -1092,6 +1069,31 @@ void CanFD2040::data_state_update_start(uint32_t data) noexcept
     data_state_go_next(MS_HEADER, 20);
 }
 
+// If there is space in receive fifo 'whichFifo', set rxMessage and FifoNumber accordingly, else leave them alone and flag the overflow
+void CanFD2040::SetupToReceive(unsigned int whichFifo) noexcept
+{
+	if (whichFifo < VirtualCanRegisters::NumRxFifos)
+	{
+		VirtualCanRegisters::RxFifo& fifo = regs->rxFifos[whichFifo];
+		const uint32_t putIndex = fifo.putIndex;
+		uint32_t nextPutIndex = putIndex + 1;
+		if (nextPutIndex == fifo.size)
+		{
+			nextPutIndex = 0;
+		}
+		if (nextPutIndex != fifo.getIndex)
+		{
+			rxMessage = const_cast<uint32_t*>(fifo.buffers[putIndex].data);
+			rxFifoNumber = whichFifo;
+		}
+		else
+		{
+			pendingIrqs |= VirtualCanRegisters::rxOvfFifo0 << whichFifo;
+			SendInterrupts();
+		}
+	}
+}
+
 // Handle reception of next 20 header bits which for CAN-FD frame with short ID takes us up to and including the DLC bits
 void CanFD2040::data_state_update_header(uint32_t data) noexcept
 {
@@ -1109,30 +1111,16 @@ void CanFD2040::data_state_update_header(uint32_t data) noexcept
 		parse_dlc = data & 0x0F;
 
 		// See if we are interested in this message
-		rxFifoNumber = -1;
+		rxFifoNumber = VirtualCanRegisters::NumRxFifos;		// set an invalid fifo number
+		rxMessage = rxDummyMessage;
 		for (unsigned int filterNumber = 0; filterNumber < regs->numShortFilterElements; ++filterNumber)
 		{
 			const CanStandardMessageFilterElement& f = const_cast<const CanStandardMessageFilterElement&>(regs->shortFiltersAddr[filterNumber]);
 			if (f.Matches(parse_id))
 			{
-				rxFifoNumber = f.whichBuffer;
+				SetupToReceive(f.whichBuffer);
 				break;
 			}
-		}
-
-		switch (rxFifoNumber)
-		{
-		case 0:
-			rxMessage = const_cast<uint32_t*>(regs->rxFifo0Addr[regs->rxFifo0PutIndex].data);
-			break;
-
-		case 1:
-			rxMessage = const_cast<uint32_t*>(regs->rxFifo1Addr[regs->rxFifo1PutIndex].data);
-			break;
-
-		default:
-			rxMessage = rxDummyMessage;
-			break;
 		}
 
 		data_state_go_data();
@@ -1152,30 +1140,16 @@ void CanFD2040::data_state_update_ext_header(uint32_t data) noexcept
 		parse_dlc = data & 0x0F;
 
 		// See if we are interested in this message
-		rxFifoNumber = -1;
+		rxFifoNumber = VirtualCanRegisters::NumRxFifos;		// set an invalid fifo number
+		rxMessage = rxDummyMessage;
 		for (unsigned int filterNumber = 0; filterNumber < regs->numExtendedFilterElements; ++filterNumber)
 		{
 			const CanExtendedMessageFilterElement& f = const_cast<const CanExtendedMessageFilterElement&>(regs->extendedFiltersAddr[filterNumber]);
 			if (f.Matches(parse_id))
 			{
-				rxFifoNumber = f.whichBuffer;
+				SetupToReceive(f.whichBuffer);
 				break;
 			}
-		}
-
-		switch (rxFifoNumber)
-		{
-		case 0:
-			rxMessage = const_cast<uint32_t*>(regs->rxFifo0Addr[regs->rxFifo0PutIndex].data);
-			break;
-
-		case 1:
-			rxMessage = const_cast<uint32_t*>(regs->rxFifo1Addr[regs->rxFifo1PutIndex].data);
-			break;
-
-		default:
-			rxMessage = rxDummyMessage;
-			break;
 		}
 
 		data_state_go_data();
@@ -1274,7 +1248,8 @@ void CanFD2040::data_state_update_crc(uint32_t data) noexcept
 // Handle reception of 2 bits of ack phase (ack, ack delimiter)
 void CanFD2040::data_state_update_ack(uint32_t data) noexcept
 {
-    if (data != 0x01)
+	if ((data & 0x01) != 0x01)		//TEMP don't check ACK
+ //   if (data != 0x01)
     {
         data_state_go_discard();
         return;

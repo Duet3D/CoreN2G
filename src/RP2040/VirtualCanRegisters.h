@@ -97,28 +97,40 @@ struct CanTxBuffer : public CanTxBufferHeader
 
 struct VirtualCanRegisters
 {
+	struct RxFifo
+	{
+		uint32_t size;									// written be proc 0, during setup only
+		volatile CanRxBuffer *volatile buffers;			// written be proc 0, during setup only
+		uint32_t getIndex;								// only written by proc 0
+		uint32_t putIndex;								// initialised by proc0 then only written by CAN
+
+		void Clear() noexcept { getIndex = putIndex = 0; }
+	};
+
+	struct TxFifo
+	{
+		uint32_t size;									// written be proc 0, during setup only
+		volatile CanTxBuffer *volatile buffers;			// written be proc 0, during setup only
+		uint32_t getIndex;								// initialised by proc0 then only written by CAN
+		uint32_t putIndex;								// only written by proc 0
+
+		void Clear() noexcept { getIndex = putIndex = 0; }
+	};
+
+	static constexpr size_t NumRxFifos = 2;
+	RxFifo rxFifos[NumRxFifos];
+	TxFifo txFifo;
+
 	// The following configuration registers are written by the main processor while CAN is disabled, and never changed while CAN is enabled
-	volatile unsigned int rxFifo0Size;										// number of entries in fifo 0
-	volatile unsigned int rxFifo1Size;										// number of entries in fifo 1
-	volatile unsigned int txFifoSize;										// number of entries in transmit fifo
-	volatile CanRxBuffer *volatile rxFifo0Addr;								// fifo 0 start address
-	volatile CanRxBuffer *volatile rxFifo1Addr;								// fifo 1 start address
-	volatile CanTxBuffer *volatile txFifoAddr;								// transmit fifo address
 	volatile unsigned int numShortFilterElements;
 	volatile unsigned int numExtendedFilterElements;
 	volatile CanStandardMessageFilterElement *volatile shortFiltersAddr;	// start address of short filter elements
 	volatile CanExtendedMessageFilterElement *volatile extendedFiltersAddr;	// start address of extended filter elements
 
 	// The following are written only by CAN
-	volatile unsigned int rxFifo0PutIndex;
-	volatile unsigned int rxFifo1PutIndex;
-	volatile unsigned int txFifoGetIndex;
 	volatile uint32_t regError;										// error register. CAN or's bits into it, main proc clears it
 
 	// The following are written only by the main processor
-	volatile unsigned int rxFifo0GetIndex;
-	volatile unsigned int rxFifo1GetIndex;
-	volatile unsigned int txFifoPutIndex;
 	volatile bool txFifoNotFullInterruptEnabled;
 	volatile bool cancelTransmission;
 	volatile bool canEnabled;										// CAN enable/disable flag, set by main proc to enable CAN after writing other registers, cleared by main proc to disable CAN
@@ -131,18 +143,24 @@ struct VirtualCanRegisters
 
 	// Bit assignments in the pseudo-interrupt message received by the main processor via the inter-processor fifo from the CAN processor
 	static constexpr uint32_t recdFifo0 = 0x01;						// message received in fifo0
-	static constexpr uint32_t recdFifo1 = 0x02;						// message received in fifo0
+	static constexpr uint32_t recdFifo1 = 0x02;						// message received in fifo1
 	static constexpr uint32_t txDone = 0x08;						// transmission complete
 	static constexpr uint32_t rxOvfFifo0 = 0x10;					// lost message destined for fifo0 because fifo was full
 	static constexpr uint32_t rxOvfFifo1 = 0x20;					// lost message destined for fifo1 because fifo was full
+
+	static_assert(recdFifo1 == recdFifo0 << 1);						// the code assumes we can shift recdFifo0 left by the fifo number
+	static_assert(rxOvfFifo1 == rxOvfFifo0 << 1);					// the code assumes we can shift rxOvfFifo0 left by the fifo number
 
 	// Disable CAN and initialise the virtual registers
 	void Init() noexcept
 	{
 		canEnabled = false;
 		cancelTransmission = txFifoNotFullInterruptEnabled = false;
-		rxFifo0PutIndex = rxFifo1PutIndex = txFifoPutIndex = 0;
-		rxFifo0GetIndex = rxFifo1GetIndex = txFifoGetIndex = 0;
+		for (RxFifo& fifo : rxFifos)
+		{
+			fifo.Clear();
+		}
+		txFifo.Clear();
 	}
 };
 

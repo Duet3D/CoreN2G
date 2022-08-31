@@ -131,6 +131,7 @@ private:
 
 	void PopulateTransmitBuffer() noexcept;
 	void SendInterrupts() noexcept;
+	void SetupToReceive(unsigned int whichFifo) noexcept;
 
 	// Setup
 	VirtualCanRegisters *regs;
@@ -149,7 +150,7 @@ private:
     uint32_t parse_bytesReceived;
 	uint32_t parse_bytesLeft;				// how many bytes of data are left to receive
 	uint32_t *rxMessage;
-	int rxFifoNumber;
+	unsigned int rxFifoNumber;
 
 	// Reporting
 	// Report state flags (stored in report_state)

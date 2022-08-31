@@ -98,12 +98,12 @@ void CanDevice::DoHardwareInit() noexcept
 {
 	Disable();			// this also clears some of the virtual registers
 
-	virtualRegs.rxFifo0Size = config->rxFifo0Size + 1;									// number of entries
-	virtualRegs.rxFifo0Addr = reinterpret_cast<volatile CanRxBuffer*>(rx0Fifo);			// address
-	virtualRegs.rxFifo1Size = config->rxFifo1Size + 1;									// number of entries
-	virtualRegs.rxFifo1Addr = reinterpret_cast<volatile CanRxBuffer*>(rx1Fifo);			// address
-	virtualRegs.txFifoSize = config->txFifoSize + 1;									// number of entries
-	virtualRegs.txFifoAddr = reinterpret_cast<CanTxBuffer*>(txBuffers);					// address of transmit fifo - we have no dedicated Tx buffers
+	virtualRegs.rxFifos[0].size = config->rxFifo0Size + 1;								// number of entries
+	virtualRegs.rxFifos[0].buffers = reinterpret_cast<volatile CanRxBuffer*>(rx0Fifo);	// address
+	virtualRegs.rxFifos[1].size = config->rxFifo1Size + 1;								// number of entries
+	virtualRegs.rxFifos[1].buffers = reinterpret_cast<volatile CanRxBuffer*>(rx1Fifo);	// address
+	virtualRegs.txFifo.size = config->txFifoSize + 1;									// number of entries
+	virtualRegs.txFifo.buffers = reinterpret_cast<CanTxBuffer*>(txBuffers);				// address of transmit fifo - we have no dedicated Tx buffers
 	virtualRegs.numShortFilterElements = config->numShortFilterElements;				// number of short filter elements
 	virtualRegs.shortFiltersAddr = rxStdFilter;											// short filter start address
 	virtualRegs.numExtendedFilterElements = config->numExtendedFilterElements;			// number of extended filter elements
@@ -168,27 +168,27 @@ bool CanDevice::IsSpaceAvailable(TxBufferNumber whichBuffer, uint32_t timeout) n
 #endif
 
 	bool bufferFree;
-	const unsigned int bufferIndex = virtualRegs.txFifoPutIndex;
+	const unsigned int bufferIndex = virtualRegs.txFifo.putIndex;
 	unsigned int nextTxFifoPutIndex = bufferIndex + 1;
-	if (nextTxFifoPutIndex == virtualRegs.txFifoSize)
+	if (nextTxFifoPutIndex == virtualRegs.txFifo.size)
 	{
 		nextTxFifoPutIndex = 0;
 	}
 
 #ifdef RTOS
-	bufferFree = nextTxFifoPutIndex != virtualRegs.txFifoGetIndex;
+	bufferFree = nextTxFifoPutIndex != virtualRegs.txFifo.getIndex;
 	if (!bufferFree && timeout != 0)
 	{
 		txTaskWaiting[(unsigned int)whichBuffer] = TaskBase::GetCallerTaskHandle();
 		virtualRegs.txFifoNotFullInterruptEnabled = true;
 
-		bufferFree = nextTxFifoPutIndex != virtualRegs.txFifoGetIndex;
+		bufferFree = nextTxFifoPutIndex != virtualRegs.txFifo.getIndex;
 		// In the following, when we call TaskBase::Take() the Move task sometimes gets woken up early by by the DDA ring
 		// Therefore we loop calling Take() until either the call times out or the buffer is free
 		while (!bufferFree)
 		{
 			const bool timedOut = !TaskBase::Take(timeout);
-			bufferFree = nextTxFifoPutIndex != virtualRegs.txFifoGetIndex;
+			bufferFree = nextTxFifoPutIndex != virtualRegs.txFifo.getIndex;
 			if (timedOut)
 			{
 				break;
@@ -296,9 +296,9 @@ uint32_t CanDevice::SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, Ca
 {
 	uint32_t cancelledId = 0;
 	const bool bufferFree = IsSpaceAvailable(whichBuffer, timeout);
-	const unsigned int bufferIndex = virtualRegs.txFifoPutIndex;
+	const unsigned int bufferIndex = virtualRegs.txFifo.putIndex;
 	unsigned int nextTxFifoPutIndex = bufferIndex + 1;
-	if (nextTxFifoPutIndex == virtualRegs.txFifoSize)
+	if (nextTxFifoPutIndex == virtualRegs.txFifo.size)
 	{
 		nextTxFifoPutIndex = 0;
 	}
@@ -313,11 +313,11 @@ uint32_t CanDevice::SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, Ca
 		{
 			delay(1);
 		}
-		while (nextTxFifoPutIndex == virtualRegs.txFifoGetIndex);
+		while (nextTxFifoPutIndex == virtualRegs.txFifo.getIndex);
 	}
 
 	CopyMessageForTransmit(buffer, GetTxBuffer(bufferIndex));
-	virtualRegs.txFifoPutIndex = nextTxFifoPutIndex;
+	virtualRegs.txFifo.putIndex = nextTxFifoPutIndex;
 	return cancelledId;
 }
 
@@ -397,110 +397,63 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 	const uint32_t start = millis();
 #endif
 
-	switch (whichBuffer)
+	if ((unsigned int)whichBuffer < VirtualCanRegisters::NumRxFifos)
 	{
-	case RxBufferNumber::fifo0:
-		{
-			// Check for a received message and wait if necessary
-			unsigned int getIndex = virtualRegs.rxFifo0GetIndex;
-#ifdef RTOS
-			if (getIndex == virtualRegs.rxFifo0PutIndex)
-			{
-				if (timeout == 0)
-				{
-					return false;
-				}
-				TaskBase::ClearNotifyCount();
-				const unsigned int waitingIndex = (unsigned int)whichBuffer;
-				rxTaskWaiting[waitingIndex] = TaskBase::GetCallerTaskHandle();
-				const bool success = (getIndex != virtualRegs.rxFifo0PutIndex) || (TaskBase::Take(timeout), getIndex != virtualRegs.rxFifo0PutIndex);
-				rxTaskWaiting[waitingIndex] = nullptr;
-				if (!success)
-				{
-					return false;
-				}
-			}
-#else
-			while (getIndex == rxFifo0PutIndex)
-			{
-				if (millis() - start >= timeout)
-				{
-					return false;
-				}
-			}
-#endif
-			// Process the received message into the buffer
-			CopyReceivedMessage(buffer, GetRxFifo0Buffer(virtualRegs.rxFifo1GetIndex));
-
-			// Tell the hardware that we have taken the message
-			++getIndex;
-			if (getIndex == virtualRegs.rxFifo0Size)
-			{
-				getIndex = 0;
-			}
-			virtualRegs.rxFifo0GetIndex = getIndex;
-		}
-		return true;
-
-	case RxBufferNumber::fifo1:
 		// Check for a received message and wait if necessary
-		{
-			unsigned int getIndex = virtualRegs.rxFifo1GetIndex;
+		VirtualCanRegisters::RxFifo& fifo = virtualRegs.rxFifos[(unsigned int)whichBuffer];
+		unsigned int getIndex = fifo.getIndex;
 #ifdef RTOS
-			if (getIndex == virtualRegs.rxFifo1PutIndex)
+		if (getIndex == fifo.putIndex)
+		{
+			if (timeout == 0)
 			{
-				if (timeout == 0)
-				{
-					return false;
-				}
-				TaskBase::ClearNotifyCount();
-				const unsigned int waitingIndex = (unsigned int)whichBuffer;
-				rxTaskWaiting[waitingIndex] = TaskBase::GetCallerTaskHandle();
-				const bool success = (getIndex != virtualRegs.rxFifo1PutIndex) || (TaskBase::Take(timeout), getIndex != virtualRegs.rxFifo1PutIndex);
-				rxTaskWaiting[waitingIndex] = nullptr;
-				if (!success)
-				{
-					return false;
-				}
+				return false;
 			}
-#else
-			while (getIndex == rxFifo1PutIndex)
+			TaskBase::ClearNotifyCount();
+			const unsigned int waitingIndex = (unsigned int)whichBuffer;
+			rxTaskWaiting[waitingIndex] = TaskBase::GetCallerTaskHandle();
+			const bool success = (getIndex != fifo.putIndex) || (TaskBase::Take(timeout), getIndex != fifo.putIndex);
+			rxTaskWaiting[waitingIndex] = nullptr;
+			if (!success)
 			{
-				if (millis() - start >= timeout)
-				{
-					return false;
-				}
+				return false;
 			}
-#endif
-			// Process the received message into the buffer
-			CopyReceivedMessage(buffer, GetRxFifo1Buffer(getIndex));
-
-			// Tell the hardware that we have taken the message
-			++getIndex;
-			if (getIndex == virtualRegs.rxFifo1Size)
-			{
-				getIndex = 0;
-			}
-			virtualRegs.rxFifo1GetIndex = getIndex;
 		}
-		return true;
+#else
+		while (getIndex == fifo.putIndex)
+		{
+			if (millis() - start >= timeout)
+			{
+				return false;
+			}
+		}
+#endif
+		// Process the received message into the buffer
+		CopyReceivedMessage(buffer, GetRxFifo0Buffer(fifo.getIndex));
 
-	default:
-		return false;
+		// Tell the hardware that we have taken the message
+		++getIndex;
+		if (getIndex == fifo.size)
+		{
+			getIndex = 0;
+		}
+		fifo.getIndex = getIndex;
+		return true;
 	}
+
+	return false;
 }
 
 bool CanDevice::IsMessageAvailable(RxBufferNumber whichBuffer) noexcept
 {
-	switch (whichBuffer)
+	if ((unsigned int)whichBuffer < VirtualCanRegisters::NumRxFifos)
 	{
-	case RxBufferNumber::fifo0:
-		return virtualRegs.rxFifo0GetIndex != virtualRegs.rxFifo0PutIndex;
-	case RxBufferNumber::fifo1:
-		return virtualRegs.rxFifo1GetIndex != virtualRegs.rxFifo1PutIndex;
-	default:
-		return false;
+		// Check for a received message and wait if necessary
+		const VirtualCanRegisters::RxFifo& fifo = virtualRegs.rxFifos[(unsigned int)whichBuffer];
+		return fifo.getIndex != fifo.putIndex;
 	}
+
+	return false;
 }
 
 // Disable a short ID filter element
@@ -633,7 +586,7 @@ void CanDevice::GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsign
 
 void CanDevice::Interrupt() noexcept
 {
-	while (multicore_fifo_rvalid())
+	while ((sio_hw->fifo_st & SIO_FIFO_ST_VLD_BITS) != 0)
 	{
 		const uint32_t ir = sio_hw->fifo_rd;
 
