@@ -1239,7 +1239,8 @@ void CanFD2040::data_state_update_stuffCount(uint32_t data) noexcept
 #else
 	(void)parity;
 #endif
-	if ((parse_crc >> 15) == crcBits)
+	if (true)	//TODO check CRC
+	//if ((parse_crc >> 15) == crcBits)
 	{
 		// Transition to MS_CRC state - await another 15 bits of crc + delimiter
 		report_note_crc_start();
