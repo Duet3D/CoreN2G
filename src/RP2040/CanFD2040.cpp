@@ -221,6 +221,7 @@ int BitUnstuffer::PullBits() noexcept
     				return -3;
     			}
     			--count_stuff;
+    			bitsUntilFixedStuffBit = 4;
     		}
     		else
     		{
@@ -229,6 +230,7 @@ int BitUnstuffer::PullBits() noexcept
     							| ((stuffed_bits >> (count_stuff - toExtract)) & ((1u << toExtract) - 1));
     			count_stuff -= toExtract;
     			count_unstuff -= toExtract;
+    			bitsUntilFixedStuffBit -= toExtract;
      		}
     	}
     	return unstuffed_bits;
@@ -436,7 +438,7 @@ void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
 
     	while (regs->canEnabled)
     	{
-    		if (parse_state != MS_DISCARD && parse_state > MS_EXT_HEADER)
+    		if (parse_state != MS_DISCARD && parse_state > MS_DATA)
     		{
     			debugPrintf("%" PRIu32 " irqs, state %u\n", numInterrupts, parse_state);
     		}
@@ -1008,6 +1010,7 @@ void CanFD2040::data_state_go_next(ParseState state, uint32_t bits) noexcept
 void CanFD2040::data_state_go_discard() noexcept
 {
     report_note_parse_error();
+    unstuf.UseNormalStuffBits();
 
     if (pio_rx_check_stall())
     {

@@ -31,8 +31,9 @@ public:
 	uint32_t GetUnstuffedBits() const noexcept { return unstuffed_bits; }
 	uint32_t GetStuffCount() const noexcept { return count_stuff; }
 	void ClearStuffedBits() noexcept { stuffed_bits = 0; }
-	void ClearStuffCount() noexcept { count_stuff = 0; }
+	void ClearStuffCount() noexcept { count_stuff = 0; usingFixedStuffBits = false; }
 	void UseFixedStuffBits() noexcept;
+	void UseNormalStuffBits() noexcept { usingFixedStuffBits = false; }
 	uint32_t GetTotalStuffBits() const noexcept { return totalStuffBits; }
 	uint32_t GetCrc17() const noexcept { return crc17; }
 	uint32_t GetCrc21() const noexcept { return crc21; }
