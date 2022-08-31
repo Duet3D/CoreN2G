@@ -17,7 +17,11 @@
 int errno;
 
 #ifndef SystemStackSize
-# define SystemStackSize	(1024)
+# if RP2040
+#  define SystemStackSize	(4096)				// Pico SDK allocates two stacks each 2kbytes long
+# else
+#  define SystemStackSize	(1024)
+# endif
 #endif
 
 extern char _end;								// defined by the linker script
