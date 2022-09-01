@@ -116,6 +116,8 @@ constexpr uint8_t GrayTable[] = { 0b0000, 0b0011, 0b0110, 0b0101, 0b1100, 0b1111
  * CRC calculation
  ****************************************************************/
 
+#if 0
+
 // Calculated 8-bit crc table (see scripts/crc.py)
 static constexpr uint16_t crc_table[256] =
 {
@@ -168,11 +170,55 @@ static inline uint32_t crc_bytes(uint32_t crc, uint32_t data, uint32_t num)
     return crc;
 }
 
+#endif
+
+// CRC polynomials used, including the MSB
+constexpr uint32_t crc17polynomial = 0x0003685B;	// 0b0000'0000'0000'0011'0110'1000'0101'0011 including the leading 1
+constexpr uint32_t crc17initialValue = 1u << 16;
+constexpr uint32_t crc21polynomial = 0x00302899; 	// 0b0000'0000'0011'0000'0010'1000'1001'1001;
+constexpr uint32_t crc21initialValue = 1u << 20;
+
+// Calculate CRC17 on a number of bits up to 32. The bits are right-justified.
+// This is very slow and needs to be optimised
+uint32_t Crc17(uint32_t remainder, uint32_t data, unsigned int numBits) noexcept
+{
+	constexpr unsigned int width = 17;
+	constexpr uint32_t topBit = 1u << width;
+	while (numBits != 0)
+	{
+		--numBits;
+		remainder = (remainder << 1) | (((data >> numBits) & 1u));
+		if (remainder & topBit)
+		{
+			remainder ^= crc17polynomial;
+		}
+	}
+	return remainder;
+}
+
 // Calculate CRC17 on a number of bits
 uint32_t Crc17(uint32_t initialValue, const uint32_t *buf, unsigned int numBits) noexcept
 {
 	//TODO
 	return initialValue;		//temporary!
+}
+
+// Calculate CRC21 on a number of bits up to 32. The bits are right-justified.
+// This is very slow and needs to be optimised
+uint32_t Crc21(uint32_t remainder, uint32_t data, unsigned int numBits) noexcept
+{
+	constexpr unsigned int width = 21;
+	constexpr uint32_t topBit = 1u << width;
+	while (numBits != 0)
+	{
+		--numBits;
+		remainder = (remainder << 1) | (((data >> numBits) & 1u));
+		if (remainder & topBit)
+		{
+			remainder ^= crc21polynomial;
+		}
+	}
+	return remainder;
 }
 
 // Calculate CRC21 on a number of bits
@@ -192,14 +238,14 @@ void BitUnstuffer::AddBits(uint32_t data, uint32_t count) noexcept
 {
     const uint32_t mask = (1u << count) - 1;
     stuffed_bits = (stuffed_bits << count) | (data & mask);
-    count_stuff = count;
+    stuffedBitsAvailable = count;
 }
 
 // Reset state and set the next desired 'count' unstuffed bits to extract
 void BitUnstuffer::SetCount(uint32_t count) noexcept
 {
     unstuffed_bits = 0;
-    count_unstuff = count;
+    unstuffedBitsWanted = count;
 }
 
 // Clear bitstuffing state (used after crc field to avoid bitstuffing ack field)
@@ -213,8 +259,8 @@ void BitUnstuffer::ClearState() noexcept
 int BitUnstuffer::PullBits() noexcept
 {
     const uint32_t sb = stuffed_bits;
-	uint32_t cs = count_stuff;
-	uint32_t cu = count_unstuff;
+	uint32_t cs = stuffedBitsAvailable;
+	uint32_t cu = unstuffedBitsWanted;
 
 	if (usingFixedStuffBits)
     {
@@ -242,8 +288,8 @@ int BitUnstuffer::PullBits() noexcept
 			cu -= toExtract;
 			bu -= toExtract;
     	}
-    	count_stuff = cs;
-    	count_unstuff = cu;
+    	stuffedBitsAvailable = cs;
+    	unstuffedBitsWanted = cu;
     	bitsUntilFixedStuffBit = bu;
     	return (cu == 0) ? 0 : 1;
     }
@@ -269,9 +315,11 @@ int BitUnstuffer::PullBits() noexcept
 			if (likely((rm_bits & try_mask) == 0))
 			{
 				// No stuff bits in try_cnt bits - copy into unstuffed_bits
-				count_unstuff = cu = cu - try_cnt;
-				count_stuff = cs = cs - try_cnt;
+				unstuffedBitsWanted = cu = cu - try_cnt;
+				stuffedBitsAvailable = cs = cs - try_cnt;
 				unstuffed_bits |= ((sb >> cs) & ((1u << try_cnt) - 1)) << cu;
+				crc17 = Crc17(crc17, unstuffed_bits, try_cnt);
+//				crc21 = Crc21(crc21, unstuffed_bits, try_cnt);
 				if (cu == 0)
 				{
 					// Extracted desired bits
@@ -279,7 +327,11 @@ int BitUnstuffer::PullBits() noexcept
 				}
 				break;
 			}
-			count_stuff = cs = cs - 1;
+
+			// There must be at least 1 more bit available
+			stuffedBitsAvailable = cs = cs - 1;
+			crc17 = Crc17(crc17, sb >> cs, 1);
+//			crc21 = Crc21(crc21, sb >> cs, 1);
 			if (rm_bits & (1u << (cs + 1)))
 			{
 				// High bit of try_cnt a stuff bit
@@ -292,7 +344,7 @@ int BitUnstuffer::PullBits() noexcept
 				break;
 			}
 			// High bit not a stuff bit. Copy 1 bit over, limit try_cnt, and retry
-			count_unstuff = cu = cu - 1;
+			unstuffedBitsWanted = cu = cu - 1;
 			unstuffed_bits |= ((sb >> cs) & 1) << cu;
 			try_cnt /= 2;
 		}
@@ -1088,6 +1140,8 @@ void CanFD2040::data_state_update_start(uint32_t data) noexcept
     parse_id = data;										// store the first data bit (MSbit of ID)
     report_note_message_start();
     unstuf.UseNormalStuffBits();							// reset the bit stuffing counter
+    unstuf.SetCrc17(Crc17(crc17initialValue, data & 1u, 2));
+    unstuf.SetCrc21(Crc21(crc21initialValue, data & 1u, 2));
     data_state_go_next(MS_HEADER, 20);
 }
 
@@ -1246,8 +1300,11 @@ void CanFD2040::data_state_update_stuffCount(uint32_t data) noexcept
 		data_state_go_discard();
 	}
 	else
-#if 1	//TODO don't check CRC for now
-	(void)crcBits;
+#if 1	// check CRC but for now don't quit if it doesn't match
+	if ((parse_crc >> 15) != crcBits)
+	{
+		++regs->errors.wrongCrc;
+	}
 	if (true)
 #else
 	if ((parse_crc >> 15) == crcBits)
@@ -1275,12 +1332,18 @@ void CanFD2040::data_state_update_crc(uint32_t data) noexcept
 #if 0
 	else if ((((parse_crc & 0x7fff) << 1) | 1u) != (data & 0xffff))
     {
-    	++errors.wrongCrc;
+    	++regs->errors.wrongCrc;
         data_state_go_discard();
     }
 #endif
     else
     {
+#if 1
+    	if ((((parse_crc & 0x7fff) << 1) | 1u) != (data & 0xffff))
+		{
+			++regs->errors.wrongCrc;		// for now, record the error but don't quit
+		}
+#endif
 		unstuf.ClearState();
 		data_state_go_next(MS_ACK, 2);
     }

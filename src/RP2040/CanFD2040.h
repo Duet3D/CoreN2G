@@ -29,20 +29,22 @@ public:
 	int PullBits() noexcept;
 	uint32_t GetStuffedBits() const noexcept { return stuffed_bits; }
 	uint32_t GetUnstuffedBits() const noexcept { return unstuffed_bits; }
-	uint32_t GetStuffCount() const noexcept { return count_stuff; }
+	uint32_t GetStuffCount() const noexcept { return stuffedBitsAvailable; }
 	void ClearStuffedBits() noexcept { stuffed_bits = 0; }
-	void ClearStuffCount() noexcept { count_stuff = 0; }
+	void ClearStuffCount() noexcept { stuffedBitsAvailable = 0; }
 	void UseFixedStuffBits() noexcept;
 	void UseNormalStuffBits() noexcept { usingFixedStuffBits = false; totalStuffBits = 0;}
 	uint32_t GetTotalStuffBits() const noexcept { return totalStuffBits; }
-	uint32_t GetCrc17() const noexcept { return crc17; }
-	uint32_t GetCrc21() const noexcept { return crc21; }
+	uint32_t GetCrc17() const noexcept { return crc17 & ((1u << 17) - 1u); }
+	uint32_t GetCrc21() const noexcept { return crc21 & ((1u << 21) - 1u); }
+	void SetCrc17(uint32_t val) noexcept { crc17 = val; }
+	void SetCrc21(uint32_t val) noexcept { crc21 = val; }
 
 private:
 	uint32_t stuffed_bits;						// the last 5 (or more) bits received
-	unsigned int count_stuff;					// how many unprocessed bits we have in stuffed_bits
+	unsigned int stuffedBitsAvailable;			// how many unprocessed bits we have in stuffed_bits
 	uint32_t unstuffed_bits;					// bits we have destuffed, but we don't have as many as asked for
-	unsigned int count_unstuff;					// how may more destuffed bits we want
+	unsigned int unstuffedBitsWanted;			// how may more destuffed bits we want
 	uint32_t crc17;
 	uint32_t crc21;
 	unsigned int totalStuffBits;				// the total number of stuffing bits we removed
