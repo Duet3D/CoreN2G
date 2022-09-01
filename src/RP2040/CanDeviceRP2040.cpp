@@ -155,11 +155,6 @@ void CanDevice::Disable() noexcept
 	virtualRegs.Init();
 }
 
-uint32_t CanDevice::GetErrorRegister() const noexcept
-{
-	return virtualRegs.regError;
-}
-
 // Return true if space is available to send using this buffer or FIFO
 bool CanDevice::IsSpaceAvailable(TxBufferNumber whichBuffer, uint32_t timeout) noexcept
 {
@@ -399,7 +394,7 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 	const uint32_t start = millis();
 #endif
 
-	if ((unsigned int)whichBuffer < VirtualCanRegisters::NumRxFifos)
+	if ((unsigned int)whichBuffer < NumCanRxFifos)
 	{
 		// Check for a received message and wait if necessary
 		VirtualCanRegisters::RxFifo& fifo = virtualRegs.rxFifos[(unsigned int)whichBuffer];
@@ -448,7 +443,7 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 
 bool CanDevice::IsMessageAvailable(RxBufferNumber whichBuffer) noexcept
 {
-	if ((unsigned int)whichBuffer < VirtualCanRegisters::NumRxFifos)
+	if ((unsigned int)whichBuffer < NumCanRxFifos)
 	{
 		// Check for a received message and wait if necessary
 		const VirtualCanRegisters::RxFifo& fifo = virtualRegs.rxFifos[(unsigned int)whichBuffer];
@@ -584,6 +579,12 @@ void CanDevice::GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsign
 	messagesQueuedForSending = messagesReceived = messagesLost = busOffCount = 0;
 }
 
+void CanDevice::GetAndClearErrorCounts(CanErrorCounts& errs) noexcept
+{
+	errs = virtualRegs.errors;
+	virtualRegs.clearErrorCounts = true;
+}
+
 #ifdef RTOS
 
 void CanDevice::Interrupt() noexcept
@@ -610,12 +611,6 @@ void CanDevice::Interrupt() noexcept
 		if (ir & VirtualCanRegisters::txDone)
 		{
 			TaskBase::GiveFromISR(txTaskWaiting[(unsigned int)TxBufferNumber::fifo]);
-		}
-
-		// Test for messages lost due to receive fifo full
-		if (ir & (VirtualCanRegisters::rxOvfFifo0 | VirtualCanRegisters::rxOvfFifo1))
-		{
-			++messagesLost;
 		}
 	}
 }

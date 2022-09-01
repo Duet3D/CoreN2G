@@ -257,7 +257,11 @@ public:
 	void PollTxEventFifo(TxEventCallbackFunction p_txCallback) noexcept;
 #endif
 
+#if RP2040
+	void GetAndClearErrorCounts(CanErrorCounts& errs) noexcept;
+#else
 	uint32_t GetErrorRegister() const noexcept;
+#endif
 
 #ifdef RTOS
 	void Interrupt() noexcept;

@@ -26,7 +26,7 @@
 #undef from
 #include <pico/mutex.h>
 
-#define DONT_USE_TIMER		1
+#define DONT_USE_TIMER		0
 
 // Big, global USB mutex, shared with all USB devices to make sure we don't
 // have multiple cores updating the TUSB state in parallel

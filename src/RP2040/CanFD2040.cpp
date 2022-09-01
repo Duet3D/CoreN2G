@@ -32,6 +32,8 @@ extern "C" void PIO_isr() noexcept;
 #define unlikely(x)     __builtin_expect(!!(x), 0)
 #define DIV_ROUND_UP(n,d) (((n) + (d) - 1) / (d))
 
+#pragma GCC optimize ("O3")
+
 // rp2040 helper function to clear a hardware reset bit
 static void rp2040_clear_reset(uint32_t reset_bit)
 {
@@ -106,6 +108,9 @@ static const uint16_t can2040_program_instructions[] = {
     0x023a, // 30: jmp    !x, 26                 [2]
     0xc027, // 31: irq    wait 7
 };
+
+// 3-bit Gray code table, shifted left 1 bit with lower even parity bit added
+constexpr uint8_t GrayTable[] = { 0b0000, 0b0011, 0b0110, 0b0101, 0b1100, 0b1111, 0b1010, 0b1001 };
 
 /****************************************************************
  * CRC calculation
@@ -200,54 +205,61 @@ void BitUnstuffer::SetCount(uint32_t count) noexcept
 // Clear bitstuffing state (used after crc field to avoid bitstuffing ack field)
 void BitUnstuffer::ClearState() noexcept
 {
-    const uint32_t lb = 1u << count_stuff;
-    stuffed_bits = (stuffed_bits & (lb - 1)) | lb;
+    bitsUntilFixedStuffBit = 9999;			// no more stuff bits
 }
 
 // Pull bits from unstuffer (as specified in unstuf_set_count())
 // Return 0 if successful, 1 if need more data, -1 or -2 or -3 if there was an unstuffing error
 int BitUnstuffer::PullBits() noexcept
 {
-    if (usingFixedStuffBits)
+    const uint32_t sb = stuffed_bits;
+	uint32_t cs = count_stuff;
+	uint32_t cu = count_unstuff;
+
+	if (usingFixedStuffBits)
     {
-    	while (count_unstuff != 0 && count_stuff != 0)
+    	uint32_t bu = bitsUntilFixedStuffBit;
+    	while (cu != 0 && cs != 0)
     	{
-    		if (bitsUntilFixedStuffBit == 0)
+    		if (bu == 0)
     		{
     			// Check that this is the inverse of the previous bit
-    			if (((stuffed_bits ^ (stuffed_bits >> 1)) & (1u << (count_stuff - 1))) == 0)
+    			if (unlikely(((sb ^ (sb >> 1)) & (1u << (cs - 1))) == 0))
     			{
     				return -3;
     			}
-    			--count_stuff;
-    			bitsUntilFixedStuffBit = 4;
+    			--cs;
+    			bu = 4;
+    			if (cs == 0)
+    			{
+    				break;
+    			}
     		}
-    		else
-    		{
-    			const uint32_t toExtract = min<uint32_t>(count_unstuff, min<uint32_t>(count_stuff, bitsUntilFixedStuffBit));
-    			unstuffed_bits = (unstuffed_bits << toExtract)
-    							| ((stuffed_bits >> (count_stuff - toExtract)) & ((1u << toExtract) - 1));
-    			count_stuff -= toExtract;
-    			count_unstuff -= toExtract;
-    			bitsUntilFixedStuffBit -= toExtract;
-     		}
+			const uint32_t toExtract = min<uint32_t>(cu, min<uint32_t>(cs, bu));
+			unstuffed_bits = (unstuffed_bits << toExtract)
+							| ((stuffed_bits >> (cs - toExtract)) & ((1u << toExtract) - 1u));
+			cs -= toExtract;
+			cu -= toExtract;
+			bu -= toExtract;
     	}
-    	return (count_unstuff == 0) ? 0 : 1;
+    	count_stuff = cs;
+    	count_unstuff = cu;
+    	bitsUntilFixedStuffBit = bu;
+    	return (cu == 0) ? 0 : 1;
     }
 
     // Else using variable stuff bits
-    const uint32_t sb = stuffed_bits;
-    const uint32_t edges = sb ^ (sb >> 1);
-	const uint32_t e2 = edges | (edges >> 1);
-	const uint32_t e4 = e2 | (e2 >> 2);
-	const uint32_t rm_bits = ~e4;
-	uint32_t cs = count_stuff;
-	uint32_t cu = count_unstuff;
 	if (cs == 0)
 	{
 		// Need more data
 		return 1;
 	}
+
+    const uint32_t edges = sb ^ (sb >> 1);
+	const uint32_t e2 = edges | (edges >> 1);
+	const uint32_t e4 = e2 | (e2 >> 2);
+	const uint32_t rm_bits = ~e4;
+
 	while (true)
 	{
 		uint32_t try_cnt = cs > cu ? cu : cs;
@@ -271,6 +283,7 @@ int BitUnstuffer::PullBits() noexcept
 			if (rm_bits & (1u << (cs + 1)))
 			{
 				// High bit of try_cnt a stuff bit
+				++totalStuffBits;
 				if (unlikely(rm_bits & (1u << cs)))
 				{
 					// Six consecutive bits - a bitstuff error
@@ -278,7 +291,7 @@ int BitUnstuffer::PullBits() noexcept
 				}
 				break;
 			}
-			// High bit not a stuff bit - limit try_cnt and retry
+			// High bit not a stuff bit. Copy 1 bit over, limit try_cnt, and retry
 			count_unstuff = cu = cu - 1;
 			unstuffed_bits |= ((sb >> cs) & 1) << cu;
 			try_cnt /= 2;
@@ -440,6 +453,11 @@ void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
 
     	while (regs->canEnabled)
     	{
+    		if (regs->clearErrorCounts)
+    		{
+    			regs->errors.Clear();
+    			regs->clearErrorCounts = false;
+    		}
 #if 0
     		if (parse_state != MS_DISCARD && parse_state > MS_STUFFCOUNT)
     		{
@@ -509,8 +527,6 @@ void CanFD2040::PopulateTransmitBuffer() noexcept
 	}
 
 	// Push the stuff count
-	// 3-bit Gray code table, shifted left 1 bit with lower parity bit added
-	constexpr uint8_t GrayTable[] = { 0b0000, 0b0011, 0b0110, 0b0101, 0b1100, 0b1111, 0b1010, 0b1001 };
 	bs.AddFixedStuffBit();
 	bs.push(GrayTable[bs.GetTotalStuffBits() & 7], 4);
 
@@ -805,7 +821,7 @@ void CanFD2040::report_callback_error(uint32_t error_code) noexcept
 // Report a received message to calling code (via callback interface)
 void CanFD2040::report_callback_rx_msg() noexcept
 {
-	if (rxFifoNumber < VirtualCanRegisters::NumRxFifos)
+	if (rxFifoNumber < NumCanRxFifos)
 	{
 		VirtualCanRegisters::RxFifo& fifo = regs->rxFifos[rxFifoNumber];
 		unsigned int putPointer = fifo.putIndex;
@@ -890,7 +906,7 @@ void CanFD2040::report_note_crc_start() noexcept
         expectedData = (expectedData << 10) | 0x02ff;
         pio_match_check(pio_match_calc_key(expectedData, crcend_bitpos + 10));
     }
-    else if (rxFifoNumber < VirtualCanRegisters::NumRxFifos)
+    else if (rxFifoNumber < NumCanRxFifos)
     {
 		// Inject ack
 		report_state = ReportState::RS_IN_MSG;
@@ -1021,6 +1037,7 @@ void CanFD2040::data_state_line_passive() noexcept
     }
     else
     {
+    	unstuf.UseNormalStuffBits();
 		const uint32_t stuffed_bits = unstuf.GetStuffedBits() >> unstuf.GetStuffCount();
 		if (stuffed_bits == 0xffffffff)
 		{
@@ -1070,13 +1087,14 @@ void CanFD2040::data_state_update_start(uint32_t data) noexcept
 	rxTimeStamp = timer_hw->timerawl;						// save time stamp for later
     parse_id = data;										// store the first data bit (MSbit of ID)
     report_note_message_start();
+    unstuf.UseNormalStuffBits();							// reset the bit stuffing counter
     data_state_go_next(MS_HEADER, 20);
 }
 
 // If there is space in receive fifo 'whichFifo', set rxMessage and FifoNumber accordingly, else leave them alone and flag the overflow
 void CanFD2040::SetupToReceive(unsigned int whichFifo, bool extendedId) noexcept
 {
-	if (whichFifo < VirtualCanRegisters::NumRxFifos)
+	if (whichFifo < NumCanRxFifos)
 	{
 		VirtualCanRegisters::RxFifo& fifo = regs->rxFifos[whichFifo];
 		const uint32_t putIndex = fifo.putIndex;
@@ -1095,8 +1113,7 @@ void CanFD2040::SetupToReceive(unsigned int whichFifo, bool extendedId) noexcept
 		}
 		else
 		{
-			pendingIrqs |= VirtualCanRegisters::rxOvfFifo0 << whichFifo;
-			SendInterrupts();
+			++regs->errors.rxFifoOverlow[whichFifo];
 		}
 	}
 }
@@ -1118,7 +1135,7 @@ void CanFD2040::data_state_update_header(uint32_t data) noexcept
 		parse_dlc = data & 0x0F;
 
 		// See if we are interested in this message
-		rxFifoNumber = VirtualCanRegisters::NumRxFifos;		// set an invalid fifo number
+		rxFifoNumber = NumCanRxFifos;						// set an invalid fifo number
 		rxMessage = rxDummyMessage;
 		for (unsigned int filterNumber = 0; filterNumber < regs->numShortFilterElements; ++filterNumber)
 		{
@@ -1134,6 +1151,7 @@ void CanFD2040::data_state_update_header(uint32_t data) noexcept
     }
 	else
 	{
+		++regs->errors.wrongMessageType;
 		data_state_go_discard();							// not a message format we can parse
 	}
 }
@@ -1147,7 +1165,7 @@ void CanFD2040::data_state_update_ext_header(uint32_t data) noexcept
 		parse_dlc = data & 0x0F;
 
 		// See if we are interested in this message
-		rxFifoNumber = VirtualCanRegisters::NumRxFifos;		// set an invalid fifo number
+		rxFifoNumber = NumCanRxFifos;						// set an invalid fifo number
 		rxMessage = rxDummyMessage;
 		for (unsigned int filterNumber = 0; filterNumber < regs->numExtendedFilterElements; ++filterNumber)
 		{
@@ -1163,6 +1181,7 @@ void CanFD2040::data_state_update_ext_header(uint32_t data) noexcept
 	}
 	else
 	{
+		++regs->errors.wrongMessageType;
 		data_state_go_discard();
 	}
 }
@@ -1209,29 +1228,38 @@ void CanFD2040::data_state_update_stuffCount(uint32_t data) noexcept
 		crcBits = data & 0x03;				// get top 2 bits of CRC
 	}
 
-	// Check stuff count parity and stuff count
-	uint32_t parity = stuffCount ^ (stuffCount >> 2);
-	parity ^= (parity >> 1);
-#if 0	//TODO
-	if (   (parity & 1)							//TODO should parity be even or odd?
-		|| InverseGrayTable(stuffCount >> 1) != unstuff.GetTotalStuffBits()
-	   )
+	// Check stuff count parity (should be even) and stuff count
+	//TODO remove this separate parity check when we have sorted out the count of stuff bits
+	if (unlikely((stuffCount & 0x0f) != GrayTable[unstuf.GetTotalStuffBits() & 0x07]))
 	{
+		// Check whether the parity is wrong so we can report a parity error separately
+		uint32_t parity = stuffCount ^ (stuffCount >> 2);
+		parity ^= (parity >> 1);
+		if (parity & 1u)
+		{
+			++regs->errors.stuffCountParity;
+		}
+		else
+		{
+			++regs->errors.wrongStuffCount;
+		}
 		data_state_go_discard();
 	}
 	else
+#if 1	//TODO don't check CRC for now
+	(void)crcBits;
+	if (true)
 #else
-	(void)parity;
+	if ((parse_crc >> 15) == crcBits)
 #endif
-	if (true)	//TODO check CRC
-	//if ((parse_crc >> 15) == crcBits)
 	{
 		// Transition to MS_CRC state - await another 15 bits of crc + delimiter
 		report_note_crc_start();
-		data_state_go_next(MS_CRC, 16);						// read 15 CRC bits (plus fixed stuffing bits) plus delimiter
+		data_state_go_next(MS_CRC, 16);		// read 15 more CRC bits (plus fixed stuffing bits) plus delimiter
 	}
 	else
 	{
+		++regs->errors.wrongCrc;
 		data_state_go_discard();
 	}
 }
@@ -1239,13 +1267,19 @@ void CanFD2040::data_state_update_stuffCount(uint32_t data) noexcept
 // Handle reception of 16 bits of message CRC (15 crc bits + crc delimiter)
 void CanFD2040::data_state_update_crc(uint32_t data) noexcept
 {
-#if 0	//TODO don't check CRC
-    if ((((parse_crc & 0x7fff) << 1) | 1) != data)
+	if ((data & 1u) != 1u)				// just check the delimiter
+	{
+		++regs->errors.missingCrcDelimiter;
+		data_state_go_discard();
+	}
+#if 0
+	else if ((((parse_crc & 0x7fff) << 1) | 1u) != (data & 0xffff))
     {
+    	++errors.wrongCrc;
         data_state_go_discard();
     }
-    else
 #endif
+    else
     {
 		unstuf.ClearState();
 		data_state_go_next(MS_ACK, 2);
@@ -1255,14 +1289,17 @@ void CanFD2040::data_state_update_crc(uint32_t data) noexcept
 // Handle reception of 2 bits of ack phase (ack, ack delimiter)
 void CanFD2040::data_state_update_ack(uint32_t data) noexcept
 {
-	if ((data & 0x01) != 0x01)		//TEMP don't check ACK
+	if ((data & 0x01) != 0x01)		//TEMP don't check ACK, just check the delimiter
  //   if (data != 0x01)
     {
+		++regs->errors.missingAckDelimiter;
         data_state_go_discard();
-        return;
     }
-    report_note_ack_success();
-    data_state_go_next(MS_EOF0, 4);
+	else
+	{
+		report_note_ack_success();
+		data_state_go_next(MS_EOF0, 4);
+	}
 }
 
 // Handle reception of first four end-of-frame (EOF) bits
@@ -1270,16 +1307,19 @@ void CanFD2040::data_state_update_eof0(uint32_t data) noexcept
 {
     if (data != 0x0f || pio_rx_check_stall())
     {
+    	++regs->errors.missingEofBit;
         data_state_go_discard();
-        return;
     }
-    unstuf.ClearState();
-    data_state_go_next(MS_EOF1, 4);
+    else
+    {
+    	data_state_go_next(MS_EOF1, 4);
+    }
 }
 
 // Handle reception of end-of-frame (EOF) bits 5-7 and first IFS bit
 void CanFD2040::data_state_update_eof1(uint32_t data) noexcept
 {
+	unstuf.UseNormalStuffBits();
     if (data >= 0x0e || (data >= 0x0c && report_is_acking_rx()))
     {
         // Message is considered fully transmitted
@@ -1292,6 +1332,7 @@ void CanFD2040::data_state_update_eof1(uint32_t data) noexcept
     }
     else
     {
+    	++regs->errors.missingEofBit;
         data_state_go_discard();
     }
 }
@@ -1351,7 +1392,8 @@ void CanFD2040::process_rx(uint32_t rx_byte) noexcept
             }
             else
             {
-                // 6 consecutive low bits
+                // 6 consecutive low bits, or incorrect fixed stuff bit
+            	++regs->errors.badStuffing;
                 data_state_line_error();
             }
         }

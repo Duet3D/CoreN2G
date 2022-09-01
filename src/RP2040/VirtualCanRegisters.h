@@ -95,6 +95,32 @@ struct CanTxBuffer : public CanTxBufferHeader
 	};
 };
 
+static constexpr size_t NumCanRxFifos = 2;
+
+struct CanErrorCounts
+{
+	uint32_t stuffCountParity;
+	uint32_t wrongStuffCount;
+	uint32_t wrongCrc;
+	uint32_t wrongMessageType;
+	uint32_t missingCrcDelimiter;
+	uint32_t missingAckDelimiter;
+	uint32_t missingEofBit;
+	uint32_t badStuffing;
+	uint32_t rxFifoOverlow[NumCanRxFifos];
+
+	// Clear all error counts
+	void Clear() noexcept
+	{
+		stuffCountParity = wrongStuffCount = wrongCrc = wrongMessageType
+			= missingCrcDelimiter = missingAckDelimiter = missingEofBit = badStuffing = 0;
+		for (volatile uint32_t& err : rxFifoOverlow)
+		{
+			err = 0;
+		}
+	}
+};
+
 struct VirtualCanRegisters
 {
 	struct RxFifo
@@ -117,8 +143,7 @@ struct VirtualCanRegisters
 		void Clear() noexcept { getIndex = putIndex = 0; }
 	};
 
-	static constexpr size_t NumRxFifos = 2;
-	RxFifo rxFifos[NumRxFifos];
+	RxFifo rxFifos[NumCanRxFifos];
 	TxFifo txFifo;
 
 	// The following configuration registers are written by the main processor while CAN is disabled, and never changed while CAN is enabled
@@ -128,12 +153,13 @@ struct VirtualCanRegisters
 	volatile CanExtendedMessageFilterElement *volatile extendedFiltersAddr;	// start address of extended filter elements
 
 	// The following are written only by CAN
-	volatile uint32_t regError;										// error register. CAN or's bits into it, main proc clears it
+	CanErrorCounts errors;
 
 	// The following are written only by the main processor
 	volatile bool txFifoNotFullInterruptEnabled;
 	volatile bool cancelTransmission;
 	volatile bool canEnabled;										// CAN enable/disable flag, set by main proc to enable CAN after writing other registers, cleared by main proc to disable CAN
+	volatile bool clearErrorCounts;
 
 	// The following are written by the main processor prior to initial setup
 	uint32_t bitrate;
@@ -145,22 +171,20 @@ struct VirtualCanRegisters
 	static constexpr uint32_t recdFifo0 = 0x01;						// message received in fifo0
 	static constexpr uint32_t recdFifo1 = 0x02;						// message received in fifo1
 	static constexpr uint32_t txDone = 0x08;						// transmission complete
-	static constexpr uint32_t rxOvfFifo0 = 0x10;					// lost message destined for fifo0 because fifo was full
-	static constexpr uint32_t rxOvfFifo1 = 0x20;					// lost message destined for fifo1 because fifo was full
 
 	static_assert(recdFifo1 == recdFifo0 << 1);						// the code assumes we can shift recdFifo0 left by the fifo number
-	static_assert(rxOvfFifo1 == rxOvfFifo0 << 1);					// the code assumes we can shift rxOvfFifo0 left by the fifo number
 
 	// Disable CAN and initialise the virtual registers
 	void Init() noexcept
 	{
 		canEnabled = false;
-		cancelTransmission = txFifoNotFullInterruptEnabled = false;
+		cancelTransmission = txFifoNotFullInterruptEnabled = clearErrorCounts = false;
 		for (RxFifo& fifo : rxFifos)
 		{
 			fifo.Clear();
 		}
 		txFifo.Clear();
+		errors.Clear();
 	}
 };
 
