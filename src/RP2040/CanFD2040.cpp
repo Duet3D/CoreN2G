@@ -174,23 +174,24 @@ static inline uint32_t crc_bytes(uint32_t crc, uint32_t data, uint32_t num)
 
 // CRC polynomials used, including the MSB
 constexpr uint32_t crc17polynomial = 0x0003685B;	// 0b0000'0000'0000'0011'0110'1000'0101'0011 including the leading 1
-constexpr uint32_t crc17initialValue = 1u << 16;
+constexpr uint32_t crc17initialValue = 1u << 31;	// initial value after left shifting
 constexpr uint32_t crc21polynomial = 0x00302899; 	// 0b0000'0000'0011'0000'0010'1000'1001'1001;
-constexpr uint32_t crc21initialValue = 1u << 20;
+constexpr uint32_t crc21initialValue = 1u << 31;	// initial value after left shifting
 
-// Calculate CRC17 on a number of bits up to 32. The bits are right-justified.
-// This is very slow and needs to be optimised
+// Calculate CRC17 on a number of bits between 0 and 32. The bits are right-justified. Any higher bits in the input data are ignored.
 uint32_t Crc17(uint32_t remainder, uint32_t data, unsigned int numBits) noexcept
 {
-	constexpr unsigned int width = 17;
-	constexpr uint32_t topBit = 1u << width;
+	remainder ^= data << (32 - numBits);
 	while (numBits != 0)
 	{
 		--numBits;
-		remainder = (remainder << 1) | (((data >> numBits) & 1u));
-		if (remainder & topBit)
+		if (remainder & 0x8000'0000)
 		{
-			remainder ^= crc17polynomial;
+			remainder = (remainder << 1) ^ (crc17polynomial << (32 - 17));
+		}
+		else
+		{
+			remainder <<= 1;
 		}
 	}
 	return remainder;
@@ -203,19 +204,21 @@ uint32_t Crc17(uint32_t initialValue, const uint32_t *buf, unsigned int numBits)
 	return initialValue;		//temporary!
 }
 
-// Calculate CRC21 on a number of bits up to 32. The bits are right-justified.
+// Calculate CRC21 on a number of bits between 0 and 32. The bits are right-justified.
 // This is very slow and needs to be optimised
 uint32_t Crc21(uint32_t remainder, uint32_t data, unsigned int numBits) noexcept
 {
-	constexpr unsigned int width = 21;
-	constexpr uint32_t topBit = 1u << width;
+	remainder ^= data << (32 - numBits);
 	while (numBits != 0)
 	{
 		--numBits;
-		remainder = (remainder << 1) | (((data >> numBits) & 1u));
-		if (remainder & topBit)
+		if (remainder & 0x8000'0000)
 		{
-			remainder ^= crc21polynomial;
+			remainder = (remainder << 1) ^ (crc21polynomial << (32 - 21));
+		}
+		else
+		{
+			remainder <<= 1;
 		}
 	}
 	return remainder;
@@ -264,6 +267,7 @@ int BitUnstuffer::PullBits() noexcept
 
 	if (usingFixedStuffBits)
     {
+		// When using fixed stuff bits we do not update the CRC
     	uint32_t bu = bitsUntilFixedStuffBit;
     	while (cu != 0 && cs != 0)
     	{
@@ -294,7 +298,7 @@ int BitUnstuffer::PullBits() noexcept
     	return (cu == 0) ? 0 : 1;
     }
 
-    // Else using variable stuff bits
+    // Else using variable stuff bits. In CAN-FD the stuff bits are included in the CRC.
 	if (cs == 0)
 	{
 		// Need more data
@@ -311,21 +315,25 @@ int BitUnstuffer::PullBits() noexcept
 		uint32_t try_cnt = cs > cu ? cu : cs;
 		for (;;)
 		{
-			const uint32_t try_mask = ((1 << try_cnt) - 1) << (cs + 1 - try_cnt);
-			if (likely((rm_bits & try_mask) == 0))
+			// Note, try_cnt may be zero here
+			if (likely(try_cnt != 0))
 			{
-				// No stuff bits in try_cnt bits - copy into unstuffed_bits
-				unstuffedBitsWanted = cu = cu - try_cnt;
-				stuffedBitsAvailable = cs = cs - try_cnt;
-				unstuffed_bits |= ((sb >> cs) & ((1u << try_cnt) - 1)) << cu;
-				crc17 = Crc17(crc17, unstuffed_bits, try_cnt);
-//				crc21 = Crc21(crc21, unstuffed_bits, try_cnt);
-				if (cu == 0)
+				const uint32_t try_mask = ((1 << try_cnt) - 1) << (cs + 1 - try_cnt);
+				if (likely((rm_bits & try_mask) == 0))
 				{
-					// Extracted desired bits
-					return 0;
+					// No stuff bits in try_cnt bits - copy into unstuffed_bits
+					unstuffedBitsWanted = cu = cu - try_cnt;
+					stuffedBitsAvailable = cs = cs - try_cnt;
+					unstuffed_bits |= ((sb >> cs) & ((1u << try_cnt) - 1)) << cu;
+					crc17 = Crc17(crc17, sb >> cs, try_cnt);
+//					crc21 = Crc21(crc21, sb >> cs, try_cnt);
+					if (cu == 0)
+					{
+						// Extracted desired bits
+						return 0;
+					}
+					break;
 				}
-				break;
 			}
 
 			// There must be at least 1 more bit available
@@ -1137,11 +1145,12 @@ void CanFD2040::data_state_go_stuff_count() noexcept
 void CanFD2040::data_state_update_start(uint32_t data) noexcept
 {
 	rxTimeStamp = timer_hw->timerawl;						// save time stamp for later
+	data &= 0x01;
     parse_id = data;										// store the first data bit (MSbit of ID)
     report_note_message_start();
     unstuf.UseNormalStuffBits();							// reset the bit stuffing counter
-    unstuf.SetCrc17(Crc17(crc17initialValue, data & 1u, 2));
-    unstuf.SetCrc21(Crc21(crc21initialValue, data & 1u, 2));
+    unstuf.SetCrc17(Crc17(crc17initialValue, data, 2));		// add the SOF and the first header bit to the CRC
+    unstuf.SetCrc21(Crc21(crc21initialValue, data, 2));		// add the SOF and the first header bit to the CRC
     data_state_go_next(MS_HEADER, 20);
 }
 
@@ -1271,15 +1280,15 @@ void CanFD2040::data_state_update_stuffCount(uint32_t data) noexcept
 	uint32_t crcBits;
 	if (parse_dlc > 10)
 	{
-		parse_crc = unstuf.GetCrc21();		// set up the expected CRC
-		stuffCount = data >> 6;				// get stuff count and parity bit
-		crcBits = data & 0x3f;				// get top 6 bits of CRC
+		stuffCount = data >> 6;													// get stuff count and parity bit
+		parse_crc = Crc21(unstuf.GetCrc21(), stuffCount, 4) >> (32 - 21);		// set up the expected CRC
+		crcBits = data & 0x3f;													// get top 6 bits of CRC
 	}
 	else
 	{
-		parse_crc = unstuf.GetCrc17();		// set up the expected CRC
-		stuffCount = data >> 2;				// get stuff count and parity bit
-		crcBits = data & 0x03;				// get top 2 bits of CRC
+		stuffCount = data >> 2;													// get stuff count and parity bit
+		parse_crc = Crc17(unstuf.GetCrc17(), stuffCount, 4) >> (32 - 17);		// set up the expected CRC
+		crcBits = data & 0x03;													// get top 2 bits of CRC
 	}
 
 	// Check stuff count parity (should be even) and stuff count
@@ -1324,7 +1333,7 @@ void CanFD2040::data_state_update_stuffCount(uint32_t data) noexcept
 // Handle reception of 16 bits of message CRC (15 crc bits + crc delimiter)
 void CanFD2040::data_state_update_crc(uint32_t data) noexcept
 {
-	if ((data & 1u) != 1u)				// just check the delimiter
+	if ((data & 1u) != 1u)					// just check the delimiter
 	{
 		++regs->errors.missingCrcDelimiter;
 		data_state_go_discard();

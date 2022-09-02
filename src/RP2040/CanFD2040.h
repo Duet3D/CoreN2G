@@ -34,11 +34,11 @@ public:
 	void ClearStuffCount() noexcept { stuffedBitsAvailable = 0; }
 	void UseFixedStuffBits() noexcept;
 	void UseNormalStuffBits() noexcept { usingFixedStuffBits = false; totalStuffBits = 0;}
-	uint32_t GetTotalStuffBits() const noexcept { return totalStuffBits; }
-	uint32_t GetCrc17() const noexcept { return crc17 & ((1u << 17) - 1u); }
-	uint32_t GetCrc21() const noexcept { return crc21 & ((1u << 21) - 1u); }
-	void SetCrc17(uint32_t val) noexcept { crc17 = val; }
-	void SetCrc21(uint32_t val) noexcept { crc21 = val; }
+	uint32_t GetTotalStuffBits() const noexcept { return totalStuffBits; }	// return the number of dynamic stuff bits that were counted
+	uint32_t GetCrc17() const noexcept { return crc17; }					// get the CRC17, left justified, on return caller must ignore lower 15 bits
+	uint32_t GetCrc21() const noexcept { return crc21; }					// get the CRC21, left justified, on return caller must ignore lower 11 bits
+	void SetCrc17(uint32_t val) noexcept { crc17 = val; }					// set the CRC17, caller must provide it left justified with lower 15 bits zero
+	void SetCrc21(uint32_t val) noexcept { crc21 = val; }					// set the CRC21, caller must provide it left justified with lower 11 bits zero
 
 private:
 	uint32_t stuffed_bits;						// the last 5 (or more) bits received
