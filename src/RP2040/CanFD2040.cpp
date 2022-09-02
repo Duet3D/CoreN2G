@@ -242,6 +242,37 @@ uint32_t Crc21(uint32_t initialValue, const uint32_t *buf, unsigned int numBits)
  * Bit unstuffing
  ****************************************************************/
 
+// Update the CRCs with between 1 and 32 bits (0 is not allowed). The data is right-justified and any higher bits in it are ignored.
+//TODO do multiples of 8 bits using a lookup table, then any odd bits at the end.
+// Possibly save odd bits and combine them with future data.
+void BitUnstuffer::AddCrcBits(uint32_t data, unsigned int numBits) noexcept
+{
+	const uint32_t leftJustifiedData = data << (32 - numBits);
+	uint32_t r17 = crc17 ^ leftJustifiedData;
+	uint32_t r21 = crc21 ^ leftJustifiedData;
+	do
+	{
+		--numBits;
+		// This code compiles the loop body to fewer instructions than using an if-statement does, and saves a conditional jump
+        const uint32_t mask17 = (r17 & 0x8000'0000) ? 0xFFFFFFFF : 0;
+        r17 = (r17 << 1) ^ (mask17 & (crc17polynomial << (32 - 17)));
+        const uint32_t mask21 = (r21 & 0x8000'0000) ? 0xFFFFFFFF : 0;
+        r21 = (r21 << 1) ^ (mask21 & (crc21polynomial << (32 - 21)));
+	} while (numBits != 0);
+	crc17 = r17;
+	crc21 = r21;
+}
+
+// Initialise the CRCs with 0 to 32 bits of data
+inline void BitUnstuffer::InitCrc(uint32_t data, unsigned int numBits) noexcept
+{
+	crc17 = crc21 = 1u << 31;							// both CRCs start with 1 in the MSB
+	if (numBits != 0)
+	{
+		AddCrcBits(data, numBits);
+	}
+}
+
 // Add 'count' number of bits from 'data' to the unstuffer
 // The bits are shifted left into stuffed_bits, and count_stuff is set to the number of bits added
 void BitUnstuffer::AddBits(uint32_t data, uint32_t count) noexcept
@@ -332,8 +363,7 @@ int BitUnstuffer::PullBits() noexcept
 					unstuffedBitsWanted = cu = cu - try_cnt;
 					stuffedBitsAvailable = cs = cs - try_cnt;
 					unstuffed_bits |= ((sb >> cs) & ((1u << try_cnt) - 1)) << cu;
-					crc17 = Crc17(crc17, sb >> cs, try_cnt);
-//					crc21 = Crc21(crc21, sb >> cs, try_cnt);
+					AddCrcBits(sb >> cs, try_cnt);
 					if (cu == 0)
 					{
 						// Extracted desired bits
@@ -345,8 +375,7 @@ int BitUnstuffer::PullBits() noexcept
 
 			// There must be at least 1 more bit available
 			stuffedBitsAvailable = cs = cs - 1;
-			crc17 = Crc17(crc17, sb >> cs, 1);
-//			crc21 = Crc21(crc21, sb >> cs, 1);
+			AddCrcBits(sb >> cs, 1);
 			if (rm_bits & (1u << (cs + 1)))
 			{
 				// High bit of try_cnt a stuff bit
@@ -1156,8 +1185,7 @@ void CanFD2040::data_state_update_start(uint32_t data) noexcept
     parse_id = data;										// store the first data bit (MSbit of ID)
     report_note_message_start();
     unstuf.UseNormalStuffBits();							// reset the bit stuffing counter
-    unstuf.SetCrc17(Crc17(crc17initialValue, data, 2));		// add the SOF and the first header bit to the CRC
-    unstuf.SetCrc21(Crc21(crc21initialValue, data, 2));		// add the SOF and the first header bit to the CRC
+    unstuf.InitCrc(data, 2);								// add the SOF and the first header bit to the CRCs
     data_state_go_next(MS_HEADER, 20);
 }
 
@@ -1287,19 +1315,20 @@ void CanFD2040::data_state_update_stuffCount(uint32_t data) noexcept
 	uint32_t crcBits;
 	if (parse_dlc > 10)
 	{
-		stuffCount = data >> 6;													// get stuff count and parity bit
-		parse_crc = Crc21(unstuf.GetCrc21(), stuffCount, 4) >> (32 - 21);		// set up the expected CRC
-		crcBits = data & 0x3f;													// get top 6 bits of CRC
+		stuffCount = data >> 6;									// get stuff count and parity bit
+		unstuf.AddCrcBits(stuffCount, 4);
+		parse_crc = unstuf.GetCrc21();							// set up the expected CRC
+		crcBits = data & 0x3f;									// get top 6 bits of CRC
 	}
 	else
 	{
-		stuffCount = data >> 2;													// get stuff count and parity bit
-		parse_crc = Crc17(unstuf.GetCrc17(), stuffCount, 4) >> (32 - 17);		// set up the expected CRC
-		crcBits = data & 0x03;													// get top 2 bits of CRC
+		stuffCount = data >> 2;									// get stuff count and parity bit
+		unstuf.AddCrcBits(stuffCount, 4);
+		parse_crc = unstuf.GetCrc17();							// set up the expected CRC
+		crcBits = data & 0x03;									// get top 2 bits of CRC
 	}
 
 	// Check stuff count parity (should be even) and stuff count
-	//TODO remove this separate parity check when we have sorted out the count of stuff bits
 	if (unlikely((stuffCount & 0x0f) != GrayTable[unstuf.GetTotalStuffBits() & 0x07]))
 	{
 		// Check whether the parity is wrong so we can report a parity error separately
@@ -1315,20 +1344,11 @@ void CanFD2040::data_state_update_stuffCount(uint32_t data) noexcept
 		}
 		data_state_go_discard();
 	}
-	else
-#if 1	// check CRC but for now don't quit if it doesn't match
-	if ((parse_crc >> 15) != crcBits)
-	{
-		++regs->errors.wrongCrc;
-	}
-	if (true)
-#else
-	if ((parse_crc >> 15) == crcBits)
-#endif
+	else if (likely((parse_crc >> 15) == crcBits))
 	{
 		// Transition to MS_CRC state - await another 15 bits of crc + delimiter
 		report_note_crc_start();
-		data_state_go_next(MS_CRC, 16);		// read 15 more CRC bits (plus fixed stuffing bits) plus delimiter
+		data_state_go_next(MS_CRC, 16);							// read 15 more CRC bits (plus fixed stuffing bits) plus delimiter
 	}
 	else
 	{
@@ -1340,29 +1360,21 @@ void CanFD2040::data_state_update_stuffCount(uint32_t data) noexcept
 // Handle reception of 16 bits of message CRC (15 crc bits + crc delimiter)
 void CanFD2040::data_state_update_crc(uint32_t data) noexcept
 {
-	if ((data & 1u) != 1u)					// just check the delimiter
-	{
-		++regs->errors.missingCrcDelimiter;
-		data_state_go_discard();
-	}
-#if 0
-	else if ((((parse_crc & 0x7fff) << 1) | 1u) != (data & 0xffff))
+	if (likely((((parse_crc & 0x7fff) << 1) | 1u) == (data & 0xffff)))
+    {
+		unstuf.ClearState();
+		data_state_go_next(MS_ACK, 2);
+    }
+	else if (data & 0x01)
     {
     	++regs->errors.wrongCrc;
         data_state_go_discard();
     }
-#endif
-    else
-    {
-#if 1
-    	if ((((parse_crc & 0x7fff) << 1) | 1u) != (data & 0xffff))
-		{
-			++regs->errors.wrongCrc;		// for now, record the error but don't quit
-		}
-#endif
-		unstuf.ClearState();
-		data_state_go_next(MS_ACK, 2);
-    }
+	else
+	{
+		++regs->errors.missingCrcDelimiter;
+        data_state_go_discard();
+	}
 }
 
 // Handle reception of 2 bits of ack phase (ack, ack delimiter)

@@ -35,12 +35,23 @@ public:
 	void UseFixedStuffBits() noexcept;
 	void UseNormalStuffBits() noexcept { usingFixedStuffBits = false; totalStuffBits = 0;}
 	uint32_t GetTotalStuffBits() const noexcept { return totalStuffBits; }	// return the number of dynamic stuff bits that were counted
-	uint32_t GetCrc17() const noexcept { return crc17; }					// get the CRC17, left justified, on return caller must ignore lower 15 bits
-	uint32_t GetCrc21() const noexcept { return crc21; }					// get the CRC21, left justified, on return caller must ignore lower 11 bits
-	void SetCrc17(uint32_t val) noexcept { crc17 = val; }					// set the CRC17, caller must provide it left justified with lower 15 bits zero
-	void SetCrc21(uint32_t val) noexcept { crc21 = val; }					// set the CRC21, caller must provide it left justified with lower 11 bits zero
+
+	// CRC functions
+	void InitCrc(uint32_t data, unsigned int numBits) noexcept;
+
+	// Add between 1 and 32 bits (0 is not allowed) to both CRCs
+	void AddCrcBits(uint32_t data, unsigned int numBits) noexcept;
+
+	// Get the CRC17, right justified
+	uint32_t GetCrc17() const noexcept { return crc17 >> (32 - 17); }
+
+	// Get the CRC21, right justified
+	uint32_t GetCrc21() const noexcept { return crc21 >> (32 - 21); }
 
 private:
+	static constexpr uint32_t crc17polynomial = 0x0003685B;
+	static constexpr uint32_t crc21polynomial = 0x00302899;
+
 	uint32_t stuffed_bits;						// the last 5 (or more) bits received
 	unsigned int stuffedBitsAvailable;			// how many unprocessed bits we have in stuffed_bits
 	uint32_t unstuffed_bits;					// bits we have destuffed, but we don't have as many as asked for
@@ -49,8 +60,6 @@ private:
 	uint32_t crc21;
 	unsigned int totalStuffBits;				// the total number of stuffing bits we removed
 	unsigned int bitsUntilFixedStuffBit;		// how many bits we need to process before we expect a fixed stuffing bit
-	bool doCrc17;
-	bool doCrc21;
 	bool usingFixedStuffBits;					// whether we are using fixed stuff bits
 };
 
