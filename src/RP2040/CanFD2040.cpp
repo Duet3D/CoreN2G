@@ -178,13 +178,19 @@ constexpr uint32_t crc17initialValue = 1u << 31;	// initial value after left shi
 constexpr uint32_t crc21polynomial = 0x00302899; 	// 0b0000'0000'0011'0000'0010'1000'1001'1001;
 constexpr uint32_t crc21initialValue = 1u << 31;	// initial value after left shifting
 
-// Calculate CRC17 on a number of bits between 0 and 32. The bits are right-justified. Any higher bits in the input data are ignored.
+// Calculate CRC17 on a number of bits between 1 and 32 (must not be called with 0 bits!). The bits are right-justified. Any higher bits in the input data are ignored.
 uint32_t Crc17(uint32_t remainder, uint32_t data, unsigned int numBits) noexcept
 {
 	remainder ^= data << (32 - numBits);
-	while (numBits != 0)
+	do
 	{
 		--numBits;
+#if 1
+		// This code compiles the loop body to 7 instructions including 1 conditional jump
+        const uint32_t mask = (remainder & 0x8000'0000) ? 0xFFFFFFFF : 0;
+        remainder = (remainder << 1) ^ (mask & (crc17polynomial << (32 - 17)));
+#else
+		// This code compiles the loop body to 8 instructions including 2 conditional jumps
 		if (remainder & 0x8000'0000)
 		{
 			remainder = (remainder << 1) ^ (crc17polynomial << (32 - 17));
@@ -193,7 +199,8 @@ uint32_t Crc17(uint32_t remainder, uint32_t data, unsigned int numBits) noexcept
 		{
 			remainder <<= 1;
 		}
-	}
+#endif
+	} while (numBits != 0);
 	return remainder;
 }
 
@@ -315,7 +322,7 @@ int BitUnstuffer::PullBits() noexcept
 		uint32_t try_cnt = cs > cu ? cu : cs;
 		for (;;)
 		{
-			// Note, try_cnt may be zero here
+			// Try_cnt may be zero here, but we must not call the CRC functions with 0 bits of data
 			if (likely(try_cnt != 0))
 			{
 				const uint32_t try_mask = ((1 << try_cnt) - 1) << (cs + 1 - try_cnt);
