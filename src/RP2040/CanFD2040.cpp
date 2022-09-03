@@ -743,12 +743,21 @@ void CanFD2040::TryPopulateTransmitBuffer() noexcept
 
 			txStuffedWords = bs.finalize();
 
+			// Wakeup if in TS_IDLE state
+			pio_irq_atomic_set_maytx();
+
 			// Now that we have copied the message to our local buffer, we can free up the fifo slot
 			++getIndex;
 			if (getIndex == fifo.size)
 			{
 				getIndex = 0;
 			}
+
+			// We need to send a transmission done interrupt to signal that we have made room in the fifo
+			__disable_irq();
+	    	pendingIrqs |= VirtualCanRegisters::txDone;
+	    	SendInterrupts();
+	    	__enable_irq();
 		}
 	}
 }
@@ -1036,12 +1045,11 @@ void CanFD2040::report_callback_rx_msg() noexcept
 	}
 }
 
-// Report a message that was successfully transmitted and clear it from the transmit fifo
+// Report a message that was successfully transmitted
 void CanFD2040::report_callback_tx_msg() noexcept
 {
-	txStuffedWords = 0;
-	pendingIrqs |= VirtualCanRegisters::txDone;
-	SendInterrupts();
+	txStuffedWords = 0;									// this allows the main loop to populate the buffer with a new message
+	regs->cancelTransmission = false;
 }
 
 // EOF phase complete - report message (rx or tx) to calling code
@@ -1667,16 +1675,23 @@ void CanFD2040::tx_schedule_transmit() noexcept
     if (tx_state == TS_QUEUED && !pio_tx_did_conflict())
     {
         // Already queued or actively transmitting
-        return;
     }
-    if (txStuffedWords == 0)
+    else if (txStuffedWords == 0)
     {
         // No new messages to transmit
         tx_state = TS_IDLE;
-        return;
     }
-    tx_state = TS_QUEUED;
-    pio_tx_send(txMessage, txStuffedWords);
+    else if (regs->cancelTransmission)
+    {
+    	txStuffedWords = 0;						// release the buffer so that the main loop can fill it with the next message
+    	regs->cancelTransmission = false;
+        tx_state = TS_IDLE;
+    }
+    else
+    {
+		tx_state = TS_QUEUED;
+		pio_tx_send(txMessage, txStuffedWords);
+    }
 }
 
 // Check if the current parsed message is feedback from current transmit
