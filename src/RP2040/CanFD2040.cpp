@@ -44,18 +44,6 @@ static void rp2040_clear_reset(uint32_t reset_bit)
     }
 }
 
-// Helper to set the mode and extended function of a pin
-//TODO use SetPinFunction instead
-static void rp2040_gpio_peripheral(uint32_t gpio, int func, int pull_up)
-{
-    padsbank0_hw->io[gpio] = (
-        PADS_BANK0_GPIO0_IE_BITS
-        | (PADS_BANK0_GPIO0_DRIVE_VALUE_4MA << PADS_BANK0_GPIO0_DRIVE_MSB)
-        | (pull_up > 0 ? PADS_BANK0_GPIO0_PUE_BITS : 0)
-        | (pull_up < 0 ? PADS_BANK0_GPIO0_PDE_BITS : 0));
-    iobank0_hw->io[gpio].ctrl = func << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
-}
-
 /****************************************************************
  * rp2040 PIO support
  ****************************************************************/
@@ -602,6 +590,10 @@ void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
 	IrqEnable();
     for (;;)
     {
+    	// Disable CAN - set output to recessive
+    	pinMode(regs->txPin, OUTPUT_HIGH);
+
+    	// Wait for the signal to enable CAN
     	while (!regs->canEnabled) { }
 
     	pendingIrqs = 0;
@@ -612,163 +604,155 @@ void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
 
     	while (regs->canEnabled)
     	{
+    		// If we were asked to clear the error counts, do it
     		if (regs->clearErrorCounts)
     		{
-    			regs->errors.Clear();
     			regs->clearErrorCounts = false;
+    			regs->errors.Clear();
     		}
-   			TryPopulateTransmitBuffer();
-#if 0
-    		if (parse_state != MS_DISCARD && parse_state > MS_STUFFCOUNT)
-    		{
-    			debugPrintf("%" PRIu32 " irqs, state %u\n", numInterrupts, parse_state);
-    		}
-    		if ((numInterrupts % 997) == 5)
-    		{
-    			debugPrintf("%" PRIu32 " irqs, state %u\n", numInterrupts, parse_state);
-    		}
-#endif
-    	}
 
-    	// Disable CAN - set output to recessive
-    	pinMode(regs->txPin, OUTPUT_HIGH);
+    		// If we have no pending transmission populate the transmit buffer from the next element in the transmit fifo
+    		if (txStuffedWords == 0)
+    		{
+    			TryPopulateTransmitBuffer();
+    		}
+
+    		// If there are any pending interrupt flags, send them to the other processor
+   			if (pendingIrqs != 0 && (sio_hw->fifo_st & SIO_FIFO_ST_RDY_BITS) != 0)
+   			{
+   				__disable_irq();
+   				sio_hw->fifo_wr = pendingIrqs;
+   				pendingIrqs = 0;
+    			__sev();
+  				__enable_irq();
+   			}
+    	}
     }
 }
 
 // Set up a message ready to be transmitted
 void CanFD2040::TryPopulateTransmitBuffer() noexcept
 {
-	if (txStuffedWords == 0)
+	VirtualCanRegisters::TxFifo& fifo = regs->txFifo;
+	uint32_t getIndex = fifo.getIndex;
+	if (getIndex != fifo.putIndex)
 	{
-		VirtualCanRegisters::TxFifo& fifo = regs->txFifo;
-		uint32_t getIndex = fifo.getIndex;
-		if (getIndex != fifo.putIndex)
+		const volatile CanTxBuffer *const txBuf = &regs->txFifo.buffers[getIndex];
+		txId = txBuf->T0.bit.ID;
+		txDlc = txBuf->T1.bit.DLC;
+
+		// Push the header through the stuffer
+		BitStuffer bs(txMessage);
+		if (txBuf->T0.bit.XTD)
 		{
-			fifo.getIndex = getIndex;
-			const volatile CanTxBuffer *const txBuf = &regs->txFifo.buffers[getIndex];
-
-			txId = txBuf->T0.bit.ID;
-			txDlc = txBuf->T1.bit.DLC;
-
-			// Push the header through the stuffer
-			BitStuffer bs(txMessage);
-			if (txBuf->T0.bit.XTD)
-			{
-				// Extended header
-				const uint32_t h1 = ((txId & 0x1ffc0000) >> 16) | 0x03;
-				const uint32_t h2 = ((txId & 0x3ffff) << 9) | 0x80 | txDlc;
-				bs.push(h1, 14);				// SOF + 11 bits of ID + RRS + ID
-				bs.push(h2, 27);				// 18 bits of ID + RRS + 8 bits starting at FDF
-			}
-			else
-			{
-				// Standard header
-				uint32_t hdr = ((txId & 0x7ff) << 10) | 0x80 | txDlc;
-				bs.push(hdr, 22);				// SOF + 11 bits of ID + RRS + IDE + 8 bytes starting at FDF
-			}
-
-			// Push the data
-			if (txDlc < 8)
-			{
-				for (size_t i = 0; i < txDlc; i++)
-				{
-					bs.push(txBuf->data8[i], 8);
-				}
-			}
-			else
-			{
-				if (txDlc <= 12)
-				{
-					for (size_t i = 0; i < 2 * (txDlc - 6); i++)
-					{
-						bs.push(txBuf->data16[i], 16);
-					}
-				}
-				else
-				{
-					for (size_t i = 0; i < 8 * (txDlc - 11); i++)
-					{
-						bs.push(txBuf->data16[i], 16);
-					}
-				}
-			}
-
-			// Push the stuff count. The CRC does not include the fixed stuff bits, so get the CRC up to now.
-			const size_t numWords = bs.GetTotalBits() / 32;
-			const unsigned int numBits = bs.GetTotalBits() % 32;
-			uint32_t tempCrc;
-			if (txDlc > 10)
-			{
-				tempCrc = Crc21Words(txMessage, numWords);
-				if (numBits != 0)
-				{
-					tempCrc = Crc21Bits(tempCrc, txMessage[numWords], numBits);
-				}
-			}
-			else
-			{
-				tempCrc = Crc17Words(txMessage, numWords);
-				if (numBits != 0)
-				{
-					tempCrc = Crc17Bits(tempCrc, txMessage[numWords], numBits);
-				}
-			}
-
-			const uint8_t encodedStuffBits = GrayTable[bs.GetTotalStuffBits() & 7];
-			bs.AddFixedStuffBit();
-			bs.pushraw(encodedStuffBits, 4);
-
-			// CRC everything stored so far and store the CRC
-			if (txDlc > 10)
-			{
-				txCrc = Crc21Bits(tempCrc, (uint32_t)encodedStuffBits << 24, 4) >> (32 - 21);
-				bs.AddFixedStuffBit();
-				bs.pushraw((txCrc >> 17) & 0x0f, 4);
-			}
-			else
-			{
-				txCrc = Crc17Bits(tempCrc, (uint32_t)encodedStuffBits << 24, 4) >> (32 - 17);
-			}
-
-			bs.AddFixedStuffBit();
-			bs.pushraw((txCrc >> 13) & 0x0f, 4);
-			bs.AddFixedStuffBit();
-			bs.pushraw((txCrc >> 9) & 0x0f, 4);
-			bs.AddFixedStuffBit();
-			bs.pushraw((txCrc >> 5) & 0x0f, 4);
-			bs.AddFixedStuffBit();
-			bs.pushraw((txCrc >> 1) & 0x0f, 4);
-			bs.AddFixedStuffBit();
-			bs.pushraw(((txCrc & 0x01) << 1) | 0x01, 2);		// final CRC bit and CRC delimiter
-
-			txStuffedWords = bs.finalize();
-
-			// Wakeup if in TS_IDLE state
-			pio_irq_atomic_set_maytx();
-
-			// Now that we have copied the message to our local buffer, we can free up the fifo slot
-			++getIndex;
-			if (getIndex == fifo.size)
-			{
-				getIndex = 0;
-			}
-
-			// We need to send a transmission done interrupt to signal that we have made room in the fifo
-			__disable_irq();
-	    	pendingIrqs |= VirtualCanRegisters::txDone;
-	    	SendInterrupts();
-	    	__enable_irq();
+			// Extended header. The maximum number of bits we can push in a single operation is 26 to allow for up to 6 stuff bits.
+			const uint32_t h1 = ((txId & 0x1ffc0000) >> 16) | 0x03;
+			const uint32_t h2 = txId & 0x3ffff;
+			const uint32_t h3 = 0x80 | txDlc;
+			bs.push(h1, 14);				// SOF + 11 bits of ID + RRS + ID
+			bs.push(h2, 18);				// 18 bits of ID
+			bs.push(h3, 9);					// RRS + 8 bits starting at FDF
 		}
-	}
-}
+		else
+		{
+			// Standard header
+			const uint32_t hdr = ((txId & 0x7ff) << 10) | 0x80 | txDlc;
+			bs.push(hdr, 22);				// SOF + 11 bits of ID + RRS + IDE + 8 bytes starting at FDF
+		}
 
-void CanFD2040::SendInterrupts() noexcept
-{
-	if (pendingIrqs != 0 && (sio_hw->fifo_st & SIO_FIFO_ST_RDY_BITS) != 0)
-	{
-		sio_hw->fifo_wr = pendingIrqs;
-		__sev();
-		pendingIrqs = 0;
+		// Push the data
+		if (txDlc < 8)
+		{
+			for (size_t i = 0; i < txDlc; i++)
+			{
+				bs.push(txBuf->data8[i], 8);
+			}
+		}
+		else
+		{
+			if (txDlc <= 12)
+			{
+				for (size_t i = 0; i < 2 * (txDlc - 6); i++)
+				{
+					bs.push(txBuf->data16[i], 16);
+				}
+			}
+			else
+			{
+				for (size_t i = 0; i < 8 * (txDlc - 11); i++)
+				{
+					bs.push(txBuf->data16[i], 16);
+				}
+			}
+		}
+
+		// Push the stuff count. The CRC does not include the fixed stuff bits, so get the CRC up to now.
+		const size_t numWords = bs.GetTotalBits() / 32;
+		const unsigned int numBits = bs.GetTotalBits() % 32;
+		uint32_t tempCrc;
+		if (txDlc > 10)
+		{
+			tempCrc = Crc21Words(txMessage, numWords);
+			if (numBits != 0)
+			{
+				tempCrc = Crc21Bits(tempCrc, txMessage[numWords], numBits);
+			}
+		}
+		else
+		{
+			tempCrc = Crc17Words(txMessage, numWords);
+			if (numBits != 0)
+			{
+				tempCrc = Crc17Bits(tempCrc, txMessage[numWords], numBits);
+			}
+		}
+
+		const uint8_t encodedStuffBits = GrayTable[bs.GetTotalStuffBits() & 7];
+		bs.AddFixedStuffBit();
+		bs.pushraw(encodedStuffBits, 4);
+
+		// CRC everything stored so far and store the CRC
+		if (txDlc > 10)
+		{
+			txCrc = Crc21Bits(tempCrc, (uint32_t)encodedStuffBits << 24, 4) >> (32 - 21);
+			bs.AddFixedStuffBit();
+			bs.pushraw((txCrc >> 17) & 0x0f, 4);
+		}
+		else
+		{
+			txCrc = Crc17Bits(tempCrc, (uint32_t)encodedStuffBits << 24, 4) >> (32 - 17);
+		}
+
+		bs.AddFixedStuffBit();
+		bs.pushraw((txCrc >> 13) & 0x0f, 4);
+		bs.AddFixedStuffBit();
+		bs.pushraw((txCrc >> 9) & 0x0f, 4);
+		bs.AddFixedStuffBit();
+		bs.pushraw((txCrc >> 5) & 0x0f, 4);
+		bs.AddFixedStuffBit();
+		bs.pushraw((txCrc >> 1) & 0x0f, 4);
+		bs.AddFixedStuffBit();
+		bs.pushraw(((txCrc & 0x01) << 1) | 0x01, 2);		// final CRC bit and CRC delimiter
+
+		txStuffedWords = bs.finalize();
+
+		// Wakeup if in TS_IDLE state
+		pio_irq_atomic_set_maytx();
+
+		// Now that we have copied the message to our local buffer, we can free up the fifo slot
+		++getIndex;
+		if (getIndex == fifo.size)
+		{
+			getIndex = 0;
+		}
+		fifo.getIndex = getIndex;
+
+		if (regs->txFifoNotFullInterruptEnabled)
+		{
+			__disable_irq();
+			pendingIrqs |= VirtualCanRegisters::txFifoNotFull;
+			__enable_irq();
+		}
 	}
 }
 
@@ -1006,9 +990,9 @@ void CanFD2040::pio_setup() noexcept
     pio_sm_setup();
 
     // Map Rx/Tx gpios
-	const int PioFunc = (regs->pioNumber) ? 7 : 6;
-    rp2040_gpio_peripheral(regs->rxPin, PioFunc, 1);
-    rp2040_gpio_peripheral(regs->txPin, PioFunc, 0);
+	const GpioPinFunction pioFunc = (regs->pioNumber) ? GpioPinFunction::Pio1 : GpioPinFunction::Pio0;
+	SetPinFunction(regs->rxPin, pioFunc);
+	SetPinFunction(regs->txPin, pioFunc);
 
     const IRQn_Type irqn = (regs->pioNumber) ? PIO1_IRQ_0_IRQn : PIO0_IRQ_0_IRQn;
 	NVIC_DisableIRQ(irqn);
@@ -1041,15 +1025,14 @@ void CanFD2040::report_callback_rx_msg() noexcept
 		}
 		fifo.putIndex = putPointer;
 		pendingIrqs |= VirtualCanRegisters::recdFifo0 << rxFifoNumber;
-		SendInterrupts();
 	}
 }
 
 // Report a message that was successfully transmitted
 void CanFD2040::report_callback_tx_msg() noexcept
 {
+	regs->cancelTransmission = false;					// in case we were just asked to cancel the transmission that we have just completed
 	txStuffedWords = 0;									// this allows the main loop to populate the buffer with a new message
-	regs->cancelTransmission = false;
 }
 
 // EOF phase complete - report message (rx or tx) to calling code

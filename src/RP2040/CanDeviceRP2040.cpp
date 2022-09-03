@@ -301,7 +301,13 @@ uint32_t CanDevice::SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, Ca
 	if (!bufferFree)
 	{
 		// Retrieve details of the packet we are about to cancel
-		cancelledId = GetTxBuffer(bufferIndex)->T0.bit.ID;
+		unsigned int cancelledIndex = nextTxFifoPutIndex + 1;
+		if (cancelledIndex == virtualRegs.txFifo.size)
+		{
+			cancelledIndex = 0;
+		}
+		cancelledId = GetTxBuffer(cancelledIndex)->T0.bit.ID;
+
 		// Cancel transmission of the oldest packet
 		virtualRegs.cancelTransmission = true;
 		do
@@ -608,7 +614,7 @@ void CanDevice::Interrupt() noexcept
 		}
 
 		// Test whether any messages have been transmitted
-		if (ir & VirtualCanRegisters::txDone)
+		if (ir & VirtualCanRegisters::txFifoNotFull)
 		{
 			TaskBase::GiveFromISR(txTaskWaiting[(unsigned int)TxBufferNumber::fifo]);
 		}

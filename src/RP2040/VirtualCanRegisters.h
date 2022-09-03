@@ -172,7 +172,7 @@ struct VirtualCanRegisters
 	// Bit assignments in the pseudo-interrupt message received by the main processor via the inter-processor fifo from the CAN processor
 	static constexpr uint32_t recdFifo0 = 0x01;						// message received in fifo0
 	static constexpr uint32_t recdFifo1 = 0x02;						// message received in fifo1
-	static constexpr uint32_t txDone = 0x08;						// transmission complete
+	static constexpr uint32_t txFifoNotFull = 0x08;					// space has been made in the transmit fifo
 
 	static_assert(recdFifo1 == recdFifo0 << 1);						// the code assumes we can shift recdFifo0 left by the fifo number
 

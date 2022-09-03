@@ -144,7 +144,6 @@ private:
 	void process_rx(uint32_t rx_byte) noexcept;
 
 	void TryPopulateTransmitBuffer() noexcept;
-	void SendInterrupts() noexcept;
 	void SetupToReceive(unsigned int whichFifo, bool extendedId) noexcept;
 
 	// Setup
@@ -187,7 +186,7 @@ private:
 	volatile uint32_t txStuffedWords;
 	TxState tx_state;
 
-	uint32_t pendingIrqs;
+	volatile uint32_t pendingIrqs;
 
 	uint32_t rxDummyMessage[64/sizeof(uint32_t)];
 

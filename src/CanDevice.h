@@ -25,8 +25,13 @@
 # include <RP2040/VirtualCanRegisters.h>
 #endif
 
+#if RP2040
+constexpr unsigned int MaxTxBuffers = 0;			// maximum number of dedicated transmit buffers supported by this driver
+constexpr unsigned int MaxRxBuffers = 0;			// maximum number of dedicated receive buffers supported by this driver
+#else
 constexpr unsigned int MaxTxBuffers = 6;			// maximum number of dedicated transmit buffers supported by this driver
 constexpr unsigned int MaxRxBuffers = 4;			// maximum number of dedicated receive buffers supported by this driver
+#endif
 
 static_assert(MaxTxBuffers <= 31);					// the hardware allows up to 32 if there is no transmit FIFO but our code only supports up to 31 + a FIFO
 static_assert(MaxRxBuffers <= 30);					// the hardware allows up to 64 but our code only supports up to 30 + the FIFOs
@@ -134,13 +139,13 @@ public:
 		// Return the number of words of memory occupied by each transmit buffer
 		constexpr size_t GetTxBufferSize() const noexcept
 		{
-			return (dataSize >> 2) + 2;										// each receive buffer has a 2-word header
+			return (dataSize >> 2) + 2;										// each transmit buffer has a 2-word header
 		}
 
 		// Return the number of words of memory occupied by each receive buffer
 		constexpr size_t GetRxBufferSize() const noexcept
 		{
-			return (dataSize >> 2) + 2;										// each transmit buffer has a 2-word header
+			return (dataSize >> 2) + 2;										// each receive buffer has a 2-word header
 		}
 
 		// Return the number of words of memory occupied by the transmit event FIFO
