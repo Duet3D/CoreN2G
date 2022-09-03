@@ -289,122 +289,134 @@ void BitUnstuffer::SetCount(uint32_t count) noexcept
     unstuffedBitsWanted = count;
 }
 
-// Clear bitstuffing state (used after crc field to avoid bitstuffing ack field)
+// Update the stuffed bits history so that it looks like we had just one recessive bit before any remaining unprocessed bits
 void BitUnstuffer::ClearState() noexcept
 {
-    bitsUntilFixedStuffBit = 9999;			// no more stuff bits
+	const uint32_t prevBit = 1u << stuffedBitsAvailable;
+	stuffed_bits = (stuffed_bits & (prevBit - 1u)) | prevBit;
 }
 
 // Pull bits from unstuffer (as specified in unstuf_set_count())
-// Return 0 if successful, 1 if need more data, -1 or -2 or -3 if there was an unstuffing error
+// Return 0 if successful, 1 if need more data, -1 if six recessive bits detected, or -2 if 6 dominant bits detected
 int BitUnstuffer::PullBits() noexcept
 {
     const uint32_t sb = stuffed_bits;
 	uint32_t cs = stuffedBitsAvailable;
 	uint32_t cu = unstuffedBitsWanted;
 
-	if (usingFixedStuffBits)
-    {
-		// When using fixed stuff bits we do not update the CRC
-    	uint32_t bu = bitsUntilFixedStuffBit;
-    	while (cu != 0 && cs != 0)
-    	{
-    		if (bu == 0)
-    		{
-    			// Check that this is the inverse of the previous bit
-    			if (unlikely(((sb ^ (sb >> 1)) & (1u << (cs - 1))) == 0))
-    			{
-    				return -3;
-    			}
-    			--cs;
-    			bu = 4;
-    			if (cs == 0)
-    			{
-    				break;
-    			}
-    		}
-			const uint32_t toExtract = min<uint32_t>(cu, min<uint32_t>(cs, bu));
+	switch (stuffType)
+	{
+	case StuffingType::none:		// receiving ACK or EOF, so using no stuff bits
+	default:
+		{
+			const uint32_t toExtract = min<uint32_t>(cu, cs);
 			unstuffed_bits = (unstuffed_bits << toExtract)
 							| ((stuffed_bits >> (cs - toExtract)) & ((1u << toExtract) - 1u));
 			cs -= toExtract;
 			cu -= toExtract;
-			bu -= toExtract;
-    	}
-    	stuffedBitsAvailable = cs;
-    	unstuffedBitsWanted = cu;
-    	bitsUntilFixedStuffBit = bu;
-    	return (cu == 0) ? 0 : 1;
-    }
+			stuffedBitsAvailable = cs;
+			unstuffedBitsWanted = cu;
+			return (cu == 0) ? 0 : 1;
+		}
 
-    // Else using variable stuff bits. In CAN-FD the stuff bits are included in the CRC.
-	if (cs == 0)
-	{
-		// Need more data
-		return 1;
-	}
-
-    const uint32_t edges = sb ^ (sb >> 1);
-	const uint32_t e2 = edges | (edges >> 1);
-	const uint32_t e4 = e2 | (e2 >> 2);
-	const uint32_t rm_bits = ~e4;
-
-	while (true)
-	{
-		uint32_t try_cnt = cs > cu ? cu : cs;
-		for (;;)
+	case StuffingType::fixed:		// receiving stuff count or CRC, so using fixed stuff bits
 		{
-			// Try_cnt may be zero here, but we must not call the CRC functions with 0 bits of data
-			if (likely(try_cnt != 0))
+			// When using fixed stuff bits we do not update the CRC
+			uint32_t bu = bitsUntilFixedStuffBit;
+			while (cu != 0 && cs != 0)
 			{
-				const uint32_t try_mask = ((1 << try_cnt) - 1) << (cs + 1 - try_cnt);
-				if (likely((rm_bits & try_mask) == 0))
+				if (bu == 0)
 				{
-					// No stuff bits in try_cnt bits - copy into unstuffed_bits
-					unstuffedBitsWanted = cu = cu - try_cnt;
-					stuffedBitsAvailable = cs = cs - try_cnt;
-					unstuffed_bits |= ((sb >> cs) & ((1u << try_cnt) - 1)) << cu;
-					AddCrcBits(sb >> cs, try_cnt);
-					if (cu == 0)
+					// Check that this is the inverse of the previous bit
+					if (unlikely(((sb ^ (sb >> 1)) & (1u << (cs - 1))) == 0))
 					{
-						// Extracted desired bits
-						return 0;
+						return ((sb >> cs) & 1u) ? -1 : -2;
 					}
-					break;
+					--cs;
+					bu = 4;
+					if (cs == 0)
+					{
+						break;
+					}
 				}
+				const uint32_t toExtract = min<uint32_t>(cu, min<uint32_t>(cs, bu));
+				unstuffed_bits = (unstuffed_bits << toExtract)
+								| ((stuffed_bits >> (cs - toExtract)) & ((1u << toExtract) - 1u));
+				cs -= toExtract;
+				cu -= toExtract;
+				bu -= toExtract;
+			}
+			stuffedBitsAvailable = cs;
+			unstuffedBitsWanted = cu;
+			bitsUntilFixedStuffBit = bu;
+			return (cu == 0) ? 0 : 1;
+		}
+
+	case StuffingType::dynamic:		// receiving header or data, so using variable stuff bits. In CAN-FD the stuff bits are included in the CRC.
+		{
+			if (cs == 0)
+			{
+				// Need more data
+				return 1;
 			}
 
-			// There must be at least 1 more bit available
-			stuffedBitsAvailable = cs = cs - 1;
-			AddCrcBits(sb >> cs, 1);
-			if (rm_bits & (1u << (cs + 1)))
+			const uint32_t edges = sb ^ (sb >> 1);
+			const uint32_t e2 = edges | (edges >> 1);
+			const uint32_t e4 = e2 | (e2 >> 2);
+			const uint32_t rm_bits = ~e4;
+
+			while (true)
 			{
-				// High bit of try_cnt a stuff bit
-				++totalStuffBits;
-				if (unlikely(rm_bits & (1u << cs)))
+				uint32_t try_cnt = cs > cu ? cu : cs;
+				for (;;)
 				{
-					// Six consecutive bits - a bitstuff error
-					return ((sb >> cs) & 1u) ? -1 : -2;
+					// Try_cnt may be zero here, but we must not call the CRC functions with 0 bits of data
+					if (likely(try_cnt != 0))
+					{
+						const uint32_t try_mask = ((1 << try_cnt) - 1) << (cs + 1 - try_cnt);
+						if (likely((rm_bits & try_mask) == 0))
+						{
+							// No stuff bits in try_cnt bits - copy into unstuffed_bits
+							unstuffedBitsWanted = cu = cu - try_cnt;
+							stuffedBitsAvailable = cs = cs - try_cnt;
+							unstuffed_bits |= ((sb >> cs) & ((1u << try_cnt) - 1)) << cu;
+							AddCrcBits(sb >> cs, try_cnt);
+							if (cu == 0)
+							{
+								// Extracted desired bits
+								return 0;
+							}
+							break;
+						}
+					}
+
+					// There must be at least 1 more bit available
+					stuffedBitsAvailable = cs = cs - 1;
+					AddCrcBits(sb >> cs, 1);
+					if (rm_bits & (1u << (cs + 1)))
+					{
+						// High bit of try_cnt a stuff bit
+						++totalStuffBits;
+						if (unlikely(rm_bits & (1u << cs)))
+						{
+							// Six consecutive bits - a bitstuff error
+							return ((sb >> cs) & 1u) ? -1 : -2;
+						}
+						break;
+					}
+					// High bit not a stuff bit. Copy 1 bit over, limit try_cnt, and retry
+					unstuffedBitsWanted = cu = cu - 1;
+					unstuffed_bits |= ((sb >> cs) & 1) << cu;
+					try_cnt /= 2;
 				}
-				break;
+				if (likely(cs == 0))
+				{
+					// Need more data
+					return 1;
+				}
 			}
-			// High bit not a stuff bit. Copy 1 bit over, limit try_cnt, and retry
-			unstuffedBitsWanted = cu = cu - 1;
-			unstuffed_bits |= ((sb >> cs) & 1) << cu;
-			try_cnt /= 2;
-		}
-		if (likely(cs == 0))
-		{
-			// Need more data
-			return 1;
 		}
 	}
-}
-
-// Signal the bit stuffer to expect a stuff bit next and another after every 4 bits subsequently
-void BitUnstuffer::UseFixedStuffBits() noexcept
-{
-	usingFixedStuffBits = true;
-	bitsUntilFixedStuffBit = 0;
 }
 
 /****************************************************************
@@ -981,7 +993,25 @@ void CanFD2040::report_note_message_start() noexcept
 // Setup for ack injection (if receiving) or ack confirmation (if transmit)
 void CanFD2040::report_note_crc_start() noexcept
 {
-	// Get 19 bits of expected data (lower 15 bits of CRC plus 4 stuff bits)
+	// Get 21 (more is OK) bits of expected data (lower 16 bits of CRC plus 4 fixed stuff bits plus CRC delimiter)
+#if 1
+	// GCC generates more efficient code for this than for either of the following
+	uint32_t expectedData =   ((parse_crc & 0xe000) << 4)
+							| ((parse_crc & 0x1e00) << 3)
+							| ((parse_crc & 0x01e0) << 2)
+							| ((parse_crc & 0x001e) << 1)
+							|  (parse_crc & 0x0001);										// insert gaps for stuff bits
+	expectedData = (expectedData << 1)														// make room for CRC delimiter
+					| ((~expectedData) & ((1u << 17) | (1u << 12) | (1u << 7) | (1u << 2)))	// insert stuff bits
+					| 0x0001;																// add CRC delimiter
+#elif 1
+	uint32_t expectedData = (parse_crc & 0x1e000);											// bits 13-15 of CRC
+	expectedData = (expectedData << 1) | (~parse_crc & 0x2000) | (parse_crc & 0x1e00);		// fixed stuff bit (inverse of bit 13) and bits 9-12
+	expectedData = (expectedData << 1) | (~parse_crc & 0x0200) | (parse_crc & 0x01e0);		// fixed stuff bit (inverse of bit 9) and bits 5-8
+	expectedData = (expectedData << 1) | (~parse_crc & 0x0020) | (parse_crc & 0x001e);		// fixed stuff bit (inverse of bit 5) and bits 1-4
+	expectedData = (expectedData << 1) | (~parse_crc & 0x0002) | (parse_crc & 0x0001);		// fixed stuff bit (inverse of bit 1) and bit 0
+	expectedData = (expectedData << 1) | 0x0001;
+#else
 	uint32_t expectedData = (parse_crc & 0x01)						// bit 0 of CRC
 						  | (~parse_crc & 0x02)						// fixed stuff bit = inverse of bit 1
 						  | ((parse_crc & 0x1e) << 1)				// bits 1-4 of CRC
@@ -990,7 +1020,10 @@ void CanFD2040::report_note_crc_start() noexcept
 						  | ((~parse_crc & 0x0200) << 2)			// fixed stuff bit = inverse of bit 9
 						  | ((parse_crc & 0x1e00) << 3)				// bits 9-12 of CRC
 						  | ((~parse_crc & 0x2000) << 3)			// fixed stuff bit = inverse of bit 13
-						  | ((parse_crc & 0x6000) << 4);			// bits 13-14 of CRC
+						  | ((parse_crc & 0xe000) << 4);			// bits 13-15 of CRC
+	expectedData = (expectedData << 1) | 0x0001;
+#endif
+
     const uint32_t cs = unstuf.GetStuffCount();
     const uint32_t crcstart_bitpos = raw_bit_count - cs - 1;
     const uint32_t crcend_bitpos = crcstart_bitpos + 19;
@@ -999,14 +1032,12 @@ void CanFD2040::report_note_crc_start() noexcept
     {
         // This is a self transmit - setup tx eof "matched" signal
         report_state = (ReportState)(ReportState::RS_IN_MSG | ReportState::RS_IS_TX);
-        expectedData = (expectedData << 10) | 0x02ff;
-        pio_match_check(pio_match_calc_key(expectedData, crcend_bitpos + 10));
+        pio_match_check(pio_match_calc_key((expectedData << 9) | 0x00ff, crcend_bitpos + 10));
     }
     else if (rxFifoNumber < NumCanRxFifos)
     {
 		// Inject ack
 		report_state = ReportState::RS_IN_MSG;
-		expectedData = (expectedData << 1) | 0x01;
 		const uint32_t match_key = pio_match_calc_key(expectedData, crcend_bitpos + 1);
 	    if (   tx_state == TS_QUEUED
 	    	&& !pio_tx_did_conflict()
@@ -1022,9 +1053,13 @@ void CanFD2040::report_note_crc_start() noexcept
 			pio_irq_set_maytx_ackdone();
 
 			// Setup for future rx eof "matched" signal
-			expectedData = (expectedData << 8) | 0x7f;
-			report_eof_key = pio_match_calc_key(expectedData, crcend_bitpos + 9);
+			report_eof_key = pio_match_calc_key((expectedData << 8) | 0x7f, crcend_bitpos + 9);
 		}
+    }
+    else
+    {
+		// We are not acking this message because it isn't meant for us. Setup for future rx eof "matched" signal, assuming that an ack bit is seen.
+		report_eof_key = pio_match_calc_key((expectedData << 8) | 0x7f, crcend_bitpos + 9);
     }
 }
 
@@ -1103,7 +1138,7 @@ void CanFD2040::data_state_go_next(ParseState state, uint32_t bits) noexcept
 void CanFD2040::data_state_go_discard() noexcept
 {
     report_note_parse_error();
-    unstuf.UseNormalStuffBits();
+    unstuf.UseDynamicStuffing();
 
     if (pio_rx_check_stall())
     {
@@ -1133,7 +1168,7 @@ void CanFD2040::data_state_line_passive() noexcept
     }
     else
     {
-    	unstuf.UseNormalStuffBits();
+    	unstuf.UseDynamicStuffing();
 		const uint32_t stuffed_bits = unstuf.GetStuffedBits() >> unstuf.GetStuffCount();
 		if (stuffed_bits == 0xffffffff)
 		{
@@ -1173,7 +1208,7 @@ void CanFD2040::data_state_go_data() noexcept
 // Transition to MS_STUFFCOUNT state
 void CanFD2040::data_state_go_stuff_count() noexcept
 {
-	unstuf.UseFixedStuffBits();								// tell the unstuffer that the next bit and then every 4 bits are forced stuff bits
+	unstuf.UseFixedStuffing();								// tell the unstuffer that the next bit and then every 4 bits are forced stuff bits
 	data_state_go_next(MS_STUFFCOUNT, (parse_dlc > 10) ? 10 : 6);	// receive the 4 stuff count bits + the first 2 or 6 CRC bits (and 2 fixed stuff bits)
 }
 
@@ -1184,7 +1219,7 @@ void CanFD2040::data_state_update_start(uint32_t data) noexcept
 	data &= 0x01;
     parse_id = data;										// store the first data bit (MSbit of ID)
     report_note_message_start();
-    unstuf.UseNormalStuffBits();							// reset the bit stuffing counter
+    unstuf.UseDynamicStuffing();							// we're already using dynamic stuffing but we need to reset the count of stuff bits
     unstuf.InitCrc(data, 2);								// add the SOF and the first header bit to the CRCs
     data_state_go_next(MS_HEADER, 20);
 }
@@ -1362,7 +1397,7 @@ void CanFD2040::data_state_update_crc(uint32_t data) noexcept
 {
 	if (likely((((parse_crc & 0x7fff) << 1) | 1u) == (data & 0xffff)))
     {
-		unstuf.ClearState();
+		unstuf.UseNoStuffing();
 		data_state_go_next(MS_ACK, 2);
     }
 	else if (data & 0x01)
@@ -1396,13 +1431,15 @@ void CanFD2040::data_state_update_ack(uint32_t data) noexcept
 // Handle reception of first four end-of-frame (EOF) bits
 void CanFD2040::data_state_update_eof0(uint32_t data) noexcept
 {
-    if (data != 0x0f || pio_rx_check_stall())
+    if ((data & 0x0f) != 0x0f || pio_rx_check_stall())
     {
-    	++regs->errors.missingEofBit;
+    	++regs->errors.missingEofBit1;
         data_state_go_discard();
     }
     else
     {
+    	unstuf.ClearState();
+    	unstuf.UseDynamicStuffing();
     	data_state_go_next(MS_EOF1, 4);
     }
 }
@@ -1410,20 +1447,19 @@ void CanFD2040::data_state_update_eof0(uint32_t data) noexcept
 // Handle reception of end-of-frame (EOF) bits 5-7 and first IFS bit
 void CanFD2040::data_state_update_eof1(uint32_t data) noexcept
 {
-	unstuf.UseNormalStuffBits();
     if (data >= 0x0e || (data >= 0x0c && report_is_acking_rx()))
     {
         // Message is considered fully transmitted
         report_note_eof_success();
     }
 
-    if (data == 0x0f)
+    if ((data & 0x0f) == 0x0f)
     {
         data_state_go_next(MS_START, 1);
     }
     else
     {
-    	++regs->errors.missingEofBit;
+    	++regs->errors.missingEofBit2;
         data_state_go_discard();
     }
 }
@@ -1465,29 +1501,25 @@ void CanFD2040::process_rx(uint32_t rx_byte) noexcept
     // undo bit stuffing
     for (;;)
     {
-        int ret = unstuf.PullBits();
+        const int ret = unstuf.PullBits();
         if (likely(ret > 0))
         {
             // Need more data
             break;
-        } else if (likely(!ret))
+        } else if (likely(ret == 0))
         {
             // Pulled the next field - process it
             data_state_update(unstuf.GetUnstuffedBits());
-        } else
-        {
-            if (ret == -1)
-            {
-                // 6 consecutive high bits
-                data_state_line_passive();
-            }
-            else
-            {
-                // 6 consecutive low bits, or incorrect fixed stuff bit
-            	++regs->errors.badStuffing;
-                data_state_line_error();
-            }
-        }
+        } else if (ret == -1)
+		{
+			// 6 consecutive high bits
+			data_state_line_passive();
+		} else
+		{
+			// 6 consecutive low bits, or incorrect fixed stuff bit
+			++regs->errors.badStuffing;
+			data_state_line_error();
+		}
     }
 }
 

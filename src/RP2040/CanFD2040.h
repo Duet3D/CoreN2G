@@ -26,14 +26,18 @@ public:
 	void AddBits(uint32_t data, uint32_t count) noexcept;
 	void SetCount(uint32_t count) noexcept;
 	void ClearState() noexcept;
+
 	int PullBits() noexcept;
 	uint32_t GetStuffedBits() const noexcept { return stuffed_bits; }
 	uint32_t GetUnstuffedBits() const noexcept { return unstuffed_bits; }
 	uint32_t GetStuffCount() const noexcept { return stuffedBitsAvailable; }
 	void ClearStuffedBits() noexcept { stuffed_bits = 0; }
 	void ClearStuffCount() noexcept { stuffedBitsAvailable = 0; }
-	void UseFixedStuffBits() noexcept;
-	void UseNormalStuffBits() noexcept { usingFixedStuffBits = false; totalStuffBits = 0;}
+
+	void UseFixedStuffing() noexcept { stuffType = StuffingType::fixed; bitsUntilFixedStuffBit = 0; }
+	void UseDynamicStuffing() noexcept { stuffType = StuffingType::dynamic; totalStuffBits = 0; }
+	void UseNoStuffing() noexcept { stuffType = StuffingType::none; }
+
 	uint32_t GetTotalStuffBits() const noexcept { return totalStuffBits; }	// return the number of dynamic stuff bits that were counted
 
 	// CRC functions
@@ -52,15 +56,17 @@ private:
 	static constexpr uint32_t crc17polynomial = 0x0003685B;
 	static constexpr uint32_t crc21polynomial = 0x00302899;
 
+	enum class StuffingType { dynamic = 0, fixed, none };
+
 	uint32_t stuffed_bits;						// the last 5 (or more) bits received
 	unsigned int stuffedBitsAvailable;			// how many unprocessed bits we have in stuffed_bits
 	uint32_t unstuffed_bits;					// bits we have destuffed, but we don't have as many as asked for
 	unsigned int unstuffedBitsWanted;			// how may more destuffed bits we want
-	uint32_t crc17;
-	uint32_t crc21;
+	uint32_t crc17;								// the accumulated CRC17
+	uint32_t crc21;								// the accumulated CRC21
 	unsigned int totalStuffBits;				// the total number of stuffing bits we removed
 	unsigned int bitsUntilFixedStuffBit;		// how many bits we need to process before we expect a fixed stuffing bit
-	bool usingFixedStuffBits;					// whether we are using fixed stuff bits
+	StuffingType stuffType;						// what sort of bit stuffing we are decoding
 };
 
 class CanFD2040
