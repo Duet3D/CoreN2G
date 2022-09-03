@@ -129,20 +129,20 @@ struct VirtualCanRegisters
 	{
 		uint32_t size;									// written be proc 0, during setup only
 		volatile CanRxBuffer *volatile buffers;			// written be proc 0, during setup only
-		uint32_t getIndex;								// only written by proc 0
-		uint32_t putIndex;								// initialised by proc0 then only written by CAN
+		volatile uint32_t getIndex;						// only written by proc 0
+		volatile uint32_t putIndex;						// initialised by proc0 then only written by CAN
 
-		void Clear() noexcept { getIndex = putIndex = 0; }
+		void Clear() noexcept { getIndex = 0; putIndex = 0; }
 	};
 
 	struct TxFifo
 	{
 		uint32_t size;									// written be proc 0, during setup only
 		volatile CanTxBuffer *volatile buffers;			// written be proc 0, during setup only
-		uint32_t getIndex;								// initialised by proc0 then only written by CAN
-		uint32_t putIndex;								// only written by proc 0
+		volatile uint32_t getIndex;						// initialised by proc0 then only written by CAN
+		volatile uint32_t putIndex;						// only written by proc 0
 
-		void Clear() noexcept { getIndex = putIndex = 0; }
+		void Clear() noexcept { getIndex = 0; putIndex = 0; }
 	};
 
 	RxFifo rxFifos[NumCanRxFifos];

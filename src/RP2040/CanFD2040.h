@@ -53,9 +53,6 @@ public:
 	uint32_t GetCrc21() const noexcept { return crc21 >> (32 - 21); }
 
 private:
-	static constexpr uint32_t crc17polynomial = 0x0003685B;
-	static constexpr uint32_t crc21polynomial = 0x00302899;
-
 	enum class StuffingType { dynamic = 0, fixed, none };
 
 	uint32_t stuffed_bits;						// the last 5 (or more) bits received
@@ -146,7 +143,7 @@ private:
 
 	void process_rx(uint32_t rx_byte) noexcept;
 
-	void PopulateTransmitBuffer() noexcept;
+	void TryPopulateTransmitBuffer() noexcept;
 	void SendInterrupts() noexcept;
 	void SetupToReceive(unsigned int whichFifo, bool extendedId) noexcept;
 
@@ -187,7 +184,7 @@ private:
 	uint32_t txId;
 	uint32_t txDlc;
 	uint32_t txCrc;
-	uint32_t txStuffedWords;
+	volatile uint32_t txStuffedWords;
 	TxState tx_state;
 
 	uint32_t pendingIrqs;

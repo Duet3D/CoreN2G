@@ -194,64 +194,68 @@ constexpr uint32_t crc17initialValue = 1u << 31;	// initial value after left shi
 constexpr uint32_t crc21polynomial = 0x00302899; 	// 0b0000'0000'0011'0000'0010'1000'1001'1001;
 constexpr uint32_t crc21initialValue = 1u << 31;	// initial value after left shifting
 
-// Calculate CRC17 on a number of bits between 1 and 32 (must not be called with 0 bits!). The bits are right-justified. Any higher bits in the input data are ignored.
-uint32_t Crc17(uint32_t remainder, uint32_t data, unsigned int numBits) noexcept
+// Calculate CRC17 on a number of bits between 1 and 31 (must not be called with 0 bits!). The bits are left-justified and any lower-order bits are zero.
+uint32_t Crc17Bits(uint32_t remainder, uint32_t data, unsigned int numBits) noexcept
 {
-	remainder ^= data << (32 - numBits);
+	remainder ^= data;
 	do
 	{
 		--numBits;
-#if 1
-		// This code compiles the loop body to 7 instructions including 1 conditional jump
         const uint32_t mask = (remainder & 0x8000'0000) ? 0xFFFFFFFF : 0;
         remainder = (remainder << 1) ^ (mask & (crc17polynomial << (32 - 17)));
-#else
-		// This code compiles the loop body to 8 instructions including 2 conditional jumps
-		if (remainder & 0x8000'0000)
-		{
-			remainder = (remainder << 1) ^ (crc17polynomial << (32 - 17));
-		}
-		else
-		{
-			remainder <<= 1;
-		}
-#endif
 	} while (numBits != 0);
 	return remainder;
 }
 
-// Calculate CRC17 on a number of bits
-uint32_t Crc17(uint32_t initialValue, const uint32_t *buf, unsigned int numBits) noexcept
+// Calculate CRC17 on a number of 32-bit words
+uint32_t Crc17Words(const uint32_t *buf, unsigned int numWords) noexcept
 {
-	//TODO
-	return initialValue;		//temporary!
+	uint32_t r17 = crc17initialValue;
+	while (numWords != 0)
+	{
+		--numWords;
+		uint32_t data = *buf++;
+		r17 = (r17 << 8) ^ crc17Table[(r17 ^ data) >> 24];
+		data <<= 8;
+		r17 = (r17 << 8) ^ crc17Table[(r17 ^ data) >> 24];
+		data <<= 8;
+		r17 = (r17 << 8) ^ crc17Table[(r17 ^ data) >> 24];
+		data <<= 8;
+		r17 = (r17 << 8) ^ crc17Table[(r17 ^ data) >> 24];
+	}
+	return r17;
 }
 
-// Calculate CRC21 on a number of bits between 0 and 32. The bits are right-justified.
-// This is very slow and needs to be optimised
-uint32_t Crc21(uint32_t remainder, uint32_t data, unsigned int numBits) noexcept
+// Calculate CRC21 on a number of bits between 1 and 31. (must not be called with 0 bits!). The bits are left-justified and any lower-order bits are zero.
+uint32_t Crc21Bits(uint32_t remainder, uint32_t data, unsigned int numBits) noexcept
 {
-	remainder ^= data << (32 - numBits);
-	while (numBits != 0)
+	remainder ^= data;
+	do
 	{
 		--numBits;
-		if (remainder & 0x8000'0000)
-		{
-			remainder = (remainder << 1) ^ (crc21polynomial << (32 - 21));
-		}
-		else
-		{
-			remainder <<= 1;
-		}
-	}
+        const uint32_t mask = (remainder & 0x8000'0000) ? 0xFFFFFFFF : 0;
+        remainder = (remainder << 1) ^ (mask & (crc21polynomial << (32 - 21)));
+	} while (numBits != 0);
 	return remainder;
 }
 
-// Calculate CRC21 on a number of bits
-uint32_t Crc21(uint32_t initialValue, const uint32_t *buf, unsigned int numBits) noexcept
+// Calculate CRC21 on a number of words
+uint32_t Crc21Words(const uint32_t *buf, unsigned int numWords) noexcept
 {
-	//TODO
-	return initialValue;		//temporary!
+	uint32_t r21 = crc21initialValue;
+	while (numWords != 0)
+	{
+		--numWords;
+		uint32_t data = *buf++;
+		r21 = (r21 << 8) ^ crc21Table[(r21 ^ data) >> 24];
+		data <<= 8;
+		r21 = (r21 << 8) ^ crc21Table[(r21 ^ data) >> 24];
+		data <<= 8;
+		r21 = (r21 << 8) ^ crc21Table[(r21 ^ data) >> 24];
+		data <<= 8;
+		r21 = (r21 << 8) ^ crc21Table[(r21 ^ data) >> 24];
+	}
+	return r21;
 }
 
 /****************************************************************
@@ -486,6 +490,7 @@ private:
     uint32_t prev_stuffed;		// the previous 5 (or more) bits we have stored in the buffer, so we can tell whether stuffing is needed when we store more bits
     uint32_t bitpos;			// how many bits we have stored in the buffer already
     uint32_t totalStuffBits;
+    uint32_t lastData;			// the last bit stored, used when adding fixed stuff bits
     uint32_t *buf;				// the buffer we are stuffing into
 };
 
@@ -493,6 +498,7 @@ private:
 void BitStuffer::pushraw(uint32_t data, uint32_t count) noexcept
 pre(count <= 32)
 {
+	lastData = data;									// assume we are never asked to push 0 bits
     const uint32_t wp = bitpos / 32;					// current index into the buffer
     const uint32_t bitavail = 32 - (bitpos % 32);		// number of bits available in the word at the current index, 1 to 32
     if (bitavail == 32)
@@ -537,8 +543,7 @@ uint32_t BitStuffer::finalize() noexcept
 // Add a fixed stuff bit, not included in the count of total stuff bits
 void BitStuffer::AddFixedStuffBit() noexcept
 {
-	prev_stuffed = (prev_stuffed << 1) | ((prev_stuffed & 1u) ^ 1u);
-	pushraw(prev_stuffed & 1u, 1);
+	pushraw((~lastData) & 1u, 1);
 }
 
 // Stuff 'num_bits' (max 26) bits in 'pb' - upper bits must already be stuffed. Return the count of bits generated.
@@ -612,6 +617,7 @@ void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
     			regs->errors.Clear();
     			regs->clearErrorCounts = false;
     		}
+   			TryPopulateTransmitBuffer();
 #if 0
     		if (parse_state != MS_DISCARD && parse_state > MS_STUFFCOUNT)
     		{
@@ -625,89 +631,126 @@ void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
     	}
 
     	// Disable CAN - set output to recessive
-    	//TODO
+    	pinMode(regs->txPin, OUTPUT_HIGH);
     }
 }
 
 // Set up a message ready to be transmitted
-void CanFD2040::PopulateTransmitBuffer() noexcept
+void CanFD2040::TryPopulateTransmitBuffer() noexcept
 {
-	const volatile CanTxBuffer *const txBuf = &regs->txFifo.buffers[regs->txFifo.getIndex];
-
-	txId = txBuf->T0.bit.ID;
-	txDlc = txBuf->T1.bit.DLC;
-
-	// Push the header through the stuffer
-	BitStuffer bs(txMessage);
-	if (txBuf->T0.bit.XTD)
+	if (txStuffedWords == 0)
 	{
-		// Extended header
-		const uint32_t h1 = ((txId & 0x1ffc0000) >> 16) | 0x03;
-		const uint32_t h2 = ((txId & 0x3ffff) << 9) | 0x80 | txDlc;
-		bs.push(h1, 19);
-		bs.push(h2, 20);
-	}
-	else
-	{
-		// Standard header
-		uint32_t hdr = ((txId & 0x7ff) << 10) | 0x80 | txDlc;
-		bs.push(hdr, 21);
-	}
-
-	// Push the data
-	if (txDlc < 8)
-	{
-		for (size_t i = 0; i < txDlc; i++)
+		VirtualCanRegisters::TxFifo& fifo = regs->txFifo;
+		uint32_t getIndex = fifo.getIndex;
+		if (getIndex != fifo.putIndex)
 		{
-			bs.push(txBuf->data8[i], 8);
-		}
-	}
-	else
-	{
-		if (txDlc <= 12)
-		{
-			for (size_t i = 0; i < 2 * (txDlc - 6); i++)
+			fifo.getIndex = getIndex;
+			const volatile CanTxBuffer *const txBuf = &regs->txFifo.buffers[getIndex];
+
+			txId = txBuf->T0.bit.ID;
+			txDlc = txBuf->T1.bit.DLC;
+
+			// Push the header through the stuffer
+			BitStuffer bs(txMessage);
+			if (txBuf->T0.bit.XTD)
 			{
-				bs.push(txBuf->data16[i], 16);
+				// Extended header
+				const uint32_t h1 = ((txId & 0x1ffc0000) >> 16) | 0x03;
+				const uint32_t h2 = ((txId & 0x3ffff) << 9) | 0x80 | txDlc;
+				bs.push(h1, 14);				// SOF + 11 bits of ID + RRS + ID
+				bs.push(h2, 27);				// 18 bits of ID + RRS + 8 bits starting at FDF
+			}
+			else
+			{
+				// Standard header
+				uint32_t hdr = ((txId & 0x7ff) << 10) | 0x80 | txDlc;
+				bs.push(hdr, 22);				// SOF + 11 bits of ID + RRS + IDE + 8 bytes starting at FDF
+			}
+
+			// Push the data
+			if (txDlc < 8)
+			{
+				for (size_t i = 0; i < txDlc; i++)
+				{
+					bs.push(txBuf->data8[i], 8);
+				}
+			}
+			else
+			{
+				if (txDlc <= 12)
+				{
+					for (size_t i = 0; i < 2 * (txDlc - 6); i++)
+					{
+						bs.push(txBuf->data16[i], 16);
+					}
+				}
+				else
+				{
+					for (size_t i = 0; i < 8 * (txDlc - 11); i++)
+					{
+						bs.push(txBuf->data16[i], 16);
+					}
+				}
+			}
+
+			// Push the stuff count. The CRC does not include the fixed stuff bits, so get the CRC up to now.
+			const size_t numWords = bs.GetTotalBits() / 32;
+			const unsigned int numBits = bs.GetTotalBits() % 32;
+			uint32_t tempCrc;
+			if (txDlc > 10)
+			{
+				tempCrc = Crc21Words(txMessage, numWords);
+				if (numBits != 0)
+				{
+					tempCrc = Crc21Bits(tempCrc, txMessage[numWords], numBits);
+				}
+			}
+			else
+			{
+				tempCrc = Crc17Words(txMessage, numWords);
+				if (numBits != 0)
+				{
+					tempCrc = Crc17Bits(tempCrc, txMessage[numWords], numBits);
+				}
+			}
+
+			const uint8_t encodedStuffBits = GrayTable[bs.GetTotalStuffBits() & 7];
+			bs.AddFixedStuffBit();
+			bs.pushraw(encodedStuffBits, 4);
+
+			// CRC everything stored so far and store the CRC
+			if (txDlc > 10)
+			{
+				txCrc = Crc21Bits(tempCrc, (uint32_t)encodedStuffBits << 24, 4) >> (32 - 21);
+				bs.AddFixedStuffBit();
+				bs.pushraw((txCrc >> 17) & 0x0f, 4);
+			}
+			else
+			{
+				txCrc = Crc17Bits(tempCrc, (uint32_t)encodedStuffBits << 24, 4) >> (32 - 17);
+			}
+
+			bs.AddFixedStuffBit();
+			bs.pushraw((txCrc >> 13) & 0x0f, 4);
+			bs.AddFixedStuffBit();
+			bs.pushraw((txCrc >> 9) & 0x0f, 4);
+			bs.AddFixedStuffBit();
+			bs.pushraw((txCrc >> 5) & 0x0f, 4);
+			bs.AddFixedStuffBit();
+			bs.pushraw((txCrc >> 1) & 0x0f, 4);
+			bs.AddFixedStuffBit();
+			bs.pushraw(((txCrc & 0x01) << 1) | 0x01, 2);		// final CRC bit and CRC delimiter
+
+			txStuffedWords = bs.finalize();
+
+			// Now that we have copied the message to our local buffer, we can free up the fifo slot
+			++getIndex;
+			if (getIndex == fifo.size)
+			{
+				getIndex = 0;
 			}
 		}
-		else
-		{
-			for (size_t i = 0; i < 8 * (txDlc - 11); i++)
-			{
-				bs.push(txBuf->data16[i], 16);
-			}
-		}
 	}
-
-	// Push the stuff count
-	bs.AddFixedStuffBit();
-	bs.push(GrayTable[bs.GetTotalStuffBits() & 7], 4);
-
-	// CRC everything stored so far and store the CRC
-	if (txDlc > 10)
-	{
-		txCrc = Crc21(1u << 20, txMessage, bs.GetTotalBits());
-		bs.AddFixedStuffBit();
-		bs.pushraw((txCrc >> 17) & 0x0f, 4);
-	}
-	else
-	{
-		txCrc = Crc17(1u << 16, txMessage, bs.GetTotalBits());
-	}
-
-	bs.AddFixedStuffBit();
-	bs.pushraw((txCrc >> 13) & 0x0f, 4);
-	bs.AddFixedStuffBit();
-	bs.pushraw((txCrc >> 9) & 0x0f, 4);
-	bs.AddFixedStuffBit();
-	bs.pushraw((txCrc >> 5) & 0x0f, 4);
-	bs.AddFixedStuffBit();
-	bs.pushraw((txCrc >> 1) & 0x0f, 4);
-	bs.AddFixedStuffBit();
-	bs.pushraw(txCrc & 0x01, 1);
-
-	txStuffedWords = bs.finalize();
 }
 
 void CanFD2040::SendInterrupts() noexcept
@@ -993,10 +1036,12 @@ void CanFD2040::report_callback_rx_msg() noexcept
 	}
 }
 
-// Report a message that was successfully transmitted (via callback interface)
+// Report a message that was successfully transmitted and clear it from the transmit fifo
 void CanFD2040::report_callback_tx_msg() noexcept
 {
-	// We don't support the Tx event fifo yet
+	txStuffedWords = 0;
+	pendingIrqs |= VirtualCanRegisters::txDone;
+	SendInterrupts();
 }
 
 // EOF phase complete - report message (rx or tx) to calling code
@@ -1114,12 +1159,18 @@ void CanFD2040::report_note_crc_start() noexcept
 void CanFD2040::report_note_ack_success() noexcept
 {
     if (!(report_state & ReportState::RS_IN_MSG))
+    {
         // Got rx "ackdone" and "matched" signals already
-        return;
-    report_state = (ReportState)(report_state | ReportState::RS_AWAIT_EOF);
-    if (report_state & ReportState::RS_IS_TX)
-        // Enable "matched" irq for fast back-to-back transmit scheduling
-        pio_irq_set_maytx_matched();
+    }
+    else
+    {
+		report_state = (ReportState)(report_state | ReportState::RS_AWAIT_EOF);
+		if (report_state & ReportState::RS_IS_TX)
+		{
+			// Enable "matched" irq for fast back-to-back transmit scheduling
+			pio_irq_set_maytx_matched();
+		}
+    }
 }
 
 // Parser found successful EOF
@@ -1142,17 +1193,20 @@ void CanFD2040::report_note_parse_error() noexcept
 // Received PIO rx "ackdone" irq
 void CanFD2040::report_line_ackdone() noexcept
 {
-    if (!(report_state & ReportState::RS_IN_MSG)) {
+    if (!(report_state & ReportState::RS_IN_MSG))
+    {
         // Parser already processed ack and eof bits
         pio_irq_set_maytx();
-        return;
     }
-    // Setup "matched" irq for fast rx callbacks
-    report_state = (ReportState)(ReportState::RS_IN_MSG | ReportState::RS_AWAIT_EOF);
-    pio_match_check(report_eof_key);
-    pio_irq_set_maytx_matched();
-    // Schedule next transmit (so it is ready for next frame line arbitration)
-    tx_schedule_transmit();
+    else
+    {
+		// Setup "matched" irq for fast rx callbacks
+		report_state = (ReportState)(ReportState::RS_IN_MSG | ReportState::RS_AWAIT_EOF);
+		pio_match_check(report_eof_key);
+		pio_irq_set_maytx_matched();
+		// Schedule next transmit (so it is ready for next frame line arbitration)
+		tx_schedule_transmit();
+    }
 }
 
 // Received PIO "matched" irq
