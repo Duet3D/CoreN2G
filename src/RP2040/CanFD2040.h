@@ -175,10 +175,10 @@ private:
 	// Transmit states (stored in tx_state)
 	enum TxState : uint32_t { TS_IDLE = 0, TS_QUEUED = 1, TS_ACKING_RX = 2, TS_CONFIRM_TX = 3 };
 
-	static constexpr size_t MaxTxMessageBits = ((12 + 1 + 18 + 9 + (64 * 8)) * 6)/5		// max frame length before the stuff count and CRC, including SOF
+	static constexpr size_t MaxTxMessageBits = ((41 + (64 * 8)) * 5)/4					// max frame length before the stuff count and CRC, including SOF
 												+ 5										// fixed stuff bit and stuff count
-												+ 27;									// fixed stuff bits and 21-bit CRC
-	static constexpr size_t MaxTxMessageDwords = (MaxTxMessageBits + 3)/4;
+												+ 28;									// fixed stuff bits, 21-bit CRC and CRC delimiter
+	static constexpr size_t MaxTxMessageDwords = (MaxTxMessageBits + 31)/32;
 	uint32_t txMessage[MaxTxMessageDwords];
 	uint32_t txId;
 	uint32_t txDlc;
@@ -189,8 +189,6 @@ private:
 	volatile uint32_t pendingIrqs;
 
 	uint32_t rxDummyMessage[64/sizeof(uint32_t)];
-
-	uint32_t numInterrupts;
 };
 
 #endif /* SRC_CANFD2040_H_ */

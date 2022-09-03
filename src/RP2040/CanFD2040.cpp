@@ -586,8 +586,6 @@ done:
 void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
 {
 	regs = p_regs;
-	numInterrupts = 0;
-	IrqEnable();
     for (;;)
     {
     	// Disable CAN - set output to recessive
@@ -601,6 +599,7 @@ void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
     	tx_state = TS_IDLE;
     	pio_setup();										// Set up the PIO and pins
         data_state_go_discard();
+        __enable_irq();
 
     	while (regs->canEnabled)
     	{
@@ -627,6 +626,7 @@ void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
   				__enable_irq();
    			}
     	}
+    	__disable_irq();
     }
 }
 
@@ -1618,7 +1618,6 @@ void CanFD2040::process_rx(uint32_t rx_byte) noexcept
 // Main API irq notification function
 void CanFD2040::pio_irq_handler() noexcept
 {
-	++numInterrupts;
     uint32_t ints = pio_hw->ints0;
     while (likely(ints & PIO_IRQ0_INTE_SM1_RXNEMPTY_BITS))
     {

@@ -230,7 +230,7 @@ void CanDevice::CopyMessageForTransmit(CanMessageBuffer *buffer, volatile CanTxB
 	f->T1.bit.MM = buffer->marker;
 	f->T1.bit.EFCbit = buffer->reportInFifo;
 	uint32_t dataLength = buffer->dataLength;
-	volatile uint32_t *dataPtr = f->GetDataPointer();
+	volatile uint32_t *dataPtr = ((CanTxBuffer*)f)->data32;
 	if (dataLength <= 8)
 	{
 		f->T1.bit.DLC = dataLength;
