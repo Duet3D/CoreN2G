@@ -108,13 +108,14 @@ struct CanErrorCounts
 	uint32_t missingEofBit1;
 	uint32_t missingEofBit2;
 	uint32_t badStuffing;
+	uint32_t tooLateToAck;
 	uint32_t rxFifoOverlow[NumCanRxFifos];
 
 	// Clear all error counts
 	void Clear() noexcept
 	{
-		stuffCountParity = wrongStuffCount = wrongCrc = wrongMessageType
-			= missingCrcDelimiter = missingAckDelimiter = missingEofBit1 = missingEofBit2 = badStuffing = 0;
+		stuffCountParity = wrongStuffCount = wrongCrc = wrongMessageType = missingCrcDelimiter
+			= missingAckDelimiter = missingEofBit1 = missingEofBit2 = badStuffing = tooLateToAck = 0;
 		for (volatile uint32_t& err : rxFifoOverlow)
 		{
 			err = 0;

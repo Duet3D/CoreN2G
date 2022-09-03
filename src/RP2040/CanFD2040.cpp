@@ -1045,6 +1045,7 @@ void CanFD2040::report_note_crc_start() noexcept
 		   )
 	    {
 	        // Rx state is behind - acking wont succeed and may halt active tx
+	    	++regs->errors.tooLateToAck;
 	    }
 	    else
 	    {
