@@ -686,7 +686,7 @@ void CanFD2040::TryPopulateTransmitBuffer() noexcept
 			}
 		}
 
-		// Push the stuff count. The CRC does not include the fixed stuff bits, so get the CRC up to now.
+		// Push the stuff count. The CRC does not include the fixed stuff bits, so get the CRC up to now first.
 		const size_t numWords = bs.GetTotalBits() / 32;
 		const unsigned int numBits = bs.GetTotalBits() % 32;
 		uint32_t tempCrc;
@@ -714,13 +714,13 @@ void CanFD2040::TryPopulateTransmitBuffer() noexcept
 		// CRC everything stored so far and store the CRC
 		if (txDlc > 10)
 		{
-			txCrc = Crc21Bits(tempCrc, (uint32_t)encodedStuffBits << 24, 4) >> (32 - 21);
+			txCrc = Crc21Bits(tempCrc, (uint32_t)encodedStuffBits << (32 - 4), 4) >> (32 - 21);
 			bs.AddFixedStuffBit();
 			bs.pushraw((txCrc >> 17) & 0x0f, 4);
 		}
 		else
 		{
-			txCrc = Crc17Bits(tempCrc, (uint32_t)encodedStuffBits << 24, 4) >> (32 - 17);
+			txCrc = Crc17Bits(tempCrc, (uint32_t)encodedStuffBits << (32 - 4), 4) >> (32 - 17);
 		}
 
 		bs.AddFixedStuffBit();
