@@ -178,7 +178,7 @@ private:
 	static constexpr size_t MaxTxMessageBits = ((41 + (64 * 8)) * 5)/4					// max frame length before the stuff count and CRC, including SOF
 												+ 5										// fixed stuff bit and stuff count
 												+ 28;									// fixed stuff bits, 21-bit CRC and CRC delimiter
-	static constexpr size_t MaxTxMessageDwords = (MaxTxMessageBits + 31)/32;
+	static constexpr size_t MaxTxMessageDwords = (MaxTxMessageBits + 31)/32;			// this comes out at 23
 	uint32_t txMessage[MaxTxMessageDwords];
 	uint32_t txId;
 	uint32_t txDlc;

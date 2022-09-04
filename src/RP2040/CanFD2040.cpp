@@ -212,7 +212,7 @@ constexpr uint32_t crc17initialValue = 1u << 31;	// initial value after left shi
 constexpr uint32_t crc21polynomial = 0x00302899; 	// 0b0000'0000'0011'0000'0010'1000'1001'1001;
 constexpr uint32_t crc21initialValue = 1u << 31;	// initial value after left shifting
 
-// Calculate CRC17 on a number of bits between 1 and 31 (must not be called with 0 bits!). The bits are left-justified and any lower-order bits are zero.
+// Calculate CRC17 on a number of bits between 1 and 32 (must not be called with 0 bits!). The bits are left-justified and any lower-order bits are zero.
 uint32_t Crc17Bits(uint32_t remainder, uint32_t data, unsigned int numBits) noexcept
 {
 	remainder ^= data;
@@ -244,7 +244,7 @@ uint32_t Crc17Words(const uint32_t *buf, unsigned int numWords) noexcept
 	return r17;
 }
 
-// Calculate CRC21 on a number of bits between 1 and 31. (must not be called with 0 bits!). The bits are left-justified and any lower-order bits are zero.
+// Calculate CRC21 on a number of bits between 1 and 32. (must not be called with 0 bits!). The bits are left-justified and any lower-order bits are zero.
 uint32_t Crc21Bits(uint32_t remainder, uint32_t data, unsigned int numBits) noexcept
 {
 	remainder ^= data;
@@ -265,6 +265,9 @@ uint32_t Crc21Words(const uint32_t *buf, unsigned int numWords) noexcept
 	{
 		--numWords;
 		uint32_t data = *buf++;
+#if 1
+		r21 = Crc21Bits(r21, data, 32);
+#else
 		r21 = (r21 << 8) ^ crc21Table[(r21 ^ data) >> 24];
 		data <<= 8;
 		r21 = (r21 << 8) ^ crc21Table[(r21 ^ data) >> 24];
@@ -272,6 +275,7 @@ uint32_t Crc21Words(const uint32_t *buf, unsigned int numWords) noexcept
 		r21 = (r21 << 8) ^ crc21Table[(r21 ^ data) >> 24];
 		data <<= 8;
 		r21 = (r21 << 8) ^ crc21Table[(r21 ^ data) >> 24];
+#endif
 	}
 	return r21;
 }
@@ -537,11 +541,41 @@ pre(count <= 32)
 
 // Push 'count' (max 26) bits of 'data' into stuffer
 void BitStuffer::push(uint32_t data, uint32_t count) noexcept
-pre(count <= 26)										// the stuffer may expand 26 bits to 32
+pre(count != 0; count <= 26)							// pushraw needs at least 1 bit, and the stuffer may expand 26 bits to 32
 {
-    data &= (1 << count) - 1;							// clear the high bits
+    data &= (1u << count) - 1;							// clear the high bits
     uint32_t stuf = (prev_stuffed << count) | data;
+#if 1
+    uint32_t newcount = count;
+    while (count != 0)
+    {
+    	const uint32_t mask = 0x1f << count;
+    	if ((stuf & mask) == 0)
+    	{
+    		// Need to insert a 1 bit to the left of position 'count'
+    		stuf = ((stuf & ~((1u << count) - 1)) << 1) | (stuf & ((1u << count) - 1)) | (1u << count);
+    		++totalStuffBits;
+    		++newcount;
+    		if (count <= 4) break;
+    		count -= 4;
+    	}
+    	else if ((stuf & mask) == mask)
+    	{
+    		// Need to insert a 0 bit to the left of position 'count'
+    		stuf = ((stuf & ~((1u << count) - 1)) << 1) | (stuf & ((1u << count) - 1));
+    		++totalStuffBits;
+    		++newcount;
+    		if (count <= 4) break;
+    		count -= 4;
+    	}
+    	else
+    	{
+    		--count;
+    	}
+    }
+#else
     const uint32_t newcount = stuff(stuf, count);
+#endif
     pushraw(stuf, newcount);
     prev_stuffed = stuf;
 }
@@ -549,13 +583,10 @@ pre(count <= 26)										// the stuffer may expand 26 bits to 32
 // Pad final word of stuffer with high bits
 uint32_t BitStuffer::finalize() noexcept
 {
-    const uint32_t words = DIV_ROUND_UP(bitpos, 32);
-    const uint32_t extra = words * 32 - bitpos;
-    if (extra)
-    {
-        buf[words - 1] |= (1 << extra) - 1;
-    }
-    return words;
+	const uint32_t words = DIV_ROUND_UP(bitpos, 32);
+	const uint32_t extra = words * 32 - bitpos;
+	buf[words - 1] |= (1u << extra) - 1u;
+	return words;
 }
 
 // Add a fixed stuff bit, not included in the count of total stuff bits
@@ -566,7 +597,7 @@ void BitStuffer::AddFixedStuffBit() noexcept
 
 // Stuff 'num_bits' (max 26) bits in 'pb' - upper bits must already be stuffed. Return the count of bits generated.
 uint32_t BitStuffer::stuff(uint32_t& pb, uint32_t num_bits) noexcept
-pre(count <= 26)
+pre(num_bits != 0; num_bits <= 26)
 {
     uint32_t b = pb;
     uint32_t count = num_bits;
@@ -574,12 +605,14 @@ pre(count <= 26)
     {
         uint32_t try_cnt = num_bits;
         const uint32_t edges = b ^ (b >> 1);
-        const uint32_t e2 = edges | (edges >> 1), e4 = e2 | (e2 >> 2);
+        const uint32_t e2 = edges | (edges >> 1);
+        const uint32_t e4 = e2 | (e2 >> 2);
         const uint32_t add_bits = ~e4;
         for (;;)
         {
-            const uint32_t try_mask = ((1 << try_cnt) - 1) << (num_bits - try_cnt);
-            if (!(add_bits & try_mask))
+        	if (num_bits == 0) { goto done; }
+            const uint32_t try_mask = ((1u << try_cnt) - 1) << (num_bits - try_cnt);
+            if ((add_bits & try_mask) == 0)
             {
                 // No stuff bits needed in try_cnt bits
                 if (try_cnt >= num_bits) { goto done; }
@@ -588,12 +621,13 @@ pre(count <= 26)
             }
             else
             {
-				if (add_bits & (1 << (num_bits - 1)))
+				if (add_bits & (1u << (num_bits - 1)))
 				{
 					// A stuff bit must be inserted prior to the high bit
-					const uint32_t low_mask = (1 << num_bits) - 1, low = b & low_mask;
+					const uint32_t low_mask = (1u << num_bits) - 1;
+					const uint32_t low = b & low_mask;
 					const uint32_t high = (b & ~(low_mask >> 1)) << 1;
-					b = high ^ low ^ (1 << (num_bits - 1));
+					b = high ^ low ^ (1u << (num_bits - 1));
 					++count;
 					++totalStuffBits;
 					if (num_bits <= 4) { goto done; }
@@ -644,6 +678,20 @@ void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
     		if (txStuffedWords == 0)
     		{
     			TryPopulateTransmitBuffer();
+    		}
+  //DEBUG
+    		else
+    		{
+    			//DEBUG check for obvious error
+    			for (int i = 0; i < (int)txStuffedWords - 1; ++i)
+    			{
+    				if (txMessage[i] == 0 || txMessage[i] == 0xffff)
+    				{
+    					debugPrintf("bad tx msg\n");
+    					break;
+    				}
+    			}
+   //ENDDBG
     		}
 
     		// If there are any pending interrupt flags, send them to the other processor
@@ -700,24 +748,16 @@ void CanFD2040::TryPopulateTransmitBuffer() noexcept
 		}
 		else
 		{
-			if (txDlc <= 12)
+			const size_t hwordCount = (txDlc <= 12) ? 2 * (txDlc - 6) : 8 * (txDlc - 11);
+			for (size_t i = 0; i < hwordCount; i++)
 			{
-				for (size_t i = 0; i < 2 * (txDlc - 6); i++)
-				{
-					bs.push((uint32_t)__builtin_bswap16(txBuf->data16[i]), 16);
-				}
-			}
-			else
-			{
-				for (size_t i = 0; i < 8 * (txDlc - 11); i++)
-				{
-					bs.push((uint32_t)__builtin_bswap16(txBuf->data16[i]), 16);
-				}
+				bs.push((uint32_t)__builtin_bswap16(txBuf->data16[i]), 16);
 			}
 		}
 
 		// Push the stuff count. The CRC does not include the fixed stuff bits, so get the CRC up to now first.
 		const size_t numWords = bs.GetTotalBits() / 32;
+
 		const unsigned int numBits = bs.GetTotalBits() % 32;
 		uint32_t tempCrc;
 		if (txDlc > 10)
@@ -765,6 +805,8 @@ void CanFD2040::TryPopulateTransmitBuffer() noexcept
 		bs.pushraw(((txCrc & 0x01) << 1) | 0x01, 2);		// final CRC bit and CRC delimiter
 
 		txStuffedWords = bs.finalize();
+		debugPrintf("prepared %u words\n", (unsigned int)txStuffedWords);
+
 
 		// Wakeup if in TS_IDLE state
 		pio_irq_atomic_set_maytx();
@@ -896,27 +938,30 @@ void CanFD2040::pio_match_clear() noexcept
 // Flush and halt PIO "tx" state machine
 void CanFD2040::pio_tx_reset() noexcept
 {
-    pio_hw->ctrl = ((0x07 << PIO_CTRL_SM_ENABLE_LSB)
+    pio_hw->ctrl = ((0x07 << PIO_CTRL_SM_ENABLE_LSB)				// disable the state machine
                     | (0x08 << PIO_CTRL_SM_RESTART_LSB));
-    pio_hw->irq = (1 << 2) | (1<< 3); // clear "matched" and "ack done" signals
-    // Clear tx fifo
     struct pio_sm_hw *sm = &pio_hw->sm[3];
-    sm->shiftctrl = 0;
+    sm->instr = 0xe001;												// set output recessive in case we aborted a transmission on a dominant bit
+    pio_hw->irq = (1u << 2) | (1u << 3);							// clear "matched" and "ack done" signals
+
+    dma_channel_hw_t *const dmach_hw = &dma_hw->ch[DmacChanCAN];
+    dmach_hw->al1_ctrl = 0;											// disable DMA to the FIFO to stop it being refilled
+
+    // Clear tx fifo
+    sm->shiftctrl = 0;												// changing the value of PIO_SM0_SHIFTCTRL_FJOIN_TX_BITS flushes the fifo
     sm->shiftctrl = (PIO_SM0_SHIFTCTRL_FJOIN_TX_BITS
                      | PIO_SM0_SHIFTCTRL_AUTOPULL_BITS);
     // Must reset again after clearing fifo
     pio_hw->ctrl = ((0x07 << PIO_CTRL_SM_ENABLE_LSB)
-                    | (0x08 << PIO_CTRL_SM_RESTART_LSB));
+                    | (0x08 << PIO_CTRL_SM_RESTART_LSB));			// enable and restart the state machine
 }
 
 // Queue a message for transmission on PIO "tx" state machine
 void CanFD2040::pio_tx_send(uint32_t *data, uint32_t count) noexcept
 {
-    pio_tx_reset();
-    pio_hw->instr_mem[can2040_offset_tx_got_recessive] = 0xa242; // nop [2]
+    pio_tx_reset();													// this also disables DMA
+    pio_hw->instr_mem[can2040_offset_tx_got_recessive] = 0xa242;	// nop [2]
 
-    dma_channel_hw_t *const hw = dma_channel_hw_addr(DmacChanCAN);
-    hw->al1_ctrl = 0;			// disable DMA
     if (count <= 8)
     {
     	// The entire message will fit in the transmit fifo
@@ -928,17 +973,20 @@ void CanFD2040::pio_tx_send(uint32_t *data, uint32_t count) noexcept
     else
     {
     	// The message is bigger than the fifo so send it using DMA
-    	hw->read_addr = reinterpret_cast<uint32_t>(data);
-    	hw->write_addr = reinterpret_cast<uint32_t>(&pio_hw->txf[3]);
-    	hw->transfer_count = count;
+    	pio_hw->txf[3] = data[0];									// put the first word in the fifo in case the DMA is slow to start
+        dma_channel_hw_t *const dmach_hw = &dma_hw->ch[DmacChanCAN];
+    	dmach_hw->read_addr = reinterpret_cast<uint32_t>(data + 1);
+    	dmach_hw->write_addr = reinterpret_cast<uint32_t>(&pio_hw->txf[3]);
+    	dmach_hw->transfer_count = count - 1;
     	const uint32_t trigSrc = (regs->pioNumber) ? DREQ_PIO1_TX3 : DREQ_PIO0_TX3;
-    	hw->ctrl_trig = (trigSrc << DMA_CH0_CTRL_TRIG_TREQ_SEL_LSB)
+    	dmach_hw->ctrl_trig = (trigSrc << DMA_CH0_CTRL_TRIG_TREQ_SEL_LSB)
     				| (DMA_CH0_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_WORD << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB)
 					| DMA_CH0_CTRL_TRIG_INCR_READ_BITS
 					| ((uint32_t)DmacPrioCAN << DMA_CH0_CTRL_TRIG_HIGH_PRIORITY_LSB)
 					| DMA_CH0_CTRL_TRIG_EN_BITS;
     }
-    struct pio_sm_hw *sm = &pio_hw->sm[3];
+
+    pio_sm_hw *const sm = &pio_hw->sm[3];
     sm->instr = 0xe001; // set pins, 1
     sm->instr = can2040_offset_tx_start; // jmp tx_start
     sm->instr = 0x20c0; // wait 1 irq, 0
