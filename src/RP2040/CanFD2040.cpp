@@ -2,32 +2,62 @@
  * CanFD2040.cpp
  *
  *  Created on: 22 Aug 2022
- *      Author: David
+ *      Author: David Crocker
+ *
+ * This is the low-level driver for ISO CAN-FD on the RP2040.
+ * It is derived from Kevin Connor's CAN 2.0 implementation for the RP2040, see https://github.com/KevinOConnor/can2040
+ * In particular, the PIO code is from that project and the low-level functions are derived from it.
+ *
+ * License: GNU GENERAL PUBLIC LICENSE Version 3
+ *
+ * Features of this driver:
+ * - Supports CAN-FD frames up to the maximum 64 bytes long
+ * - It has been tested at 1Mbit/second
+ *
+ * Limitations of this driver
+ * - It supports CAN-FD frames only. CAN 2.0 frames seen by this node will be discarded. Supporting CAN 2.0 frames too would
+ *   add extra complexity because of the different CRC scheme, and is not needed by RepRapFirmware.
+ * - It does not support bit rate switching. CAN-FD frames with the BRS bit set will be discarded.
+ * - It dedicates the entire second processor core and one PIO to CAN. It would be possible to
+ *   have the second core perform other operations, for example by performing them in the main loop in function Entry,
+ *   however interrupt latency on the second core is critical for CAN to function correctly
+ *
+ * This driver is intended to work with the Core 0 processor running FreeRTOS and using the code in file CanDevice RP2040.cpp
+ * to communicate with this driver. Most of the communication is via a shared memory block defined in file VirtualCanRegisters.h.
+ * When CAN is running, each field in that memory block is only ever written by one of the cores. Additionally, Core 0 uses
+ * the inter-core fifo to signal to Core 0 that something important has happened, e.g. a message has been received. That
+ * signal can be used to wake up a waiting FreeRTOS task.
+ *
+ * The shared memory block includes two receive fifos and one transmit fifo. Messages are transmitted strictly in FIFO order.
+ * Received messages are filtered by ID and put into one of the two receive fifos or discarded. It would be easy to add
+ * additional receive fifos.
  */
 
 #include "CanFD2040.h"
 
 #define PICO_MUTEX_ENABLE_SDK120_COMPATIBILITY	0	// used by mutex.h which is included by multicore.h
-#include "hardware/regs/dreq.h" // DREQ_PIO0_RX1
-#include "hardware/structs/dma.h" // dma_hw
-#include "hardware/structs/iobank0.h" // iobank0_hw
-#include "hardware/structs/padsbank0.h" // padsbank0_hw
-#include "hardware/structs/resets.h" // RESETS_RESET_PIO0_BITS
+#include <hardware/structs/dma.h>					// dma_hw
+#include <hardware/structs/resets.h>				// for RESETS_RESET_PIO0_BITS
+#include <hardware/regs/dreq.h>
+#include <hardware/dma.h>
 #include <pico/multicore.h>
 #include <RP2040.h>
 
 #include <cstring>
 
-extern "C" void debugPrintf(const char *fmt, ...) noexcept;
+// Define the DMA channel used by this driver. RP2040 configurations of client projects must aviud using this channel.
+constexpr DmaChannel DmacChanCAN = 0;
+constexpr DmaPriority DmacPrioCAN = 1;				// RP2040 has two DMA priorities, 0 and 1
 
-extern "C" void PIO_isr() noexcept;
+extern "C" void debugPrintf(const char *fmt, ...) noexcept;		// temporary, for debugging
+
+extern "C" void PIO_isr() noexcept;					// forward declaration
 
 /****************************************************************
  * rp2040 and low-level helper functions
  ****************************************************************/
 
 // Helper compiler definitions
-#define barrier() __asm__ __volatile__("": : :"memory")
 #define likely(x)       __builtin_expect(!!(x), 1)
 #define unlikely(x)     __builtin_expect(!!(x), 0)
 #define DIV_ROUND_UP(n,d) (((n) + (d) - 1) / (d))
@@ -674,14 +704,14 @@ void CanFD2040::TryPopulateTransmitBuffer() noexcept
 			{
 				for (size_t i = 0; i < 2 * (txDlc - 6); i++)
 				{
-					bs.push(txBuf->data16[i], 16);
+					bs.push((uint32_t)__builtin_bswap16(txBuf->data16[i]), 16);
 				}
 			}
 			else
 			{
 				for (size_t i = 0; i < 8 * (txDlc - 11); i++)
 				{
-					bs.push(txBuf->data16[i], 16);
+					bs.push((uint32_t)__builtin_bswap16(txBuf->data16[i]), 16);
 				}
 			}
 		}
@@ -884,9 +914,29 @@ void CanFD2040::pio_tx_send(uint32_t *data, uint32_t count) noexcept
 {
     pio_tx_reset();
     pio_hw->instr_mem[can2040_offset_tx_got_recessive] = 0xa242; // nop [2]
-    for (unsigned int i = 0; i < count; i++)
+
+    dma_channel_hw_t *const hw = dma_channel_hw_addr(DmacChanCAN);
+    hw->al1_ctrl = 0;			// disable DMA
+    if (count <= 8)
     {
-    	pio_hw->txf[3] = data[i];
+    	// The entire message will fit in the transmit fifo
+		for (unsigned int i = 0; i < count; i++)
+		{
+			pio_hw->txf[3] = data[i];
+		}
+    }
+    else
+    {
+    	// The message is bigger than the fifo so send it using DMA
+    	hw->read_addr = reinterpret_cast<uint32_t>(data);
+    	hw->write_addr = reinterpret_cast<uint32_t>(&pio_hw->txf[3]);
+    	hw->transfer_count = count;
+    	const uint32_t trigSrc = (regs->pioNumber) ? DREQ_PIO1_TX3 : DREQ_PIO0_TX3;
+    	hw->ctrl_trig = (trigSrc << DMA_CH0_CTRL_TRIG_TREQ_SEL_LSB)
+    				| (DMA_CH0_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_WORD << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB)
+					| DMA_CH0_CTRL_TRIG_INCR_READ_BITS
+					| ((uint32_t)DmacPrioCAN << DMA_CH0_CTRL_TRIG_HIGH_PRIORITY_LSB)
+					| DMA_CH0_CTRL_TRIG_EN_BITS;
     }
     struct pio_sm_hw *sm = &pio_hw->sm[3];
     sm->instr = 0xe001; // set pins, 1
