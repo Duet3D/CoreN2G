@@ -283,7 +283,6 @@ uint32_t Crc21Words(const uint32_t *buf, unsigned int numWords) noexcept
 // Update the CRCs with between 1 and 32 bits (0 is not allowed). The data is right-justified and any higher bits in it are ignored.
 void BitUnstuffer::AddCrcBits(uint32_t data, unsigned int numBits) noexcept
 {
-#if 1
 	uint32_t leftJustifiedData = data << (32 - numBits);
 	uint32_t r17 = crc17;
 	uint32_t r21 = crc21;
@@ -312,21 +311,6 @@ void BitUnstuffer::AddCrcBits(uint32_t data, unsigned int numBits) noexcept
 			r21 = (r21 << 1) ^ (mask21 & (crc21polynomial << (32 - 21)));
 		} while (numBits != 0);
 	}
-#else
-	// Bit-at-a-time algorithm
-	const uint32_t leftJustifiedData = data << (32 - numBits);
-	uint32_t r17 = crc17 ^ leftJustifiedData;
-	uint32_t r21 = crc21 ^ leftJustifiedData;
-	do
-	{
-		--numBits;
-		// This code compiles the loop body to fewer instructions than using an if-statement does, and saves a conditional jump
-        const uint32_t mask17 = (r17 & 0x8000'0000) ? 0xFFFFFFFF : 0;
-        r17 = (r17 << 1) ^ (mask17 & (crc17polynomial << (32 - 17)));
-        const uint32_t mask21 = (r21 & 0x8000'0000) ? 0xFFFFFFFF : 0;
-        r21 = (r21 << 1) ^ (mask21 & (crc21polynomial << (32 - 21)));
-	} while (numBits != 0);
-#endif
 	crc17 = r17;
 	crc21 = r21;
 }
@@ -500,7 +484,6 @@ public:
 	void push(uint32_t data, uint32_t count) noexcept;
 	void AddFixedStuffBit() noexcept;
 	uint32_t finalize() noexcept;
-	uint32_t stuff(uint32_t& pb, uint32_t num_bits) noexcept;
 	uint32_t GetTotalStuffBits() const noexcept { return totalStuffBits; }
 	uint32_t GetTotalBits() const noexcept { return bitpos; }
 
@@ -541,7 +524,8 @@ pre(count != 0; count <= 26)							// pushraw needs at least 1 bit, and the stuf
 {
     data &= (1u << count) - 1;							// clear the high bits
     uint32_t stuf = (prev_stuffed << count) | data;
-#if 1
+
+    // This is a slow algorithm, however the one from can2040.c got the bit stuffing wrong sometimes
     uint32_t newcount = count;
     while (count != 0)
     {
@@ -553,7 +537,7 @@ pre(count != 0; count <= 26)							// pushraw needs at least 1 bit, and the stuf
     		++totalStuffBits;
     		++newcount;
     		if (count <= 4) break;
-    		count -= 4;
+    		count -= 4;									// we can now accept another 4 bits of any polarity without stuffing
     	}
     	else if ((stuf & mask) == mask)
     	{
@@ -562,16 +546,14 @@ pre(count != 0; count <= 26)							// pushraw needs at least 1 bit, and the stuf
     		++totalStuffBits;
     		++newcount;
     		if (count <= 4) break;
-    		count -= 4;
+    		count -= 4;									// we can now accept another 4 bits of any polarity without stuffing
     	}
     	else
     	{
+    		// The bit at 'count' does not need stuffing
     		--count;
     	}
     }
-#else
-    const uint32_t newcount = stuff(stuf, count);
-#endif
     pushraw(stuf, newcount);
     prev_stuffed = stuf;
 }
@@ -589,56 +571,6 @@ uint32_t BitStuffer::finalize() noexcept
 void BitStuffer::AddFixedStuffBit() noexcept
 {
 	pushraw((~lastData) & 1u, 1);
-}
-
-// Stuff 'num_bits' (max 26) bits in 'pb' - upper bits must already be stuffed. Return the count of bits generated.
-uint32_t BitStuffer::stuff(uint32_t& pb, uint32_t num_bits) noexcept
-pre(num_bits != 0; num_bits <= 26)
-{
-    uint32_t b = pb;
-    uint32_t count = num_bits;
-    for (;;)
-    {
-        uint32_t try_cnt = num_bits;
-        const uint32_t edges = b ^ (b >> 1);
-        const uint32_t e2 = edges | (edges >> 1);
-        const uint32_t e4 = e2 | (e2 >> 2);
-        const uint32_t add_bits = ~e4;
-        for (;;)
-        {
-        	if (num_bits == 0) { goto done; }
-            const uint32_t try_mask = ((1u << try_cnt) - 1) << (num_bits - try_cnt);
-            if ((add_bits & try_mask) == 0)
-            {
-                // No stuff bits needed in try_cnt bits
-                if (try_cnt >= num_bits) { goto done; }
-                num_bits -= try_cnt;
-                try_cnt = (num_bits + 1) / 2;
-            }
-            else
-            {
-				if (add_bits & (1u << (num_bits - 1)))
-				{
-					// A stuff bit must be inserted prior to the high bit
-					const uint32_t low_mask = (1u << num_bits) - 1;
-					const uint32_t low = b & low_mask;
-					const uint32_t high = (b & ~(low_mask >> 1)) << 1;
-					b = high ^ low ^ (1u << (num_bits - 1));
-					++count;
-					++totalStuffBits;
-					if (num_bits <= 4) { goto done; }
-					num_bits -= 4;
-					break;
-				}
-				// High bit doesn't need stuff bit - accept it, limit try_cnt, retry
-				num_bits--;
-				try_cnt /= 2;
-            }
-        }
-    }
-done:
-    pb = b;
-    return count;
 }
 
 // CanFD2040 members
@@ -675,7 +607,7 @@ void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
     		{
     			TryPopulateTransmitBuffer();
     		}
-  //DEBUG
+//DEBUG
     		else
     		{
     			//DEBUG check for obvious error
@@ -687,8 +619,8 @@ void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
     					break;
     				}
     			}
-   //ENDDBG
     		}
+//ENDDBG
 
     		// If there are any pending interrupt flags, send them to the other processor
    			if (pendingIrqs != 0 && (sio_hw->fifo_st & SIO_FIFO_ST_RDY_BITS) != 0)
