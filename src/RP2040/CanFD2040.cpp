@@ -1531,10 +1531,9 @@ void CanFD2040::data_state_update_crc(uint32_t data) noexcept
 // Handle reception of 2 bits of ack phase (ack, ack delimiter)
 void CanFD2040::data_state_update_ack(uint32_t data) noexcept
 {
-	if ((data & 0x01) != 0x01)		//TEMP don't check ACK, just check the delimiter
- //   if (data != 0x01)
+	if (data != 0x01)
     {
-		++regs->errors.missingAckDelimiter;
+		++regs->errors.noAck;
         data_state_go_discard();
     }
 	else
@@ -1547,7 +1546,7 @@ void CanFD2040::data_state_update_ack(uint32_t data) noexcept
 // Handle reception of first four end-of-frame (EOF) bits
 void CanFD2040::data_state_update_eof0(uint32_t data) noexcept
 {
-    if ((data & 0x0f) != 0x0f || pio_rx_check_stall())
+    if (data != 0x0f || pio_rx_check_stall())
     {
     	++regs->errors.missingEofBit1;
         data_state_go_discard();
@@ -1569,7 +1568,7 @@ void CanFD2040::data_state_update_eof1(uint32_t data) noexcept
         report_note_eof_success();
     }
 
-    if ((data & 0x0f) == 0x0f)
+    if (data == 0x0f)
     {
         data_state_go_next(MS_START, 1);
     }
