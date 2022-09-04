@@ -265,9 +265,6 @@ uint32_t Crc21Words(const uint32_t *buf, unsigned int numWords) noexcept
 	{
 		--numWords;
 		uint32_t data = *buf++;
-#if 1
-		r21 = Crc21Bits(r21, data, 32);
-#else
 		r21 = (r21 << 8) ^ crc21Table[(r21 ^ data) >> 24];
 		data <<= 8;
 		r21 = (r21 << 8) ^ crc21Table[(r21 ^ data) >> 24];
@@ -275,7 +272,6 @@ uint32_t Crc21Words(const uint32_t *buf, unsigned int numWords) noexcept
 		r21 = (r21 << 8) ^ crc21Table[(r21 ^ data) >> 24];
 		data <<= 8;
 		r21 = (r21 << 8) ^ crc21Table[(r21 ^ data) >> 24];
-#endif
 	}
 	return r21;
 }
@@ -805,8 +801,6 @@ void CanFD2040::TryPopulateTransmitBuffer() noexcept
 		bs.pushraw(((txCrc & 0x01) << 1) | 0x01, 2);		// final CRC bit and CRC delimiter
 
 		txStuffedWords = bs.finalize();
-		debugPrintf("prepared %u words\n", (unsigned int)txStuffedWords);
-
 
 		// Wakeup if in TS_IDLE state
 		pio_irq_atomic_set_maytx();
