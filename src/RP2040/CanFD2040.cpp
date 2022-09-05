@@ -527,25 +527,21 @@ pre(count != 0; count <= 26)							// pushraw needs at least 1 bit, and the stuf
 
     // This is a slow algorithm, however the one from can2040.c got the bit stuffing wrong sometimes
     uint32_t newcount = count;
-    while (count != 0)
+    uint32_t edges = (stuf >> 1) ^ stuf;
+    do
     {
-    	const uint32_t mask = 0x1f << count;
-    	if ((stuf & mask) == 0)
+    	if ((edges & (0x0f << count)) == 0)
     	{
-    		// Need to insert a 1 bit to the left of position 'count'
-    		stuf = ((stuf & ~((1u << count) - 1)) << 1) | (stuf & ((1u << count) - 1)) | (1u << count);
+    		// Need to insert a stuff bit at position 'count'
+    		const uint32_t mask = (1u << (count + 1)) - 1;		// a mask for the lower (count+1) bits
+    		stuf = (  ((stuf << 1) & ~mask)				// the bits from 'count' upwards, shifted left to make room for the stuff bit
+    				| (stuf & mask)						// the bits from 0 to 'count' inclusive
+				   )
+    			   ^ (1u << count);						// invert the bit at 'count' to give the stuff bit
     		++totalStuffBits;
     		++newcount;
     		if (count <= 4) break;
-    		count -= 4;									// we can now accept another 4 bits of any polarity without stuffing
-    	}
-    	else if ((stuf & mask) == mask)
-    	{
-    		// Need to insert a 0 bit to the left of position 'count'
-    		stuf = ((stuf & ~((1u << count) - 1)) << 1) | (stuf & ((1u << count) - 1));
-    		++totalStuffBits;
-    		++newcount;
-    		if (count <= 4) break;
+    		edges = (stuf >> 1) ^ stuf;					// update edges because we inserted a stuff bit
     		count -= 4;									// we can now accept another 4 bits of any polarity without stuffing
     	}
     	else
@@ -553,7 +549,7 @@ pre(count != 0; count <= 26)							// pushraw needs at least 1 bit, and the stuf
     		// The bit at 'count' does not need stuffing
     		--count;
     	}
-    }
+    } while (count != 0);
     pushraw(stuf, newcount);
     prev_stuffed = stuf;
 }
@@ -614,20 +610,6 @@ void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
     		{
     			TryPopulateTransmitBuffer();
     		}
-//DEBUG
-    		else
-    		{
-    			//DEBUG check for obvious error
-    			for (int i = 0; i < (int)txStuffedWords - 1; ++i)
-    			{
-    				if (txMessage[i] == 0 || txMessage[i] == 0xffff)
-    				{
-    					debugPrintf("bad tx msg\n");
-    					break;
-    				}
-    			}
-    		}
-//ENDDBG
 
     		// If there are any pending interrupt flags, send them to the other processor
     		// This scheme avoids race conditions with the ISR and also avoids having to disable interrupts
