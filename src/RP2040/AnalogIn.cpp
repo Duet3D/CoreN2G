@@ -17,6 +17,7 @@
 #include <RTOSIface/RTOSIface.h>
 #include <DmacManager.h>
 #include <Cache.h>
+#include <General/Bitmap.h>
 
 #include <hardware/adc.h>
 #include <hardware/dma.h>
@@ -178,11 +179,12 @@ void AdcClass::ReInit() noexcept
 {
 	// Initialise the ADC hardware
 	adc_init();
+	adc_set_temp_sensor_enabled(true);				// need to do this here because the call to adc_init disables it
 	adc_fifo_setup(true /*fifo enabled*/, true /*dreq enabled*/, 1 /*dreq threshold*/, true /*set bit 15 in results if error*/, false /*don't reduce to 8 bits*/);
 
 	// Initialise the DMAC to read the result
 	DmacManager::DisableChannel(dmaChan);
-	DmacManager::SetBtctrl(dmaChan, DMA_CH0_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_HALFWORD | DMA_CH0_CTRL_TRIG_INCR_WRITE_BITS);
+	DmacManager::SetBtctrl(dmaChan, (DMA_CH0_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_HALFWORD << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB) | DMA_CH0_CTRL_TRIG_INCR_WRITE_BITS);
 	DmacManager::SetSourceAddress(dmaChan, &adc_hw->fifo);
 	DmacManager::SetInterruptCallback(dmaChan, DmaCompleteCallback, CallbackParameter(this));
 	DmacManager::SetTriggerSource(dmaChan, DmaTrigSource::adc);
@@ -250,6 +252,7 @@ bool AdcClass::StartConversion() noexcept
 
 	adc_fifo_drain();								// make sure no result pending
 	adc_set_round_robin(channelsEnabled);
+	adc_select_input(LowestSetBit(channelsEnabled));
 
 	// Set up DMA to read the results our of the ADC into the results array
 	DmacManager::SetDestinationAddress(dmaChan, results);
@@ -374,7 +377,6 @@ uint16_t AnalogIn::ReadChannel(AdcInput adcin) noexcept
 // Enable an on-chip MCU temperature sensor
 void AnalogIn::EnableTemperatureSensor(AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall) noexcept
 {
-	adc_set_temp_sensor_enabled(true);
 	adc->EnableChannel(GetInputNumber(AdcInput::adc0_tempSense), fn, param, ticksPerCall);
 }
 

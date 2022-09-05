@@ -13,7 +13,8 @@
 
 #include <DmacManager.h>
 #include <RTOSIface/RTOSIface.h>
-#include <hardware/dma.h>
+#include <hardware/regs/dma.h>
+#include <hardware/structs/dma.h>
 #include <hardware/regs/intctrl.h>
 #include <RP2040.h>
 
@@ -33,46 +34,44 @@ void DmacManager::Init() noexcept
 	NVIC_ClearPendingIRQ(DMA_IRQ_0_IRQn);
 	NVIC_SetPriority(DMA_IRQ_0_IRQn, TempNvicPriorityDMA);
 	irq_set_exclusive_handler(DMA_IRQ_0, DMAC_0_Handler);
+	NVIC_EnableIRQ(DMA_IRQ_0_IRQn);
 }
 
 void DmacManager::SetBtctrl(const uint8_t channel, const uint32_t val) noexcept
 {
-	dma_channel_config cfg;
-	cfg.ctrl = val;
-	dma_channel_set_config(channel, &cfg, false);
+	dma_hw->ch[channel].al1_ctrl = val;
 }
 
 void DmacManager::SetDestinationAddress(const uint8_t channel, volatile void *const dst) noexcept
 {
-	dma_channel_set_write_addr(channel, dst, false);
+	dma_hw->ch[channel].write_addr = reinterpret_cast<uint32_t>(dst);
 }
 
 void DmacManager::SetSourceAddress(const uint8_t channel, const volatile void *const src) noexcept
 {
-	dma_channel_set_read_addr(channel, src, false);
+	dma_hw->ch[channel].read_addr = reinterpret_cast<uint32_t>(src);
 }
 
 void DmacManager::SetDataLength(const uint8_t channel, const uint32_t amount) noexcept
 {
-	dma_channel_set_trans_count(channel, amount, false);
+	dma_hw->ch[channel].transfer_count = amount;
 }
 
 void DmacManager::SetTriggerSource(uint8_t channel, DmaTrigSource source) noexcept
 {
-	dma_channel_hw_t *const hw = dma_channel_hw_addr(channel);
-	hw_write_masked(&(hw->ctrl_trig), (uint32_t)source << DMA_CH0_CTRL_TRIG_TREQ_SEL_LSB, DMA_CH0_CTRL_TRIG_TREQ_SEL_BITS);
+	hw_write_masked(&(dma_hw->ch[channel].al1_ctrl), (uint32_t)source << DMA_CH0_CTRL_TRIG_TREQ_SEL_LSB, DMA_CH0_CTRL_TRIG_TREQ_SEL_BITS);
 }
 
 void DmacManager::EnableChannel(const uint8_t channel, DmaPriority priority) noexcept
 {
-	dma_channel_hw_t *const hw = dma_channel_hw_addr(channel);
+	dma_channel_hw_t *const hw = &dma_hw->ch[channel];
 	if (priority)
 	{
 		hw_set_bits(&(hw->ctrl_trig), DMA_CH0_CTRL_TRIG_HIGH_PRIORITY_BITS | DMA_CH0_CTRL_TRIG_EN_BITS);
 	}
 	else
 	{
-		hw_clear_bits(&(hw->ctrl_trig), DMA_CH0_CTRL_TRIG_HIGH_PRIORITY_BITS);
+		hw_clear_bits(&(hw->al1_ctrl), DMA_CH0_CTRL_TRIG_HIGH_PRIORITY_BITS);
 		hw_set_bits(&(hw->ctrl_trig), DMA_CH0_CTRL_TRIG_EN_BITS);
 	}
 }
@@ -81,8 +80,7 @@ void DmacManager::EnableChannel(const uint8_t channel, DmaPriority priority) noe
 // On the SAME5x it is sometimes impossible to disable a channel. So we now return true if disabling it succeeded, false it it is still enabled.
 bool DmacManager::DisableChannel(const uint8_t channel) noexcept
 {
-	dma_channel_hw_t *const hw = dma_channel_hw_addr(channel);
-	hw_clear_bits(&(hw->ctrl_trig), DMA_CH0_CTRL_TRIG_EN_BITS);
+	hw_clear_bits(&(dma_hw->ch[channel].al1_ctrl), DMA_CH0_CTRL_TRIG_EN_BITS);
 	return true;
 }
 
@@ -105,9 +103,9 @@ void DmacManager::DisableCompletedInterrupt(const uint8_t channel) noexcept
 
 uint32_t DmacManager::GetAndClearChannelStatus(uint8_t channel) noexcept
 {
-	dma_channel_hw_t *const hw = dma_channel_hw_addr(channel);
-	const uint32_t ret = hw->ctrl_trig & (DMA_CH0_CTRL_TRIG_AHB_ERROR_BITS | DMA_CH0_CTRL_TRIG_READ_ERROR_BITS | DMA_CH0_CTRL_TRIG_WRITE_ERROR_BITS | DMA_CH0_CTRL_TRIG_BUSY_BITS);
-	hw_set_bits(&(hw->ctrl_trig), DMA_CH0_CTRL_TRIG_AHB_ERROR_BITS | DMA_CH0_CTRL_TRIG_READ_ERROR_BITS | DMA_CH0_CTRL_TRIG_WRITE_ERROR_BITS);
+	dma_channel_hw_t& hw = dma_hw->ch[channel];
+	const uint32_t ret = hw.al1_ctrl & (DMA_CH0_CTRL_TRIG_AHB_ERROR_BITS | DMA_CH0_CTRL_TRIG_READ_ERROR_BITS | DMA_CH0_CTRL_TRIG_WRITE_ERROR_BITS | DMA_CH0_CTRL_TRIG_BUSY_BITS);
+	hw_set_bits(&(hw.al1_ctrl), DMA_CH0_CTRL_TRIG_AHB_ERROR_BITS | DMA_CH0_CTRL_TRIG_READ_ERROR_BITS | DMA_CH0_CTRL_TRIG_WRITE_ERROR_BITS);
 	return ret;
 }
 
