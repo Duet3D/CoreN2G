@@ -143,10 +143,11 @@ bool AdcClass::IsChannelEnabled(unsigned int chan) const noexcept
 // Indirect callback from the DMA controller ISR
 void AdcClass::ResultReadyCallback(DmaCallbackReason reason) noexcept
 {
+    hw_clear_bits(&adc_hw->cs, ADC_CS_START_MANY_BITS);		// stop the ADC (but it will already have started doing another conversion)
 	dmaFinishedReason = reason;
 	state = State::ready;
 	++conversionsCompleted;
-	DmacManager::DisableChannel(dmaChan);			// disable the sequencer DMA, just in case it is out of sync
+	DmacManager::DisableChannel(dmaChan);					// disable the sequencer DMA, just in case it is out of sync
 	if (taskToWake != nullptr)
 	{
 		TaskBase::GiveFromISR(taskToWake);
@@ -250,6 +251,11 @@ bool AdcClass::StartConversion() noexcept
 
 	DmacManager::DisableChannel(dmaChan);
 
+	while ((adc_hw->cs & ADC_CS_READY_BITS) == 0)	// wait until the extra conversion completes
+	{
+		delay(1);
+	}
+
 	adc_fifo_drain();								// make sure no result pending
 	adc_set_round_robin(channelsEnabled);
 	adc_select_input(LowestSetBit(channelsEnabled));
@@ -263,7 +269,7 @@ bool AdcClass::StartConversion() noexcept
 	DmacManager::EnableChannel(dmaChan, dmaPrio);
 
 	state = State::converting;
-    hw_set_bits(&adc_hw->cs, ADC_CS_START_ONCE_BITS);
+    hw_set_bits(&adc_hw->cs, ADC_CS_START_MANY_BITS);
 	++conversionsStarted;
 	whenLastConversionStarted = millis();
 	return true;
