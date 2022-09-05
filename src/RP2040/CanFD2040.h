@@ -186,8 +186,11 @@ private:
 	volatile uint32_t txStuffedWords;
 	TxState tx_state;
 
-	volatile uint32_t pendingIrqs;
+	// Pending interrupts, each in a separate word to avoid race conditions
+	volatile bool rxInterruptPending[NumCanRxFifos];									// one interrupt per receive fifo
+	volatile bool txFifoNotFullInterruptPending;
 
+	// Dummy message buffer, to receive messages that we don't want to store in the receive fifos
 	uint32_t rxDummyMessage[64/sizeof(uint32_t)];
 };
 

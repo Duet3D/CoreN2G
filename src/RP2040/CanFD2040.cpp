@@ -586,7 +586,14 @@ void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
     	// Wait for the signal to enable CAN
     	while (!regs->canEnabled) { }
 
-    	pendingIrqs = 0;
+    	// Clear all pending interrupts
+    	for (volatile bool& irq : rxInterruptPending)
+    	{
+    		irq = false;
+    	}
+    	txFifoNotFullInterruptPending = false;
+
+    	// Flag the transmitter as idle and no message prepared
     	txStuffedWords = 0;
     	tx_state = TS_IDLE;
     	pio_setup();										// Set up the PIO and pins
@@ -623,13 +630,28 @@ void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
 //ENDDBG
 
     		// If there are any pending interrupt flags, send them to the other processor
-   			if (pendingIrqs != 0 && (sio_hw->fifo_st & SIO_FIFO_ST_RDY_BITS) != 0)
+    		// This scheme avoids race conditions with the ISR and also avoids having to disable interrupts
+   			if ((sio_hw->fifo_st & SIO_FIFO_ST_RDY_BITS) != 0)
    			{
-   				__disable_irq();
-   				sio_hw->fifo_wr = pendingIrqs;
-   				pendingIrqs = 0;
-    			__sev();
-  				__enable_irq();
+   				uint32_t pendingIrqs = 0;
+   				for (unsigned int i = 0; i < NumCanRxFifos; ++i)
+   				{
+   					if (rxInterruptPending[i])
+   					{
+   						rxInterruptPending[i] = false;
+   						pendingIrqs |= VirtualCanRegisters::recdFifo0 << i;
+   					}
+   				}
+   				if (txFifoNotFullInterruptPending)
+   				{
+   					txFifoNotFullInterruptPending = false;
+   					pendingIrqs |= VirtualCanRegisters::txFifoNotFull;
+   				}
+   				if (pendingIrqs != 0)
+   				{
+					sio_hw->fifo_wr = pendingIrqs;
+					__sev();
+   				}
    			}
     	}
     	__disable_irq();
@@ -747,9 +769,7 @@ void CanFD2040::TryPopulateTransmitBuffer() noexcept
 
 		if (regs->txFifoNotFullInterruptEnabled)
 		{
-			__disable_irq();
-			pendingIrqs |= VirtualCanRegisters::txFifoNotFull;
-			__enable_irq();
+			txFifoNotFullInterruptPending = true;
 		}
 	}
 }
@@ -1048,7 +1068,7 @@ void CanFD2040::report_callback_rx_msg() noexcept
 			putPointer = 0;
 		}
 		fifo.putIndex = putPointer;
-		pendingIrqs |= VirtualCanRegisters::recdFifo0 << rxFifoNumber;
+		rxInterruptPending[rxFifoNumber] = true;
 	}
 }
 
