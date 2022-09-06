@@ -46,7 +46,7 @@
 #include <cstring>
 
 // Define the DMA channel used by this driver. RP2040 configurations of client projects must aviud using this channel.
-constexpr DmaChannel DmacChanCAN = 0;
+constexpr DmaChannel DmacChanCAN = 8;
 constexpr DmaPriority DmacPrioCAN = 1;				// RP2040 has two DMA priorities, 0 and 1
 
 extern "C" void debugPrintf(const char *fmt, ...) noexcept;		// temporary, for debugging
@@ -679,6 +679,7 @@ void BitStuffer::AddFixedStuffBit() noexcept
 void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
 {
 	regs = p_regs;
+	dma_channel_claim(DmacChanCAN);
     for (;;)
     {
     	// Disable CAN - set output to recessive
@@ -992,7 +993,7 @@ void CanFD2040::pio_tx_reset() noexcept
     pio_hw->irq = (1u << 2) | (1u << 3);							// clear "matched" and "ack done" signals
 
     dma_channel_hw_t *const dmach_hw = &dma_hw->ch[DmacChanCAN];
-    dmach_hw->al1_ctrl = 0;											// disable DMA to the FIFO to stop it being refilled
+    dmach_hw->al1_ctrl = dmaControlWord;							// disable DMA to the FIFO to stop it being refilled
 
     // Clear tx fifo
     sm->shiftctrl = 0;												// changing the value of PIO_SM0_SHIFTCTRL_FJOIN_TX_BITS flushes the fifo
@@ -1026,12 +1027,16 @@ void CanFD2040::pio_tx_send(uint32_t *data, uint32_t count) noexcept
 #if 1
     	dmach_hw->write_addr = reinterpret_cast<uint32_t>(&pio_hw->txf[3]);
     	dmach_hw->transfer_count = count - 1;
+# if 0
+		dmach_hw->ctrl_trig = dmaControlWord | DMA_CH0_CTRL_TRIG_EN_BITS;
+# else
     	const uint32_t trigSrc = (regs->pioNumber) ? DREQ_PIO1_TX3 : DREQ_PIO0_TX3;
     	dmach_hw->ctrl_trig = (trigSrc << DMA_CH0_CTRL_TRIG_TREQ_SEL_LSB)
     				| (DMA_CH0_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_WORD << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB)
 					| DMA_CH0_CTRL_TRIG_INCR_READ_BITS
 					| ((uint32_t)DmacPrioCAN << DMA_CH0_CTRL_TRIG_HIGH_PRIORITY_LSB)
 					| DMA_CH0_CTRL_TRIG_EN_BITS;
+# endif
 #else
     	dmach_hw->transfer_count = count - 1;
 		dmach_hw->ctrl_trig = dmaControlWord | DMA_CH0_CTRL_TRIG_EN_BITS;
