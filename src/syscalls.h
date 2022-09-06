@@ -8,6 +8,7 @@
  * The including file may declare "#define SystemStackSize xxxx" before including this, otherwise a default will be used
  */
 
+#include <Core.h>
 #include <sys/stat.h>
 #include <cerrno>
 #include <new>
@@ -16,25 +17,34 @@
 
 int errno;
 
-#ifndef SystemStackSize
-# if RP2040
-#  define SystemStackSize	(4096)				// Pico SDK allocates two stacks each 2kbytes long
-# else
-#  define SystemStackSize	(1024)
-# endif
-#endif
-
-extern char _end;								// defined by the linker script
+extern char _end;										// defined by the linker script
 extern uint32_t _estack;
 
-[[noreturn]] void OutOfMemoryHandler() noexcept;				// this must be provided by the client application
+[[noreturn]] void OutOfMemoryHandler() noexcept;		// this must be provided by the client application
+
+#if RP2040
+
+// The RP2040 SDK allocates a 2Kb stack for Core 0 at the top of the 4kb Scratch Y memory, and a 2kb stack for Core 1 at the top of the 4kb Scratch X memory.
+// It defines __StackLimit as the very top of the 256kb of normal RAM, and __StackBottom as the bottom of Core 0 stack.
+// It includes the _sbrk function in file runtime.c which also includes other functions that are needed, so we can't replace _sbrk until we modify the SDK.
+
+extern uint32_t __StackLimit;							// defined by the linker script (poorly named, see linker script)
+extern uint32_t __StackBottom;
+
+const char *sysStackLimit = (const char*)&__StackBottom;
+const char *heapLimit = (const char*)&__StackLimit;
+char *heapTop = &_end;
+
+#else
+
+#ifndef SystemStackSize
+# define SystemStackSize	(1024)
+#endif
 
 const char *sysStackLimit = (const char*)&_estack - SystemStackSize;
 
 const char *heapLimit = (const char*)&_estack - SystemStackSize;
 char *heapTop = &_end;
-
-#if !RP2040
 
 /**
  * \brief Replacement of C library of _sbrk
