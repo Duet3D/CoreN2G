@@ -298,6 +298,47 @@ uint32_t Crc21Words(const uint32_t *buf, unsigned int numWords) noexcept
 // Update the CRCs with between 1 and 32 bits (0 is not allowed). The data is right-justified and any higher bits in it are ignored.
 ALIGNED_FUNCTION void BitUnstuffer::AddCrcBits(uint32_t data, unsigned int numBits) noexcept
 {
+#if FAST_UNSTUFFING
+	data &= (1u << numBits) - 1;					// clear any higher order bits
+	uint32_t leftJustifiedData;
+	unsigned int bitsThisTime;
+	const unsigned int totalBits = numBits + numBitsLeftOver;
+	if (totalBits > 32)
+	{
+		bitsThisTime = 32;
+		leftJustifiedData = bitsLeftOver << (32 - numBitsLeftOver);
+		numBitsLeftOver = numBits - 32;
+		leftJustifiedData |= (data >> numBitsLeftOver);
+		bitsLeftOver = data & ((1u << numBitsLeftOver) - 1);
+	}
+	else
+	{
+		bitsThisTime = totalBits & (~7);
+		if (bitsThisTime == 0)
+		{
+			bitsLeftOver = (bitsLeftOver << numBits) | data;
+			numBitsLeftOver = totalBits;
+			return;
+		}
+		leftJustifiedData = bitsLeftOver << (32 - numBitsLeftOver);
+		leftJustifiedData |= data << (32 - totalBits);		// a few extraneous bits at the bottom don't matter
+		numBitsLeftOver = totalBits - bitsThisTime;
+		bitsLeftOver = data & ((1u << numBitsLeftOver) - 1);
+	}
+	uint32_t r17 = crc17;
+	uint32_t r21 = crc21;
+
+	// Use table driven byte-at-a-time CRC for the first 8n bits
+	while (bitsThisTime >= 8)
+	{
+		bitsThisTime -= 8;
+		r17 = (r17 << 8) ^ crc17Table[(r17 ^ leftJustifiedData) >> 24];
+		r21 = (r21 << 8) ^ crc21Table[(r21 ^ leftJustifiedData) >> 24];
+		leftJustifiedData <<= 8;
+	}
+	crc17 = r17;
+	crc21 = r21;
+#else
 	uint32_t leftJustifiedData = data << (32 - numBits);
 	uint32_t r17 = crc17;
 	uint32_t r21 = crc21;
@@ -328,12 +369,61 @@ ALIGNED_FUNCTION void BitUnstuffer::AddCrcBits(uint32_t data, unsigned int numBi
 	}
 	crc17 = r17;
 	crc21 = r21;
+#endif
 }
+
+#if FAST_UNSTUFFING
+
+// Get the CRC17, right justified
+uint32_t BitUnstuffer::GetCrc17() const noexcept
+{
+	uint32_t r17 = crc17;
+	unsigned int numBits = numBitsLeftOver;
+	if (numBits != 0)
+	{
+		r17 ^= bitsLeftOver << (32 - numBits);
+		do
+		{
+			--numBits;
+			// This code compiles the loop body to fewer instructions than using an if-statement does, and saves a conditional jump
+			const uint32_t mask17 = (r17 & 0x8000'0000) ? 0xFFFFFFFF : 0;
+			r17 = (r17 << 1) ^ (mask17 & (crc17polynomial << (32 - 17)));
+		} while (numBits != 0);
+
+	}
+	return r17 >> (32 - 17);
+}
+
+// Get the CRC21, right justified
+uint32_t BitUnstuffer::GetCrc21() const noexcept
+{
+	uint32_t r21 = crc21;
+	unsigned int numBits = numBitsLeftOver;
+	if (numBits != 0)
+	{
+		r21 ^= bitsLeftOver << (32 - numBits);
+		do
+		{
+			--numBits;
+			// This code compiles the loop body to fewer instructions than using an if-statement does, and saves a conditional jump
+			const uint32_t mask21 = (r21 & 0x8000'0000) ? 0xFFFFFFFF : 0;
+			r21 = (r21 << 1) ^ (mask21 & (crc21polynomial << (32 - 21)));
+		} while (numBits != 0);
+
+	}
+	return r21 >> (32 - 21);
+}
+
+#endif
 
 // Initialise the CRCs with 0 to 32 bits of data
 inline void BitUnstuffer::InitCrc(uint32_t data, unsigned int numBits) noexcept
 {
 	crc17 = crc21 = 1u << 31;							// both CRCs start with 1 in the MSB
+#if FAST_UNSTUFFING
+	numBitsLeftOver = 0;
+	bitsLeftOver = 0;
+#endif
 	if (numBits != 0)
 	{
 		AddCrcBits(data, numBits);

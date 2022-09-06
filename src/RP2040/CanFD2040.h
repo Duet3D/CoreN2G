@@ -19,6 +19,8 @@ extern "C" {
 #include <hardware/structs/pio.h>				// for pio_hw_t
 }
 
+#define FAST_UNSTUFFING		1
+
 // Class to de-stuff received bits. It also maintains the CRCs because for CAN-FD the stuffing bits are included in the CRC.
 class BitUnstuffer
 {
@@ -46,11 +48,19 @@ public:
 	// Add between 1 and 32 bits (0 is not allowed) to both CRCs
 	void AddCrcBits(uint32_t data, unsigned int numBits) noexcept;
 
+#if FAST_UNSTUFFING
+	// Finalise and get the CRC17, right justified
+	uint32_t GetCrc17() const noexcept;
+
+	// Finalise and get the CRC21, right justified
+	uint32_t GetCrc21() const noexcept;
+#else
 	// Get the CRC17, right justified
 	uint32_t GetCrc17() const noexcept { return crc17 >> (32 - 17); }
 
 	// Get the CRC21, right justified
 	uint32_t GetCrc21() const noexcept { return crc21 >> (32 - 21); }
+#endif
 
 private:
 	enum class StuffingType { dynamic = 0, fixed, none };
@@ -63,6 +73,10 @@ private:
 	uint32_t crc21;								// the accumulated CRC21
 	unsigned int totalStuffBits;				// the total number of stuffing bits we removed
 	unsigned int bitsUntilFixedStuffBit;		// how many bits we need to process before we expect a fixed stuffing bit
+#if FAST_UNSTUFFING
+	unsigned int numBitsLeftOver;
+	uint32_t bitsLeftOver;
+#endif
 	StuffingType stuffType;						// what sort of bit stuffing we are decoding
 };
 
