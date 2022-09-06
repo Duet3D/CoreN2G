@@ -45,7 +45,7 @@
 
 #include <cstring>
 
-// Define the DMA channel used by this driver. RP2040 configurations of client projects must aviud using this channel.
+// Define the DMA channel used by this driver. RP2040 configurations of client projects must avoid using this channel.
 constexpr DmaChannel DmacChanCAN = 8;				// which DMA channel we use
 constexpr DmaPriority DmacPrioCAN = 1;				// RP2040 has two DMA priorities, 0 and 1
 constexpr unsigned int PioNumber = 0;				// which PIO we use
@@ -1793,6 +1793,7 @@ bool CanFD2040::tx_check_local_message() noexcept
 }
 
 extern VirtualCanRegisters virtualRegs;
+
 static CanFD2040 CORE1_CRITICAL_DATA_RW(canFdDevice);
 
 extern "C" [[noreturn]]void Core1Entry() noexcept
