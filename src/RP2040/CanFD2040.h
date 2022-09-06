@@ -48,19 +48,11 @@ public:
 	// Add between 1 and 32 bits (0 is not allowed) to both CRCs
 	void AddCrcBits(uint32_t data, unsigned int numBits) noexcept;
 
-#if FAST_UNSTUFFING
 	// Finalise and get the CRC17, right justified
 	uint32_t GetCrc17() const noexcept;
 
 	// Finalise and get the CRC21, right justified
 	uint32_t GetCrc21() const noexcept;
-#else
-	// Get the CRC17, right justified
-	uint32_t GetCrc17() const noexcept { return crc17 >> (32 - 17); }
-
-	// Get the CRC21, right justified
-	uint32_t GetCrc21() const noexcept { return crc21 >> (32 - 21); }
-#endif
 
 private:
 	enum class StuffingType { dynamic = 0, fixed, none };

@@ -54,7 +54,9 @@ extern "C" void debugPrintf(const char *fmt, ...) noexcept;	// for debugging
 
 extern "C" void PIO_isr() noexcept;					// forward declaration
 
-#if 1
+// The stack for Core 1 lives in the top 2kb of the SCRATCH_X area of RAM. We can use the lower 2kb for time-critical code or data used by Core 1.
+// When we build the SDK ourselves, we will be able to reduce the stack size to make more room.
+#if 0
 #define CORE1_CRITICAL_CODE(_name)				_name
 #define CORE1_CRITICAL_MEMBER(_class, _name)	_class::_name
 #define CORE1_CRITICAL_DATA_RO(_name)			_name
@@ -66,7 +68,8 @@ extern "C" void PIO_isr() noexcept;					// forward declaration
 #define CORE1_CRITICAL_DATA_RW(_name)			__attribute__((section(".scratch_x." #_name))) _name
 #endif
 
-// Macro to align a function on a cache line
+// Macro to align a function on a cache line. The XIP cache has 8 bytes per line, so  starting functions on 8-byte boundaries may be fastest.
+// For this to work, the start of the text segment must be 8-byte aligned in the linker script.
 #define ALIGNED_FUNCTION	__attribute__((aligned(8)))
 
 /****************************************************************
@@ -299,7 +302,6 @@ uint32_t Crc21Words(const uint32_t *buf, unsigned int numWords) noexcept
 // Update the CRCs with between 1 and 32 bits (0 is not allowed). The data is right-justified and any higher bits in it are ignored.
 ALIGNED_FUNCTION void BitUnstuffer::AddCrcBits(uint32_t data, unsigned int numBits) noexcept
 {
-#if FAST_UNSTUFFING
 	data &= (1u << numBits) - 1;					// clear any higher order bits
 	uint32_t leftJustifiedData;
 	unsigned int bitsThisTime;
@@ -339,41 +341,7 @@ ALIGNED_FUNCTION void BitUnstuffer::AddCrcBits(uint32_t data, unsigned int numBi
 	}
 	crc17 = r17;
 	crc21 = r21;
-#else
-	uint32_t leftJustifiedData = data << (32 - numBits);
-	uint32_t r17 = crc17;
-	uint32_t r21 = crc21;
-
-	// Use table driven byte-at-a-time CRC for the first 8n bits
-	while (numBits >= 8)
-	{
-		numBits -= 8;
-		r17 = (r17 << 8) ^ crc17Table[(r17 ^ leftJustifiedData) >> 24];
-		r21 = (r21 << 8) ^ crc21Table[(r21 ^ leftJustifiedData) >> 24];
-		leftJustifiedData <<= 8;
-	}
-	if (numBits != 0)
-	{
-		// Use bit-at-a-time CRC for the remaining bits
-		//TODO save unused bits to incorporate later, then just use bit-at-a-time when we need the final CRC (take care when adding 32 bits!)
-		r17 ^= leftJustifiedData;
-		r21 ^= leftJustifiedData;
-		do
-		{
-			--numBits;
-			// This code compiles the loop body to fewer instructions than using an if-statement does, and saves a conditional jump
-			const uint32_t mask17 = (r17 & 0x8000'0000) ? 0xFFFFFFFF : 0;
-			r17 = (r17 << 1) ^ (mask17 & (crc17polynomial << (32 - 17)));
-			const uint32_t mask21 = (r21 & 0x8000'0000) ? 0xFFFFFFFF : 0;
-			r21 = (r21 << 1) ^ (mask21 & (crc21polynomial << (32 - 21)));
-		} while (numBits != 0);
-	}
-	crc17 = r17;
-	crc21 = r21;
-#endif
 }
-
-#if FAST_UNSTUFFING
 
 // Get the CRC17, right justified
 uint32_t BitUnstuffer::GetCrc17() const noexcept
@@ -415,16 +383,12 @@ uint32_t BitUnstuffer::GetCrc21() const noexcept
 	return r21 >> (32 - 21);
 }
 
-#endif
-
 // Initialise the CRCs with 0 to 32 bits of data
 inline void BitUnstuffer::InitCrc(uint32_t data, unsigned int numBits) noexcept
 {
 	crc17 = crc21 = 1u << 31;							// both CRCs start with 1 in the MSB
-#if FAST_UNSTUFFING
 	numBitsLeftOver = 0;
 	bitsLeftOver = 0;
-#endif
 	if (numBits != 0)
 	{
 		AddCrcBits(data, numBits);
