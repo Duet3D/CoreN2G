@@ -65,6 +65,9 @@ extern "C" void PIO_isr() noexcept;					// forward declaration
 #define CORE1_CRITICAL_DATA_RW(_name)			__attribute__((section(".scratch_x." #_name))) _name
 #endif
 
+// Macro to align a function on a cache line
+#define ALIGNED_FUNCTION	__attribute__((aligned(8)))
+
 /****************************************************************
  * rp2040 and low-level helper functions
  ****************************************************************/
@@ -293,7 +296,7 @@ uint32_t Crc21Words(const uint32_t *buf, unsigned int numWords) noexcept
  ****************************************************************/
 
 // Update the CRCs with between 1 and 32 bits (0 is not allowed). The data is right-justified and any higher bits in it are ignored.
-void BitUnstuffer::AddCrcBits(uint32_t data, unsigned int numBits) noexcept
+ALIGNED_FUNCTION void BitUnstuffer::AddCrcBits(uint32_t data, unsigned int numBits) noexcept
 {
 	uint32_t leftJustifiedData = data << (32 - numBits);
 	uint32_t r17 = crc17;
@@ -1091,7 +1094,7 @@ void CanFD2040::report_callback_tx_msg() noexcept
 }
 
 // EOF phase complete - report message (rx or tx) to calling code
-void CanFD2040::report_handle_eof() noexcept
+ALIGNED_FUNCTION void CanFD2040::report_handle_eof() noexcept
 {
     if (report_state == ReportState::RS_IDLE)
     {
@@ -1306,7 +1309,7 @@ void CanFD2040::data_state_line_error() noexcept
 }
 
 // Received six passive bits on the line
-void CanFD2040::data_state_line_passive() noexcept
+ALIGNED_FUNCTION void CanFD2040::data_state_line_passive() noexcept
 {
     if (parse_state != MS_DISCARD)
     {
@@ -1399,7 +1402,7 @@ void CanFD2040::SetupToReceive(unsigned int whichFifo, bool extendedId) noexcept
 }
 
 // Handle reception of next 20 header bits which for CAN-FD frame with short ID takes us up to and including the DLC bits
-void CanFD2040::data_state_update_header(uint32_t data) noexcept
+ALIGNED_FUNCTION void CanFD2040::data_state_update_header(uint32_t data) noexcept
 {
     data |= parse_id << 20;									// or in the most significant ID bit
     if ((data & 0x0300) == 0x0300)							// if SRR and ID are both set
@@ -1437,7 +1440,7 @@ void CanFD2040::data_state_update_header(uint32_t data) noexcept
 }
 
 // Handle reception of additional 19 bits of "extended header" which takes us to the end of the DLC field
-void CanFD2040::data_state_update_ext_header(uint32_t data) noexcept
+ALIGNED_FUNCTION void CanFD2040::data_state_update_ext_header(uint32_t data) noexcept
 {
 	if ((data & 0x1e0) == 0x80)								// if FDF bit is set, and r1, BRS and r0 are not set
 	{
@@ -1467,7 +1470,7 @@ void CanFD2040::data_state_update_ext_header(uint32_t data) noexcept
 }
 
 // Handle reception of data content
-void CanFD2040::data_state_update_data(uint32_t data) noexcept
+ALIGNED_FUNCTION void CanFD2040::data_state_update_data(uint32_t data) noexcept
 {
 	if (parse_bytesLeft < 4)
 	{
@@ -1491,7 +1494,7 @@ void CanFD2040::data_state_update_data(uint32_t data) noexcept
 }
 
 // Handle reception of 4 bits of message stuff count and 2 or 6 bytes of CRC
-void CanFD2040::data_state_update_stuffCount(uint32_t data) noexcept
+ALIGNED_FUNCTION void CanFD2040::data_state_update_stuffCount(uint32_t data) noexcept
 {
 	uint32_t stuffCount;
 	uint32_t crcBits;
@@ -1540,7 +1543,7 @@ void CanFD2040::data_state_update_stuffCount(uint32_t data) noexcept
 }
 
 // Handle reception of 16 bits of message CRC (15 crc bits + crc delimiter)
-void CanFD2040::data_state_update_crc(uint32_t data) noexcept
+ALIGNED_FUNCTION void CanFD2040::data_state_update_crc(uint32_t data) noexcept
 {
 	if (likely((((parse_crc & 0x7fff) << 1) | 1u) == (data & 0xffff)))
     {
@@ -1560,7 +1563,7 @@ void CanFD2040::data_state_update_crc(uint32_t data) noexcept
 }
 
 // Handle reception of 2 bits of ack phase (ack, ack delimiter)
-void CanFD2040::data_state_update_ack(uint32_t data) noexcept
+ALIGNED_FUNCTION void CanFD2040::data_state_update_ack(uint32_t data) noexcept
 {
 	if (data != 0x01)
     {
@@ -1575,7 +1578,7 @@ void CanFD2040::data_state_update_ack(uint32_t data) noexcept
 }
 
 // Handle reception of first four end-of-frame (EOF) bits
-void CanFD2040::data_state_update_eof0(uint32_t data) noexcept
+ALIGNED_FUNCTION void CanFD2040::data_state_update_eof0(uint32_t data) noexcept
 {
     if (data != 0x0f || pio_rx_check_stall())
     {
@@ -1591,7 +1594,7 @@ void CanFD2040::data_state_update_eof0(uint32_t data) noexcept
 }
 
 // Handle reception of end-of-frame (EOF) bits 5-7 and first IFS bit
-void CanFD2040::data_state_update_eof1(uint32_t data) noexcept
+ALIGNED_FUNCTION void CanFD2040::data_state_update_eof1(uint32_t data) noexcept
 {
     if (data >= 0x0e || (data >= 0x0c && report_is_acking_rx()))
     {
@@ -1617,7 +1620,7 @@ void CanFD2040::data_state_update_discard(uint32_t data) noexcept
 }
 
 // Update parsing state after reading the bits of the current field
-void CanFD2040::data_state_update(uint32_t data) noexcept
+ALIGNED_FUNCTION void CanFD2040::data_state_update(uint32_t data) noexcept
 {
 	switch (parse_state)
 	{
@@ -1750,7 +1753,7 @@ extern "C" [[noreturn]]void Core1Entry() noexcept
 	canFdDevice.Entry(&virtualRegs);
 }
 
-extern "C" void PIO_isr() noexcept
+extern "C" ALIGNED_FUNCTION void PIO_isr() noexcept
 {
 	canFdDevice.pio_irq_handler();
 }
