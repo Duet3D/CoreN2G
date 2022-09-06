@@ -53,6 +53,18 @@ extern "C" void debugPrintf(const char *fmt, ...) noexcept;		// temporary, for d
 
 extern "C" void PIO_isr() noexcept;					// forward declaration
 
+#if 1
+#define CORE1_CRITICAL_CODE(_name)				_name
+#define CORE1_CRITICAL_MEMBER(_class, _name)	_class::_name
+#define CORE1_CRITICAL_DATA_RO(_name)			_name
+#define CORE1_CRITICAL_DATA_RW(_name)			_name
+#else
+#define CORE1_CRITICAL_CODE(_name)				__attribute__((section(".scratch_x." #_name))) _name
+#define CORE1_CRITICAL_MEMBER(_class, _name)	__attribute__((section(".scratch_x." #_class "_" #_name))) _class::_name
+#define CORE1_CRITICAL_DATA_RO(_name)			__attribute__((section(".scratch_x." #_name))) _name
+#define CORE1_CRITICAL_DATA_RW(_name)			__attribute__((section(".scratch_x." #_name))) _name
+#endif
+
 /****************************************************************
  * rp2040 and low-level helper functions
  ****************************************************************/
@@ -918,6 +930,7 @@ void CanFD2040::pio_tx_send(uint32_t *data, uint32_t count) noexcept
     	pio_hw->txf[3] = data[0];									// put the first word in the fifo in case the DMA is slow to start
         dma_channel_hw_t *const dmach_hw = &dma_hw->ch[DmacChanCAN];
     	dmach_hw->read_addr = reinterpret_cast<uint32_t>(data + 1);
+#if 1
     	dmach_hw->write_addr = reinterpret_cast<uint32_t>(&pio_hw->txf[3]);
     	dmach_hw->transfer_count = count - 1;
     	const uint32_t trigSrc = (regs->pioNumber) ? DREQ_PIO1_TX3 : DREQ_PIO0_TX3;
@@ -926,6 +939,10 @@ void CanFD2040::pio_tx_send(uint32_t *data, uint32_t count) noexcept
 					| DMA_CH0_CTRL_TRIG_INCR_READ_BITS
 					| ((uint32_t)DmacPrioCAN << DMA_CH0_CTRL_TRIG_HIGH_PRIORITY_LSB)
 					| DMA_CH0_CTRL_TRIG_EN_BITS;
+#else
+    	dmach_hw->transfer_count = count - 1;
+		dmach_hw->ctrl_trig = dmaControlWord | DMA_CH0_CTRL_TRIG_EN_BITS;
+#endif
     }
 
     pio_sm_hw *const sm = &pio_hw->sm[3];
@@ -1726,7 +1743,7 @@ bool CanFD2040::tx_check_local_message() noexcept
 }
 
 extern VirtualCanRegisters virtualRegs;
-static CanFD2040 canFdDevice;
+static CanFD2040 CORE1_CRITICAL_DATA_RW(canFdDevice);
 
 extern "C" [[noreturn]]void Core1Entry() noexcept
 {
