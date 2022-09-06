@@ -684,8 +684,10 @@ static inline constexpr GpioPinFunction GetPeriNumber(PwmOutput pwm) noexcept
  */
 enum class AdcInput : uint8_t
 {
-	adc0_0 = 0x00, adc0_1, adc0_2, adc0_3, adc0_tempSense,
-#if !RP2040
+	adc0_0 = 0x00, adc0_1, adc0_2, adc0_3,
+#if RP2040
+	adc0_tempSense,
+#else
 	adc0_4, adc0_5, adc0_6, adc0_7, adc0_8, adc0_9,
 #endif
 #if SAMC21
