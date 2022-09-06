@@ -46,10 +46,11 @@
 #include <cstring>
 
 // Define the DMA channel used by this driver. RP2040 configurations of client projects must aviud using this channel.
-constexpr DmaChannel DmacChanCAN = 8;
+constexpr DmaChannel DmacChanCAN = 8;				// which DMA channel we use
 constexpr DmaPriority DmacPrioCAN = 1;				// RP2040 has two DMA priorities, 0 and 1
+constexpr unsigned int PioNumber = 0;				// which PIO we use
 
-extern "C" void debugPrintf(const char *fmt, ...) noexcept;		// temporary, for debugging
+extern "C" void debugPrintf(const char *fmt, ...) noexcept;	// for debugging
 
 extern "C" void PIO_isr() noexcept;					// forward declaration
 
@@ -700,10 +701,10 @@ void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
 		tx_state = TS_IDLE;
 
 		// Set up the PIO hardware address
-		pio_hw = (regs->pioNumber) ? pio1_hw : pio0_hw;
+		pio_hw = (PioNumber) ? pio1_hw : pio0_hw;
 
 		// Set up the transmit DMA controller as far as possible
-		const uint32_t trigSrc = (regs->pioNumber) ? DREQ_PIO1_TX3 : DREQ_PIO0_TX3;
+		const uint32_t trigSrc = (PioNumber) ? DREQ_PIO1_TX3 : DREQ_PIO0_TX3;
 		dmaControlWord = (trigSrc << DMA_CH0_CTRL_TRIG_TREQ_SEL_LSB)
 						| (DMA_CH0_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_WORD << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB)
 						| DMA_CH0_CTRL_TRIG_INCR_READ_BITS
@@ -1116,7 +1117,7 @@ void CanFD2040::pio_sm_setup() noexcept
 void CanFD2040::pio_setup() noexcept
 {
     // Configure pio0 clock
-    const uint32_t rb = (regs->pioNumber) ? RESETS_RESET_PIO1_BITS : RESETS_RESET_PIO0_BITS;
+    const uint32_t rb = (PioNumber) ? RESETS_RESET_PIO1_BITS : RESETS_RESET_PIO0_BITS;
     rp2040_clear_reset(rb);
 
     // Setup and sync pio state machine clocks
@@ -1130,11 +1131,11 @@ void CanFD2040::pio_setup() noexcept
     pio_sm_setup();
 
     // Map Rx/Tx gpios
-	const GpioPinFunction pioFunc = (regs->pioNumber) ? GpioPinFunction::Pio1 : GpioPinFunction::Pio0;
+	const GpioPinFunction pioFunc = (PioNumber) ? GpioPinFunction::Pio1 : GpioPinFunction::Pio0;
 	SetPinFunction(regs->rxPin, pioFunc);
 	SetPinFunction(regs->txPin, pioFunc);
 
-    const IRQn_Type irqn = (regs->pioNumber) ? PIO1_IRQ_0_IRQn : PIO0_IRQ_0_IRQn;
+    const IRQn_Type irqn = (PioNumber) ? PIO1_IRQ_0_IRQn : PIO0_IRQ_0_IRQn;
 	NVIC_DisableIRQ(irqn);
 	NVIC_ClearPendingIRQ(irqn);
 	NVIC_SetPriority(irqn, 1);

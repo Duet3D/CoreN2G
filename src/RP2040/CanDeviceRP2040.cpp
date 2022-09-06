@@ -88,7 +88,6 @@ extern "C" void Core1Entry() noexcept;
 	virtualRegs.bitrate = 1000000;
 	virtualRegs.txPin = p_txPin;
 	virtualRegs.rxPin = p_rxPin;
-	virtualRegs.pioNumber = 0;
 
 	dev.DoHardwareInit();
 	return &dev;

@@ -167,7 +167,6 @@ struct VirtualCanRegisters
 	uint32_t bitrate;
 	Pin txPin;
 	Pin rxPin;
-	uint8_t pioNumber;
 
 	// Bit assignments in the pseudo-interrupt message received by the main processor via the inter-processor fifo from the CAN processor
 	static constexpr uint32_t recdFifo0 = 0x01;						// message received in fifo0
