@@ -40,7 +40,7 @@ extern "C" void CAN_Handler() noexcept;
 extern "C" void Core1Entry() noexcept;
 
 // Initialise a CAN device and return a pointer to it
-/*static*/ CanDevice* CanDevice::Init(Pin p_txPin, Pin p_rxPin, uint8_t p_pioNumber, const Config& p_config, uint32_t *memStart, const CanTiming &timing, TxEventCallbackFunction p_txCallback) noexcept
+/*static*/ CanDevice* CanDevice::Init(Pin p_txPin, Pin p_rxPin, const Config& p_config, uint32_t *memStart, const CanTiming &timing, TxEventCallbackFunction p_txCallback) noexcept
 {
 	CanDevice& dev = devices[0];
 	if (dev.inUse)														// device instance already in use
@@ -88,7 +88,7 @@ extern "C" void Core1Entry() noexcept;
 	virtualRegs.bitrate = 1000000;
 	virtualRegs.txPin = p_txPin;
 	virtualRegs.rxPin = p_rxPin;
-	virtualRegs.pioNumber = p_pioNumber;
+	virtualRegs.pioNumber = 0;
 
 	dev.DoHardwareInit();
 	return &dev;

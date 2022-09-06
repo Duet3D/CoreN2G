@@ -180,7 +180,7 @@ public:
 	// IMPORTANT: the CanDevice stores a copy of the p_config reference. The Config structure that is refers to must remain available and unchanged while the CanDevice is being used!
 	static CanDevice *Init(
 #if RP2040
-							Pin p_txPin, Pin p_rxPin, uint8_t p_pioNumber,
+							Pin p_txPin, Pin p_rxPin,
 #else
 							unsigned int p_whichCan, unsigned int p_whichPort,
 #endif
