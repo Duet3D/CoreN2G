@@ -587,12 +587,26 @@ void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
     	{
     		irq = false;
     	}
-    	txFifoNotFullInterruptPending = false;
+		txFifoNotFullInterruptPending = false;
 
-    	// Flag the transmitter as idle and no message prepared
-    	txStuffedWords = 0;
-    	tx_state = TS_IDLE;
-    	pio_setup();										// Set up the PIO and pins
+		// Flag the transmitter as idle and no message prepared
+		txStuffedWords = 0;
+		tx_state = TS_IDLE;
+
+		// Set up the PIO hardware address
+		pio_hw = (regs->pioNumber) ? pio1_hw : pio0_hw;
+
+		// Set up the transmit DMA controller as far as possible
+		const uint32_t trigSrc = (regs->pioNumber) ? DREQ_PIO1_TX3 : DREQ_PIO0_TX3;
+		dmaControlWord = (trigSrc << DMA_CH0_CTRL_TRIG_TREQ_SEL_LSB)
+						| (DMA_CH0_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_WORD << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB)
+						| DMA_CH0_CTRL_TRIG_INCR_READ_BITS
+						| ((uint32_t)DmacPrioCAN << DMA_CH0_CTRL_TRIG_HIGH_PRIORITY_LSB);
+		dma_channel_hw_t *const dmach_hw = &dma_hw->ch[DmacChanCAN];
+		dmach_hw->write_addr = reinterpret_cast<uint32_t>(&pio_hw->txf[3]);
+		dmach_hw->al1_ctrl = dmaControlWord;
+
+    	pio_setup();										// set up the PIO and pins (pio_hw has already been set up)
         data_state_go_discard();
         __enable_irq();
 
@@ -999,8 +1013,6 @@ void CanFD2040::pio_sm_setup() noexcept
 
 void CanFD2040::pio_setup() noexcept
 {
-	pio_hw = (regs->pioNumber) ? pio1_hw : pio0_hw;
-
     // Configure pio0 clock
     const uint32_t rb = (regs->pioNumber) ? RESETS_RESET_PIO1_BITS : RESETS_RESET_PIO0_BITS;
     rp2040_clear_reset(rb);

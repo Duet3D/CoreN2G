@@ -69,8 +69,6 @@ private:
 class CanFD2040
 {
 public:
-	CanFD2040() noexcept { }
-
 	// Start CAN-FD running
 	[[noreturn]] void Entry(VirtualCanRegisters *p_regs) noexcept;
 	void pio_irq_handler() noexcept;
@@ -175,11 +173,7 @@ private:
 	// Transmit states (stored in tx_state)
 	enum TxState : uint32_t { TS_IDLE = 0, TS_QUEUED = 1, TS_ACKING_RX = 2, TS_CONFIRM_TX = 3 };
 
-	static constexpr size_t MaxTxMessageBits = ((41 + (64 * 8)) * 5)/4					// max frame length before the stuff count and CRC, including SOF
-												+ 5										// fixed stuff bit and stuff count
-												+ 28;									// fixed stuff bits, 21-bit CRC and CRC delimiter
-	static constexpr size_t MaxTxMessageDwords = (MaxTxMessageBits + 31)/32;			// this comes out at 23
-	uint32_t txMessage[MaxTxMessageDwords];
+	uint32_t dmaControlWord;				// the control word for the DMAC without the Enable bit
 	uint32_t txId;
 	uint32_t txDlc;
 	uint32_t txCrc;
@@ -189,6 +183,13 @@ private:
 	// Pending interrupts, each in a separate word to avoid race conditions
 	volatile bool rxInterruptPending[NumCanRxFifos];									// one interrupt per receive fifo
 	volatile bool txFifoNotFullInterruptPending;
+
+	// Transmit buffer
+	static constexpr size_t MaxTxMessageBits = ((41 + (64 * 8)) * 5)/4					// max frame length before the stuff count and CRC, including SOF
+												+ 5										// fixed stuff bit and stuff count
+												+ 28;									// fixed stuff bits, 21-bit CRC and CRC delimiter
+	static constexpr size_t MaxTxMessageDwords = (MaxTxMessageBits + 31)/32;			// this comes out at 23
+	uint32_t txMessage[MaxTxMessageDwords];
 
 	// Dummy message buffer, to receive messages that we don't want to store in the receive fifos
 	uint32_t rxDummyMessage[64/sizeof(uint32_t)];
