@@ -993,7 +993,9 @@ void CanFD2040::pio_tx_reset() noexcept
     pio_hw->irq = (1u << 2) | (1u << 3);							// clear "matched" and "ack done" signals
 
     dma_channel_hw_t *const dmach_hw = &dma_hw->ch[DmacChanCAN];
-    dmach_hw->al1_ctrl = dmaControlWord;							// disable DMA to the FIFO to stop it being refilled
+    dmach_hw->al1_ctrl = dmaControlWord;							// pause DMA to the FIFO to stop it being refilled
+    dma_hw->abort = 1u << DmacChanCAN;								// abort any pending transfers (can occur if a transmission was aborted due to a bus conflict)
+    while (dma_hw->abort & (1u << DmacChanCAN)) { }					// wait for in-flight transfers to complete
 
     // Clear tx fifo
     sm->shiftctrl = 0;												// changing the value of PIO_SM0_SHIFTCTRL_FJOIN_TX_BITS flushes the fifo
@@ -1024,23 +1026,8 @@ void CanFD2040::pio_tx_send(uint32_t *data, uint32_t count) noexcept
     	pio_hw->txf[3] = data[0];									// put the first word in the fifo in case the DMA is slow to start
         dma_channel_hw_t *const dmach_hw = &dma_hw->ch[DmacChanCAN];
     	dmach_hw->read_addr = reinterpret_cast<uint32_t>(data + 1);
-#if 1
-    	dmach_hw->write_addr = reinterpret_cast<uint32_t>(&pio_hw->txf[3]);
-    	dmach_hw->transfer_count = count - 1;
-# if 0
-		dmach_hw->ctrl_trig = dmaControlWord | DMA_CH0_CTRL_TRIG_EN_BITS;
-# else
-    	const uint32_t trigSrc = (regs->pioNumber) ? DREQ_PIO1_TX3 : DREQ_PIO0_TX3;
-    	dmach_hw->ctrl_trig = (trigSrc << DMA_CH0_CTRL_TRIG_TREQ_SEL_LSB)
-    				| (DMA_CH0_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_WORD << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB)
-					| DMA_CH0_CTRL_TRIG_INCR_READ_BITS
-					| ((uint32_t)DmacPrioCAN << DMA_CH0_CTRL_TRIG_HIGH_PRIORITY_LSB)
-					| DMA_CH0_CTRL_TRIG_EN_BITS;
-# endif
-#else
     	dmach_hw->transfer_count = count - 1;
 		dmach_hw->ctrl_trig = dmaControlWord | DMA_CH0_CTRL_TRIG_EN_BITS;
-#endif
     }
 
     pio_sm_hw *const sm = &pio_hw->sm[3];
