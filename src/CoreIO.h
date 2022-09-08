@@ -135,9 +135,13 @@ enum class GpioPinFunction : uint8_t
  */
 void SetPinFunction(Pin p, GpioPinFunction f) noexcept;
 
-#if SAME5x || SAMC21
-void SetHighDriveStrength(Pin p) noexcept;
-#endif
+/**
+ * @brief Set the drive strength of a pin
+ * @param p The pin number
+ * @param strength the strength, where 0 = minimum
+ * The maximum is limited to 3 for the RP2040, and 1 for SAME5x and SAMC21.
+ */
+void SetDriveStrength(Pin p, unsigned int strength) noexcept;
 
 /**
  * @brief Set a pin back to ordinary digital I/O

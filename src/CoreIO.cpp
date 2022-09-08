@@ -189,19 +189,24 @@ void DisablePullup(Pin pin) noexcept
 #endif
 }
 
-#if SAME5x || SAMC21 || RP2040
-
 // Set high driver strength on an output pin
-void SetHighDriveStrength(Pin p) noexcept
+void SetDriveStrength(Pin p, unsigned int strength) noexcept
 {
 #if SAME5x || SAMC21
-	PORT->Group[GpioPortNumber(p)].PINCFG[GpioPinNumber(p)].reg |= PORT_PINCFG_DRVSTR;
+	if (strength != 0)
+	{
+		PORT->Group[GpioPortNumber(p)].PINCFG[GpioPinNumber(p)].reg |= PORT_PINCFG_DRVSTR;
+	}
+	else
+	{
+		PORT->Group[GpioPortNumber(p)].PINCFG[GpioPinNumber(p)].reg &= ~PORT_PINCFG_DRVSTR;
+	}
 #elif RP2040
-	gpio_set_drive_strength(p, GPIO_DRIVE_STRENGTH_8MA);			// 2, 4, 8 and 12mA can be selected
+	gpio_set_drive_strength(p, gpio_drive_strength((gpio_drive_strength)min<unsigned int>(strength, 3)));	// 2, 4, 8 and 12mA can be selected
+#else
+	// This is a NOP on other processors
 #endif
 }
-
-#endif
 
 // IoPort::SetPinMode calls this
 // Warning! Changing pin mode will reset the output drive strength to normal.
