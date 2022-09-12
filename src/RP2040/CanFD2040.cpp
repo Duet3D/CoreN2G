@@ -4,11 +4,13 @@
  *  Created on: 22 Aug 2022
  *      Author: David Crocker
  *
- * This is the low-level driver for ISO CAN-FD on the RP2040.
+ * This is the low-level driver for partial ISO CAN-FD support on the RP2040.
  * It is derived from Kevin Connor's CAN 2.0 implementation for the RP2040, see https://github.com/KevinOConnor/can2040
  * In particular, the PIO code is from that project and the low-level functions are derived from it.
  *
- * License: GNU GENERAL PUBLIC LICENSE Version 3
+ * IMPORTANT! Robert Bosch GmbH owns many relevant patents and requires a license fee to be paid for any commercial use of CAN-FD.
+ *
+ * Software license: GNU GENERAL PUBLIC LICENSE Version 3
  *
  * Features of this driver:
  * - Supports CAN-FD frames up to the maximum 64 bytes long
@@ -22,7 +24,7 @@
  *   have the second core perform other operations, for example by performing them in the main loop in function Entry,
  *   however interrupt latency on the second core is critical for CAN to function correctly
  *
- * This driver is intended to work with the Core 0 processor running FreeRTOS and using the code in file CanDevice RP2040.cpp
+ * This driver is intended to work with the RP2040 Core 0 processor running FreeRTOS and using the code in file CanDevice RP2040.cpp
  * to communicate with this driver. Most of the communication is via a shared memory block defined in file VirtualCanRegisters.h.
  * When CAN is running, each field in that memory block is only ever written by one of the cores. Additionally, Core 0 uses
  * the inter-core fifo to signal to Core 0 that something important has happened, e.g. a message has been received. That

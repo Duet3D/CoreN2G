@@ -3,6 +3,14 @@
  *
  *  Created on: 22 Aug 2022
  *      Author: David
+ *
+ * This is the header file for the low-level driver for partial ISO CAN-FD support on the RP2040.
+ * It is derived from Kevin Connor's CAN 2.0 implementation for the RP2040, see https://github.com/KevinOConnor/can2040
+ * In particular, the PIO code is from that project and the low-level functions are derived from it.
+ *
+ * IMPORTANT! Robert Bosch GmbH owns many relevant patents and requires a license fee to be paid for any commercial use of CAN-FD.
+ *
+ * Software license: GNU GENERAL PUBLIC LICENSE Version 3
  */
 
 #ifndef SRC_CANFD2040_H_
