@@ -1,0 +1,3 @@
+[submodule "src/RP2040/pico-sdk"]
+	path = src/RP2040/pico-sdk
+	url = https://github.com/Duet3D/pico-sdk
