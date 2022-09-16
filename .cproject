@@ -84,7 +84,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -176,7 +176,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/SAME70|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/RP2040|src/SAME70|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -275,7 +275,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/SAM4S_4E_E70|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -372,7 +372,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -465,7 +465,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -565,7 +565,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -664,7 +664,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -759,7 +759,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -857,7 +857,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -948,7 +948,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -1049,7 +1049,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/SAM4S_4E_E70|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -1149,7 +1149,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/SAM4S_4E_E70|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -1266,7 +1266,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/SAM4S_4E_E70/SAM4S|src/SAM4S_4E_E70/SAM4E|src/SAM4S_4E_E70/asf/sam/drivers/aes|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/drivers/pdc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/udp|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twi|src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4e|src/SAME5x_C21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/RP2040|src/SAM4S_4E_E70/SAM4S|src/SAM4S_4E_E70/SAM4E|src/SAM4S_4E_E70/asf/sam/drivers/aes|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/drivers/pdc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/udp|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twi|src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4e|src/SAME5x_C21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -1368,7 +1368,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/SAM4S_4E_E70|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -1487,7 +1487,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/SAM4S_4E_E70/SAM4S|src/SAM4S_4E_E70/SAM4E|src/SAM4S_4E_E70/asf/sam/drivers/aes|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/drivers/pdc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/udp|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twi|src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAME5x_C21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/RP2040|src/SAM4S_4E_E70/SAM4S|src/SAM4S_4E_E70/SAM4E|src/SAM4S_4E_E70/asf/sam/drivers/aes|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/drivers/pdc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/udp|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twi|src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAME5x_C21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -1590,7 +1590,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/same70|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAM4S_4E_E70/asf/sam/utils/cmsis/same70|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/aes|src/SAM4S_4E_E70/asf/sam/drivers/trng|src/SAM4S_4E_E70/asf/sam/drivers/usbhs|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twihs|src/SAM4S_4E_E70/asf/sam/drivers/mcan|src/SAM4S_4E_E70/asf/sam/drivers/xdmac|src/SAM4S_4E_E70/SAM4S|SAM4E|src/SAM4S_4E_E70/SAME70|src/SAME5x_C21|src/SAME70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/RP2040|src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/same70|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAM4S_4E_E70/asf/sam/utils/cmsis/same70|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/aes|src/SAM4S_4E_E70/asf/sam/drivers/trng|src/SAM4S_4E_E70/asf/sam/drivers/usbhs|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twihs|src/SAM4S_4E_E70/asf/sam/drivers/mcan|src/SAM4S_4E_E70/asf/sam/drivers/xdmac|src/SAM4S_4E_E70/SAM4S|SAM4E|src/SAM4S_4E_E70/SAME70|src/SAME5x_C21|src/SAME70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -1693,7 +1693,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/common/services/clock/same70|src/SAM4S_4E_E70/asf/sam/drivers/aes|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/afec|src/SAM4S_4E_E70/asf/sam/drivers/emac|src/SAM4S_4E_E70/asf/sam/drivers/gmac|src/SAM4S_4E_E70/asf/sam/drivers/rswdt|src/SAM4S_4E_E70/asf/sam/drivers/trng|src/SAM4S_4E_E70/asf/sam/drivers/usbhs|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twihs|src/SAM4S_4E_E70/asf/sam/drivers/mcan|src/SAM4S_4E_E70/asf/sam/drivers/xdmac|src/SAM4S_4E_E70/SAM4E|SAM4E|src/SAM4S_4E_E70/SAME70|src/SAME5x_C21|src/SAME70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/RP2040|src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/common/services/clock/same70|src/SAM4S_4E_E70/asf/sam/drivers/aes|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/afec|src/SAM4S_4E_E70/asf/sam/drivers/emac|src/SAM4S_4E_E70/asf/sam/drivers/gmac|src/SAM4S_4E_E70/asf/sam/drivers/rswdt|src/SAM4S_4E_E70/asf/sam/drivers/trng|src/SAM4S_4E_E70/asf/sam/drivers/usbhs|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twihs|src/SAM4S_4E_E70/asf/sam/drivers/mcan|src/SAM4S_4E_E70/asf/sam/drivers/xdmac|src/SAM4S_4E_E70/SAM4E|SAM4E|src/SAM4S_4E_E70/SAME70|src/SAME5x_C21|src/SAME70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -1797,7 +1797,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/SAM4S_4E_E70/asf/common/services/usb|src/SAM4S_4E_E70/asf/sam/drivers/usbhs|src/SAM4S_4E_E70/SAM4S|src/SAM4S_4E_E70/SAM4E|src/SAM4S_4E_E70/asf/sam/drivers/aes|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/drivers/pdc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/udp|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twi|src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4e|src/SAME5x_C21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/RP2040|src/SAM4S_4E_E70/asf/common/services/usb|src/SAM4S_4E_E70/asf/sam/drivers/usbhs|src/SAM4S_4E_E70/SAM4S|src/SAM4S_4E_E70/SAM4E|src/SAM4S_4E_E70/asf/sam/drivers/aes|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/drivers/pdc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/udp|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twi|src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4e|src/SAME5x_C21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -1908,7 +1908,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/same70|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAM4S_4E_E70/asf/sam/utils/cmsis/same70|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/aes|src/SAM4S_4E_E70/asf/sam/drivers/trng|src/SAM4S_4E_E70/asf/sam/drivers/usbhs|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twihs|src/SAM4S_4E_E70/asf/sam/drivers/mcan|src/SAM4S_4E_E70/asf/sam/drivers/xdmac|src/SAM4S_4E_E70/SAM4S|SAM4E|src/SAM4S_4E_E70/SAME70|src/SAME5x_C21|src/SAME70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/RP2040|src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/same70|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAM4S_4E_E70/asf/sam/utils/cmsis/same70|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/aes|src/SAM4S_4E_E70/asf/sam/drivers/trng|src/SAM4S_4E_E70/asf/sam/drivers/usbhs|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twihs|src/SAM4S_4E_E70/asf/sam/drivers/mcan|src/SAM4S_4E_E70/asf/sam/drivers/xdmac|src/SAM4S_4E_E70/SAM4S|SAM4E|src/SAM4S_4E_E70/SAME70|src/SAME5x_C21|src/SAME70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -2019,7 +2019,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/common/services/clock/same70|src/SAM4S_4E_E70/asf/sam/drivers/aes|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/afec|src/SAM4S_4E_E70/asf/sam/drivers/emac|src/SAM4S_4E_E70/asf/sam/drivers/gmac|src/SAM4S_4E_E70/asf/sam/drivers/rswdt|src/SAM4S_4E_E70/asf/sam/drivers/trng|src/SAM4S_4E_E70/asf/sam/drivers/usbhs|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twihs|src/SAM4S_4E_E70/asf/sam/drivers/mcan|src/SAM4S_4E_E70/asf/sam/drivers/xdmac|src/SAM4S_4E_E70/SAM4E|SAM4E|src/SAM4S_4E_E70/SAME70|src/SAME5x_C21|src/SAME70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/RP2040|src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/common/services/clock/same70|src/SAM4S_4E_E70/asf/sam/drivers/aes|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/afec|src/SAM4S_4E_E70/asf/sam/drivers/emac|src/SAM4S_4E_E70/asf/sam/drivers/gmac|src/SAM4S_4E_E70/asf/sam/drivers/rswdt|src/SAM4S_4E_E70/asf/sam/drivers/trng|src/SAM4S_4E_E70/asf/sam/drivers/usbhs|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twihs|src/SAM4S_4E_E70/asf/sam/drivers/mcan|src/SAM4S_4E_E70/asf/sam/drivers/xdmac|src/SAM4S_4E_E70/SAM4E|SAM4E|src/SAM4S_4E_E70/SAME70|src/SAME5x_C21|src/SAME70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -2134,7 +2134,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/SAM4S_4E_E70/SAM4S|src/SAM4S_4E_E70/SAM4E|src/SAM4S_4E_E70/asf/sam/drivers/aes|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/drivers/pdc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/udp|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twi|src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4e|src/SAME5x_C21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/RP2040|src/SAM4S_4E_E70/SAM4S|src/SAM4S_4E_E70/SAM4E|src/SAM4S_4E_E70/asf/sam/drivers/aes|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/drivers/pdc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/udp|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twi|src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4e|src/SAME5x_C21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
