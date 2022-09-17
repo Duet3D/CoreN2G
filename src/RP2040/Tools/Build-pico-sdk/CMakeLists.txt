@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.12)
 
+# The following line added by DC
+get_filename_component(PICO_SDK_PATH "../../pico-sdk" REALPATH)
+
 include(pico_sdk_import.cmake)
 
 project(pico_lib C CXX ASM)
@@ -31,6 +34,8 @@ target_compile_definitions(pico PUBLIC
         PICO_RP2040_B0_SUPPORTED=1
         PICO_RP2040_B1_SUPPORTED=1
         PICO_RP2040_B2_SUPPORTED=1
+		__RP2040__=1
+		noexcept=
 )
 
 target_compile_options(pico PUBLIC
@@ -39,7 +44,9 @@ target_compile_options(pico PUBLIC
 	$<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
 )
 
-include_directories(BEFORE ${PICO_SDK_PATH}/../tools/libpico)
+include_directories(BEFORE ${PICO_SDK_PATH}/../tools/Build-pico-sdk)
+include_directories(BEFORE ${PICO_SDK_PATH}/../../../../FreeRTOS/src/include)
+include_directories(BEFORE ${PICO_SDK_PATH}/../../../../FreeRTOS/src/portable/GCC/ARM_CM0)
 
 target_link_libraries(pico
 	boot_stage2
