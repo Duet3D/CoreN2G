@@ -1,6 +1,6 @@
-This folder contais scripts needed to build libpico.a from source.
+This folder contains scripts needed to build libpico.a from source.
 
-The library it builds is similar to the library shipped with Arduino for RP2040 except for the following:
+The libpico.a file it builds is similar to the one shipped with Arduino for RP2040 except for the following:
 1. The CYW43 wifi driver is not included.
 2. The tinyusb build sets CFG_TUSB_OS to OPT_OS_FREERTOS instead of OPT_OS_PICO.
 
@@ -11,4 +11,4 @@ To build the library under Windows:
 2. Ensure that CMake.exe is on your PATH
 3. Open a command prompt and run: make-libpico.bat
 
-The make-libpico.sh is the original one from Arduino. If you wish to build libpico under Linux, you will need to modify it to align with make-libpico.bat.
+The make-libpico.sh file is the original one from Arduino. If you wish to build libpico under Linux, you will need to modify it to align with make-libpico.bat.
