@@ -19,51 +19,9 @@
 
 extern "C" {
 #include "tusb.h"
-#include "pico/time.h"
-#include "hardware/irq.h"
-#include "pico/mutex.h"
-#include "hardware/watchdog.h"
-#include "pico/unique_id.h"
 }
 
 #include "RP2040USB.h"
-
-class CoreMutex
-{
-public:
-	CoreMutex(mutex_t *mutex) noexcept
-	{
-		uint32_t owner;
-		_mutex = mutex;
-		_acquired = false;
-		if (!mutex_try_enter(_mutex, &owner))
-		{
-			if (owner == get_core_num())
-			{	// Deadlock!
-				return;
-			}
-			mutex_enter_blocking(_mutex);
-		}
-		_acquired = true;
-	}
-
-	~CoreMutex()
-	{
-		if (_acquired)
-		{
-			mutex_exit(_mutex);
-		}
-	}
-
-	operator bool() noexcept
-	{
-		return _acquired;
-	}
-
-private:
-    mutex_t *_mutex;
-    bool _acquired;
-};
 
 SerialCDC::SerialCDC(Pin p, size_t numTxSlots, size_t numRxSlots) noexcept
 {
@@ -81,12 +39,6 @@ void SerialCDC::end() noexcept
 
 bool SerialCDC::IsConnected() const noexcept
 {
-    CoreMutex m(&__usb_mutex);
-    if (!running || !m) {
-        return false;
-    }
-
-    tud_task();
 	return tud_cdc_connected();
 }
 
@@ -98,10 +50,9 @@ bool SerialCDC::IsConnected() const noexcept
 // available() returned nonzero bit read() never read it. Now we check neither when reading.
 int SerialCDC::read() noexcept
 {
-    CoreMutex m(&__usb_mutex);
-    if (!running || !m)
+    if (!running)
     {
-          return -1;
+    	return -1;
     }
 
     if (tud_cdc_available())
@@ -113,10 +64,9 @@ int SerialCDC::read() noexcept
 
 int SerialCDC::available() noexcept
 {
-    CoreMutex m(&__usb_mutex);
-    if (!running || !m)
+    if (!running)
     {
-          return 0;
+    	return 0;
     }
 
     return tud_cdc_available();
@@ -124,8 +74,7 @@ int SerialCDC::available() noexcept
 
 void SerialCDC::flush() noexcept
 {
-	CoreMutex m(&__usb_mutex);
-	if (!running || !m)
+	if (!running)
 	{
 		return;
 	}
@@ -135,8 +84,7 @@ void SerialCDC::flush() noexcept
 
 size_t SerialCDC::canWrite() noexcept
 {
-	CoreMutex m(&__usb_mutex);
-	if (!running || !m)
+	if (!running)
 	{
 		return 0;
 	}
@@ -153,10 +101,9 @@ size_t SerialCDC::write(uint8_t c) noexcept
 // Blocking write block
 size_t SerialCDC::write(const uint8_t *buf, size_t length) noexcept
 {
-	CoreMutex m(&__usb_mutex);
-	if (!running || !m)
+	if (!running)
 	{
-		  return 0;
+		return 0;
 	}
 
 	static uint64_t last_avail_time;
@@ -173,8 +120,7 @@ size_t SerialCDC::write(const uint8_t *buf, size_t length) noexcept
 			}
 			if (n != 0)
 			{
-				unsigned int n2 = tud_cdc_write(buf + i, n);
-				tud_task();
+				const unsigned int n2 = tud_cdc_write(buf + i, n);
 				tud_cdc_write_flush();
 				i += n2;
 				written += n2;
@@ -182,7 +128,6 @@ size_t SerialCDC::write(const uint8_t *buf, size_t length) noexcept
 			}
 			else
 			{
-				tud_task();
 				tud_cdc_write_flush();
 				if (!tud_cdc_connected() || (!tud_cdc_write_available() && time_us_64() > last_avail_time + 1000000 /* 1 second */))
 				{
@@ -199,18 +144,19 @@ size_t SerialCDC::write(const uint8_t *buf, size_t length) noexcept
 	return written;
 }
 
-void SerialCDC::Spin() noexcept
+// USB Device callbacks
+// Invoked when cdc when line state changed e.g connected/disconnected
+extern "C" void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
 {
-#if DONT_USE_TIMER
-    // if the mutex is already owned, then we are in user code
-    // in this file which will do a tud_task itself, so we'll just do nothing
-    // until the next tick; we won't starve
-    if (mutex_try_enter(&__usb_mutex, NULL))
-    {
-        tud_task();
-        mutex_exit(&__usb_mutex);
-    }
-#endif
+	(void) itf;
+	(void) rts;
+	(void) dtr;
+}
+
+// Invoked when CDC interface received data from host
+extern "C" void tud_cdc_rx_cb(uint8_t itf)
+{
+	(void) itf;
 }
 
 #endif	// SUPPORT_USB

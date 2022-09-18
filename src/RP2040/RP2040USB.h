@@ -26,13 +26,13 @@
 #undef from
 #include <pico/mutex.h>
 
-#define DONT_USE_TIMER		0
-
 // Big, global USB mutex, shared with all USB devices to make sure we don't
 // have multiple cores updating the TUSB state in parallel
 extern mutex_t __usb_mutex;
 
-// Called by main() to init the USB HW/SW.
+// Called by main() to init the USB subsystem
 void __USBStart();
+
+[[noreturn]] void UsbDeviceTask(void* param) noexcept;						// this must be called by the USB task
 
 #endif	// RP2040USB_H_INCLUDED

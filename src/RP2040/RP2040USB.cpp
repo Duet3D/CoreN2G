@@ -37,12 +37,6 @@
 // have multiple cores updating the TUSB state in parallel
 mutex_t __usb_mutex;
 
-#if !DONT_USE_TIMER
-// USB processing will be a periodic timer task
-#define USB_TASK_INTERVAL 1000
-static int __usb_task_irq;
-#endif
-
 // USB VID/PID (note that PID can change depending on the add'l interfaces)
 #define USBD_VID (0x2E8A) // Raspberry Pi
 
@@ -190,29 +184,6 @@ const uint16_t *tud_descriptor_string_cb(uint8_t index, uint16_t langid) noexcep
 	return desc_str;
 }
 
-
-#if !DONT_USE_TIMER
-
-static void usb_irq() noexcept
-{
-    // if the mutex is already owned, then we are in user code
-    // in this file which will do a tud_task itself, so we'll just do nothing
-    // until the next tick; we won't starve
-    if (mutex_try_enter(&__usb_mutex, NULL))
-    {
-        tud_task();
-        mutex_exit(&__usb_mutex);
-    }
-}
-
-static int64_t timer_task(__unused alarm_id_t id, __unused void *user_data) noexcept
-{
-    irq_set_pending(__usb_task_irq);
-    return USB_TASK_INTERVAL;
-}
-
-#endif
-
 void __USBStart()
 {
 	if (tusb_inited())
@@ -224,16 +195,24 @@ void __USBStart()
 	__SetupUSBDescriptor();
 
 	mutex_init(&__usb_mutex);
+}
 
+// USB Device Driver task
+// This top level thread process all usb events and invoke callbacks
+void UsbDeviceTask(void* param) noexcept
+{
+	(void)param;
+
+	// This should be called after scheduler/kernel is started.
+	// Otherwise it could cause kernel issue since USB IRQ handler does use RTOS queue API.
 	tusb_init();
 
-#if !DONT_USE_TIMER
-	__usb_task_irq = user_irq_claim_unused(true);
-	irq_set_exclusive_handler(__usb_task_irq, usb_irq);
-	irq_set_enabled(__usb_task_irq, true);
-
-	add_alarm_in_us(USB_TASK_INTERVAL, timer_task, NULL, true);
-#endif
+	// RTOS forever loop
+	while (1)
+	{
+		// tinyusb device task
+		tud_task();
+	}
 }
 
 // Invoked when received GET_REPORT control request
