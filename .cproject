@@ -2217,6 +2217,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/RP2040/pico-sdk}/src/rp2_common/hardware_base/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/RP2040/pico-sdk}/src/rp2_common/hardware_gpio/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/RP2040/pico-sdk}/src/rp2_common/hardware_irq/include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/RP2040/pico-sdk/src/rp2_common/hardware_pio/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/RP2040/pico-sdk}/src/rp2_common/hardware_pwm/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/RP2040/pico-sdk}/src/rp2_common/hardware_sync/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/RP2040/pico-sdk}/src/rp2_common/hardware_timer/include&quot;"/>
