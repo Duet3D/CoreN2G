@@ -5,7 +5,7 @@
  *      Author: David
  */
 
-#include <TMC22xxUartInterface.h>
+#include "TmcUartInterface.h"
 
 #if RP2040
 
@@ -97,8 +97,7 @@ static inline pio_sm_config uart_tx_program_get_default_config(uint offset) noex
 
 static inline void uart_tx_program_init(PIO pio, uint sm, uint offset, uint pin_tx, uint baud) noexcept
 {
-	// Tell PIO to initially drive output-high on the selected pin, then map PIO
-	// onto that pin with the IO muxes.
+	// Tell PIO to initially drive output-high on the selected pin, then map PIO onto that pin with the IO muxes.
 	pio_sm_set_pins_with_mask(pio, sm, 1u << pin_tx, 1u << pin_tx);
 	pio_sm_set_pindirs_with_mask(pio, sm, 1u << pin_tx, 1u << pin_tx);
 	pio_gpio_init(pio, pin_tx);
@@ -117,6 +116,47 @@ static inline void uart_tx_program_init(PIO pio, uint sm, uint offset, uint pin_
 	sm_config_set_clkdiv(&c, div);
 	pio_sm_init(pio, sm, offset, &c);
 	pio_sm_set_enabled(pio, sm, true);
+}
+
+// Public functions
+void TmcUartInterface::Init(Pin uartPin, uint32_t baudRate) noexcept
+{
+	//TODO
+}
+
+void TmcUartInterface::ResetUart() noexcept
+{
+	//TODO
+}
+
+void TmcUartInterface::ResetDMA() noexcept
+{
+	//TODO
+}
+
+void TmcUartInterface::SetTxData(const volatile uint32_t* data, unsigned int numWords) noexcept
+{
+	//TODO
+}
+
+void TmcUartInterface::SetRxData(volatile uint32_t* data, unsigned int numWords) noexcept
+{
+	//TODO
+}
+
+void TmcUartInterface::StartTransfer(TmcUartCallbackFn callbackFn) noexcept
+{
+	//TODO
+}
+
+void TmcUartInterface::DisableCompletedCallback() noexcept
+{
+	//TODO
+}
+
+void TmcUartInterface::AbortTransfer() noexcept
+{
+	//TODO
 }
 
 #endif
