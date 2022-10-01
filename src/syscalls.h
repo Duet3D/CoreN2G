@@ -132,11 +132,21 @@ extern "C" int _lseek(int file, int ptr, int dir) noexcept
 #if !RP2040
 
 /**
- * \brief Replacement of C library of _exit
+ * \brief Replacement of C library of _exit and related functions
  */
 extern "C" void _exit(int status) noexcept
 {
 	for (;;) { }
+}
+
+extern "C" void exit(int code)
+{
+	_exit(code);
+}
+
+extern "C" void abort() noexcept
+{
+	_exit(1);
 }
 
 #endif

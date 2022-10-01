@@ -763,14 +763,15 @@ extern "C" uint32_t random32() noexcept
 #else		// processor doesn't have a true random number generator
 
 	static bool isInitialised = false;
+	static unsigned int seed;
 
 	if (!isInitialised)
 	{
-		srand(SysTick->VAL);
+		seed = SysTick->VAL;
 		isInitialised = true;
 	}
 
-	return rand();
+	return rand_r(&seed);
 
 #endif
 }
