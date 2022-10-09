@@ -69,6 +69,18 @@ extern "C" void PIO_isr() noexcept;					// forward declaration
 #define CORE1_CRITICAL_DATA_RO(_name)			__attribute__((section(".scratch_x." #_name))) _name
 #define CORE1_CRITICAL_DATA_RW(_name)			__attribute__((section(".scratch_x." #_name))) _name
 #endif
+// Place critical code and data in RAM
+#if 0
+#define CRITICAL_CODE(_name)			_name
+#define CRITICAL_MEMBER(_class, _name)	_class::_name
+#define CRITICAL_DATA_RO(_name)			_name
+#define CRITICAL_DATA_RW(_name)			_name
+#else
+#define CRITICAL_CODE(_name)			__attribute__((section(".time_critical." #_name))) _name
+#define CRITICAL_MEMBER(_class, _name)	__attribute__((section(".time_critical." #_class "_" #_name))) _class::_name
+#define CRITICAL_DATA_RO(_name)			__attribute__((section(".time_critical." #_name))) _name
+#define CRITICAL_DATA_RW(_name)			__attribute__((section(".time_critical." #_name))) _name
+#endif
 
 // Macro to align a function on a cache line. The XIP cache has 8 bytes per line, so  starting functions on 8-byte boundaries may be fastest.
 // For this to work, the start of the text segment must be 8-byte aligned in the linker script.
@@ -149,13 +161,13 @@ static const uint16_t can2040_program_instructions[] = {
 };
 
 // 3-bit Gray code table, shifted left 1 bit with lower even parity bit added
-constexpr uint8_t GrayTable[] = { 0b0000, 0b0011, 0b0110, 0b0101, 0b1100, 0b1111, 0b1010, 0b1001 };
+constexpr uint8_t CRITICAL_DATA_RO(GrayTable)[] = { 0b0000, 0b0011, 0b0110, 0b0101, 0b1100, 0b1111, 0b1010, 0b1001 };
 
 /****************************************************************
  * CRC calculation
  ****************************************************************/
 
-static constexpr uint32_t crc17Table[] =
+static constexpr uint32_t CRITICAL_DATA_RO(crc17Table)[] =
 {
 	0x00000000, 0xB42D8000, 0xDC768000, 0x685B0000, 0x0CC08000, 0xB8ED0000, 0xD0B60000, 0x649B8000,
 	0x19810000, 0xADAC8000, 0xC5F78000, 0x71DA0000, 0x15418000, 0xA16C0000, 0xC9370000, 0x7D1A8000,
@@ -191,7 +203,7 @@ static constexpr uint32_t crc17Table[] =
 	0xACB28000, 0x189F0000, 0x70C40000, 0xC4E98000, 0xA0720000, 0x145F8000, 0x7C048000, 0xC8290000
 };
 
-static constexpr uint32_t crc21Table[] =
+static constexpr uint32_t CRITICAL_DATA_RO(crc21Table)[] =
 {
 	0x00000000, 0x8144C800, 0x83CD5800, 0x02899000, 0x86DE7800, 0x079AB000, 0x05132000, 0x8457E800,
 	0x8CF83800, 0x0DBCF000, 0x0F356000, 0x8E71A800, 0x0A264000, 0x8B628800, 0x89EB1800, 0x08AFD000,
@@ -234,7 +246,7 @@ constexpr uint32_t crc21polynomial = 0x00302899; 	// 0b0000'0000'0011'0000'0010'
 constexpr uint32_t crc21initialValue = 1u << 31;	// initial value after left shifting
 
 // Calculate CRC17 on a number of bits between 1 and 32 (must not be called with 0 bits!). The bits are left-justified and any lower-order bits are zero.
-uint32_t Crc17Bits(uint32_t remainder, uint32_t data, unsigned int numBits) noexcept
+uint32_t CRITICAL_CODE(Crc17Bits)(uint32_t remainder, uint32_t data, unsigned int numBits) noexcept
 {
 	remainder ^= data;
 	do
@@ -247,7 +259,7 @@ uint32_t Crc17Bits(uint32_t remainder, uint32_t data, unsigned int numBits) noex
 }
 
 // Calculate CRC17 on a number of 32-bit words
-uint32_t Crc17Words(const uint32_t *buf, unsigned int numWords) noexcept
+uint32_t CRITICAL_CODE(Crc17Words)(const uint32_t *buf, unsigned int numWords) noexcept
 {
 	uint32_t r17 = crc17initialValue;
 	while (numWords != 0)
@@ -266,7 +278,7 @@ uint32_t Crc17Words(const uint32_t *buf, unsigned int numWords) noexcept
 }
 
 // Calculate CRC21 on a number of bits between 1 and 32. (must not be called with 0 bits!). The bits are left-justified and any lower-order bits are zero.
-uint32_t Crc21Bits(uint32_t remainder, uint32_t data, unsigned int numBits) noexcept
+uint32_t CRITICAL_CODE(Crc21Bits)(uint32_t remainder, uint32_t data, unsigned int numBits) noexcept
 {
 	remainder ^= data;
 	do
@@ -279,7 +291,7 @@ uint32_t Crc21Bits(uint32_t remainder, uint32_t data, unsigned int numBits) noex
 }
 
 // Calculate CRC21 on a number of words
-uint32_t Crc21Words(const uint32_t *buf, unsigned int numWords) noexcept
+uint32_t CRITICAL_CODE(Crc21Words)(const uint32_t *buf, unsigned int numWords) noexcept
 {
 	uint32_t r21 = crc21initialValue;
 	while (numWords != 0)
@@ -302,7 +314,7 @@ uint32_t Crc21Words(const uint32_t *buf, unsigned int numWords) noexcept
  ****************************************************************/
 
 // Update the CRCs with between 1 and 32 bits (0 is not allowed). The data is right-justified and any higher bits in it are ignored.
-ALIGNED_FUNCTION void BitUnstuffer::AddCrcBits(uint32_t data, unsigned int numBits) noexcept
+ALIGNED_FUNCTION void CRITICAL_MEMBER(BitUnstuffer, AddCrcBits)(uint32_t data, unsigned int numBits) noexcept
 {
 	data &= (1u << numBits) - 1;					// clear any higher order bits
 	uint32_t leftJustifiedData;
@@ -346,7 +358,7 @@ ALIGNED_FUNCTION void BitUnstuffer::AddCrcBits(uint32_t data, unsigned int numBi
 }
 
 // Get the CRC17, right justified
-uint32_t BitUnstuffer::GetCrc17() const noexcept
+uint32_t CRITICAL_MEMBER(BitUnstuffer, GetCrc17)() const noexcept
 {
 	uint32_t r17 = crc17;
 	unsigned int numBits = numBitsLeftOver;
@@ -366,7 +378,7 @@ uint32_t BitUnstuffer::GetCrc17() const noexcept
 }
 
 // Get the CRC21, right justified
-uint32_t BitUnstuffer::GetCrc21() const noexcept
+uint32_t CRITICAL_MEMBER(BitUnstuffer, GetCrc21)() const noexcept
 {
 	uint32_t r21 = crc21;
 	unsigned int numBits = numBitsLeftOver;
@@ -386,7 +398,7 @@ uint32_t BitUnstuffer::GetCrc21() const noexcept
 }
 
 // Initialise the CRCs with 0 to 32 bits of data
-inline void BitUnstuffer::InitCrc(uint32_t data, unsigned int numBits) noexcept
+inline void CRITICAL_MEMBER(BitUnstuffer, InitCrc)(uint32_t data, unsigned int numBits) noexcept
 {
 	crc17 = crc21 = 1u << 31;							// both CRCs start with 1 in the MSB
 	numBitsLeftOver = 0;
@@ -399,7 +411,7 @@ inline void BitUnstuffer::InitCrc(uint32_t data, unsigned int numBits) noexcept
 
 // Add 'count' number of bits from 'data' to the unstuffer
 // The bits are shifted left into stuffed_bits, and count_stuff is set to the number of bits added
-void BitUnstuffer::AddBits(uint32_t data, uint32_t count) noexcept
+void CRITICAL_MEMBER(BitUnstuffer, AddBits)(uint32_t data, uint32_t count) noexcept
 {
     const uint32_t mask = (1u << count) - 1;
     stuffed_bits = (stuffed_bits << count) | (data & mask);
@@ -407,14 +419,14 @@ void BitUnstuffer::AddBits(uint32_t data, uint32_t count) noexcept
 }
 
 // Reset state and set the next desired 'count' unstuffed bits to extract
-void BitUnstuffer::SetCount(uint32_t count) noexcept
+void CRITICAL_MEMBER(BitUnstuffer, SetCount)(uint32_t count) noexcept
 {
     unstuffed_bits = 0;
     unstuffedBitsWanted = count;
 }
 
 // Update the stuffed bits history so that it looks like we had just one recessive bit before any remaining unprocessed bits
-void BitUnstuffer::ClearState() noexcept
+void CRITICAL_MEMBER(BitUnstuffer, ClearState)() noexcept
 {
 	const uint32_t prevBit = 1u << stuffedBitsAvailable;
 	stuffed_bits = (stuffed_bits & (prevBit - 1u)) | prevBit;
@@ -422,7 +434,7 @@ void BitUnstuffer::ClearState() noexcept
 
 // Pull bits from unstuffer (as specified in unstuf_set_count())
 // Return 0 if successful, 1 if need more data, -1 if six recessive bits detected, or -2 if 6 dominant bits detected
-int BitUnstuffer::PullBits() noexcept
+int CRITICAL_MEMBER(BitUnstuffer, PullBits)() noexcept
 {
     const uint32_t sb = stuffed_bits;
 	uint32_t cs = stuffedBitsAvailable;
@@ -921,25 +933,25 @@ void CanFD2040::pio_sync_slow_start_signal() noexcept
 }
 
 // Test if PIO "rx" state machine has overflowed its fifos
-int CanFD2040::pio_rx_check_stall() noexcept
+int CRITICAL_MEMBER(CanFD2040, pio_rx_check_stall)() noexcept
 {
     return pio_hw->fdebug & (1 << (PIO_FDEBUG_RXSTALL_LSB + 1));
 }
 
 // Report number of bytes still pending in PIO "rx" fifo queue
-int CanFD2040::pio_rx_fifo_level() noexcept
+int CRITICAL_MEMBER(CanFD2040, pio_rx_fifo_level)() noexcept
 {
     return (pio_hw->flevel & PIO_FLEVEL_RX1_BITS) >> PIO_FLEVEL_RX1_LSB;
 }
 
 // Set PIO "match" state machine to raise a "matched" signal on a bit sequence
-void CanFD2040::pio_match_check(uint32_t match_key) noexcept
+void CRITICAL_MEMBER(CanFD2040, pio_match_check)(uint32_t match_key) noexcept
 {
     pio_hw->txf[2] = match_key;
 }
 
 // Calculate pos+bits identifier for PIO "match" state machine
-/*static*/ uint32_t CanFD2040::pio_match_calc_key(uint32_t raw_bits, uint32_t rx_bit_pos) noexcept
+/*static*/ uint32_t CRITICAL_MEMBER(CanFD2040, pio_match_calc_key)(uint32_t raw_bits, uint32_t rx_bit_pos) noexcept
 {
     return (raw_bits & 0x1fffff) | ((-rx_bit_pos) << 21);
 }
@@ -1005,7 +1017,7 @@ void CanFD2040::pio_tx_send(uint32_t *data, uint32_t count) noexcept
 }
 
 // Set PIO "tx" state machine to inject an ack after a CRC match
-void CanFD2040::pio_tx_inject_ack(uint32_t match_key) noexcept
+void CRITICAL_MEMBER(CanFD2040, pio_tx_inject_ack)(uint32_t match_key) noexcept
 {
     pio_tx_reset();
     pio_hw->instr_mem[can2040_offset_tx_got_recessive] = 0xc023; // irq wait 3
@@ -1026,27 +1038,27 @@ int CanFD2040::pio_tx_did_conflict() noexcept
 }
 
 // Enable host irq on a "may transmit" signal (sm irq 0)
-void CanFD2040::pio_irq_set_maytx() noexcept
+void CRITICAL_MEMBER(CanFD2040, pio_irq_set_maytx)() noexcept
 {
     pio_hw->inte0 = PIO_IRQ0_INTE_SM0_BITS | PIO_IRQ0_INTE_SM1_RXNEMPTY_BITS;
 }
 
 // Enable host irq on a "may transmit" or "matched" signal (sm irq 0 or 2)
-void CanFD2040::pio_irq_set_maytx_matched() noexcept
+void CRITICAL_MEMBER(CanFD2040, pio_irq_set_maytx_matched)() noexcept
 {
     pio_hw->inte0 = (PIO_IRQ0_INTE_SM0_BITS | PIO_IRQ0_INTE_SM2_BITS
                      | PIO_IRQ0_INTE_SM1_RXNEMPTY_BITS);
 }
 
 // Enable host irq on a "may transmit" or "ack done" signal (sm irq 0 or 3)
-void CanFD2040::pio_irq_set_maytx_ackdone() noexcept
+void CRITICAL_MEMBER(CanFD2040, pio_irq_set_maytx_ackdone)() noexcept
 {
     pio_hw->inte0 = (PIO_IRQ0_INTE_SM0_BITS | PIO_IRQ0_INTE_SM3_BITS
                      | PIO_IRQ0_INTE_SM1_RXNEMPTY_BITS);
 }
 
 // Atomically enable "may transmit" signal (sm irq 0)
-void CanFD2040::pio_irq_atomic_set_maytx() noexcept
+void CRITICAL_MEMBER(CanFD2040, pio_irq_atomic_set_maytx)() noexcept
 {
     hw_set_bits(&pio_hw->inte0, PIO_IRQ0_INTE_SM0_BITS);
 }
@@ -1143,7 +1155,7 @@ void CanFD2040::report_callback_tx_msg() noexcept
 }
 
 // EOF phase complete - report message (rx or tx) to calling code
-ALIGNED_FUNCTION void CanFD2040::report_handle_eof() noexcept
+ALIGNED_FUNCTION void CRITICAL_MEMBER(CanFD2040, report_handle_eof)() noexcept
 {
     if (report_state == ReportState::RS_IDLE)
     {
@@ -1168,19 +1180,19 @@ ALIGNED_FUNCTION void CanFD2040::report_handle_eof() noexcept
 }
 
 // Check if in an rx ack is pending
-int CanFD2040::report_is_acking_rx() noexcept
+int CRITICAL_MEMBER(CanFD2040, report_is_acking_rx)() noexcept
 {
     return report_state == (ReportState)(ReportState::RS_IN_MSG | ReportState::RS_AWAIT_EOF);
 }
 
 // Parser found a new message start
-void CanFD2040::report_note_message_start() noexcept
+void CRITICAL_MEMBER(CanFD2040, report_note_message_start)() noexcept
 {
     pio_irq_set_maytx();
 }
 
 // Setup for ack injection (if receiving) or ack confirmation (if transmit)
-void CanFD2040::report_note_crc_start() noexcept
+void CRITICAL_MEMBER(CanFD2040, report_note_crc_start)() noexcept
 {
 	// Get 21 (more is OK) bits of expected data (lower 16 bits of CRC plus 4 fixed stuff bits plus CRC delimiter)
 #if 1
@@ -1254,7 +1266,7 @@ void CanFD2040::report_note_crc_start() noexcept
 }
 
 // Parser found successful ack
-void CanFD2040::report_note_ack_success() noexcept
+void CRITICAL_MEMBER(CanFD2040, report_note_ack_success)() noexcept
 {
     if (!(report_state & ReportState::RS_IN_MSG))
     {
@@ -1272,7 +1284,7 @@ void CanFD2040::report_note_ack_success() noexcept
 }
 
 // Parser found successful EOF
-void CanFD2040::report_note_eof_success() noexcept
+void CRITICAL_MEMBER(CanFD2040, report_note_eof_success)() noexcept
 {
     report_handle_eof();
 }
@@ -1289,7 +1301,7 @@ void CanFD2040::report_note_parse_error() noexcept
 }
 
 // Received PIO rx "ackdone" irq
-void CanFD2040::report_line_ackdone() noexcept
+void CRITICAL_MEMBER(CanFD2040, report_line_ackdone)() noexcept
 {
     if (!(report_state & ReportState::RS_IN_MSG))
     {
@@ -1308,7 +1320,7 @@ void CanFD2040::report_line_ackdone() noexcept
 }
 
 // Received PIO "matched" irq
-void CanFD2040::report_line_matched() noexcept
+void CRITICAL_MEMBER(CanFD2040, report_line_matched)() noexcept
 {
     // Implement fast rx callback and/or fast back-to-back tx scheduling
     report_handle_eof();
@@ -1317,7 +1329,7 @@ void CanFD2040::report_line_matched() noexcept
 }
 
 // Received 10+ passive bits on the line (between 10 and 17 bits)
-void CanFD2040::report_line_maytx() noexcept
+void CRITICAL_MEMBER(CanFD2040, report_line_maytx)() noexcept
 {
     // Line is idle - may be unexpected EOF, missed ack injection,
     // missed "matched" signal, or can2040_transmit() kick.
@@ -1327,7 +1339,7 @@ void CanFD2040::report_line_maytx() noexcept
 }
 
 // Transition to the next parsing state
-void CanFD2040::data_state_go_next(ParseState state, uint32_t bits) noexcept
+void CRITICAL_MEMBER(CanFD2040, data_state_go_next)(ParseState state, uint32_t bits) noexcept
 {
     parse_state = state;
     unstuf.SetCount(bits);
@@ -1339,7 +1351,11 @@ void CanFD2040::data_state_go_discard() noexcept
     report_note_parse_error();
     unstuf.UseDynamicStuffing();
 
-    if (pio_rx_check_stall())
+	// I'm not sure that this is correct. It should really be a test to see if the PIO reader has
+	// ever stalled, not if it is stalled now. Without that the two bit counts can get out of sync.
+	// For now the simple thing to do seems to always reset things, this seems to work well for me.
+	// TODO: Investigate if a better way to do this is needed
+    //if (pio_rx_check_stall())
     {
         // CPU couldn't keep up for some read data - must reset pio state
         raw_bit_count = 0;
@@ -1358,7 +1374,7 @@ void CanFD2040::data_state_line_error() noexcept
 }
 
 // Received six passive bits on the line
-ALIGNED_FUNCTION void CanFD2040::data_state_line_passive() noexcept
+ALIGNED_FUNCTION void CRITICAL_MEMBER(CanFD2040, data_state_line_passive)() noexcept
 {
     if (parse_state != MS_DISCARD)
     {
@@ -1388,7 +1404,7 @@ ALIGNED_FUNCTION void CanFD2040::data_state_line_passive() noexcept
 }
 
 // Transition to MS_DATA0 state (if applicable) - await data bits
-void CanFD2040::data_state_go_data() noexcept
+void CRITICAL_MEMBER(CanFD2040, data_state_go_data)() noexcept
 {
 	if (parse_dlc == 0)
     {
@@ -1405,14 +1421,14 @@ void CanFD2040::data_state_go_data() noexcept
 }
 
 // Transition to MS_STUFFCOUNT state
-void CanFD2040::data_state_go_stuff_count() noexcept
+void CRITICAL_MEMBER(CanFD2040, data_state_go_stuff_count)() noexcept
 {
 	unstuf.UseFixedStuffing();								// tell the unstuffer that the next bit and then every 4 bits are forced stuff bits
 	data_state_go_next(MS_STUFFCOUNT, (parse_dlc > 10) ? 10 : 6);	// receive the 4 stuff count bits + the first 2 or 6 CRC bits (and 2 fixed stuff bits)
 }
 
 // Handle reception of first bit of header (after start-of-frame (SOF))
-void CanFD2040::data_state_update_start(uint32_t data) noexcept
+void CRITICAL_MEMBER(CanFD2040, data_state_update_start)(uint32_t data) noexcept
 {
 	rxTimeStamp = timer_hw->timerawl;						// save time stamp for later
 	data &= 0x01;
@@ -1451,7 +1467,7 @@ void CanFD2040::SetupToReceive(unsigned int whichFifo, bool extendedId) noexcept
 }
 
 // Handle reception of next 20 header bits which for CAN-FD frame with short ID takes us up to and including the DLC bits
-ALIGNED_FUNCTION void CanFD2040::data_state_update_header(uint32_t data) noexcept
+ALIGNED_FUNCTION void CRITICAL_MEMBER(CanFD2040, data_state_update_header)(uint32_t data) noexcept
 {
     data |= parse_id << 20;									// or in the most significant ID bit
     if ((data & 0x0300) == 0x0300)							// if SRR and ID are both set
@@ -1489,7 +1505,7 @@ ALIGNED_FUNCTION void CanFD2040::data_state_update_header(uint32_t data) noexcep
 }
 
 // Handle reception of additional 19 bits of "extended header" which takes us to the end of the DLC field
-ALIGNED_FUNCTION void CanFD2040::data_state_update_ext_header(uint32_t data) noexcept
+ALIGNED_FUNCTION void CRITICAL_MEMBER(CanFD2040, data_state_update_ext_header)(uint32_t data) noexcept
 {
 	if ((data & 0x1e0) == 0x80)								// if FDF bit is set, and r1, BRS and r0 are not set
 	{
@@ -1519,7 +1535,7 @@ ALIGNED_FUNCTION void CanFD2040::data_state_update_ext_header(uint32_t data) noe
 }
 
 // Handle reception of data content
-ALIGNED_FUNCTION void CanFD2040::data_state_update_data(uint32_t data) noexcept
+ALIGNED_FUNCTION void CRITICAL_MEMBER(CanFD2040, data_state_update_data)(uint32_t data) noexcept
 {
 	if (parse_bytesLeft < 4)
 	{
@@ -1543,7 +1559,7 @@ ALIGNED_FUNCTION void CanFD2040::data_state_update_data(uint32_t data) noexcept
 }
 
 // Handle reception of 4 bits of message stuff count and 2 or 6 bytes of CRC
-ALIGNED_FUNCTION void CanFD2040::data_state_update_stuffCount(uint32_t data) noexcept
+ALIGNED_FUNCTION void CRITICAL_MEMBER(CanFD2040, data_state_update_stuffCount)(uint32_t data) noexcept
 {
 	uint32_t stuffCount;
 	uint32_t crcBits;
@@ -1592,7 +1608,7 @@ ALIGNED_FUNCTION void CanFD2040::data_state_update_stuffCount(uint32_t data) noe
 }
 
 // Handle reception of 16 bits of message CRC (15 crc bits + crc delimiter)
-ALIGNED_FUNCTION void CanFD2040::data_state_update_crc(uint32_t data) noexcept
+ALIGNED_FUNCTION void CRITICAL_MEMBER(CanFD2040, data_state_update_crc)(uint32_t data) noexcept
 {
 	if (likely((((parse_crc & 0x7fff) << 1) | 1u) == (data & 0xffff)))
     {
@@ -1612,7 +1628,7 @@ ALIGNED_FUNCTION void CanFD2040::data_state_update_crc(uint32_t data) noexcept
 }
 
 // Handle reception of 2 bits of ack phase (ack, ack delimiter)
-ALIGNED_FUNCTION void CanFD2040::data_state_update_ack(uint32_t data) noexcept
+ALIGNED_FUNCTION void CRITICAL_MEMBER(CanFD2040, data_state_update_ack)(uint32_t data) noexcept
 {
 	if (data != 0x01)
     {
@@ -1627,7 +1643,7 @@ ALIGNED_FUNCTION void CanFD2040::data_state_update_ack(uint32_t data) noexcept
 }
 
 // Handle reception of first four end-of-frame (EOF) bits
-ALIGNED_FUNCTION void CanFD2040::data_state_update_eof0(uint32_t data) noexcept
+ALIGNED_FUNCTION void CRITICAL_MEMBER(CanFD2040, data_state_update_eof0)(uint32_t data) noexcept
 {
     if (data != 0x0f || pio_rx_check_stall())
     {
@@ -1643,7 +1659,7 @@ ALIGNED_FUNCTION void CanFD2040::data_state_update_eof0(uint32_t data) noexcept
 }
 
 // Handle reception of end-of-frame (EOF) bits 5-7 and first IFS bit
-ALIGNED_FUNCTION void CanFD2040::data_state_update_eof1(uint32_t data) noexcept
+ALIGNED_FUNCTION void CRITICAL_MEMBER(CanFD2040, data_state_update_eof1)(uint32_t data) noexcept
 {
     if (data >= 0x0e || (data >= 0x0c && report_is_acking_rx()))
     {
@@ -1669,7 +1685,7 @@ void CanFD2040::data_state_update_discard(uint32_t data) noexcept
 }
 
 // Update parsing state after reading the bits of the current field
-ALIGNED_FUNCTION void CanFD2040::data_state_update(uint32_t data) noexcept
+ALIGNED_FUNCTION void CRITICAL_MEMBER(CanFD2040, data_state_update)(uint32_t data) noexcept
 {
 	switch (parse_state)
 	{
@@ -1691,7 +1707,7 @@ ALIGNED_FUNCTION void CanFD2040::data_state_update(uint32_t data) noexcept
  ****************************************************************/
 
 // Process an incoming byte of data from PIO "rx" state machine
-void CanFD2040::process_rx(uint32_t rx_byte) noexcept
+void CRITICAL_MEMBER(CanFD2040, process_rx)(uint32_t rx_byte) noexcept
 {
 	unstuf.AddBits(rx_byte, 8);
     raw_bit_count += 8;
@@ -1722,7 +1738,7 @@ void CanFD2040::process_rx(uint32_t rx_byte) noexcept
 }
 
 // Main API irq notification function
-void CanFD2040::pio_irq_handler() noexcept
+void CRITICAL_MEMBER(CanFD2040, pio_irq_handler)() noexcept
 {
     uint32_t ints = pio_hw->ints0;
     while (likely(ints & PIO_IRQ0_INTE_SM1_RXNEMPTY_BITS))
@@ -1803,7 +1819,7 @@ extern "C" [[noreturn]]void Core1Entry() noexcept
 	canFdDevice.Entry(&virtualRegs);
 }
 
-extern "C" ALIGNED_FUNCTION void PIO_isr() noexcept
+extern "C" ALIGNED_FUNCTION void CRITICAL_CODE(PIO_isr)() noexcept
 {
 	canFdDevice.pio_irq_handler();
 }
