@@ -10,6 +10,7 @@
 #if RP2040
 
 #include <hardware/pio.h>
+#include "PIOassignments.h"
 
 // PIO program to wait for IRQ 4, then start receiving bytes, packing them into 32-bit words, and pushing them through the FIFO
 
