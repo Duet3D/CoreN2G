@@ -1082,7 +1082,7 @@ void CanFD2040::pio_sm_setup() noexcept
 
 void CanFD2040::pio_setup() noexcept
 {
-    // Configure pio0 clock
+    // Configure PIO clock
     const uint32_t rb = (CanPioNumber) ? RESETS_RESET_PIO1_BITS : RESETS_RESET_PIO0_BITS;
     rp2040_clear_reset(rb);
 
