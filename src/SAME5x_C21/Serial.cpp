@@ -63,7 +63,7 @@ void Serial::EnableSercomClock(uint8_t sercomNumber) noexcept
 	}
 }
 
-// Initialise the serial port. This does not set up the I/O pins.
+// Initialise the serial port. This does not set up the I/O pins. It assumes that we always transmit on pad 0.
 void Serial::InitUart(uint8_t sercomNumber, uint32_t baudRate, uint8_t rxPad
 #if SAME5x
 	, bool use32bitMode
