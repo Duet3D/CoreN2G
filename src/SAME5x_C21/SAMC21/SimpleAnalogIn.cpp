@@ -92,3 +92,5 @@ void AnalogIn::Disable(Adc * device)
 }
 
 #endif
+
+// End
