@@ -73,10 +73,12 @@ namespace AnalogIn
 
 #else
 
+# if SAMC21 || SAME5x
 	// Simple analog input functions, for projects that don't use RTOS e.g. bootloaders
 	void Init(Adc * device);
 	void Disable(Adc * device);
 	uint16_t ReadChannel(Adc * device, uint8_t channel);
+# endif
 
 #endif
 }
