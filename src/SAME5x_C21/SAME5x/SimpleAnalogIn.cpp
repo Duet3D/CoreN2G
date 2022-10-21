@@ -18,8 +18,22 @@
 
 # include <hri_adc_e54.h>
 
+constexpr unsigned int AdcGclkNum = GclkNum60MHz;
+
 void AnalogIn::Init(Adc * device)
 {
+	// Enable ADC clock
+	if (device == ADC0)
+	{
+		hri_mclk_set_APBDMASK_ADC0_bit(MCLK);
+		hri_gclk_write_PCHCTRL_reg(GCLK, ADC0_GCLK_ID, GCLK_PCHCTRL_GEN(AdcGclkNum) | GCLK_PCHCTRL_CHEN);
+	}
+	else
+	{
+		hri_mclk_set_APBDMASK_ADC1_bit(MCLK);
+		hri_gclk_write_PCHCTRL_reg(GCLK, ADC1_GCLK_ID, GCLK_PCHCTRL_GEN(AdcGclkNum) | GCLK_PCHCTRL_CHEN);
+	}
+
 	// Register values we send. These are constant except for INPUTCTRL which changes to select the required ADC channel
 	constexpr uint32_t CtrlB = ADC_CTRLB_RESSEL_16BIT;
 	constexpr uint32_t RefCtrl = ADC_REFCTRL_REFSEL_INTVCC1;
@@ -68,6 +82,7 @@ void AnalogIn::Init(Adc * device)
 
 	device->INTENCLR.reg = 0x07;										// disable all interrupts
 	hri_adc_set_CTRLA_ENABLE_bit(device);
+	hri_adc_wait_for_sync(device, ADC_SYNCBUSY_ENABLE);
 }
 
 uint16_t AnalogIn::ReadChannel(Adc * device, uint8_t channel)

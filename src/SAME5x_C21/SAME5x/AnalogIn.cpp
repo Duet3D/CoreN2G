@@ -226,6 +226,7 @@ void AdcClass::ReInit() noexcept
 	NVIC_EnableIRQ(irqNumber);
 
 	hri_adc_set_CTRLA_ENABLE_bit(device);
+	hri_adc_wait_for_sync(device, ADC_SYNCBUSY_ENABLE);
 
 	// Set the supply controller to on-demand mode so that we can get at both temperature sensors
 	hri_supc_set_VREF_ONDEMAND_bit(SUPC);
