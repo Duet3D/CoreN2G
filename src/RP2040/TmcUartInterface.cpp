@@ -28,44 +28,37 @@ static void rp2040_clear_reset(uint32_t reset_bit)
     }
 }
 
-// PIO programs. See file TmnUartInterface.pio for the PIOASM source code.
+// PIO programs. See file TmcUartInterface.pio for the PIOASM source code.
 
 // ------ //
 // TMC_Tx //
 // ------ //
 
 #define TMC_Tx_wrap_target 0
-#define TMC_Tx_wrap 11
+#define TMC_Tx_wrap 6
 
-static const uint16_t TMC_Tx_program_instructions[] =
-{
+static const uint16_t TMC_Tx_program_instructions[] = {
             //     .wrap_target
-    0xe080, //  0: set    pindirs, 0
-    0x80a0, //  1: pull   block
-    0xa041, //  2: mov    y, x
-    0xe001, //  3: set    pins, 1
-    0xe781, //  4: set    pindirs, 1             [7]
-    0x80a0, //  5: pull   block
-    0xf727, //  6: set    x, 7                   [23]
-    0x6001, //  7: out    pins, 1
-    0x0647, //  8: jmp    x--, 7                 [6]
-    0xe601, //  9: set    pins, 1                [6]
-    0x00e6, // 10: jmp    !osre, 6
-    0x0085, // 11: jmp    y--, 5
+    0xe601, //  0: set    pins, 1                [6]
+    0xe080, //  1: set    pindirs, 0
+    0x80a0, //  2: pull   block
+    0xe781, //  3: set    pindirs, 1             [7]
+    0xf727, //  4: set    x, 7            side 0 [7]
+    0x6001, //  5: out    pins, 1
+    0x0645, //  6: jmp    x--, 5                 [6]
             //     .wrap
 };
 
-static const struct pio_program TMC_Tx_program =
-{
+static const struct pio_program TMC_Tx_program = {
     .instructions = TMC_Tx_program_instructions,
-    .length = 12,
-    .origin = 0,
+    .length = 7,
+    .origin = -1,
 };
 
-static inline pio_sm_config TMC_Tx_program_get_default_config(uint offset)
-{
+static inline pio_sm_config TMC_Tx_program_get_default_config(uint offset) {
     pio_sm_config c = pio_get_default_sm_config();
     sm_config_set_wrap(&c, offset + TMC_Tx_wrap_target, offset + TMC_Tx_wrap);
+    sm_config_set_sideset(&c, 2, true, false);
     return c;
 }
 
@@ -74,34 +67,29 @@ static inline pio_sm_config TMC_Tx_program_get_default_config(uint offset)
 // ------ //
 
 #define TMC_Rx_wrap_target 0
-#define TMC_Rx_wrap 10
+#define TMC_Rx_wrap 8
 
-static const uint16_t TMC_Rx_program_instructions[] =
-{
+static const uint16_t TMC_Rx_program_instructions[] = {
             //     .wrap_target
-    0xa0c1, //  0: mov    isr, x
-    0xe044, //  1: set    y, 4
-    0x2020, //  2: wait   0 pin, 0
-    0xea27, //  3: set    x, 7                   [10]
-    0x4001, //  4: in     pins, 1
-    0x0644, //  5: jmp    x--, 4                 [6]
-    0x00c9, //  6: jmp    pin, 9
-    0xc000, //  7: irq    nowait 0
-    0x0008, //  8: jmp    8
-    0x0082, //  9: jmp    y--, 2
-    0x8020, // 10: push   block
+    0x2020, //  0: wait   0 pin, 0
+    0xea27, //  1: set    x, 7                   [10]
+    0x4001, //  2: in     pins, 1
+    0x0642, //  3: jmp    x--, 2                 [6]
+    0x00c8, //  4: jmp    pin, 8
+    0xc014, //  5: irq    nowait 4 rel
+    0x20a0, //  6: wait   1 pin, 0
+    0x0000, //  7: jmp    0
+    0x8000, //  8: push   noblock
             //     .wrap
 };
 
-static const struct pio_program TMC_Rx_program =
-{
+static const struct pio_program TMC_Rx_program = {
     .instructions = TMC_Rx_program_instructions,
-    .length = 11,
-    .origin = 12,
+    .length = 9,
+    .origin = -1,
 };
 
-static inline pio_sm_config TMC_Rx_program_get_default_config(uint offset)
-{
+static inline pio_sm_config TMC_Rx_program_get_default_config(uint offset) {
     pio_sm_config c = pio_get_default_sm_config();
     sm_config_set_wrap(&c, offset + TMC_Rx_wrap_target, offset + TMC_Rx_wrap);
     return c;

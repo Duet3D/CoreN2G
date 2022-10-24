@@ -3,45 +3,39 @@
 .program TMC_Tx
 .side_set 1 opt
 
-; Transmit program. This reads a word count from the fifo (must be at least 1), then reads that number of 32-bit words from the FIFO and transmits them.
+; Transmit program. This reads 8-bit words from the FIFO and transmits them. After each word it sets the pin to be an input in case the driver needs to transmit.
+; There must be a pullup resistor on the pin, or we could use the internal pullup resistor as long as there is no external pulldown resistor.
+; SHIFTCTRL_PULL_THRESH must be set to 8
 
+    set     pins, 1             ; set Tx/Rx pin high
     .wrap_target
     set     pindirs, 0          ; set Tx/Rx pin to input
-    pull    block               ; wait for word count, must be at least 1
-    mov     y, x                ; copy word count to Y
-    set     pins, 1             ; set Tx/Rx pin high
+    pull    block               ; wait for word count minus 1
     set     pindirs, 1 [7]      ; set Tx/Rx pin to output
-wordloop:
-    pull    block               ; get next word to send
-byteloop:
     set     x, 7 side 0 [7]     ; init the bit counter and send the start bit
 bitloop:
     out     pins, 1             ; send the next bit
     jmp     x--, bitloop [6]    ; loop sending bits
     set     pins, 1 [6]         ; send the stop bit
-    jmp     !osre, byteloop     ; loop to send all 4 bytes
-    jmp     y--, wordloop       ; loop to send all 32-bit words
     .wrap                       ; set Tx/Rx pin to input and wait for next command
 
-; Receive program. This reads received bytes and pushes complete 32-bit words through the FIFO.
+; Receive program. This reads received bytes and pushes complete 8-bit words through the FIFO.
+; SHIFTCTRL_PUSH_THRESH must be set to 8
 
 .program TMC_Rx
     .wrap_target
-    mov     isr, x              ; clear ISR
-    set     y, 4                ; init byte counter
-byteloop:
+start:
     wait    0 pin, 0            ; wait for start bit
     set     x, 7 [10]           ; init bit counter
 bitloop:
     in      pins, 1             ; read the next bit
     jmp     x--, bitloop [6]    ; loop reading bits
     jmp     pin, stopBitOk      ; jump if stop bit seen
-    irq     nowait 0            ; signal error
-hang:
-    jmp     hang
+    irq     4 rel               ; signal error
+    wait	1 pin 0
+    jmp		start
 stopBitOk:
-    jmp     y--, byteloop
-    push    block
+    push    noblock
     .wrap
 
 ; Program to drive WS2812 LEDs, based on the example in the RP2040 datrasheet
