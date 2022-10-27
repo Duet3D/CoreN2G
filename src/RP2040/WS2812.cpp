@@ -9,6 +9,7 @@
 #include "PIOassignments.h"
 
 #include <hardware/pio.h>
+#include <hardware/dma.h>
 
 bool WS2812::pioProgramLoaded = false;
 unsigned int WS2812::pioProgramOffset;
@@ -38,7 +39,7 @@ static const struct pio_program ws2812_program =
 {
     .instructions = ws2812_program_instructions,
     .length = 4,
-    .origin = 23,
+    .origin = -1,
 };
 
 static inline pio_sm_config ws2812_program_get_default_config(uint offset)
@@ -69,7 +70,7 @@ WS2812::WS2812(Pin p_pin, bool p_isRgbw, unsigned int p_dmaChan) noexcept
 		return;
 	}
 
-	//TODO claim a DMA channel
+	dma_channel_claim(dmaChan);
 
 	// Set up the state machine
 	pio_gpio_init(hw, pin);
@@ -92,18 +93,31 @@ WS2812::~WS2812()
 {
 	if (stateMachineNumber >= 0)
 	{
+		dma_channel_unclaim(dmaChan);
 		pio_sm_unclaim(hw, stateMachineNumber);
 	}
 }
 
-void WS2812::SendData(const uint32_t data, unsigned int numLeds) noexcept
+void WS2812::SendData(const uint32_t *data, unsigned int numLeds) noexcept
 {
-	//TODO send the data by DMA
+	dma_channel_config config = dma_channel_get_default_config(dmaChan);
+	channel_config_set_read_increment(&config, true);
+	channel_config_set_write_increment(&config, false);
+	channel_config_set_transfer_data_size(&config, DMA_SIZE_32);
+	dma_channel_set_read_addr(dmaChan, data, false);
+	dma_channel_set_write_addr(dmaChan, &hw->txf[stateMachineNumber], false);
+	dma_channel_set_trans_count(dmaChan, numLeds, true);
 }
 
 void WS2812::SetColour(uint32_t colour, unsigned int numLeds) noexcept
 {
-	//TODO use DMA to send the colour repeatedly to all the LEDs
+	dma_channel_config config = dma_channel_get_default_config(dmaChan);
+	channel_config_set_read_increment(&config, false);
+	channel_config_set_write_increment(&config, false);
+	channel_config_set_transfer_data_size(&config, DMA_SIZE_32);
+	dma_channel_set_read_addr(dmaChan, &colour, false);
+	dma_channel_set_write_addr(dmaChan, &hw->txf[stateMachineNumber], false);
+	dma_channel_set_trans_count(dmaChan, numLeds, true);
 }
 
 // End

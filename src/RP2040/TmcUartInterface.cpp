@@ -17,6 +17,9 @@
 constexpr unsigned int TmcClocksPerBit = 8;
 
 static PIO pio_hw;
+static uint8_t firstDmaChan;					// the first of two DMA channels
+static unsigned int txProgramOffset, rxProgramOffset;
+static uint8_t tmcTxStateMachineNumber, tmcRxStateMachineNumber;
 
 // rp2040 helper function to clear a hardware reset bit
 static void rp2040_clear_reset(uint32_t reset_bit)
@@ -49,17 +52,40 @@ static const uint16_t TMC_Tx_program_instructions[] = {
             //     .wrap
 };
 
-static const struct pio_program TMC_Tx_program = {
+static const struct pio_program TMC_Tx_program =
+{
     .instructions = TMC_Tx_program_instructions,
     .length = 7,
     .origin = -1,
 };
 
-static inline pio_sm_config TMC_Tx_program_get_default_config(uint offset) {
+static inline pio_sm_config TMC_Tx_program_get_default_config(uint offset)
+{
     pio_sm_config c = pio_get_default_sm_config();
     sm_config_set_wrap(&c, offset + TMC_Tx_wrap_target, offset + TMC_Tx_wrap);
     sm_config_set_sideset(&c, 2, true, false);
     return c;
+}
+
+static inline void uart_tx_program_init(PIO pio, uint sm, uint offset, uint pin_tx, uint baud) noexcept
+{
+	// Tell PIO to initially drive output-high on the selected pin, then map PIO onto that pin with the IO muxes.
+	pio_sm_set_pins_with_mask(pio, sm, 1u << pin_tx, 1u << pin_tx);
+	pio_sm_set_pindirs_with_mask(pio, sm, 1u << pin_tx, 1u << pin_tx);
+	pio_gpio_init(pio, pin_tx);
+	pio_sm_config c = TMC_Tx_program_get_default_config(offset);
+	// OUT shifts to right, no autopull
+	sm_config_set_out_shift(&c, true, false, 32);
+	// We are mapping both OUT and side-set to the same pin, because sometimes we need to assert user data onto the pin (with OUT) and sometimes assert constant values (start/stop bit)
+	sm_config_set_out_pins(&c, pin_tx, 1);
+	sm_config_set_sideset_pins(&c, pin_tx);
+	// We only need TX, so get an 8-deep FIFO!
+	sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
+	// SM transmits 1 bit per 8 execution cycles.
+	const float div = (float)SystemCoreClockFreq / (8 * baud);
+	sm_config_set_clkdiv(&c, div);
+	pio_sm_init(pio, sm, offset, &c);
+	pio_sm_set_enabled(pio, sm, true);
 }
 
 // ------ //
@@ -95,75 +121,53 @@ static inline pio_sm_config TMC_Rx_program_get_default_config(uint offset) {
     return c;
 }
 
-static inline void uart_tx_program_init(PIO pio, uint sm, uint offset, uint pin_tx, uint baud) noexcept
+static inline void uart_rx_program_init(PIO pio, uint sm, uint offset, uint pin, uint baud)
 {
-	// Tell PIO to initially drive output-high on the selected pin, then map PIO onto that pin with the IO muxes.
-	pio_sm_set_pins_with_mask(pio, sm, 1u << pin_tx, 1u << pin_tx);
-	pio_sm_set_pindirs_with_mask(pio, sm, 1u << pin_tx, 1u << pin_tx);
-	pio_gpio_init(pio, pin_tx);
-	pio_sm_config c = TMC_Tx_program_get_default_config(offset);
-	// OUT shifts to right, no autopull
-	sm_config_set_out_shift(&c, true, false, 32);
-	// We are mapping both OUT and side-set to the same pin, because sometimes
-	// we need to assert user data onto the pin (with OUT) and sometimes
-	// assert constant values (start/stop bit)
-	sm_config_set_out_pins(&c, pin_tx, 1);
-	sm_config_set_sideset_pins(&c, pin_tx);
-	// We only need TX, so get an 8-deep FIFO!
-	sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
+	pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, false);
+	pio_gpio_init(pio, pin);
+	gpio_pull_up(pin);
+
+	pio_sm_config c = TMC_Rx_program_get_default_config(offset);
+	sm_config_set_in_pins(&c, pin); // for WAIT, IN
+	sm_config_set_jmp_pin(&c, pin); // for JMP
+	// Shift to right, autopush disabled
+	sm_config_set_in_shift(&c, true, false, 32);
+	// Deeper FIFO as we're not doing any TX
+	sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);
 	// SM transmits 1 bit per 8 execution cycles.
 	float div = (float)SystemCoreClockFreq / (8 * baud);
 	sm_config_set_clkdiv(&c, div);
+
 	pio_sm_init(pio, sm, offset, &c);
 	pio_sm_set_enabled(pio, sm, true);
 }
 
 // Public functions
-void TmcUartInterface::Init(Pin uartPin, uint32_t baudRate) noexcept
+// Initialise this interface. This must be called exactly once.
+void TmcUartInterface::Init(Pin uartPin, uint32_t baudRate, uint8_t p_firstDmaChan) noexcept
 {
+	firstDmaChan = p_firstDmaChan;
+
 	// Configure PIO clock
 	pio_hw = (TmcUartPioNumber) ? pio1_hw : pio0_hw;
 	const uint32_t rb = (TmcUartPioNumber) ? RESETS_RESET_PIO1_BITS : RESETS_RESET_PIO0_BITS;
 	rp2040_clear_reset(rb);
 
-	// Setup and sync pio state machine clocks
-	const uint32_t div = (256 / TmcClocksPerBit) * SystemCoreClockFreq / baudRate;
-	pio_hw->sm[TmcUartTxStateMachineNumber].clkdiv = div << PIO_SM0_CLKDIV_FRAC_LSB;
-	pio_hw->sm[TmcUartRxStateMachineNumber].clkdiv = div << PIO_SM0_CLKDIV_FRAC_LSB;
+    txProgramOffset = pio_add_program(pio_hw, &TMC_Tx_program);
+    rxProgramOffset = pio_add_program(pio_hw, &TMC_Rx_program);
+    tmcTxStateMachineNumber = pio_claim_unused_sm(pio_hw, true);
+    tmcRxStateMachineNumber = pio_claim_unused_sm(pio_hw, true);
 
-    // Reset state machines
-    pio_hw->ctrl = PIO_CTRL_SM_RESTART_BITS | PIO_CTRL_CLKDIV_RESTART_BITS;
-    pio_hw->fdebug = 0xffffffff;
+    uart_tx_program_init(pio_hw, tmcTxStateMachineNumber, txProgramOffset, uartPin, baudRate);
+    uart_rx_program_init(pio_hw, tmcRxStateMachineNumber, rxProgramOffset, uartPin, baudRate);
 
-#if 0	// the following code is incomplete
-   // Load pio program
-    for (unsigned int i = 0; i < ARRAY_SIZE(UartProgramInstructions); i++)
-    {
-    	pio_hw->instr_mem[i] = UartProgramInstructions[i];
-    }
-
-    // Set initial state machine state
-    pio_sync_setup();
-    pio_rx_setup();
-    pio_match_setup();
-    pio_tx_setup();
-
-    // Start state machines
-    pio_hw->ctrl = 0x07 << PIO_CTRL_SM_ENABLE_LSB;
-
-	// Map Rx/Tx gpios
-	const GpioPinFunction pioFunc = (TmcUartPioNumber) ? GpioPinFunction::Pio1 : GpioPinFunction::Pio0;
-	SetPinFunction(regs->rxPin, pioFunc);
-	SetPinFunction(regs->txPin, pioFunc);
-
+#if 0
 	const IRQn_Type irqn = (TmcUartPioNumber) ? PIO1_IRQ_0_IRQn : PIO0_IRQ_0_IRQn;
 	NVIC_DisableIRQ(irqn);
 	NVIC_ClearPendingIRQ(irqn);
 	NVIC_SetPriority(irqn, 1);
 	irq_set_exclusive_handler ((unsigned int)irqn, PIO_isr);
 	NVIC_EnableIRQ(irqn);
-
-	//TODO
 #endif
 }
 
@@ -177,16 +181,19 @@ void TmcUartInterface::ResetDMA() noexcept
 	//TODO
 }
 
-void TmcUartInterface::SetTxData(const volatile uint32_t* data, unsigned int numWords) noexcept
+// Set up the data to send
+void TmcUartInterface::SetTxData(const volatile uint8_t* data, unsigned int numBytes) noexcept
 {
 	//TODO
 }
 
-void TmcUartInterface::SetRxData(volatile uint32_t* data, unsigned int numWords) noexcept
+// Set up the data to receive
+void TmcUartInterface::SetRxData(volatile uint8_t* data, unsigned int numBytes) noexcept
 {
 	//TODO
 }
 
+// Start the send and receive
 void TmcUartInterface::StartTransfer(TmcUartCallbackFn callbackFn) noexcept
 {
 	//TODO

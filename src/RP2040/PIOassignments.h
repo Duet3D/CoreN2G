@@ -15,11 +15,8 @@ constexpr unsigned int CanPioNumber = 0;
 
 // The TMC single-wire UART interface needs two state machines of a PIO
 constexpr unsigned int TmcUartPioNumber = 1;
-constexpr unsigned int TmcUartTxStateMachineNumber = 0;
-constexpr unsigned int TmcUartRxStateMachineNumber = 1;
 
-// The WS2812 LED driver needs one state machine
+// The WS2812 LED driver needs one state machine per string of LEDs
 constexpr unsigned int WS2812PioNumber = 1;
-constexpr unsigned int WS2812StateMachineNunmber = 2;
 
 #endif /* SRC_RP2040_PIOASSIGNMENTS_H_ */

@@ -19,7 +19,7 @@ public:
 	~WS2812();
 
 	// Send data, one 32-bit word per WS2812 LED. Either 24 or 32 bits are sent from each word depending on the isRgbw flag.
-	void SendData(const uint32_t data, unsigned int numLeds) noexcept;
+	void SendData(const uint32_t *data, unsigned int numLeds) noexcept;
 
 	// Set all LEDs to the same colour (0 = off)
 	void SetColour(uint32_t colour, unsigned int numLeds) noexcept;
