@@ -10,6 +10,7 @@
 #if RP2040
 
 #include <hardware/pio.h>
+#include <hardware/dma.h>
 #include <hardware/structs/resets.h>			// for RESETS_RESET_PIO0_BITS
 #include <hardware/structs/pio.h>				// for pio_hw_t
 #include "PIOassignments.h"
@@ -161,7 +162,7 @@ void TmcUartInterface::Init(Pin uartPin, uint32_t baudRate, uint8_t p_firstDmaCh
     uart_tx_program_init(pio_hw, tmcTxStateMachineNumber, txProgramOffset, uartPin, baudRate);
     uart_rx_program_init(pio_hw, tmcRxStateMachineNumber, rxProgramOffset, uartPin, baudRate);
 
-#if 0
+#if 0	// we only need to monitor the interrupt if we want to detect receive framing errors
 	const IRQn_Type irqn = (TmcUartPioNumber) ? PIO1_IRQ_0_IRQn : PIO0_IRQ_0_IRQn;
 	NVIC_DisableIRQ(irqn);
 	NVIC_ClearPendingIRQ(irqn);
@@ -171,42 +172,70 @@ void TmcUartInterface::Init(Pin uartPin, uint32_t baudRate, uint8_t p_firstDmaCh
 #endif
 }
 
+// This is called before every transaction, so don't completely initialise everything
 void TmcUartInterface::ResetUart() noexcept
 {
-	//TODO
+	pio_set_sm_mask_enabled(pio_hw, (1ul << tmcTxStateMachineNumber) | (1ul << tmcRxStateMachineNumber), false);	// disable Tx and Rx state machines
+	pio_sm_clear_fifos(pio_hw, tmcTxStateMachineNumber);															// clear Tx fifo
+	pio_sm_clear_fifos(pio_hw, tmcRxStateMachineNumber);															// clear Rx fifo
+	pio_restart_sm_mask(pio_hw, (1ul << tmcTxStateMachineNumber) | (1ul << tmcRxStateMachineNumber));				// reset their states
+	pio_sm_exec(pio_hw, tmcTxStateMachineNumber, txProgramOffset);													// force Tx state machine to start
+	pio_sm_set_enabled(pio_hw, tmcTxStateMachineNumber, true);														// enable Tx state machine
+	pio_sm_exec(pio_hw, tmcRxStateMachineNumber, rxProgramOffset);													// force Rx state machine to start
+	pio_sm_set_enabled(pio_hw, tmcRxStateMachineNumber, true);														// enable Rx state machine
 }
 
+// This is called to stop any pending DMA ready for reprogramming the DMAC
 void TmcUartInterface::ResetDMA() noexcept
 {
-	//TODO
+	dma_channel_abort(firstDmaChan);
+	dma_channel_abort(firstDmaChan + 1);
 }
 
 // Set up the data to send
 void TmcUartInterface::SetTxData(const volatile uint8_t* data, unsigned int numBytes) noexcept
 {
-	//TODO
+	dma_channel_config config = dma_channel_get_default_config(firstDmaChan);
+	channel_config_set_read_increment(&config, true);
+	channel_config_set_write_increment(&config, false);
+	channel_config_set_transfer_data_size(&config, DMA_SIZE_8);
+	dma_channel_set_read_addr(firstDmaChan, data, false);
+	dma_channel_set_write_addr(firstDmaChan, &pio_hw->txf[tmcTxStateMachineNumber], false);
+	dma_channel_set_trans_count(firstDmaChan, numBytes, false);
 }
 
 // Set up the data to receive
 void TmcUartInterface::SetRxData(volatile uint8_t* data, unsigned int numBytes) noexcept
 {
-	//TODO
+	dma_channel_config config = dma_channel_get_default_config(firstDmaChan + 1);
+	channel_config_set_read_increment(&config, false);
+	channel_config_set_write_increment(&config, true);
+	channel_config_set_transfer_data_size(&config, DMA_SIZE_8);
+	dma_channel_set_read_addr(firstDmaChan + 1, &pio_hw->rxf[tmcRxStateMachineNumber], false);
+	dma_channel_set_write_addr(firstDmaChan + 1, data, false);
+	dma_channel_set_trans_count(firstDmaChan + 1, numBytes, false);
 }
 
-// Start the send and receive
+// Start the send and receive and enable the DMA receive complete interrupt
 void TmcUartInterface::StartTransfer(TmcUartCallbackFn callbackFn) noexcept
 {
-	//TODO
+	DmacManager::SetInterruptCallback(firstDmaChan + 1, callbackFn, CallbackParameter(0));
+	DmacManager::EnableCompletedInterrupt(firstDmaChan + 1);
+	dma_channel_start(firstDmaChan + 1);
+	dma_channel_start(firstDmaChan);
 }
 
+// Disable the DMA complete interrupt
 void TmcUartInterface::DisableCompletedCallback() noexcept
 {
-	//TODO
+	DmacManager::DisableCompletedInterrupt(firstDmaChan + 1);
 }
 
 void TmcUartInterface::AbortTransfer() noexcept
 {
-	//TODO
+	dma_channel_abort(firstDmaChan);
+	dma_channel_abort(firstDmaChan + 1);
+	pio_set_sm_mask_enabled(pio_hw, (1ul << tmcTxStateMachineNumber) | (1ul << tmcRxStateMachineNumber), false);	// disable Tx and Rx state machines
 }
 
 #endif
