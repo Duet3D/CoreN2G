@@ -522,6 +522,22 @@ void __attribute__ ((__optimize__ ("-fno-tree-loop-distribute-patterns"))) memmo
 	}
 }
 
+// Optimised version of memcmp for use when the source and destination are known to be 32-bit aligned and a whole number of 32-bit words is to be copied
+bool memequ32(const uint32_t *_ecv_array dst, const uint32_t *_ecv_array src, size_t numWords) noexcept
+{
+	while (numWords != 0)
+	{
+		if (*src != *dst)
+		{
+			return false;
+		}
+		++src;
+		++dst;
+		--numWords;
+	}
+	return true;
+}
+
 #if SAME5x || SAME70
 
 // Random number generator
