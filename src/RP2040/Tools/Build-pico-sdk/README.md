@@ -12,4 +12,4 @@ To build the library under Windows:
 3. Ensure that CMake.exe is on your PATH
 4. Open a command prompt and run: make-libpico.bat
 
-The make-libpico.sh file is the original one from Arduino. If you wish to build libpico under Linux, you will need to modify it to align with make-libpico.bat.
+The make-libpico.sh file is the original one from Arduino. If you wish to build libpico under Linux, you will need to modify it to align with make-libpico.bat. Please submit a PR for the required changes to it if you get it working under Linux.
