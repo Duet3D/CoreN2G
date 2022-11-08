@@ -8,7 +8,7 @@ The library is built using CMake from the command line. File CMakeLists.txt in t
 
 To build the library under Windows:
 1. Install MSYS2 on your Windows PC, choosing the default install folder which is C:\msys64
-2. In MSYS2 use pacman to install the 'make' program
+2. In MSYS2 use pacman to install the 'make' program using command: pacman -S make
 3. Ensure that CMake.exe is on your PATH
 4. Open a command prompt and run: make-libpico.bat
 
