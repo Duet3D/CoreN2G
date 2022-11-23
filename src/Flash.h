@@ -33,6 +33,7 @@ namespace Flash
 	int IsGpNvmSet(uint32_t gpnvm) noexcept;
 	uint32_t ReadGpNvmBits() noexcept;
 	bool ClearGpNvm(uint32_t gpnvm) noexcept;
+	uint32_t GetLastFlashError() noexcept;
 #endif
 
 	uint32_t GetPageSize() noexcept;
