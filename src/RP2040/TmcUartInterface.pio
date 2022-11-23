@@ -1,41 +1,36 @@
 ; These are the RP2040 PIO programs used to handle TMC driver sigle-wire UART transmission and reception
 
-.program TMC_Tx
+.program TMC_Interface
 .side_set 1 opt
 
-; Transmit program. This reads 8-bit words from the FIFO and transmits them. After each word it sets the pin to be an input in case the driver needs to transmit.
-; There must be a pullup resistor on the pin, or we could use the internal pullup resistor as long as there is no external pulldown resistor.
-; SHIFTCTRL_PULL_THRESH must be set to 8
+; Transmit program. This reads a count from the transmit fifo, then reads that number of bytes plus one from the transmit fifo and transmits them.
+; Then it sets the pin to be an input and receives bytes on the same wire and sends them through the recive fifo.
+; In case there is a pulldown resistor on the pin, it waits for the pin to be high before receiving.
+; SHIFTCTRL_PULL_THRESH and SHIFTCTRL_PUSH_THRESH must be set to 8
 
     set     pins, 1             ; set Tx/Rx pin high
-    .wrap_target
-    set     pindirs, 0          ; set Tx/Rx pin to input
-    pull    block               ; wait for word count minus 1
-    set     pindirs, 1 [7]      ; set Tx/Rx pin to output
+    set     pindirs, 1          ; set Tx/Rx pin to output
+    pull    block               ; wait for byte count minus 1
+    mov     y, osr [7]          ; copy byte count to Y
+txbyteloop:
+    pull    block               ; get next byte to send
     set     x, 7 side 0 [7]     ; init the bit counter and send the start bit
-bitloop:
+txbitloop:
     out     pins, 1             ; send the next bit
-    jmp     x--, bitloop [6]    ; loop sending bits
+    jmp     x--, txbitloop [6]  ; loop sending bits
     set     pins, 1 [6]         ; send the stop bit
-    .wrap                       ; set Tx/Rx pin to input and wait for next command
-
-; Receive program. This reads received bytes and pushes complete 8-bit words through the FIFO.
-; SHIFTCTRL_PUSH_THRESH must be set to 8
-
-.program TMC_Rx
+    jmp     y--, txbyteloop     ; repeat for all bytes
+    set     pindirs, 0 [7]      ; set Tx/Rx pin to input
+    nop     [7]                 ; wait for the pin to be pulled low by the pulldown
     .wrap_target
-start:
+    wait    1 pin, 0            ; wait for TMC to pull the pin high
     wait    0 pin, 0            ; wait for start bit
-    set     x, 7 [10]           ; init bit counter
-bitloop:
+    set     x, 7 [7]            ; init bit counter
+    nop     [2]
+rxbitloop:
     in      pins, 1             ; read the next bit
-    jmp     x--, bitloop [6]    ; loop reading bits
-    jmp     pin, stopBitOk      ; jump if stop bit seen
-    irq     4 rel               ; signal error
-    wait	1 pin 0
-    jmp		start
-stopBitOk:
-    push    noblock
+    jmp     x--, rxbitloop [6]  ; loop reading bits
+    push    noblock             ; send the byte
     .wrap
 
 ; Program to drive WS2812 LEDs, based on the example in the RP2040 datrasheet
@@ -58,6 +53,6 @@ do_zero:
     nop side 0 [T2 - 1]                 ; Or drive low, for a short pulse
     .wrap
 
-; Total length of all three programs 12 + 11 + 4 = 27 instructions
+; Total length of both programs 19 + 4 = 23 instructions
 
 ; End
