@@ -40,8 +40,8 @@ static void rp2040_clear_reset(uint32_t reset_bit)
 // TMC_Interface //
 // ------------- //
 
-#define TMC_Interface_wrap_target 12
-#define TMC_Interface_wrap 18
+#define TMC_Interface_wrap_target 11
+#define TMC_Interface_wrap 17
 
 static const uint16_t TMC_Interface_program_instructions[] = {
     0xe001, //  0: set    pins, 1
@@ -54,23 +54,22 @@ static const uint16_t TMC_Interface_program_instructions[] = {
     0x0646, //  7: jmp    x--, 6                 [6]
     0xe601, //  8: set    pins, 1                [6]
     0x0084, //  9: jmp    y--, 4
-    0xe780, // 10: set    pindirs, 0             [7]
-    0xa742, // 11: nop                           [7]
+    0xe380, // 10: set    pindirs, 0             [3]
             //     .wrap_target
-    0x20a0, // 12: wait   1 pin, 0
-    0x2020, // 13: wait   0 pin, 0
-    0xe727, // 14: set    x, 7                   [7]
-    0xa242, // 15: nop                           [2]
-    0x4001, // 16: in     pins, 1
-    0x0650, // 17: jmp    x--, 16                [6]
-    0x8000, // 18: push   noblock
+    0x20a0, // 11: wait   1 pin, 0
+    0x2020, // 12: wait   0 pin, 0
+    0xe727, // 13: set    x, 7                   [7]
+    0xa242, // 14: nop                           [2]
+    0x4001, // 15: in     pins, 1
+    0x064f, // 16: jmp    x--, 15                [6]
+    0x8000, // 17: push   noblock
             //     .wrap
 };
 
 #if !PICO_NO_HARDWARE
 static const struct pio_program TMC_Interface_program = {
     .instructions = TMC_Interface_program_instructions,
-    .length = 19,
+    .length = 18,
     .origin = -1,
 };
 
@@ -160,7 +159,7 @@ void TmcUartInterface::SetRxData(volatile uint8_t* data, unsigned int numBytes) 
 	channel_config_set_transfer_data_size(&config, DMA_SIZE_8);
 	channel_config_set_dreq(&config, pio_get_dreq(pio_hw, tmcStateMachineNumber, false));
 	dma_channel_set_config(firstDmaChan + 1, &config, false);
-	dma_channel_set_read_addr(firstDmaChan + 1, &pio_hw->rxf[tmcStateMachineNumber], false);
+	dma_channel_set_read_addr(firstDmaChan + 1, (const volatile uint8_t*)&pio_hw->rxf[tmcStateMachineNumber] + 3, false);
 	dma_channel_set_write_addr(firstDmaChan + 1, data, false);
 	dma_channel_set_trans_count(firstDmaChan + 1, numBytes, false);
 }

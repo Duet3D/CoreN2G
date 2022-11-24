@@ -20,8 +20,7 @@ txbitloop:
     jmp     x--, txbitloop [6]  ; loop sending bits
     set     pins, 1 [6]         ; send the stop bit
     jmp     y--, txbyteloop     ; repeat for all bytes
-    set     pindirs, 0 [7]      ; set Tx/Rx pin to input
-    nop     [7]                 ; wait for the pin to be pulled low by the pulldown
+    set     pindirs, 0 [3]      ; set Tx/Rx pin to input
     .wrap_target
     wait    1 pin, 0            ; wait for TMC to pull the pin high
     wait    0 pin, 0            ; wait for start bit
