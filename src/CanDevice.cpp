@@ -794,7 +794,7 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 				{
 					return false;
 				}
-				TaskBase::ClearNotifyCount();
+				TaskBase::ClearCurrentTaskNotifyCount();
 				const unsigned int waitingIndex = (unsigned int)whichBuffer;
 				rxTaskWaiting[waitingIndex] = TaskBase::GetCallerTaskHandle();
 				const bool success = (READBITS(hw, RXF0S, F0FL) != 0) || (TaskBase::Take(timeout), READBITS(hw, RXF0S, F0FL) != 0);
@@ -832,7 +832,7 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 				{
 					return false;
 				}
-				TaskBase::ClearNotifyCount();
+				TaskBase::ClearCurrentTaskNotifyCount();
 				const unsigned int waitingIndex = (unsigned int)whichBuffer;
 				rxTaskWaiting[waitingIndex] = TaskBase::GetCallerTaskHandle();
 				const bool success = (READBITS(hw, RXF1S, F1FL) != 0) || (TaskBase::Take(timeout), READBITS(hw, RXF1S, F1FL) != 0);
@@ -874,7 +874,7 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 				{
 					return false;
 				}
-				TaskBase::ClearNotifyCount();
+				TaskBase::ClearCurrentTaskNotifyCount();
 				const unsigned int waitingIndex = (unsigned int)whichBuffer;
 				rxTaskWaiting[waitingIndex] = TaskBase::GetCallerTaskHandle();
 				rxBuffersWaiting |= ndatMask;
