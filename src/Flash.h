@@ -35,6 +35,7 @@ namespace Flash
 	bool ClearGpNvm(uint32_t gpnvm) noexcept;
 #endif
 
+	uint32_t GetLastFlashError() noexcept;
 	uint32_t GetPageSize() noexcept;
 	uint32_t GetLockRegionSize() noexcept;
 	uint32_t GetEraseRegionSize() noexcept;

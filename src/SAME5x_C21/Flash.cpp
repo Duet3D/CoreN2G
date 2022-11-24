@@ -15,6 +15,13 @@ constexpr uint32_t NVMCTRL_REGIONS_NUM = 16;						// from hpl_nvmctrl.c
 constexpr uint32_t NVMCTRL_REGIONS_NUM = 32;						// from hpl_nvmctrl.c
 #endif
 
+int32_t lastFlashError = 0;
+
+uint32_t Flash::GetLastFlashError() noexcept
+{
+	return (uint32_t)lastFlashError;
+}
+
 namespace Flash
 {
 	static flash_descriptor flash;
@@ -23,7 +30,7 @@ namespace Flash
 bool Flash::Init() noexcept
 {
 	hri_mclk_set_AHBMASK_NVMCTRL_bit(MCLK);
-	return flash_init(&flash, NVMCTRL) == 0;
+	return (lastFlashError = flash_init(&flash, NVMCTRL)) == 0;
 }
 
 bool Flash::Unlock(uint32_t start, uint32_t length) noexcept
@@ -46,7 +53,7 @@ bool Flash::Unlock(uint32_t start, uint32_t length) noexcept
 // Programs that call this may need to disable interrupts themselves
 bool Flash::Erase(uint32_t start, uint32_t length) noexcept
 {
-	return flash_erase(&flash, start, length/NVMCTRL_PAGE_SIZE) == 0;
+	return (lastFlashError = flash_erase(&flash, start, length/NVMCTRL_PAGE_SIZE)) == 0;
 }
 
 bool Flash::Lock(uint32_t start, uint32_t length) noexcept
@@ -70,7 +77,7 @@ bool Flash::Lock(uint32_t start, uint32_t length) noexcept
 // The memory being written must already have been erased
 bool Flash::Write(uint32_t start, uint32_t length, const uint32_t *data) noexcept
 {
-	return flash_append(&flash, start, (const uint8_t*)data, length) == 0;
+	return (lastFlashError = flash_append(&flash, start, (const uint8_t*)data, length)) == 0;
 }
 
 uint32_t Flash::GetPageSize() noexcept

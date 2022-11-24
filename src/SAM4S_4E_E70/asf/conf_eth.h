@@ -56,7 +56,7 @@ extern "C" {
 /// @endcond
 
 
-#if defined(__SAME70Q21__) || defined(__SAME70Q20B__) || defined(__SAME70Q21B__)
+#if defined(__SAME70Q20B__) || defined(__SAME70Q21B__) || defined(__SAMV71Q20B__) || defined(__SAMV71Q21B__)
 
 # include "gmac/gmac.h"
 
@@ -65,7 +65,7 @@ extern "C" {
  * to be sent into one single pbuf. This is for compatibility with DMA-enabled
  * MACs that do not support scatter-gather.
  */
-#define LWIP_NETIF_TX_SINGLE_PBUF                     1
+# define LWIP_NETIF_TX_SINGLE_PBUF                     1
 
 /** Number of buffer for RX */
 # define GMAC_RX_BUFFERS  8

@@ -50,6 +50,13 @@
 #include <efc/efc.h>
 #include <cstring>
 
+uint32_t lastFlashError = 0;
+
+uint32_t Flash::GetLastFlashError() noexcept
+{
+	return lastFlashError;
+}
+
 /**
  * \defgroup sam_services_flash_efc_group Embedded Flash Service
  *
@@ -320,7 +327,7 @@ bool Flash::EraseSector(uint32_t start) noexcept
 	uint16_t us_page;
 	translate_address(&p_efc, start, &us_page, nullptr);
 
-	return efc_perform_command(p_efc, EFC_FCMD_ES, us_page) == 0;
+	return (lastFlashError = efc_perform_command(p_efc, EFC_FCMD_ES, us_page)) == EFC_RC_OK;
 }
 
 /**
@@ -354,7 +361,7 @@ bool Flash::Write(uint32_t start, uint32_t length, const uint32_t *data) noexcep
 		uint32_t ul_page_addr = compute_address(p_efc, us_page);
 		memcpyu32(reinterpret_cast<uint32_t*>(ul_page_addr), data, IFLASH_PAGE_SIZE/4);
 
-		if (efc_perform_command(p_efc, EFC_FCMD_WP, us_page) != 0)
+		if ((lastFlashError = efc_perform_command(p_efc, EFC_FCMD_WP, us_page)) != EFC_RC_OK)
 		{
 			return false;
 		}
@@ -399,7 +406,7 @@ bool Flash::Lock(uint32_t start, uint32_t length) noexcept
 	const uint16_t us_num_pages_in_region = IFLASH_LOCK_REGION_SIZE / IFLASH_PAGE_SIZE;
 	while (us_start_page < us_end_page)
 	{
-		if (efc_perform_command(p_efc, EFC_FCMD_SLB, us_start_page) != 0)
+		if ((lastFlashError = efc_perform_command(p_efc, EFC_FCMD_SLB, us_start_page)) != EFC_RC_OK)
 		{
 			return false;
 		}
@@ -437,7 +444,7 @@ bool Flash::Unlock(uint32_t start, uint32_t length) noexcept
 	const uint16_t us_num_pages_in_region = IFLASH_LOCK_REGION_SIZE / IFLASH_PAGE_SIZE;
 	while (us_start_page < us_end_page)
 	{
-		if (efc_perform_command(p_efc, EFC_FCMD_CLB, us_start_page) != 0)
+		if ((lastFlashError = efc_perform_command(p_efc, EFC_FCMD_CLB, us_start_page)) != EFC_RC_OK)
 		{
 			return false;
 		}
@@ -516,7 +523,7 @@ bool Flash::WriteUserSignature(const uint32_t *p_buffer) noexcept
 	memcpyu32((uint32_t *)IFLASH_ADDR, p_buffer, IFLASH_PAGE_SIZE / sizeof(uint32_t));
 
 	/* Send the write signature command */
-	return efc_perform_command(EFC, EFC_FCMD_WUS, 0) == 0;
+	return (lastFlashError = efc_perform_command(EFC, EFC_FCMD_WUS, 0)) == EFC_RC_OK;
 }
 
 /**
@@ -527,13 +534,13 @@ bool Flash::WriteUserSignature(const uint32_t *p_buffer) noexcept
 bool Flash::EraseUserSignature() noexcept
 {
 	/* Perform the erase user signature command */
-	return efc_perform_command(EFC, EFC_FCMD_EUS, 0) == 0;
+	return (lastFlashError = efc_perform_command(EFC, EFC_FCMD_EUS, 0)) == EFC_RC_OK;
 }
 
 // Read all nine GPNVM bits. Return 0xFFFFFFFF if failed, else the GPNVM bits in bits 0 to 8.
 uint32_t Flash::ReadGpNvmBits() noexcept
 {
-	if (EFC_RC_OK != efc_perform_command(EFC, EFC_FCMD_GGPB, 0))
+	if ((lastFlashError = efc_perform_command(EFC, EFC_FCMD_GGPB, 0)) != EFC_RC_OK)
 	{
 		return 0xFFFFFFFF;
 	}
@@ -555,7 +562,7 @@ int Flash::IsGpNvmSet(uint32_t gpnvm) noexcept
 		return -1;
 	}
 
-	if (efc_perform_command(EFC, EFC_FCMD_GGPB, 0) != EFC_RC_OK)
+	if ((lastFlashError = efc_perform_command(EFC, EFC_FCMD_GGPB, 0)) != EFC_RC_OK)
 	{
 		return -1;
 	}
@@ -583,7 +590,7 @@ bool Flash::ClearGpNvm(uint32_t gpnvm) noexcept
 		return true;
 	}
 
-	return efc_perform_command(EFC, EFC_FCMD_CGPB, gpnvm) == EFC_RC_OK;
+	return (lastFlashError = efc_perform_command(EFC, EFC_FCMD_CGPB, gpnvm)) == EFC_RC_OK;
 }
 
 // End
