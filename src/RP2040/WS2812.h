@@ -19,9 +19,14 @@ public:
 	~WS2812();
 
 	// Send data, one 32-bit word per WS2812 LED. Either 24 or 32 bits are sent from each word depending on the isRgbw flag.
+	// The data format of each 32-bit word is:
+	//  Bits 24-31 Green intensity
+	//  Bits 16-23 Red intensity
+	//  Bits 8-15  Blue intensity
+	//  Bits 0-7   White intensity (ignored for RGB LEDs)
 	void SendData(const uint32_t *data, unsigned int numLeds) noexcept;
 
-	// Set all LEDs to the same colour (0 = off)
+	// Set all LEDs to the same colour (0 = off). Colour encoding is as above.
 	void SetColour(uint32_t colour, unsigned int numLeds) noexcept;
 
 private:

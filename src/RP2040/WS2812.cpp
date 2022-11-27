@@ -104,9 +104,10 @@ void WS2812::SendData(const uint32_t *data, unsigned int numLeds) noexcept
 	channel_config_set_read_increment(&config, true);
 	channel_config_set_write_increment(&config, false);
 	channel_config_set_transfer_data_size(&config, DMA_SIZE_32);
-	dma_channel_set_read_addr(dmaChan, data, false);
-	dma_channel_set_write_addr(dmaChan, &hw->txf[stateMachineNumber], false);
-	dma_channel_set_trans_count(dmaChan, numLeds, true);
+	channel_config_set_dreq(&config, pio_get_dreq(hw, stateMachineNumber, true));
+	while (dma_channel_is_busy(dmaChan)) { }
+	delayMicroseconds(100);
+	dma_channel_configure(dmaChan, &config, &hw->txf[stateMachineNumber], data, numLeds, true);
 }
 
 void WS2812::SetColour(uint32_t colour, unsigned int numLeds) noexcept
@@ -115,9 +116,10 @@ void WS2812::SetColour(uint32_t colour, unsigned int numLeds) noexcept
 	channel_config_set_read_increment(&config, false);
 	channel_config_set_write_increment(&config, false);
 	channel_config_set_transfer_data_size(&config, DMA_SIZE_32);
-	dma_channel_set_read_addr(dmaChan, &colour, false);
-	dma_channel_set_write_addr(dmaChan, &hw->txf[stateMachineNumber], false);
-	dma_channel_set_trans_count(dmaChan, numLeds, true);
+	channel_config_set_dreq(&config, pio_get_dreq(hw, stateMachineNumber, true));
+	while (dma_channel_is_busy(dmaChan)) { }
+	delayMicroseconds(100);
+	dma_channel_configure(dmaChan, &config, &hw->txf[stateMachineNumber], &colour, numLeds, true);
 }
 
 // End

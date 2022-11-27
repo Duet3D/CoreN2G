@@ -143,10 +143,7 @@ void TmcUartInterface::SetTxData(const volatile uint8_t* data, unsigned int numB
 	channel_config_set_write_increment(&config, false);
 	channel_config_set_transfer_data_size(&config, DMA_SIZE_8);
 	channel_config_set_dreq(&config, pio_get_dreq(pio_hw, tmcStateMachineNumber, true));
-	dma_channel_set_config(firstDmaChan, &config, false);
-	dma_channel_set_read_addr(firstDmaChan, data, false);
-	dma_channel_set_write_addr(firstDmaChan, &pio_hw->txf[tmcStateMachineNumber], false);
-	dma_channel_set_trans_count(firstDmaChan, numBytes, false);
+	dma_channel_configure(firstDmaChan, &config, &pio_hw->txf[tmcStateMachineNumber], data, numBytes, false);
 	pio_hw->txf[tmcStateMachineNumber] = numBytes - 1;							// put the byte count in the fifo
 }
 
@@ -158,10 +155,7 @@ void TmcUartInterface::SetRxData(volatile uint8_t* data, unsigned int numBytes) 
 	channel_config_set_write_increment(&config, true);
 	channel_config_set_transfer_data_size(&config, DMA_SIZE_8);
 	channel_config_set_dreq(&config, pio_get_dreq(pio_hw, tmcStateMachineNumber, false));
-	dma_channel_set_config(firstDmaChan + 1, &config, false);
-	dma_channel_set_read_addr(firstDmaChan + 1, (const volatile uint8_t*)&pio_hw->rxf[tmcStateMachineNumber] + 3, false);
-	dma_channel_set_write_addr(firstDmaChan + 1, data, false);
-	dma_channel_set_trans_count(firstDmaChan + 1, numBytes, false);
+	dma_channel_configure(firstDmaChan + 1, &config, data, (const volatile uint8_t*)&pio_hw->rxf[tmcStateMachineNumber] + 3, numBytes, false);
 }
 
 // Start the send and receive and enable the DMA receive complete interrupt
