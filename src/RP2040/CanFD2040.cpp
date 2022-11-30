@@ -1430,7 +1430,7 @@ void CRITICAL_MEMBER(CanFD2040, data_state_go_stuff_count)() noexcept
 // Handle reception of first bit of header (after start-of-frame (SOF))
 void CRITICAL_MEMBER(CanFD2040, data_state_update_start)(uint32_t data) noexcept
 {
-	rxTimeStamp = timer_hw->timerawl;						// save time stamp for later
+	rxTimeStamp = timer_hw->timerawl;						// save time stamp for later - use the raw register to avoid interfering with the other core
 	data &= 0x01;
     parse_id = data;										// store the first data bit (MSbit of ID)
     report_note_message_start();
