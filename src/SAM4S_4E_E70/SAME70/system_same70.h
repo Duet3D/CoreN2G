@@ -58,7 +58,7 @@ extern "C" {
 extern uint32_t SystemCoreClock; /* System Clock Frequency (Core Clock) */
 
 // On the SAME70 the peripheral clock is half the frequency of the core clock
-inline uint32_t SystemPeripheralClock() noexcept { return SystemCoreClock/2; }
+inline uint32_t SystemPeripheralClock(void) noexcept { return SystemCoreClock/2; }
 
 /**
  * @brief Setup the microcontroller system.
