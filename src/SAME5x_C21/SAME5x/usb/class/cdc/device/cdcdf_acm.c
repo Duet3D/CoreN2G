@@ -296,6 +296,11 @@ void cdcdf_acm_deinit(void)
 	usb_d_ep_deinit(_cdcdf_acm_funcd.func_ep_in[CDCDF_ACM_COMM_EP_INDEX]);
 	usb_d_ep_deinit(_cdcdf_acm_funcd.func_ep_in[CDCDF_ACM_DATA_EP_INDEX]);
 	usb_d_ep_deinit(_cdcdf_acm_funcd.func_ep_out);
+
+#if 1	//dc
+	usbdc_unregister_function(&_cdcdf_acm);
+	usbdc_unregister_handler(USBDC_HDL_REQ, &cdcdf_acm_req_h);
+#endif
 }
 
 /**

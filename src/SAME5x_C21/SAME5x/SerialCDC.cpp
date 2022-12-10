@@ -77,22 +77,30 @@ SerialCDC::SerialCDC(Pin p, size_t numTxSlots, size_t numRxSlots) noexcept : vbu
 
 void SerialCDC::Start() noexcept
 {
+	device = this;
+	sending = receiving = hasConnected = false;
+
 	/* usb stack init */
 	usbdc_init(ctrl_buffer);
 
 	/* usbdc_register_funcion inside */
 	cdcdf_acm_init();
-
 	usbdc_start(single_desc);
 	usbdc_attach();
 
-	device = this;
 }
 
 void SerialCDC::end() noexcept
 {
+	cdcdf_acm_register_callback(CDCDF_ACM_CB_READ, nullptr);
+	cdcdf_acm_register_callback(CDCDF_ACM_CB_WRITE, nullptr);
+
+	usbdc_detach();
+	usbdc_stop();
 	cdcdf_acm_deinit();
 	usbdc_deinit();
+	txBuffer.Clear();
+	rxBuffer.Clear();
 }
 
 void SerialCDC::CheckIfJustConnected() noexcept
@@ -163,23 +171,20 @@ size_t SerialCDC::canWrite() noexcept
 size_t SerialCDC::write(uint8_t c) noexcept
 {
 	CheckIfJustConnected();
-	if (hasConnected)
+	while (hasConnected)
 	{
-		for (;;)
+		if (txBuffer.PutItem(c))
 		{
-			if (txBuffer.PutItem(c))
-			{
-				StartSending();
-				break;
-			}
-#ifdef RTOS
-			txWaitingTask = RTOSIface::GetCurrentTask();
-#endif
 			StartSending();
-#ifdef RTOS
-			TaskBase::Take(50);
-#endif
+			break;
 		}
+#ifdef RTOS
+		txWaitingTask = RTOSIface::GetCurrentTask();
+#endif
+		StartSending();
+#ifdef RTOS
+		TaskBase::Take(50);
+#endif
 	}
 	return 1;
 }
@@ -189,24 +194,21 @@ size_t SerialCDC::write(const uint8_t *buffer, size_t buflen) noexcept
 {
 	CheckIfJustConnected();
 	const size_t ret = buflen;
-	if (hasConnected)
+	while (hasConnected)
 	{
-		for (;;)
+		buflen -= txBuffer.PutBlock(buffer, buflen);
+		if (buflen == 0)
 		{
-			buflen -= txBuffer.PutBlock(buffer, buflen);
-			if (buflen == 0)
-			{
-				StartSending();
-				break;
-			}
-#ifdef RTOS
-			txWaitingTask = RTOSIface::GetCurrentTask();
-#endif
 			StartSending();
-#ifdef RTOS
-			TaskBase::Take(50);
-#endif
+			break;
 		}
+#ifdef RTOS
+		txWaitingTask = RTOSIface::GetCurrentTask();
+#endif
+		StartSending();
+#ifdef RTOS
+		TaskBase::Take(50);
+#endif
 	}
 	return ret;
 }
