@@ -397,6 +397,35 @@ extern "C" void USBHS_Handler() noexcept
 	tud_int_handler(0);
 }
 
+#elif SAME5x
+
+//--------------------------------------------------------------------+
+// Forward USB interrupt events to TinyUSB IRQ Handler
+//--------------------------------------------------------------------+
+extern "C" void USB_0_Handler(void)
+{
+	++numUsbInterrupts;
+	tud_int_handler(0);
+}
+
+extern "C" void USB_1_Handler(void)
+{
+	++numUsbInterrupts;
+	tud_int_handler(0);
+}
+
+extern "C" void USB_2_Handler(void)
+{
+	++numUsbInterrupts;
+	tud_int_handler(0);
+}
+
+extern "C" void USB_3_Handler(void)
+{
+	++numUsbInterrupts;
+	tud_int_handler(0);
+}
+
 #endif
 
 #endif
