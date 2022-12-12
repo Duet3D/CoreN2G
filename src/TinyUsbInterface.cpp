@@ -23,6 +23,8 @@
 
 #if SUPPORT_USB && CORE_USES_TINYUSB
 
+#include <CoreIO.h>
+
 #include "tusb.h"
 #include "class/hid/hid_device.h"
 #include "class/audio/audio.h"
@@ -32,8 +34,6 @@
 
 #include "pmc.h"
 #include "sysclk.h"
-//#include <sam/drivers/usbhs/usbhs_otg.h>
-//#include <sam/drivers/usbhs/usbhs_device.h>
 
 # define __nocache		__attribute__((section(".ram_nocache")))
 
@@ -41,8 +41,15 @@
 
 # define __nocache		// nothing
 
+# if SAME5x
+#  include <hal_gpio.h>
+#  include <hal_usb_device.h>
+#  include <peripheral_clk_config.h>
+# endif
+
 #endif
 
+#define DUAL_CDC		(0)		// dual CDC does not work yet!
 
 #define USBD_MAX_POWER_MA (250)
 
@@ -55,16 +62,20 @@
 #define USBD_PID (0x000a) // Raspberry Pi Pico SDK CDC
 #endif
 
-#define USB_BCD   0x0200
+#define USB_BCD   		(0x0200)
 
-#define USBD_DESC_LEN (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN)
+// SAMG & SAME70 don't support a same endpoint number with different direction IN and OUT
+//    e.g EP1 OUT & EP1 IN cannot exist together
+#define EPNUM_CDC_0_NOTIF   0x81
+#define EPNUM_CDC_0_OUT     0x02
+#define EPNUM_CDC_0_IN      0x83
 
-#define USBD_ITF_CDC (0) // needs 2 interfaces
-#define USBD_ITF_MAX (2)
+#if DUAL_CDC
+#define EPNUM_CDC_1_NOTIF   0x84
+#define EPNUM_CDC_1_OUT     0x05
+#define EPNUM_CDC_1_IN      0x86
+#endif
 
-#define USBD_CDC_EP_CMD (0x81)
-#define USBD_CDC_EP_OUT (0x02)
-#define USBD_CDC_EP_IN (0x82)
 #define USBD_CDC_CMD_MAX_SIZE (8)
 #define USBD_CDC_IN_OUT_MAX_SIZE (64)
 
@@ -74,12 +85,10 @@
 #define USBD_STR_SERIAL (0x03)
 #define USBD_STR_CDC (0x04)
 
-#if 1
-
 //--------------------------------------------------------------------+
 // Device Descriptors
 //--------------------------------------------------------------------+
-static __nocache tusb_desc_device_t /*const*/ desc_device =
+static tusb_desc_device_t const desc_device =
 {
     .bLength            = sizeof(tusb_desc_device_t),
     .bDescriptorType    = TUSB_DESC_DEVICE,
@@ -96,11 +105,11 @@ static __nocache tusb_desc_device_t /*const*/ desc_device =
     .idProduct          = USBD_PID,
     .bcdDevice          = 0x0100,
 
-    .iManufacturer      = 0x01,
-    .iProduct           = 0x02,
-    .iSerialNumber      = 0x03,
+    .iManufacturer      = USBD_STR_MANUF,
+    .iProduct           = USBD_STR_PRODUCT,
+    .iSerialNumber      = USBD_STR_SERIAL,
 
-    .bNumConfigurations = 0x01
+    .bNumConfigurations = 1
 };
 
 // Invoked when received GET DEVICE DESCRIPTOR
@@ -110,33 +119,6 @@ extern "C" uint8_t const * tud_descriptor_device_cb(void) noexcept
   return (uint8_t const *) &desc_device;
 }
 
-#else
-
-extern "C" const uint8_t *tud_descriptor_device_cb(void) noexcept
-{
-    static __nocache tusb_desc_device_t usbd_desc_device =
-    {
-        .bLength = sizeof(tusb_desc_device_t),
-        .bDescriptorType = TUSB_DESC_DEVICE,
-        .bcdUSB = 0x0200,
-        .bDeviceClass = TUSB_CLASS_CDC,
-        .bDeviceSubClass = MISC_SUBCLASS_COMMON,
-        .bDeviceProtocol = MISC_PROTOCOL_IAD,
-        .bMaxPacketSize0 = CFG_TUD_ENDPOINT0_SIZE,
-        .idVendor = USBD_VID,
-        .idProduct = USBD_PID,
-        .bcdDevice = 0x0100,
-        .iManufacturer = USBD_STR_MANUF,
-        .iProduct = USBD_STR_PRODUCT,
-        .iSerialNumber = USBD_STR_SERIAL,
-        .bNumConfigurations = 1
-    };
-	// Can use as-is, this is the default USB case
-	return (const uint8_t *)&usbd_desc_device;
-}
-
-#endif
-
 //--------------------------------------------------------------------+
 // Configuration Descriptor
 //--------------------------------------------------------------------+
@@ -144,24 +126,16 @@ enum
 {
   ITF_NUM_CDC_0 = 0,
   ITF_NUM_CDC_0_DATA,
+#if DUAL_CDC
   ITF_NUM_CDC_1,
   ITF_NUM_CDC_1_DATA,
+#endif
   ITF_NUM_TOTAL
 };
 
 #define CONFIG_TOTAL_LEN    (TUD_CONFIG_DESC_LEN + CFG_TUD_CDC * TUD_CDC_DESC_LEN)
 
-// SAMG & SAME70 don't support a same endpoint number with different direction IN and OUT
-//    e.g EP1 OUT & EP1 IN cannot exist together
-#define EPNUM_CDC_0_NOTIF   0x81
-#define EPNUM_CDC_0_OUT     0x02
-#define EPNUM_CDC_0_IN      0x83
-
-#define EPNUM_CDC_1_NOTIF   0x84
-#define EPNUM_CDC_1_OUT     0x05
-#define EPNUM_CDC_1_IN      0x86
-
-static __nocache uint8_t /*const*/ desc_fs_configuration[] =
+static uint8_t const desc_fs_configuration[] =
 {
   // Config number, interface count, string index, total length, attribute, power in mA
   TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0x00, 100),
@@ -169,14 +143,16 @@ static __nocache uint8_t /*const*/ desc_fs_configuration[] =
   // 1st CDC: Interface number, string index, EP notification address and size, EP data address (out, in) and size.
   TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_0, 4, EPNUM_CDC_0_NOTIF, 8, EPNUM_CDC_0_OUT, EPNUM_CDC_0_IN, 64),
 
+#if DUAL_CDC
   // 2nd CDC: Interface number, string index, EP notification address and size, EP data address (out, in) and size.
   TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1, 4, EPNUM_CDC_1_NOTIF, 8, EPNUM_CDC_1_OUT, EPNUM_CDC_1_IN, 64),
+#endif
 };
 
 #if TUD_OPT_HIGH_SPEED
 // Per USB specs: high speed capable device must report device_qualifier and other_speed_configuration
 
-static __nocache uint8_t /*const*/ desc_hs_configuration[] =
+static uint8_t const desc_hs_configuration[] =
 {
   // Config number, interface count, string index, total length, attribute, power in mA
   TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0x00, 100),
@@ -184,18 +160,20 @@ static __nocache uint8_t /*const*/ desc_hs_configuration[] =
   // 1st CDC: Interface number, string index, EP notification address and size, EP data address (out, in) and size.
   TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_0, 4, EPNUM_CDC_0_NOTIF, 8, EPNUM_CDC_0_OUT, EPNUM_CDC_0_IN, 512),
 
+#if DUAL_CDC
   // 2nd CDC: Interface number, string index, EP notification address and size, EP data address (out, in) and size.
   TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1, 4, EPNUM_CDC_1_NOTIF, 8, EPNUM_CDC_1_OUT, EPNUM_CDC_1_IN, 512),
+#endif
 };
 
 // device qualifier is mostly similar to device descriptor since we don't change configuration based on speed
-static __nocache tusb_desc_device_qualifier_t /*const*/ desc_device_qualifier =
+static tusb_desc_device_qualifier_t const desc_device_qualifier =
 {
   .bLength            = sizeof(tusb_desc_device_t),
   .bDescriptorType    = TUSB_DESC_DEVICE,
   .bcdUSB             = USB_BCD,
 
-  .bDeviceClass       = TUSB_CLASS_MISC,
+  .bDeviceClass       = TUSB_CLASS_CDC,
   .bDeviceSubClass    = MISC_SUBCLASS_COMMON,
   .bDeviceProtocol    = MISC_PROTOCOL_IAD,
 
@@ -241,17 +219,8 @@ extern "C" uint8_t const * tud_descriptor_configuration_cb(uint8_t index) noexce
 #endif
 }
 
-// Invoked when received GET HID REPORT DESCRIPTOR
-// Application return pointer to descriptor
-// Descriptor contents must exist long enough for transfer to complete
-extern "C" uint8_t const * tud_hid_descriptor_report_cb(uint8_t instance) noexcept
-{
-    (void)instance;
-    return nullptr;
-}
-
 #define DESC_STR_MAX (20)
-static __nocache uint16_t desc_str[DESC_STR_MAX];
+static uint16_t desc_str[DESC_STR_MAX];
 
 extern "C" const uint16_t *tud_descriptor_string_cb(uint8_t index, uint16_t langid) noexcept
 {
@@ -291,16 +260,18 @@ extern "C" const uint16_t *tud_descriptor_string_cb(uint8_t index, uint16_t lang
 	return desc_str;
 }
 
-// USB Device Driver task
-// This top level thread process all usb events and invoke callbacks
-extern "C" void UsbDeviceTask(void* param) noexcept
+// Call this to initialise the hardware
+void CoreUsbInit(NvicPriority priority) noexcept
 {
-	(void)param;
-
 #if SAME70
 
-	/* Enable peripheral clock for USBHS */
+	// Set the USB interrupt priority to a level that is allowed to make FreeRTOS calls
+	NVIC_SetPriority(USBHS_IRQn, priority);
+
+	// Enable peripheral clock for USBHS
 	pmc_enable_periph_clk(ID_USBHS);
+
+	// Start the UPLL clock. The default divider is 40 which is correct for 12MHz crystal.
 	pmc_enable_upll_clock();
 
 	// From the datasheet:
@@ -321,30 +292,46 @@ extern "C" void UsbDeviceTask(void* param) noexcept
 
 	pmc_set_fast_startup_input(PMC_FSMR_USBAL);
 
-# if 0
-	// Enable USB hardware
-	otg_enable();
+#elif SAME5x
 
-	// Set the USB speed requested by configuration file
-#  ifdef USB_DEVICE_LOW_SPEED
-	udd_low_speed_enable();
-#  else
-	udd_low_speed_disable();
-#  ifdef USB_DEVICE_HS_SUPPORT
-	udd_high_speed_enable();
-#else
-	udd_high_speed_disable();
-#endif
-#endif // USB_DEVICE_LOW_SPEED
+	// Set the USB interrupt priority to a level that is allowed to make FreeRTOS calls
+	NVIC_SetPriority(USB_0_IRQn, priority);
+	NVIC_SetPriority(USB_1_IRQn, priority);
+	NVIC_SetPriority(USB_2_IRQn, priority);
+	NVIC_SetPriority(USB_3_IRQn, priority);
 
-	otg_unfreeze_clock();
-	// Check USB clock
-	while (!Is_otg_clock_usable());
-# endif
+	// Set up USB clock
+	hri_gclk_write_PCHCTRL_reg(GCLK, USB_GCLK_ID, GCLK_PCHCTRL_GEN(GclkNum48MHz) | GCLK_PCHCTRL_CHEN);
+	hri_mclk_set_AHBMASK_USB_bit(MCLK);
+	hri_mclk_set_APBBMASK_USB_bit(MCLK);
+
+	// Set up USB pins
+	// This is the code generated by Atmel Start. I don't know whether it is all necessary.
+	gpio_set_pin_direction(PortAPin(24), GPIO_DIRECTION_OUT);
+	gpio_set_pin_level(PortAPin(24), false);
+	gpio_set_pin_pull_mode(PortAPin(24), GPIO_PULL_OFF);
+	gpio_set_pin_function(PortAPin(24), PINMUX_PA24H_USB_DM);
+
+	gpio_set_pin_direction(PortAPin(25), GPIO_DIRECTION_OUT);
+	gpio_set_pin_level(PortAPin(25), false);
+	gpio_set_pin_pull_mode(PortAPin(25), GPIO_PULL_OFF);
+	gpio_set_pin_function(PortAPin(25), PINMUX_PA25H_USB_DP);
+
+#elif RP2040
+
+	// Set the USB interrupt priority to a suitable level
+	NVIC_SetPriority((IRQn_Type)USBCTRL_IRQ, priority);
 
 #else
 # error Unsupported processor
 #endif
+}
+
+// USB Device Driver task
+// This top level thread process all usb events and invoke callbacks
+extern "C" void CoreUsbDeviceTask(void* param) noexcept
+{
+	(void)param;
 
 	// This should be called after scheduler/kernel is started.
 	// Otherwise it could cause kernel issue since USB IRQ handler does use RTOS queue API.
@@ -357,6 +344,17 @@ extern "C" void UsbDeviceTask(void* param) noexcept
 		tud_task();
 //	    tud_cdc_write_flush();
 	}
+}
+
+#if RP2040		// RP2040 USB configuration has HID enabled by default
+
+// Invoked when received GET HID REPORT DESCRIPTOR
+// Application return pointer to descriptor
+// Descriptor contents must exist long enough for transfer to complete
+extern "C" uint8_t const * tud_hid_descriptor_report_cb(uint8_t instance) noexcept
+{
+    (void)instance;
+    return nullptr;
 }
 
 // Invoked when received GET_REPORT control request
@@ -385,14 +383,21 @@ extern "C" void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_r
 	(void) bufsize;
 }
 
+#endif
+
 uint32_t numUsbInterrupts = 0;
 
 // USB interrupt handler
+
+#if SAME70
+
 extern "C" void USBHS_Handler() noexcept
 {
 	++numUsbInterrupts;
 	tud_int_handler(0);
 }
+
+#endif
 
 #endif
 

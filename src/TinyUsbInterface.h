@@ -25,7 +25,10 @@
 #include <Core.h>
 
 #if SUPPORT_USB && CORE_USES_TINYUSB
-extern "C" [[noreturn]] void UsbDeviceTask(void* param) noexcept;						// this must be called by the USB task
+
+void CoreUsbInit(NvicPriority priority) noexcept;							// call this to initialise the hardware
+extern "C" [[noreturn]] void CoreUsbDeviceTask(void* param) noexcept;		// this must be called by the USB task
+
 #endif
 
 #endif	// TINYUSBINTERFACE_H_INCLUDED

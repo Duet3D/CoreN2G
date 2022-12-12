@@ -9,6 +9,8 @@
 
 #include "SerialCDC.h"
 
+#if !CORE_USES_TINYUSB
+
 #ifdef RTOS
 # include <RTOSIface/RTOSIface.h>
 #endif
@@ -254,6 +256,8 @@ void SerialCDC::DataReceived(uint32_t count) noexcept
 	receiving = false;
 	StartReceiving();
 }
+
+#endif
 
 #endif
 

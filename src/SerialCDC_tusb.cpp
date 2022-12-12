@@ -7,9 +7,13 @@
 
 #if SUPPORT_USB
 
-#include "SerialCDC.h"
+#include "SerialCDC_tusb.h"
 
 #if CORE_USES_TINYUSB
+
+#if RP2040
+# define PICO_MUTEX_ENABLE_SDK120_COMPATIBILITY		0
+#endif
 
 extern "C" {
 #include "tusb.h"

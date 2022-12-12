@@ -10,11 +10,17 @@
 
 #if SUPPORT_USB
 
+#include <Core.h>
+
+#if CORE_USES_TINYUSB
+
+#include <SerialCDC_tusb.h>
+
+#else
+
 #include "Stream.h"
 #include <General/RingBuffer.h>
 #include <RTOSIface/RTOSIface.h>
-
-#define CORE_USES_TINYUSB		0
 
 class SerialCDC : public Stream
 {
@@ -49,6 +55,8 @@ private:
 	const Pin vbusPin;
 	bool hasConnected;
 };
+
+#endif
 
 #endif
 
