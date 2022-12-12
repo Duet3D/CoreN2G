@@ -54,13 +54,8 @@
 #define USBD_MAX_POWER_MA (250)
 
 // USB VID/PID (note that PID can change depending on the add'l interfaces)
-#define USBD_VID (0x2E8A) // Raspberry Pi
-
-#ifdef SERIALUSB_PID
-#define USBD_PID (SERIALUSB_PID)
-#else
-#define USBD_PID (0x000a) // Raspberry Pi Pico SDK CDC
-#endif
+#define USBD_VID		(0x1d50)		// Duet 3D
+#define USBD_PID		(0x60ee)		// Duet 3
 
 #define USB_BCD   		(0x0200)
 
@@ -229,9 +224,9 @@ extern "C" const uint16_t *tud_descriptor_string_cb(uint8_t index, uint16_t lang
 	static const char *const usbd_desc_str[] =
 	{
 		[USBD_STR_0] = "",
-		[USBD_STR_MANUF] = "Raspberry Pi",
-		[USBD_STR_PRODUCT] = "PicoArduino",
-		[USBD_STR_SERIAL] = "1234123412341234",
+		[USBD_STR_MANUF] = "Duet 3D",
+		[USBD_STR_PRODUCT] = "Duet 3",
+		[USBD_STR_SERIAL] = "123456789ABCDEF",
 		[USBD_STR_CDC] = "Board CDC",
 	};
 
