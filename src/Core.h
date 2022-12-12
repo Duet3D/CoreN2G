@@ -98,7 +98,9 @@ extern "C" {
 # error unsupported processor
 #endif
 
-#if SUPPORT_USB
+#if SAME70
+# define CORE_USES_TINYUSB		1
+#else
 # define CORE_USES_TINYUSB		0		// no configurations use tinyusb yet, except for RP2040 which has a separate implementation at present
 #endif
 

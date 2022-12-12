@@ -14,6 +14,8 @@
 #include <General/RingBuffer.h>
 #include <RTOSIface/RTOSIface.h>
 
+#define CORE_USES_TINYUSB		0
+
 class SerialCDC : public Stream
 {
 public:

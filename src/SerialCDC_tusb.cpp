@@ -1,7 +1,7 @@
 /*
- * UsbSerial.cpp
+ * SerialCDC.cpp
  *
- *  Created on: 19 Jun 2020
+ *  Created on: 18 Mar 2016
  *      Author: David
  */
 
@@ -9,26 +9,19 @@
 
 #include "SerialCDC.h"
 
-#ifdef RTOS
-# include <RTOSIface/RTOSIface.h>
-#endif
-
-#undef from
-
-#define PICO_MUTEX_ENABLE_SDK120_COMPATIBILITY		0
+#if CORE_USES_TINYUSB
 
 extern "C" {
 #include "tusb.h"
 }
 
-#include "RP2040USB.h"
-
-SerialCDC::SerialCDC(Pin p, size_t numTxSlots, size_t numRxSlots) noexcept
+SerialCDC::SerialCDC() noexcept
 {
 }
 
-void SerialCDC::Start() noexcept
+void SerialCDC::Start(Pin p) noexcept
 {
+	while (!tud_inited()) { delay(10); }
 	running = true;
 }
 
@@ -70,6 +63,11 @@ int SerialCDC::available() noexcept
     }
 
     return tud_cdc_available();
+}
+
+size_t SerialCDC::readBytes(char * _ecv_array buffer, size_t length) noexcept
+{
+	return tud_cdc_read (buffer, length);
 }
 
 void SerialCDC::flush() noexcept
@@ -124,12 +122,12 @@ size_t SerialCDC::write(const uint8_t *buf, size_t length) noexcept
 				tud_cdc_write_flush();
 				i += n2;
 				written += n2;
-				last_avail_time = time_us_64();
+				last_avail_time = millis();
 			}
 			else
 			{
 				tud_cdc_write_flush();
-				if (!tud_cdc_connected() || (!tud_cdc_write_available() && time_us_64() > last_avail_time + 1000000 /* 1 second */))
+				if (!tud_cdc_connected() || (!tud_cdc_write_available() && millis() > last_avail_time + 1000 /* 1 second */))
 				{
 					break;
 				}
@@ -159,6 +157,8 @@ extern "C" void tud_cdc_rx_cb(uint8_t itf) noexcept
 	(void) itf;
 }
 
-#endif	// SUPPORT_USB
+#endif
+
+#endif
 
 // End

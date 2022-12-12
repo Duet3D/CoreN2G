@@ -5,18 +5,14 @@
  *      Author: David
  */
 
-#ifndef SRC_SAME4S_4E_E70_SERIALCDC_H_
-#define SRC_SAME4S_4E_E70_SERIALCDC_H_
+#ifndef SRC_SERIALCDC__TUSB_H_
+#define SRC_SERIALCDC__TUSB_H_
 
 #if SUPPORT_USB
 
 #include <Core.h>
 
 #if CORE_USES_TINYUSB
-
-#include <SerialCDC_tusb.h>
-
-#else
 
 #include "Stream.h"
 #include <General/RingBuffer.h>
@@ -42,14 +38,9 @@ public:
 	size_t canWrite() noexcept override;	// Function added by DC42 so that we can tell how many characters we can write without blocking (for Duet)
 	bool IsConnected() const noexcept;
 
-	// Callback functions called from the cdc layer - not for general use
-	void cdcSetConnected(bool b) noexcept;
-	void cdcRxNotify() noexcept;
-	void cdcTxEmptyNotify() noexcept;
-
 private:
-	size_t txBufsize;
-	bool isConnected;
+	volatile TaskHandle txWaitingTask;
+    bool running = false;
 	Pin vBusPin;
 };
 
@@ -57,4 +48,4 @@ private:
 
 #endif
 
-#endif /* SRC_SAME4S_4E_E70_SERIALCDC_H_ */
+#endif /* SRC_SERIALCDC__TUSB_H_ */

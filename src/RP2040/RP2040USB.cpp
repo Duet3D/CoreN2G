@@ -184,7 +184,7 @@ const uint16_t *tud_descriptor_string_cb(uint8_t index, uint16_t langid) noexcep
 	return desc_str;
 }
 
-void __USBStart()
+void __USBStart() noexcept
 {
 	if (tusb_inited())
 	{
