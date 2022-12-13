@@ -58,6 +58,7 @@
 # define RP2040				0
 # define STM32				0
 # define SUPPORT_SDHC		0			// SAMC21 doesn't support SDHC
+# define SUPPORT_USB		0			// SAMC21 doesn't support USB
 #elif defined(__SAM4E8E__)
 # include <parts.h>
 # include <sam4e8e.h>
@@ -98,7 +99,11 @@ extern "C" {
 # error unsupported processor
 #endif
 
-#define CORE_USES_TINYUSB		0		// no configurations use tinyusb yet, except for RP2040 which has a separate implementation at present
+#if RP2040
+# define CORE_USES_TINYUSB	1
+#else
+# define CORE_USES_TINYUSB	0
+#endif
 
 #include <inttypes.h>					// for PRIu32 etc.
 #include <ctype.h>
