@@ -75,11 +75,11 @@ static bool usb_device_cb_bulk_tx(const uint8_t ep, const enum usb_xfer_code rc,
  */
 static bool usb_device_cb_state_c(usb_cdc_control_signal_t state)
 {
-	/* Clear pending data when the CDC device is opened */
-	device->ClearBuffers();
-
 	if (!isConnected)
 	{
+		/* Clear pending data when the CDC device is opened */
+		device->ClearBuffers();
+
 		isConnected = true;
 
 		/* Callbacks must be registered after endpoint allocation */
@@ -126,9 +126,7 @@ void SerialCDC::end() noexcept
 	cdcInitialised = false;
 
 	usbdc_deinit();
-
-	txBuffer.Clear();
-	rxBuffer.Clear();
+	ClearBuffers();
 }
 
 void SerialCDC::CheckCdc() noexcept
@@ -253,12 +251,17 @@ void SerialCDC::StartSending() noexcept
 		const size_t count = txBuffer.GetBlock(txTempBuffer, sizeof(txTempBuffer));
 		if (count > 0)
 		{
-			if (cdcdf_acm_write(txTempBuffer, count) == ERR_NONE)
+			const int32_t rc = cdcdf_acm_write(txTempBuffer, count);
+#if 1
+			(void)rc;
+			sending = true;
+#else
+			if (rc == ERR_NONE)
 			{
 				/* Wait for ISR to process outgoing data */
 				sending = true;
 			}
-			else
+			else if (rc != USB_BUSY)	//TODO currently we will lose data if we had status USB_BUSY
 			{
 				/* Unregister callbacks again */
 				cdcdf_acm_register_callback(CDCDF_ACM_CB_READ, nullptr);
@@ -267,6 +270,7 @@ void SerialCDC::StartSending() noexcept
 				/* Stop communication */
 				isConnected = sending = receiving = false;
 			}
+#endif
 		}
 		else
 		{
@@ -293,12 +297,17 @@ void SerialCDC::StartReceiving() noexcept
 {
 	if (isConnected && !receiving && rxBuffer.SpaceLeft() > sizeof(rxTempBuffer))
 	{
-		if (cdcdf_acm_read(rxTempBuffer, sizeof(rxTempBuffer)) == ERR_NONE)
+		const int32_t rc = cdcdf_acm_read(rxTempBuffer, sizeof(rxTempBuffer));
+#if 1
+		(void)rc;
+		receiving = true;
+#else
+		if (rc == ERR_NONE)
 		{
 			/* Wait for ISR to process incoming data */
 			receiving = true;
 		}
-		else
+		else if (rc != USB_BUSY)
 		{
 			/* Unregister callbacks again */
 			cdcdf_acm_register_callback(CDCDF_ACM_CB_READ, nullptr);
@@ -307,6 +316,7 @@ void SerialCDC::StartReceiving() noexcept
 			/* Stop communication */
 			isConnected = sending = receiving = false;
 		}
+#endif
 	}
 }
 
