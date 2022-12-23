@@ -182,8 +182,7 @@ int SerialCDC::available() noexcept
 
 void SerialCDC::flush() noexcept
 {
-	while (isConnected && !txBuffer.IsEmpty()) { }
-	//TODO wait until no data in the USB buffer
+	while (isConnected && (sending || !txBuffer.IsEmpty())) { }
 }
 
 size_t SerialCDC::canWrite() noexcept
