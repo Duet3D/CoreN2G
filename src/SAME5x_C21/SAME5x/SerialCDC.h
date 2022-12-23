@@ -44,7 +44,7 @@ private:
 
 	RingBuffer<uint8_t> txBuffer;
 	RingBuffer<uint8_t> rxBuffer;
-	volatile TaskHandle txWaitingTask;
+	TaskHandle volatile txWaitingTask;
 	const Pin vbusPin;
 	bool cdcInitialised;
 };
