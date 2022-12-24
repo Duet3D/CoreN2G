@@ -42,19 +42,22 @@ static struct usbd_descriptors single_desc[]
 };
 
 static SerialCDC *device;
-static bool sending = false, receiving = false;
+static volatile bool isConnected = false, sending = false, receiving = false;
+
 /** Ctrl endpoint buffer */
-static uint8_t ctrl_buffer[64];
+alignas(4) static uint8_t ctrl_buffer[64];
 
 // Buffers to receive and send data. I am not sure that they need to be aligned.
 alignas(4) static uint8_t rxTempBuffer[64];
 alignas(4) static uint8_t txTempBuffer[64];
+static size_t txTempCharsPending = 0;
 
 /**
  * \brief Callback invoked when bulk data received
  */
 static bool usb_device_cb_bulk_rx(const uint8_t ep, const enum usb_xfer_code rc, const uint32_t count)
 {
+	receiving = false;
 	device->DataReceived(count);
 	return false;						// no error
 }
@@ -69,52 +72,84 @@ static bool usb_device_cb_bulk_tx(const uint8_t ep, const enum usb_xfer_code rc,
 	return false;						// no error
 }
 
-SerialCDC::SerialCDC(Pin p, size_t numTxSlots, size_t numRxSlots) noexcept : vbusPin(p), hasConnected(false)
+/**
+ * \brief Callback invoked when Line State Change
+ */
+static bool usb_device_cb_state_c(usb_cdc_control_signal_t state)
 {
+	if (!isConnected && state.modem.dte_present)
+	{
+		/* Clear pending data when the CDC device is opened */
+		device->ClearBuffers();
+		isConnected = true;
+
+		/* Callbacks must be registered after endpoint allocation */
+		cdcdf_acm_register_callback(CDCDF_ACM_CB_READ, (FUNC_PTR)usb_device_cb_bulk_rx);
+		cdcdf_acm_register_callback(CDCDF_ACM_CB_WRITE, (FUNC_PTR)usb_device_cb_bulk_tx);
+
+		/* Start Rx */
+		device->StartReceiving();
+	}
+
+	/* No error. */
+	return false;
+}
+
+SerialCDC::SerialCDC(Pin p, size_t numTxSlots, size_t numRxSlots) noexcept : vbusPin(p), cdcInitialised(false)
+{
+	// FIXME vbusPin appears to be needed to detect USB disconnects. It already has a permanent pull-down resistor on the Duet 3 Mini 5+
 	txBuffer.Init(numTxSlots);
 	rxBuffer.Init(numRxSlots);
 }
 
 void SerialCDC::Start() noexcept
 {
+	device = this;
+
 	/* usb stack init */
 	usbdc_init(ctrl_buffer);
 
 	/* usbdc_register_funcion inside */
 	cdcdf_acm_init();
-
 	usbdc_start(single_desc);
 	usbdc_attach();
-
-	device = this;
 }
 
 void SerialCDC::end() noexcept
 {
+	isConnected = sending = receiving = false;
+	usbdc_detach();
+	usbdc_stop();
+
 	cdcdf_acm_deinit();
+	cdcdf_acm_register_callback(CDCDF_ACM_CB_STATE_C, nullptr);
+	cdcdf_acm_register_callback(CDCDF_ACM_CB_READ, nullptr);
+	cdcdf_acm_register_callback(CDCDF_ACM_CB_WRITE, nullptr);
+	cdcInitialised = false;
+
 	usbdc_deinit();
+	ClearBuffers();
 }
 
-void SerialCDC::CheckIfJustConnected() noexcept
+void SerialCDC::CheckCdc() noexcept
 {
-	AtomicCriticalSectionLocker lock;
-
-	if (!hasConnected && cdcdf_acm_is_enabled())
+	if (!cdcInitialised)
 	{
-		hasConnected = true;
-
-		// Callbacks must be registered after endpoint allocation
-		cdcdf_acm_register_callback(CDCDF_ACM_CB_READ, (FUNC_PTR)usb_device_cb_bulk_rx);
-		cdcdf_acm_register_callback(CDCDF_ACM_CB_WRITE, (FUNC_PTR)usb_device_cb_bulk_tx);
-
-		// Start receive
+		if (cdcdf_acm_is_enabled())
+		{
+			cdcdf_acm_register_callback(CDCDF_ACM_CB_STATE_C, (FUNC_PTR)usb_device_cb_state_c);
+			cdcInitialised = true;
+		}
+	}
+	else if (isConnected)
+	{
 		StartReceiving();
 	}
 }
 
 bool SerialCDC::IsConnected() const noexcept
 {
-	return cdcdf_acm_is_enabled();
+	return isConnected;
 }
 
 // Overridden virtual functions
@@ -122,7 +157,7 @@ bool SerialCDC::IsConnected() const noexcept
 // Non-blocking read, return -1 if no character available
 int SerialCDC::read() noexcept
 {
-	if (hasConnected)
+	if (isConnected)
 	{
 		uint8_t c;
 		if (rxBuffer.GetItem(c))
@@ -133,53 +168,47 @@ int SerialCDC::read() noexcept
 	}
 	else
 	{
-		CheckIfJustConnected();
+		CheckCdc();
 	}
 	return -1;
 }
 
 int SerialCDC::available() noexcept
 {
-	CheckIfJustConnected();
+	CheckCdc();
 	return rxBuffer.ItemsPresent();
 }
 
 void SerialCDC::flush() noexcept
 {
-	if (hasConnected)
-	{
-		while (!txBuffer.IsEmpty()) { }
-	}
-	//TODO wait until no data in the USB buffer
+	while (isConnected && (sending || !txBuffer.IsEmpty() || txTempCharsPending > 0)) { }
 }
 
 size_t SerialCDC::canWrite() noexcept
 {
-	CheckIfJustConnected();
-	return (hasConnected) ? txBuffer.SpaceLeft() : 0;
+	CheckCdc();
+	return (isConnected) ? txBuffer.SpaceLeft() : 0;
 }
 
 // Write single character, blocking
 size_t SerialCDC::write(uint8_t c) noexcept
 {
-	CheckIfJustConnected();
-	if (hasConnected)
+	CheckCdc();
+	while (isConnected)
 	{
-		for (;;)
+		if (txBuffer.PutItem(c))
 		{
-			if (txBuffer.PutItem(c))
-			{
-				StartSending();
-				break;
-			}
-#ifdef RTOS
-			txWaitingTask = RTOSIface::GetCurrentTask();
-#endif
 			StartSending();
-#ifdef RTOS
-			TaskBase::Take(50);
-#endif
+			break;
 		}
+
+#ifdef RTOS
+		txWaitingTask = RTOSIface::GetCurrentTask();
+#endif
+		StartSending();
+#ifdef RTOS
+		TaskBase::Take(50);
+#endif
 	}
 	return 1;
 }
@@ -187,69 +216,145 @@ size_t SerialCDC::write(uint8_t c) noexcept
 // Blocking write block
 size_t SerialCDC::write(const uint8_t *buffer, size_t buflen) noexcept
 {
-	CheckIfJustConnected();
+	CheckCdc();
 	const size_t ret = buflen;
-	if (hasConnected)
+	while (isConnected)
 	{
-		for (;;)
+		buflen -= txBuffer.PutBlock(buffer, buflen);
+		if (buflen == 0)
 		{
-			buflen -= txBuffer.PutBlock(buffer, buflen);
-			if (buflen == 0)
-			{
-				StartSending();
-				break;
-			}
-#ifdef RTOS
-			txWaitingTask = RTOSIface::GetCurrentTask();
-#endif
 			StartSending();
-#ifdef RTOS
-			TaskBase::Take(50);
-#endif
+			break;
 		}
+
+#ifdef RTOS
+		txWaitingTask = RTOSIface::GetCurrentTask();
+#endif
+		StartSending();
+#ifdef RTOS
+		TaskBase::Take(50);
+#endif
 	}
 	return ret;
 }
 
+void SerialCDC::ClearBuffers() noexcept
+{
+	txBuffer.Clear();
+	rxBuffer.Clear();
+	txTempCharsPending = 0;
+}
+
 void SerialCDC::StartSending() noexcept
 {
-	if (!sending)
+	if (isConnected)
 	{
-		sending = true;
-		const size_t count = txBuffer.GetBlock(txTempBuffer, sizeof(txTempBuffer));
-		if (count == 0)
+		/* Make sure we're exclusively dealing with USB TX */
 		{
-			sending = false;
+			AtomicCriticalSectionLocker locker;
+			if (sending || (txTempCharsPending == 0 && txBuffer.IsEmpty()))
+			{
+				return;
+			}
+			sending = true;
+		}
+
+		/* Try to send more data */
+		int32_t rc = ERR_NONE;
+		if (txTempCharsPending > 0)
+		{
+			/* There is still pending USB TX data, write it now */
+			rc = cdcdf_acm_write(txTempBuffer, txTempCharsPending);
+			if (rc == ERR_NONE)
+			{
+				txTempCharsPending = 0;
+			}
 		}
 		else
 		{
-			cdcdf_acm_write(txTempBuffer, count);
+			const size_t count = txBuffer.GetBlock(txTempBuffer, sizeof(txTempBuffer));
+			if (count > 0)
+			{
+				rc = cdcdf_acm_write(txTempBuffer, count);
+				if (rc == USB_BUSY)
+				{
+					/* USB is busy, send the data from the TX buffer again later */
+					txTempCharsPending = count;
+				}
+			}
+			else
+			{
+				/* False alarm, cannot send anything (should never get here) */
+				sending = false;
+			}
+		}
+
+		if (rc == USB_BUSY)
+		{
+			/* USB is busy, try again later */
+			sending = false;
+		}
+		else if (rc != ERR_NONE)
+		{
+			/* Lost connection, unregister callbacks again */
+			cdcdf_acm_register_callback(CDCDF_ACM_CB_READ, nullptr);
+			cdcdf_acm_register_callback(CDCDF_ACM_CB_WRITE, nullptr);
+
+			/* Stop communication */
+			isConnected = sending = receiving = false;
 		}
 	}
 
 #ifdef RTOS
-	const TaskHandle t = txWaitingTask;
-	if (t != nullptr)
+	if (!sending)
 	{
-		txWaitingTask = nullptr;
-		TaskBase::GiveFromISR(t);
+		/* Wake up the task waiting for data to go, there may or may not be more to write */
+		const TaskHandle t = txWaitingTask;
+		if (t != nullptr && txBuffer.SpaceLeft() >= txBuffer.GetCapacity() / 4)
+		{
+			txWaitingTask = nullptr;
+			TaskBase::GiveFromISR(t);
+		}
 	}
 #endif
 }
 
 void SerialCDC::StartReceiving() noexcept
 {
-	if (!receiving && rxBuffer.SpaceLeft() > sizeof(rxTempBuffer))
+	if (isConnected)
 	{
-		receiving = true;
-		cdcdf_acm_read(rxTempBuffer, sizeof(rxTempBuffer));
+		/* Make sure we're exclusively dealing with USB RX */
+		{
+			AtomicCriticalSectionLocker locker;
+			if (receiving || rxBuffer.SpaceLeft() <= sizeof(rxTempBuffer))
+			{
+				return;
+			}
+			receiving = true;
+		}
+
+		/* Start reading from USB */
+		const int32_t rc = cdcdf_acm_read(rxTempBuffer, sizeof(rxTempBuffer));
+		if (rc == USB_BUSY)
+		{
+			/* USB is busy, try again later */
+			receiving = false;
+		}
+		else if (rc != ERR_NONE)
+		{
+			/* Unregister callbacks again */
+			cdcdf_acm_register_callback(CDCDF_ACM_CB_READ, nullptr);
+			cdcdf_acm_register_callback(CDCDF_ACM_CB_WRITE, nullptr);
+
+			/* Stop communication */
+			isConnected = sending = receiving = false;
+		}
 	}
 }
 
 void SerialCDC::DataReceived(uint32_t count) noexcept
 {
 	rxBuffer.PutBlock(rxTempBuffer, count);
-	receiving = false;
 	StartReceiving();
 }
 

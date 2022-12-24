@@ -34,18 +34,19 @@ public:
 	void end() noexcept;
 
 	// These are called by the callback functions
+	void ClearBuffers() noexcept;
 	void StartSending() noexcept;
 	void StartReceiving() noexcept;
 	void DataReceived(uint32_t count) noexcept;
 
 private:
-	void CheckIfJustConnected() noexcept;
+	void CheckCdc() noexcept;
 
 	RingBuffer<uint8_t> txBuffer;
 	RingBuffer<uint8_t> rxBuffer;
 	volatile TaskHandle txWaitingTask;
 	const Pin vbusPin;
-	bool hasConnected;
+	bool cdcInitialised;
 };
 
 #endif
