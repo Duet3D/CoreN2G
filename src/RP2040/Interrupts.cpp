@@ -37,8 +37,8 @@ extern "C" void PioHandler() noexcept;
 /* Configure PIO interrupt sources */
 static void __initialize()
 {
-	irq_set_exclusive_handler(IO_IRQ_BANK0, PioHandler);
 	NVIC_DisableIRQ(IO_IRQ_BANK0_IRQn);
+	irq_set_exclusive_handler(IO_IRQ_BANK0, PioHandler);
 	NVIC_ClearPendingIRQ(IO_IRQ_BANK0_IRQn);
 	NVIC_EnableIRQ(IO_IRQ_BANK0_IRQn);
 }
@@ -113,9 +113,14 @@ void PioHandler() noexcept
 		unsigned int pin = bank << 3;
 		while (status != 0)
 		{
-			if ((status & 0x0F) && pinCallbacks[pin].func != nullptr && pin < NumCallbacks)
+			const uint32_t events = status & 0x0F;
+			if (events != 0)
 			{
-				pinCallbacks[pin].func(pinCallbacks[pin].param);
+				iobank0_hw->intr[bank] = events << (4 * (pin % 8));
+				if (pinCallbacks[pin].func != nullptr && pin < NumCallbacks)
+				{
+					pinCallbacks[pin].func(pinCallbacks[pin].param);
+				}
 			}
 			status >>= 4;
 			++pin;
