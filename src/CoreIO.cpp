@@ -538,6 +538,23 @@ bool memequ32(const uint32_t *_ecv_array dst, const uint32_t *_ecv_array src, si
 	return true;
 }
 
+// memcmp for float arrays
+// Returns true if the arrays are equal. If it includes NaNs then they will not compare equal.
+bool memeqf(const float *_ecv_array dst, const float *_ecv_array src, size_t numWords) noexcept
+{
+	while (numWords != 0)
+	{
+		if (*src != *dst)
+		{
+			return false;
+		}
+		++src;
+		++dst;
+		--numWords;
+	}
+	return true;
+}
+
 #if SAME5x || SAME70
 
 // Random number generator

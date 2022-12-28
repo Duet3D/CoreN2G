@@ -19,20 +19,16 @@
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#ifndef RP2040USB_H_INCLUDED
-#define RP2040USB_H_INCLUDED
+#ifndef TINYUSBINTERFACE_H_INCLUDED
+#define TINYUSBINTERFACE_H_INCLUDED
 
-#define PICO_MUTEX_ENABLE_SDK120_COMPATIBILITY		0
-#undef from
-#include <pico/mutex.h>
+#include <Core.h>
 
-// Big, global USB mutex, shared with all USB devices to make sure we don't
-// have multiple cores updating the TUSB state in parallel
-extern mutex_t __usb_mutex;
+#if SUPPORT_USB && CORE_USES_TINYUSB
 
-// Called by main() to init the USB subsystem
-void __USBStart();
+void CoreUsbInit(NvicPriority priority) noexcept;							// call this to initialise the hardware
+extern "C" [[noreturn]] void CoreUsbDeviceTask(void* param) noexcept;		// this must be called by the USB task
 
-[[noreturn]] void UsbDeviceTask(void* param) noexcept;						// this must be called by the USB task
+#endif
 
-#endif	// RP2040USB_H_INCLUDED
+#endif	// TINYUSBINTERFACE_H_INCLUDED

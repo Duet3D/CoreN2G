@@ -60,12 +60,13 @@ pre(0.0 <= ulValue; ulValue <= 1.0)
 		uint16_t period;
 		if (divisor < 1.0)
 		{
+			// User has asked for a high PWM frequency, too high to count all the way up to 65535
 			divisor = 1.0;
 			period = SystemCoreClockFreq/freq - 1;
 		}
 		else
 		{
-			period = 65535;
+			period = 65535;					// use the maximum resolution
 			if (divisor > 256.0)
 			{
 				divisor = 256.0;			// user asked for less than 3.7Hz
@@ -81,6 +82,7 @@ pre(0.0 <= ulValue; ulValue <= 1.0)
 		pwm_set_clkdiv(chanIndex, divisor);
 		pwm_set_output_polarity(chanIndex, false, false);
 		pwm_set_chan_level(chanIndex, GetOutputNumber(pinDesc->pwm), ConvertRange(val, period));
+		pwm_set_counter(chanIndex, 0);
 		pwm_set_enabled(chanIndex, true);
 
 		// Now setup the PWM output pin for PWM this channel - do this after configuring the PWM to avoid glitches

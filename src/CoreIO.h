@@ -245,15 +245,21 @@ inline void memmovef(float *_ecv_array dst, const float *_ecv_array src, size_t 
 }
 
 // Optimised version of memcmp for use when the source and destination are known to be 32-bit aligned and a whole number of 32-bit words is to be compared
+// Returns true if the arrays are equal
 bool memequ32(const uint32_t *_ecv_array dst, const uint32_t *_ecv_array src, size_t numWords) noexcept;
 
 // memcmp for int32_t arrays
-inline bool memeqi32(int32_t *_ecv_array dst, const int32_t *_ecv_array src, size_t numWords) noexcept
+// Returns true if the arrays are equal
+inline bool memeqi32(const int32_t *_ecv_array dst, const int32_t *_ecv_array src, size_t numWords) noexcept
 {
 	static_assert(sizeof(int32_t) == sizeof(uint32_t));
 	static_assert(alignof(int32_t) == alignof(uint32_t));
-	return memequ32(reinterpret_cast<uint32_t *_ecv_array>(dst), reinterpret_cast<const uint32_t *_ecv_array>(src), numWords);
+	return memequ32(reinterpret_cast<const uint32_t *_ecv_array>(dst), reinterpret_cast<const uint32_t *_ecv_array>(src), numWords);
 }
+
+// memcmp for float arrays
+// Returns true if the arrays are equal
+bool memeqf(const float *_ecv_array dst, const float *_ecv_array src, size_t numWords) noexcept;
 
 // Get the stack pointer
 #ifdef __ECV__
