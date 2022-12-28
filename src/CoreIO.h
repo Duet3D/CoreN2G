@@ -44,6 +44,7 @@ constexpr unsigned int NumTotalPins = 30;				// RP2040 goes up to GPIO29
 #if RP2040
 
 inline constexpr Pin GpioPin(unsigned int n) noexcept { return n; }
+inline constexpr uint32_t GpioMask(Pin p) { return (uint32_t)1 << p; }
 
 #else
 
@@ -413,7 +414,7 @@ inline void fastDigitalWriteHigh(uint32_t pin) noexcept
 #elif SAME70 || SAM4E || SAM4S
 	GpioPort(pin)->PIO_SODR = GpioMask(pin);
 #elif RP2040
-	gpio_put(pin, true);			//TODO can we optimise this?
+	gpio_set_mask(GpioMask(pin));
 #else
 # error Unsupported processor
 #endif
@@ -431,7 +432,7 @@ inline void fastDigitalWriteLow(uint32_t pin) noexcept
 #elif SAME70 || SAM4E || SAM4S
 	GpioPort(pin)->PIO_CODR = GpioMask(pin);
 #elif RP2040
-	gpio_put(pin, false);			//TODO can we optimise this?
+	gpio_clr_mask(GpioMask(pin));
 #else
 # error Unsupported processor
 #endif
