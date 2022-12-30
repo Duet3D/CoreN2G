@@ -206,7 +206,7 @@ uint64_t millis64() noexcept;
 void delay(uint32_t ms) noexcept;
 
 /**
- * @brief Set the required mode fore an I/O pin for
+ * @brief Set the required mode for an I/O pin for
  * @param pin The pin number to set the mode for. If the pin number is not valid (e.g. NoPin), the call will be ignored.
  * @param mode The mode to set the pin to.
  */
