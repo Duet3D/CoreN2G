@@ -381,8 +381,8 @@ void CanDevice::DeInit() noexcept
 {
 	if (hw != nullptr)
 	{
-		Disable();
 		NVIC_DisableIRQ(IRQnsByPort[whichPort]);
+		Disable();
 		devicesByPort[whichPort] = nullptr;									// free the port
 		hw = nullptr;														// free the device
 	}

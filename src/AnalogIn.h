@@ -46,6 +46,7 @@ namespace AnalogIn
 
 	// Readings will be taken and about every 'ticksPerCall' milliseconds the callback function will be called with the specified parameter and ADC reading.
 	// Set ticksPerCall to 0 to get a callback on every reading.
+	// Call this with fn == nullptr to stop getting callbacks.
 	bool SetCallback(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall, bool useAlternateAdc = false) noexcept;
 
 	// Return whether or not the channel is enabled
