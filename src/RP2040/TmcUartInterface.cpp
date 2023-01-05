@@ -131,8 +131,8 @@ void TmcUartInterface::ResetUart() noexcept
 // This is called to stop any pending DMA ready for reprogramming the DMAC
 void TmcUartInterface::ResetDMA() noexcept
 {
-	dma_channel_abort(firstDmaChan);
-	dma_channel_abort(firstDmaChan + 1);
+	DmacManager::DisableChannel(firstDmaChan);
+	DmacManager::DisableChannel(firstDmaChan + 1);
 }
 
 // Set up the data to send
