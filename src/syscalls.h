@@ -13,10 +13,6 @@
 #include <cerrno>
 #include <new>
 
-#undef errno
-
-int errno;
-
 extern char _end;										// defined by the linker script
 extern uint32_t _estack;
 
