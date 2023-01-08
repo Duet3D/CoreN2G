@@ -11,7 +11,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_BUILD_TYPE RelWithDebInfo)
 
 # Enable PicoW driver support.  Compatible with standard Pico
-set(PICO_BOARD pico)
+set(PICO_BOARD pico_w)
 
 # Initialize the SDK
 pico_sdk_init()
@@ -51,6 +51,7 @@ include_directories(BEFORE ${PICO_SDK_PATH}/../../../../FreeRTOS/src/portable/GC
 
 target_link_libraries(pico
 	boot_stage2
+	cyw43_driver
 	hardware_adc
 	hardware_base
 	hardware_claim
@@ -80,11 +81,15 @@ target_link_libraries(pico
 	pico_bootrom
 	pico_bootsel_via_double_reset
 	pico_cxx_options
+	pico_cyw43_arch_none
 	pico_divider
 	pico_double
 	pico_fix
 	pico_float
 	pico_int64_ops
+	pico_lwip
+	pico_lwip_nosys
+    pico_lwip_sntp
 	pico_malloc
 	pico_mem_ops
 	pico_multicore
@@ -99,5 +104,6 @@ target_link_libraries(pico
 )
 
 add_custom_command(TARGET pico POST_BUILD
-	COMMAND ar d libpico.a stdio.c.obj stdio_usb.c.obj stdio_usb_descriptors.c.obj
+	COMMAND ar d libpico.a stdio.c.obj stdio_usb.c.obj stdio_usb_descriptors.c.obj cyw43_arch_threadsafe_background.c.obj
+	COMMAND ar q libpico.a pico-sdk/src/rp2_common/cyw43_driver/cyw43_resource.o
 )
