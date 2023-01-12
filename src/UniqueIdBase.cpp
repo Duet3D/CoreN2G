@@ -83,7 +83,7 @@ void UniqueIdBase::SetFromRemote(const uint8_t srcData[16]) noexcept
 }
 
 // Append the unique ID in character form to something
-void UniqueIdBase::AppendCharsTo(function_ref<void(char) /*noexcept*/> fn) const noexcept
+void UniqueIdBase::AppendCharsTo(function_ref_noexcept<void(char) noexcept> fn) const noexcept
 {
 	size_t i = 0;
 	for (;;)

@@ -29,7 +29,7 @@ public:
 	void SetFromCurrentBoard() noexcept;
 	void SetFromRemote(const uint8_t srcData[16]) noexcept;
 
-	void AppendCharsTo(function_ref<void(char) /*noexcept*/> fn) const noexcept;
+	void AppendCharsTo(function_ref_noexcept<void(char) noexcept> fn) const noexcept;
 	void AppendCharsToString(const StringRef& str) const noexcept;
 
 	const uint8_t *_ecv_array GetRaw() const { return (const uint8_t *_ecv_array)data; }
