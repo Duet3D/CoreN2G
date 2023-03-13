@@ -136,7 +136,6 @@ private:
 	void data_state_line_passive() noexcept;
 	void data_state_go_data() noexcept;
 	void data_state_go_stuff_count() noexcept;
-	void data_state_go_crc() noexcept;
 	void data_state_update_start(uint32_t data) noexcept;
 	void data_state_update_header(uint32_t data) noexcept;
 	void data_state_update_ext_header(uint32_t data) noexcept;
