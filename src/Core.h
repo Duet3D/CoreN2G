@@ -17,6 +17,10 @@
 
 #include <ecv_duet3d.h>
 
+// Branch prediction macros. Must be defined before we include the part-specifi files, else some of them will define it in an unhelpful manner.
+#define likely(x)		__builtin_expect(!!(x), 1)
+#define unlikely(x)		__builtin_expect(!!(x), 0)
+
 #if defined(__SAME54P20A__) || defined(__SAME51P20A__)
 # include <same54.h>
 # define SAMC21				0
