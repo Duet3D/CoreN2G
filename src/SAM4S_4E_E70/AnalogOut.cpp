@@ -78,13 +78,14 @@ pre((pinDesc.ulPinAttribute & PIN_ATTR_PWM) != 0)
 #if SAME70
 			pmc_enable_periph_clk(ID_PWM0);
 			pmc_enable_periph_clk(ID_PWM1);
-			PWM0->PWM_CLK = 0;
+			// The SAME70 PWM channels let us divide the system clock by 1 to 1024 or use CLKA or CLKB. Set up CLKA to divider by 2048 and CLKB to divide by 4096.
+			PWM0->PWM_CLK = PWM_CLK_PREA_CLK_DIV1024 | PWM_CLK_DIVA(2) | PWM_CLK_PREB_CLK_DIV1024 | PWM_CLK_DIVB(4);
 			PWM0->PWM_SCM = 0;										// ensure no sync channels
-			PWM1->PWM_CLK = 0;
+			PWM1->PWM_CLK = PWM_CLK_PREA_CLK_DIV1024 | PWM_CLK_DIVA(2) | PWM_CLK_PREB_CLK_DIV1024 | PWM_CLK_DIVB(4);
 			PWM1->PWM_SCM = 0;										// ensure no sync channels
 #else
 			pmc_enable_periph_clk(ID_PWM);
-			PWM->PWM_CLK = 0;
+			PWM->PWM_CLK = PWM_CLK_PREA_CLK_DIV1024 | PWM_CLK_DIVA(2) | PWM_CLK_PREB_CLK_DIV1024 | PWM_CLK_DIVB(4);
 			PWM->PWM_SCM = 0;										// ensure no sync channels
 #endif
 			PWMEnabled = true;
@@ -94,7 +95,7 @@ pre((pinDesc.ulPinAttribute & PIN_ATTR_PWM) != 0)
 		uint32_t clockFreq = SystemPeripheralClock();
 		uint32_t clockShift = 0;
 		uint32_t period;
-		while ((period = clockFreq/(uint32_t)freq) > 65535 && clockShift <= 10)
+		while ((period = clockFreq/(uint32_t)freq) > 65535 && clockShift <= 12)
 		{
 			clockFreq >>= 1;
 			++clockShift;
