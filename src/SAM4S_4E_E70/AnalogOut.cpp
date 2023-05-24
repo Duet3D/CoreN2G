@@ -85,7 +85,7 @@ pre((pinDesc.ulPinAttribute & PIN_ATTR_PWM) != 0)
 			PWM1->PWM_SCM = 0;										// ensure no sync channels
 #else
 			pmc_enable_periph_clk(ID_PWM);
-			PWM->PWM_CLK = PWM_CLK_PREA_CLK_DIV1024 | PWM_CLK_DIVA(2) | PWM_CLK_PREB_CLK_DIV1024 | PWM_CLK_DIVB(4);
+			PWM->PWM_CLK = PWM_CLK_PREA(10) | PWM_CLK_DIVA(2) | PWM_CLK_PREB(10) | PWM_CLK_DIVB(4);
 			PWM->PWM_SCM = 0;										// ensure no sync channels
 #endif
 			PWMEnabled = true;
