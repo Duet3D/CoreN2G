@@ -118,10 +118,13 @@ extern "C" {
 
 static const uint32_t SystemCoreClockFreq = 120000000;	///< The processor clock frequency after initialisation
 
-static const unsigned int GclkNum120MHz = 0;
+static const unsigned int GclkNum120MHz = 0;			// clock used by the CPU and high speed peripherals
 static const unsigned int GclkNum31KHz = 1;				// frequency is 31250Hz
-static const unsigned int GclkNum60MHz = 3;
-static const unsigned int GclkNum48MHz = 4;
+static const unsigned int GclkNumEthernetPhy = 2;		// reserved for RepRapFirmware to use for the Ethernet PHY clock on the Duet 3 Mini Ethernet
+static const unsigned int GclkNum60MHz = 3;				// clock used for lower speed peripherals
+static const unsigned int GclkNum48MHz = 4;				// clock used for step timer and CAN timing
+static const unsigned int GclkSdhc = 5;					// clock used by SDHC, set up in RepRapFirmware
+static const unsigned int GclkNum1MHz = 6;				// clock used for EIC deglitching
 // Other GCLKs may be defined by the client application
 
 #elif SAMC21
@@ -130,6 +133,7 @@ static const uint32_t SystemCoreClockFreq = 48000000;	///< The processor clock f
 
 static const unsigned int GclkNum48MHz = 0;
 static const unsigned int GclkNum31KHz = 1;				// frequency is 31250Hz
+static const unsigned int GclkNum1MHz = 2;				// clock used for EIC deglitching
 // Other GCLKs may be defined by the client application
 
 #elif SAM4E

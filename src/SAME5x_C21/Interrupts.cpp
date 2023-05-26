@@ -9,10 +9,8 @@
 
 #if SAME5x
 #include <hri_gclk_e54.h>
-constexpr unsigned int ExintGclkNum = GclkNum120MHz;
 #elif SAMC21
 #include <hri_gclk_c21.h>
-constexpr unsigned int ExintGclkNum = GclkNum48MHz;
 #endif
 
 struct InterruptCallback
@@ -30,8 +28,9 @@ static InterruptCallback exintCallbacks[16];
 
 void InitialiseExints() noexcept
 {
+	// Use 1MHz EIC clock for input filtering
 	hri_mclk_set_APBAMASK_EIC_bit(MCLK);
-	hri_gclk_write_PCHCTRL_reg(GCLK, EIC_GCLK_ID, GCLK_PCHCTRL_GEN(ExintGclkNum) | GCLK_PCHCTRL_CHEN);
+	hri_gclk_write_PCHCTRL_reg(GCLK, EIC_GCLK_ID, GCLK_PCHCTRL_GEN(GclkNum1MHz) | GCLK_PCHCTRL_CHEN);
 
 	if (!hri_eic_is_syncing(EIC, EIC_SYNCBUSY_SWRST)) {
 		if (hri_eic_get_CTRLA_reg(EIC, EIC_CTRLA_ENABLE)) {
