@@ -252,18 +252,25 @@ static void InitClocks() noexcept
 	hri_mclk_write_CPUDIV_reg(MCLK, MCLK_CPUDIV_CPUDIV(1));
 
 	// GCLK 0: 48MHz from DPLL
-	hri_gclk_write_GENCTRL_reg(GCLK, 0,
+	hri_gclk_write_GENCTRL_reg(GCLK, GclkNum48MHz,
 		GCLK_GENCTRL_DIV(1) | (0 << GCLK_GENCTRL_RUNSTDBY_Pos)
 			| (0 << GCLK_GENCTRL_DIVSEL_Pos) | (0 << GCLK_GENCTRL_OE_Pos)
 			| (0 << GCLK_GENCTRL_OOV_Pos) | (0 << GCLK_GENCTRL_IDC_Pos)
 			| GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC_DPLL96M);
 
 	// GCLK 1: 31250Hz (1MHz divided by 32)
-	hri_gclk_write_GENCTRL_reg(GCLK, 1,
+	hri_gclk_write_GENCTRL_reg(GCLK, GclkNum31KHz,
 		GCLK_GENCTRL_DIV(32 * xoscFrequency) | (0 << GCLK_GENCTRL_RUNSTDBY_Pos)
 			| (0 << GCLK_GENCTRL_DIVSEL_Pos) | (0 << GCLK_GENCTRL_OE_Pos)
 			| (0 << GCLK_GENCTRL_OOV_Pos) | (0 << GCLK_GENCTRL_IDC_Pos)
 			| GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC_XOSC);
+
+	// GCLK 2: 1MHz from DPLL
+	hri_gclk_write_GENCTRL_reg(GCLK, GclkNum1MHz,
+		GCLK_GENCTRL_DIV(48) | (0 << GCLK_GENCTRL_RUNSTDBY_Pos)
+			| (0 << GCLK_GENCTRL_DIVSEL_Pos) | (0 << GCLK_GENCTRL_OE_Pos)
+			| (0 << GCLK_GENCTRL_OOV_Pos) | (0 << GCLK_GENCTRL_IDC_Pos)
+			| GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC_DPLL96M);
 
 	// Set up system clock frequency variable for FreeRTOS
 	SystemCoreClock = SystemCoreClockFreq;
