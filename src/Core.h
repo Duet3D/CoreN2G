@@ -124,6 +124,7 @@ static const unsigned int GclkNumEthernetPhy = 2;		// reserved for RepRapFirmwar
 static const unsigned int GclkNum60MHz = 3;				// clock used for lower speed peripherals
 static const unsigned int GclkNum48MHz = 4;				// clock used for step timer and CAN timing
 static const unsigned int GclkSdhc = 5;					// clock used by SDHC, set up in RepRapFirmware
+static const unsigned int GclkClosedLoop = 5;			// clock used on the closed loop boards as the clock for the TMC2160A driver (can be same as GclkSdhc because no board uses both clocks)
 static const unsigned int GclkNum1MHz = 6;				// clock used for EIC deglitching
 // Other GCLKs may be defined by the client application
 
