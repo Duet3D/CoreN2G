@@ -72,21 +72,10 @@ WS2812::WS2812(Pin p_pin, bool p_isRgbw, unsigned int p_dmaChan) noexcept
 
 	dma_channel_claim(dmaChan);
 
-	// Set up the state machine
-	pio_gpio_init(hw, pin);
-	pio_sm_set_consecutive_pindirs(hw, stateMachineNumber, pin, 1, true);
-
-	pio_sm_config c = ws2812_program_get_default_config(pioProgramOffset);
-	sm_config_set_sideset_pins(&c, pin);
-	sm_config_set_out_shift(&c, false, true, isRgbw ? 32 : 24);
-	sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
-
-	const unsigned int cycles_per_bit = ws2812_T1 + ws2812_T2 + ws2812_T3;
-	const float div = SystemCoreClock / (frequency * cycles_per_bit);
-	sm_config_set_clkdiv(&c, div);
-
-	pio_sm_init(hw, stateMachineNumber, pioProgramOffset, &c);
-	pio_sm_set_enabled(hw, stateMachineNumber, true);
+	if (pin != NoPin)
+	{
+		Configure(pin, isRgbw);
+	}
 }
 
 WS2812::~WS2812()
@@ -95,6 +84,33 @@ WS2812::~WS2812()
 	{
 		dma_channel_unclaim(dmaChan);
 		pio_sm_unclaim(hw, stateMachineNumber);
+	}
+}
+
+void WS2812::Configure(Pin p_pin, bool p_isRgbw) noexcept
+{
+	if (pin != p_pin || p_isRgbw != isRgbw)
+	{
+		pin = p_pin;
+		isRgbw = p_isRgbw;
+		// make sure previous I/O is complete
+		while (dma_channel_is_busy(dmaChan)) { }
+
+		// Set up the state machine
+		pio_gpio_init(hw, pin);
+		pio_sm_set_consecutive_pindirs(hw, stateMachineNumber, pin, 1, true);
+
+		pio_sm_config c = ws2812_program_get_default_config(pioProgramOffset);
+		sm_config_set_sideset_pins(&c, pin);
+		sm_config_set_out_shift(&c, false, true, isRgbw ? 32 : 24);
+		sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
+
+		const unsigned int cycles_per_bit = ws2812_T1 + ws2812_T2 + ws2812_T3;
+		const float div = SystemCoreClock / (frequency * cycles_per_bit);
+		sm_config_set_clkdiv(&c, div);
+
+		pio_sm_init(hw, stateMachineNumber, pioProgramOffset, &c);
+		pio_sm_set_enabled(hw, stateMachineNumber, true);
 	}
 }
 
