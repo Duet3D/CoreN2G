@@ -135,6 +135,7 @@ static const uint32_t SystemCoreClockFreq = 48000000;	///< The processor clock f
 static const unsigned int GclkNum48MHz = 0;
 static const unsigned int GclkNum31KHz = 1;				// frequency is 31250Hz
 static const unsigned int GclkNum1MHz = 2;				// clock used for EIC deglitching
+static const unsigned int GclkNumPA23 = 7;				// clock we can output on PA23 e.g. for LDC1612
 // Other GCLKs may be defined by the client application
 
 #elif SAM4E
