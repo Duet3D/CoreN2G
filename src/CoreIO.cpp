@@ -814,4 +814,25 @@ extern "C" uint32_t random32() noexcept
 #endif
 }
 
+#if RP2040
+# if SUPPORT_CAN
+extern void DisableCanCore1Processing() noexcept;
+extern void EnableCanCore1Processing() noexcept;
+# endif
+
+void DisableCore1Processing() noexcept
+{
+# if SUPPORT_CAN
+	DisableCanCore1Processing();
+# endif
+}
+
+void EnableCore1Processing() noexcept
+{
+# if SUPPORT_CAN
+	EnableCanCore1Processing();
+# endif
+}
+#endif
+
 // End

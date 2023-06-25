@@ -134,7 +134,9 @@ void CanDevice::DeInit() noexcept
 {
 	if (inUse)
 	{
+		multicore_reset_core1();
 		Disable();
+		delay(100);
 #ifdef RTOS
 		NVIC_DisableIRQ(SIO_IRQ_PROC0_IRQn);
 #endif
@@ -628,6 +630,16 @@ void CAN_Handler() noexcept
 }
 
 #endif	// RTOS
+
+void DisableCanCore1Processing() noexcept
+{
+	devices[0].Disable();
+}
+
+void EnableCanCore1Processing() noexcept
+{
+	devices[0].Enable();
+}
 
 #endif	// SUPPORT_CAN
 

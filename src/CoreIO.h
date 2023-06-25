@@ -928,4 +928,15 @@ extern uint32_t AppGetSdhcClockSpeed() noexcept;
 
 #endif
 
+#if RP2040
+/**
+ * @brief On the RP2040 when using flash operations we need to ensure that the core 1 is not executing code from flash
+ */
+extern void DisableCore1Processing() noexcept;
+/**
+ * @brief Enable normal operation on Core 1
+ */
+extern void EnableCore1Processing() noexcept;
+#endif
+
 #endif /* SRC_HARDWARE_SAME5X_COREIO_H_ */
