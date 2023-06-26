@@ -42,6 +42,7 @@ namespace AnalogIn
 	// Readings will be taken and about every 'ticksPerCall' milliseconds the callback function will be called with the specified parameter and ADC reading.
 	// Set ticksPerCall to 0 to get a callback on every reading.
 	// Warning! there is nothing to stop you enabling a channel twice, in which case in the SAME51 configuration, it will be read twice in the sequence.
+	// After calling this, the result of calling ReadChannel will be zero until a reading has been taken.
 	bool EnableChannel(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall, bool useAlternateAdc = false) noexcept;
 
 	// Readings will be taken and about every 'ticksPerCall' milliseconds the callback function will be called with the specified parameter and ADC reading.
@@ -55,7 +56,7 @@ namespace AnalogIn
 	// Disable a previously-enabled channel
 	void DisableChannel(AdcInput adcin, bool useAlternateAdc = false) noexcept;
 
-	// Get the latest result from a channel. the channel must have been enabled first.
+	// Get the latest result from a channel. The channel must have been enabled first.
 	uint16_t ReadChannel(AdcInput adcin) noexcept;
 
 	// Get the number of conversions that were started
