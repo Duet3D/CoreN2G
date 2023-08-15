@@ -40,6 +40,7 @@ static CallbackParameter tempCallbackParam;
 static uint32_t tempTicksPerCall = 1;
 
 static uint32_t tempTicksAtLastCall = 0;
+static AnalogIn::AdcTaskHookFunction *taskHookFunction = nullptr;
 
 class AdcBase
 {
@@ -572,15 +573,19 @@ void AnalogIn::TaskLoop(void*) noexcept
 			}
 		}
 
+		if (taskHookFunction != nullptr)
+		{
+			taskHookFunction();
+		}
+
 		if (conversionStarted)
 		{
 			TaskBase::Take(100);
-			delay(2);
 		}
 		else
 		{
 			// No ADCs enabled yet, or all converting
-			delay(10);
+			delay(2);
 		}
 	}
 }
@@ -699,6 +704,13 @@ void AnalogIn::GetDebugInfo(uint32_t &convsStarted, uint32_t &convsCompleted, ui
 	convsCompleted = conversionsCompleted;
 	convTimeouts = conversionTimeouts;
 	errs = errors;
+}
+
+AnalogIn::AdcTaskHookFunction *AnalogIn::SetTaskHook(AdcTaskHookFunction *func) noexcept
+{
+	const AdcTaskHookFunction *oldFunc = taskHookFunction;
+	taskHookFunction = func;
+	return oldFunc;
 }
 
 #endif

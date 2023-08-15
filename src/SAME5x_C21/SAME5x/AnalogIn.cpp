@@ -25,6 +25,7 @@ static uint32_t conversionsStarted = 0;
 static uint32_t conversionsCompleted = 0;
 static uint32_t conversionTimeouts = 0;
 static uint32_t errors = 0;
+static AnalogIn::AdcTaskHookFunction *taskHookFunction = nullptr;
 
 // DMA sequencing in this MCU is an abomination. It goes wrong in the presence of SBC SPI DMA and recovery is difficult, because we need to set the AUTOSTART bit
 // to convert a whole sequence, and that means that a new sequence will start as soon as the old one has finished.
@@ -399,6 +400,11 @@ void AnalogIn::TaskLoop(void *) noexcept
 			}
 		}
 
+		if (taskHookFunction != nullptr)
+		{
+			taskHookFunction();
+		}
+
 		if (conversionStarted)
 		{
 			TaskBase::Take(100);
@@ -506,6 +512,13 @@ void AnalogIn::GetDebugInfo(uint32_t &convsStarted, uint32_t &convsCompleted, ui
 	convsCompleted = conversionsCompleted;
 	convTimeouts = conversionTimeouts;
 	errs = errors;
+}
+
+AnalogIn::AdcTaskHookFunction *AnalogIn::SetTaskHook(AdcTaskHookFunction *func) noexcept
+{
+	const AdcTaskHookFunction *oldFunc = taskHookFunction;
+	taskHookFunction = func;
+	return oldFunc;
 }
 
 #endif

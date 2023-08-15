@@ -73,6 +73,9 @@ namespace AnalogIn
 
 	extern "C" [[noreturn]] void TaskLoop(void*) noexcept;
 
+	typedef void AdcTaskHookFunction() noexcept;
+	AdcTaskHookFunction *SetTaskHook(AdcTaskHookFunction *func) noexcept;
+
 #else
 
 # if SAMC21 || SAME5x
