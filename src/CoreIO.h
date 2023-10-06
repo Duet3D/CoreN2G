@@ -727,6 +727,7 @@ enum class AdcInput : uint8_t
 	adc0_10, adc0_11, adc0_12, adc0_13, adc0_14, adc0_15,
 	adc1_0 = 0x10, adc1_1, adc1_2, adc1_3, adc1_4, adc1_5, adc1_6, adc1_7,
 	adc1_8, adc1_9, adc1_10, adc1_11, adc1_12, adc1_13, adc1_14, adc1_15,
+	ldc1612 = 0x20,
 #endif
 #if SAME70
 	adc1_0 = 0x10, adc1_1, adc1_2, adc1_3, adc1_4, adc1_5, adc1_6, adc1_7,
