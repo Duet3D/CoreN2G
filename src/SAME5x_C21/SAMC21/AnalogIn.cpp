@@ -188,7 +188,7 @@ bool AdcBase::ConversionDone() noexcept
 class AdcClass : public AdcBase
 {
 public:
-	AdcClass(Adc * const p_device, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept;
+	AdcClass(Adc * const p_device, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc, bool extRef) noexcept;
 
 	bool StartConversion() noexcept override;
 	void ExecuteCallbacks() noexcept override;
@@ -199,10 +199,11 @@ protected:
 
 private:
 	Adc * const device;
+	bool usingExternalReference;
 };
 
-AdcClass::AdcClass(Adc * const p_device, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept
-	: AdcBase(p_dmaChan, priority, p_trigSrc), device(p_device)
+AdcClass::AdcClass(Adc * const p_device, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc, bool extRef) noexcept
+	: AdcBase(p_dmaChan, priority, p_trigSrc), device(p_device), usingExternalReference(extRef)
 {
 }
 
@@ -225,7 +226,7 @@ void AdcClass::ReInit() noexcept
 #else
 	hri_adc_write_CTRLC_reg(device, ADC_CTRLC_RESSEL_16BIT);			// 16 bit result
 #endif
-	hri_adc_write_REFCTRL_reg(device,  ADC_REFCTRL_REFSEL_INTVCC2);
+	hri_adc_write_REFCTRL_reg(device, (usingExternalReference) ? ADC_REFCTRL_REFSEL_AREFA : ADC_REFCTRL_REFSEL_INTVCC2);
 	hri_adc_write_EVCTRL_reg(device, ADC_EVCTRL_RESRDYEO);
 	hri_adc_write_INPUTCTRL_reg(device, ADC_INPUTCTRL_MUXNEG_GND);
 	hri_adc_write_AVGCTRL_reg(device, ADC_AVGCTRL_SAMPLENUM_64);		// average 64 measurements
@@ -591,10 +592,10 @@ void AnalogIn::TaskLoop(void*) noexcept
 }
 
 // Initialise the analog input subsystem. Call this just once.
-void AnalogIn::Init(DmaChannel dmaChan, DmaPriority priority) noexcept
+void AnalogIn::Init(DmaChannel dmaChan, DmaPriority priority, bool extRef) noexcept
 {
 	// Create the device instances
-	adcs[0] = new AdcClass(ADC0, dmaChan, priority, DmaTrigSource::adc0_resrdy);
+	adcs[0] = new AdcClass(ADC0, dmaChan, priority, DmaTrigSource::adc0_resrdy, extRef);
 #if SUPPORT_SDADC
 	adcs[1] = new SdAdcClass(SDADC, dmaChan + 1, priority, DmaTrigSource::sdadc_resrdy);
 #endif

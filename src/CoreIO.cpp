@@ -656,7 +656,7 @@ void ResetProcessor() noexcept
 void ConfigureGclk(unsigned int index, GclkSource source, uint16_t divisor, bool enableOutput) noexcept
 {
 	uint32_t regVal = GCLK_GENCTRL_DIV(divisor) | GCLK_GENCTRL_SRC((uint32_t)source) | GCLK_GENCTRL_GENEN;
-	if (divisor & 1u)
+	if ((divisor & 1u) && divisor != 1u)
 	{
 		regVal |= 1u << GCLK_GENCTRL_IDC_Pos;
 	}

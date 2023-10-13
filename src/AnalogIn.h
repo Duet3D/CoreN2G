@@ -29,7 +29,11 @@ namespace AnalogIn
 	void Init(
 #if SAME5x
 				NvicPriority interruptPriority
-#elif SAMC21 || RP2040
+#elif SAMC21
+				DmaChannel dmaChan,
+				DmaPriority rxPriority,
+				bool extRef
+#elif RP2040
 				DmaChannel dmaChan,
 				DmaPriority rxPriority
 #endif
