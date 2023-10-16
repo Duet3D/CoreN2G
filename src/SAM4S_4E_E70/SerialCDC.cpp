@@ -6,6 +6,7 @@
  */
 
 #if SUPPORT_USB
+
 #include <SerialCDC.h>
 #include <Interrupts.h>
 #include "conf_usb.h"		// include this to check that the signatures of the callback functions are correct
