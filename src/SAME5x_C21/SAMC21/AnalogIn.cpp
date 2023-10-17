@@ -89,7 +89,7 @@ protected:
 	volatile State state;
 	volatile DmaCallbackReason dmaFinishedReason;
 
-	AnalogInCallbackFunction callbackFunctions[NumAdcChannels];
+	volatile AnalogInCallbackFunction callbackFunctions[NumAdcChannels];
 	CallbackParameter callbackParams[NumAdcChannels];
 	uint32_t ticksPerCall[NumAdcChannels];
 	uint32_t ticksAtLastCall[NumAdcChannels];

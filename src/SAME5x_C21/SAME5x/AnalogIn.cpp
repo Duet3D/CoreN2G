@@ -87,7 +87,7 @@ private:
 	uint32_t whenLastConversionStarted;
 	uint32_t currentChannel;
 	volatile State state;
-	AnalogInCallbackFunction callbackFunctions[MaxSequenceLength];
+	volatile AnalogInCallbackFunction callbackFunctions[MaxSequenceLength];
 	CallbackParameter callbackParams[MaxSequenceLength];
 	uint32_t ticksPerCall[MaxSequenceLength];
 	uint32_t ticksAtLastCall[MaxSequenceLength];
@@ -319,9 +319,10 @@ void AdcClass::ExecuteCallbacks() noexcept
 		if (now - ticksAtLastCall[i] >= ticksPerCall[i])
 		{
 			ticksAtLastCall[i] = now;
-			if (callbackFunctions[i] != nullptr)
+			const AnalogInCallbackFunction fn = callbackFunctions[i];
+			if (fn != nullptr)
 			{
-				callbackFunctions[i](callbackParams[i], (uint32_t)currentResult);
+				fn(callbackParams[i], (uint32_t)currentResult);
 			}
 		}
 	}
