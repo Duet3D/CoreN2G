@@ -10,7 +10,7 @@
 
 #include <CoreIO.h>
 
-typedef void (*AnalogInCallbackFunction)(CallbackParameter p, uint16_t reading) noexcept;
+typedef void (*AnalogInCallbackFunction)(CallbackParameter p, uint32_t reading) noexcept;
 
 namespace AnalogIn
 {

@@ -369,7 +369,7 @@ void AdcClass::ExecuteCallbacks() noexcept
 				const AnalogInCallbackFunction fn = callbackFunctions[i];
 				if (fn != nullptr)
 				{
-					fn(callbackParams[i], currentResult);
+					fn(callbackParams[i], (uint32_t)currentResult);
 				}
 			}
 		}
@@ -461,7 +461,7 @@ void SdAdcClass::ExecuteCallbacks() noexcept
 				const AnalogInCallbackFunction fn = callbackFunctions[i];
 				if (fn != nullptr)
 				{
-					fn(callbackParams[i], currentResult);
+					fn(callbackParams[i], (uint32_t)currentResult);
 				}
 			}
 		}

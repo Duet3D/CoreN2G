@@ -321,7 +321,7 @@ void AdcClass::ExecuteCallbacks() noexcept
 			ticksAtLastCall[i] = now;
 			if (callbackFunctions[i] != nullptr)
 			{
-				callbackFunctions[i](callbackParams[i], currentResult);
+				callbackFunctions[i](callbackParams[i], (uint32_t)currentResult);
 			}
 		}
 	}
