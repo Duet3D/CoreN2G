@@ -171,6 +171,12 @@ inline CanRxBufferHeader *CanDevice::GetRxBuffer(uint32_t index) const noexcept 
 inline CanTxBufferHeader *CanDevice::GetTxBuffer(uint32_t index) const noexcept { return (CanTxBufferHeader*)(txBuffers + (index * GetTxBufferSize())); }
 inline CanDevice::TxEvent *CanDevice::GetTxEvent(uint32_t index) const noexcept { return &txEventFifo[index]; }
 
+// Clear statistics
+void CanDevice::CanStats::Clear() noexcept
+{
+	messagesQueuedForSending = messagesReceived = messagesLost = protocolErrors = busOffCount = 0;
+}
+
 // Initialise a CAN device and return a pointer to it
 /*static*/ CanDevice* CanDevice::Init(unsigned int p_whichCan, unsigned int p_whichPort, const Config& p_config, uint32_t *memStart, const CanTiming &timing, TxEventCallbackFunction p_txCallback) noexcept
 {
@@ -226,7 +232,7 @@ inline CanDevice::TxEvent *CanDevice::GetTxEvent(uint32_t index) const noexcept 
 	dev.txBuffers = memStart;
 
 	dev.useFDMode = (p_config.dataSize > 8);							// assume we want standard CAN if the max data size is 8
-	dev.messagesQueuedForSending = dev.messagesReceived = dev.messagesLost = dev.busOffCount = 0;
+	dev.stats.Clear();
 #ifdef RTOS
 	for (volatile TaskHandle& h : dev.txTaskWaiting) { h = nullptr; }
 	for (volatile TaskHandle& h : dev.rxTaskWaiting) { h = nullptr; }
@@ -352,8 +358,8 @@ void CanDevice::DoHardwareInit() noexcept
 	NVIC_ClearPendingIRQ(irqn);
 
 	hw->REG(ILS) = 0;														// all interrupt sources assigned to interrupt line 0 for now
-	statusMask =         CAN_(IR_RF0N)  | CAN_(IR_RF1N)  | CAN_(IR_DRX)  | CAN_(IR_TC)  | CAN_(IR_BO)  | CAN_(IR_RF0L)  | CAN_(IR_RF1L);
-	uint32_t intEnable = CAN_(IE_RF0NE) | CAN_(IE_RF1NE) | CAN_(IE_DRXE) | CAN_(IE_TCE) | CAN_(IE_BOE) | CAN_(IE_RF0LE) | CAN_(IE_RF1LE);
+	statusMask =         CAN_(IR_RF0N)  | CAN_(IR_RF1N)  | CAN_(IR_DRX)  | CAN_(IR_TC)  | CAN_(IR_BO)  | CAN_(IR_RF0L)  | CAN_(IR_RF1L)  | CAN_(IR_PED)  | CAN_(IR_PEA);
+	uint32_t intEnable = CAN_(IE_RF0NE) | CAN_(IE_RF1NE) | CAN_(IE_DRXE) | CAN_(IE_TCE) | CAN_(IE_BOE) | CAN_(IE_RF0LE) | CAN_(IE_RF1LE) | CAN_(IE_PEDE) | CAN_(IE_PEAE);
 	if (txCallback != nullptr)
 	{
 		intEnable |= CAN_(IE_TEFNE);
@@ -606,7 +612,7 @@ void CanDevice::CopyMessageForTransmit(CanMessageBuffer *buffer, volatile CanTxB
 	f->T1.bit.FDF = buffer->fdMode;
 	f->T1.bit.BRS = buffer->useBrs;
 
-	++messagesQueuedForSending;
+	++stats.messagesQueuedForSending;
 }
 
 // Queue a message for sending via a buffer or FIFO. If the buffer isn't free, cancel the previous message (or oldest message in the fifo) and send it anyway.
@@ -707,7 +713,7 @@ void CanDevice::CopyReceivedMessage(CanMessageBuffer *null buffer, const volatil
 		}
   }
 
-	++messagesReceived;
+	++stats.messagesReceived;
 }
 
 // Receive a message in a buffer or fifo, with timeout. Returns true if successful, false if no message available even after the timeout period.
@@ -1015,15 +1021,11 @@ void CanDevice::UpdateLocalCanTiming(const CanTiming &timing) noexcept
 		| ((prescaler - 1) << CAN_(DBTP_DBRP_Pos));
 }
 
-void CanDevice::GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsigned int& rMessagesReceived, unsigned int& rMessagesLost, unsigned int& rBusOffCount) noexcept
+void CanDevice::GetAndClearStats(CanDevice::CanStats& dst) noexcept
 {
 	AtomicCriticalSectionLocker lock;
-
-	rMessagesQueuedForSending = messagesQueuedForSending;
-	rMessagesReceived = messagesReceived;
-	rMessagesLost = messagesLost;
-	rBusOffCount = busOffCount;
-	messagesQueuedForSending = messagesReceived = messagesLost = busOffCount = 0;
+	dst = stats;
+	stats.Clear();
 }
 
 #ifdef RTOS
@@ -1092,19 +1094,25 @@ void CanDevice::Interrupt() noexcept
 			}
 		}
 
-		// Test for bus off condition
-		if (ir & CAN_(IR_BO))
-		{
-			++busOffCount;
-			DoHardwareInit();
-			Enable();
-			return;
-		}
-
 		// Test for messages lost due to receive fifo full
 		if (ir & (CAN_(IR_RF0L) | CAN_(IR_RF1L)))
 		{
-			++messagesLost;
+			++stats.messagesLost;
+		}
+
+		// Test for CAN protocol errors
+		if (ir & (CAN_(IR_PED)  | CAN_(IR_PEA)))
+		{
+			++stats.protocolErrors;
+		}
+
+		// Test for bus off condition
+		if (ir & CAN_(IR_BO))
+		{
+			++stats.busOffCount;
+			DoHardwareInit();
+			Enable();
+			return;
 		}
 
 		// Test whether there are any events in the transmit event fifo
