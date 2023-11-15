@@ -97,6 +97,9 @@ bool attachInterrupt(Pin pin, StandardCallbackFunction callback, InterruptMode m
 	default:						modeWord = EIC_CONFIG_SENSE0_NONE_Val; break;
 	}
 
+	const unsigned int shift = (exint & 7u) << 2u;
+	const uint32_t mask = ~(0x0000000F << shift);
+
 	{
 		AtomicCriticalSectionLocker lock;
 
@@ -106,20 +109,11 @@ bool attachInterrupt(Pin pin, StandardCallbackFunction callback, InterruptMode m
 		// Switch the pin into EIC mode
 		SetPinFunction(pin, GpioPinFunction::A);		// EIC is always on peripheral A
 
-		const unsigned int shift = (exint & 7u) << 2u;
-		const uint32_t mask = ~(0x0000000F << shift);
-
 		EIC->CTRLA.reg &= ~EIC_CTRLA_ENABLE;
 		hri_eic_wait_for_sync(EIC, EIC_SYNCBUSY_ENABLE);
 
-		if (exint < 8)
-		{
-			EIC->CONFIG[0].reg = (EIC->CONFIG[0].reg & mask) | (modeWord << shift);
-		}
-		else
-		{
-			EIC->CONFIG[1].reg = (EIC->CONFIG[1].reg & mask) | (modeWord << shift);
-		}
+		volatile uint32_t& reg = (exint < 8) ? EIC->CONFIG[0].reg : EIC->CONFIG[1].reg;
+		reg = (reg & mask) | (modeWord << shift);
 
 		EIC->CTRLA.reg |= EIC_CTRLA_ENABLE;
 		hri_eic_wait_for_sync(EIC, EIC_SYNCBUSY_ENABLE);
