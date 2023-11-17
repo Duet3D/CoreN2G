@@ -351,26 +351,26 @@ void AnalogIn::Exit() noexcept
 // Enable analog input on a pin.
 // Readings will be taken and about every 'ticksPerCall' milliseconds the callback function will be called with the specified parameter and ADC reading.
 // Set ticksPerCall to 0 to get a callback on every reading.
-bool AnalogIn::EnableChannel(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall, bool useAlternateAdc) noexcept
+bool AnalogIn::EnableChannel(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall) noexcept
 {
 	return adc->EnableChannel(GetInputNumber(adcin), fn, param, ticksPerCall);
 }
 
 // Readings will be taken and about every 'ticksPerCall' milliseconds the callback function will be called with the specified parameter and ADC reading.
 // Set ticksPerCall to 0 to get a callback on every reading.
-bool AnalogIn::SetCallback(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall, bool useAlternateAdc) noexcept
+bool AnalogIn::SetCallback(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall) noexcept
 {
 	return adc->SetCallback(GetInputNumber(adcin), fn, param, ticksPerCall);
 }
 
 // Return whether or not the channel is enabled
-bool AnalogIn::IsChannelEnabled(AdcInput adcin, bool useAlternateAdc) noexcept
+bool AnalogIn::IsChannelEnabled(AdcInput adcin) noexcept
 {
 	return adc->IsChannelEnabled(GetInputNumber(adcin));
 }
 
 // Disable a previously-enabled channel
-void AnalogIn::DisableChannel(AdcInput adcin, bool useAlternateAdc) noexcept
+void AnalogIn::DisableChannel(AdcInput adcin) noexcept
 {
 	//TODO not implemented yet (do we need it?)
 }
