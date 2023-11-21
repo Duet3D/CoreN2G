@@ -193,6 +193,8 @@ void DmacManager::EnableChannel(const uint8_t channel, DmaPriority priority) noe
 
 // Disable a channel. Also clears its status and disables its interrupts.
 // On the SAME5x it is sometimes impossible to disable a channel. So we now return true if disabling it succeeded, false it it is still enabled.
+// From the datasheet: "Writing a '0' to this bit [CHCTRLA.ENABLE] during an ongoing transfer, the bit will not be cleared until the internal data transfer buffer is
+// empty and the DMA transfer is aborted. The internal data transfer buffer will be empty once the ongoing burst transfer is completed."
 bool DmacManager::DisableChannel(const uint8_t channel) noexcept
 {
 	unsigned int i = 0;
