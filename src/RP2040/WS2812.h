@@ -18,6 +18,9 @@ public:
 	WS2812(Pin p_pin, bool p_isRgbw, unsigned int p_dmaChan) noexcept;
 	~WS2812();
 
+	// Configure the PIO to talk to a string
+	void Configure(Pin p_pin, bool p_isRgbw) noexcept;
+
 	// Send data, one 32-bit word per WS2812 LED. Either 24 or 32 bits are sent from each word depending on the isRgbw flag.
 	// The data format of each 32-bit word is:
 	//  Bits 24-31 Green intensity

@@ -19,6 +19,7 @@
 #ifndef SRC_HARDWARE_SAME4S_4E_E70_ASYNC_SERIAL_H_
 #define SRC_HARDWARE_SAME4S_4E_E70_ASYNC_SERIAL_H_
 
+#include <Core.h>
 #include <Stream.h>
 #include <General/RingBuffer.h>
 

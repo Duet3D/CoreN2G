@@ -40,6 +40,7 @@ static CallbackParameter tempCallbackParam;
 static uint32_t tempTicksPerCall = 1;
 
 static uint32_t tempTicksAtLastCall = 0;
+static AnalogIn::AdcTaskHookFunction *taskHookFunction = nullptr;
 
 class AdcBase
 {
@@ -88,7 +89,7 @@ protected:
 	volatile State state;
 	volatile DmaCallbackReason dmaFinishedReason;
 
-	AnalogInCallbackFunction callbackFunctions[NumAdcChannels];
+	volatile AnalogInCallbackFunction callbackFunctions[NumAdcChannels];
 	CallbackParameter callbackParams[NumAdcChannels];
 	uint32_t ticksPerCall[NumAdcChannels];
 	uint32_t ticksAtLastCall[NumAdcChannels];
@@ -187,7 +188,7 @@ bool AdcBase::ConversionDone() noexcept
 class AdcClass : public AdcBase
 {
 public:
-	AdcClass(Adc * const p_device, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept;
+	AdcClass(Adc * const p_device, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc, bool extRef) noexcept;
 
 	bool StartConversion() noexcept override;
 	void ExecuteCallbacks() noexcept override;
@@ -198,10 +199,11 @@ protected:
 
 private:
 	Adc * const device;
+	bool usingExternalReference;
 };
 
-AdcClass::AdcClass(Adc * const p_device, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc) noexcept
-	: AdcBase(p_dmaChan, priority, p_trigSrc), device(p_device)
+AdcClass::AdcClass(Adc * const p_device, DmaChannel p_dmaChan, DmaPriority priority, DmaTrigSource p_trigSrc, bool extRef) noexcept
+	: AdcBase(p_dmaChan, priority, p_trigSrc), device(p_device), usingExternalReference(extRef)
 {
 }
 
@@ -224,7 +226,7 @@ void AdcClass::ReInit() noexcept
 #else
 	hri_adc_write_CTRLC_reg(device, ADC_CTRLC_RESSEL_16BIT);			// 16 bit result
 #endif
-	hri_adc_write_REFCTRL_reg(device,  ADC_REFCTRL_REFSEL_INTVCC2);
+	hri_adc_write_REFCTRL_reg(device, (usingExternalReference) ? ADC_REFCTRL_REFSEL_AREFA : ADC_REFCTRL_REFSEL_INTVCC2);
 	hri_adc_write_EVCTRL_reg(device, ADC_EVCTRL_RESRDYEO);
 	hri_adc_write_INPUTCTRL_reg(device, ADC_INPUTCTRL_MUXNEG_GND);
 	hri_adc_write_AVGCTRL_reg(device, ADC_AVGCTRL_SAMPLENUM_64);		// average 64 measurements
@@ -367,7 +369,7 @@ void AdcClass::ExecuteCallbacks() noexcept
 				const AnalogInCallbackFunction fn = callbackFunctions[i];
 				if (fn != nullptr)
 				{
-					fn(callbackParams[i], currentResult);
+					fn(callbackParams[i], (uint32_t)currentResult);
 				}
 			}
 		}
@@ -459,7 +461,7 @@ void SdAdcClass::ExecuteCallbacks() noexcept
 				const AnalogInCallbackFunction fn = callbackFunctions[i];
 				if (fn != nullptr)
 				{
-					fn(callbackParams[i], currentResult);
+					fn(callbackParams[i], (uint32_t)currentResult);
 				}
 			}
 		}
@@ -572,24 +574,28 @@ void AnalogIn::TaskLoop(void*) noexcept
 			}
 		}
 
+		if (taskHookFunction != nullptr)
+		{
+			taskHookFunction();
+		}
+
 		if (conversionStarted)
 		{
 			TaskBase::Take(100);
-			delay(2);
 		}
 		else
 		{
 			// No ADCs enabled yet, or all converting
-			delay(10);
+			delay(2);
 		}
 	}
 }
 
 // Initialise the analog input subsystem. Call this just once.
-void AnalogIn::Init(DmaChannel dmaChan, DmaPriority priority) noexcept
+void AnalogIn::Init(DmaChannel dmaChan, DmaPriority priority, bool extRef) noexcept
 {
 	// Create the device instances
-	adcs[0] = new AdcClass(ADC0, dmaChan, priority, DmaTrigSource::adc0_resrdy);
+	adcs[0] = new AdcClass(ADC0, dmaChan, priority, DmaTrigSource::adc0_resrdy, extRef);
 #if SUPPORT_SDADC
 	adcs[1] = new SdAdcClass(SDADC, dmaChan + 1, priority, DmaTrigSource::sdadc_resrdy);
 #endif
@@ -617,7 +623,7 @@ void AnalogIn::Exit() noexcept
 // Enable analog input on a pin.
 // Readings will be taken and about every 'ticksPerCall' milliseconds the callback function will be called with the specified parameter and ADC reading.
 // Set ticksPerCall to 0 to get a callback on every reading.
-bool AnalogIn::EnableChannel(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall, bool useAlternateAdc) noexcept
+bool AnalogIn::EnableChannel(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall) noexcept
 {
 	const unsigned int deviceNumber = GetDeviceNumber(adcin);
 	if (deviceNumber < ARRAY_SIZE(adcs))				// this test handles AdcInput::none as well as out-of-range ADC numbers
@@ -629,7 +635,7 @@ bool AnalogIn::EnableChannel(AdcInput adcin, AnalogInCallbackFunction fn, Callba
 
 // Readings will be taken and about every 'ticksPerCall' milliseconds the callback function will be called with the specified parameter and ADC reading.
 // Set ticksPerCall to 0 to get a callback on every reading.
-bool AnalogIn::SetCallback(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall, bool useAlternateAdc) noexcept
+bool AnalogIn::SetCallback(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall) noexcept
 {
 	const unsigned int deviceNumber = GetDeviceNumber(adcin);
 	if (deviceNumber < ARRAY_SIZE(adcs))				// this test handles AdcInput::none as well as out-of-range ADC numbers
@@ -640,7 +646,7 @@ bool AnalogIn::SetCallback(AdcInput adcin, AnalogInCallbackFunction fn, Callback
 }
 
 // Return whether or not the channel is enabled
-bool AnalogIn::IsChannelEnabled(AdcInput adcin, bool useAlternateAdc) noexcept
+bool AnalogIn::IsChannelEnabled(AdcInput adcin) noexcept
 {
 	const unsigned int deviceNumber = GetDeviceNumber(adcin);
 	if (deviceNumber < ARRAY_SIZE(adcs))				// this test handles AdcInput::none as well as out-of-range ADC numbers
@@ -651,7 +657,7 @@ bool AnalogIn::IsChannelEnabled(AdcInput adcin, bool useAlternateAdc) noexcept
 }
 
 // Disable a previously-enabled channel
-void AnalogIn::DisableChannel(AdcInput adcin, bool useAlternateAdc) noexcept
+void AnalogIn::DisableChannel(AdcInput adcin) noexcept
 {
 	//TODO not implemented yet (do we need it?)
 }
@@ -699,6 +705,13 @@ void AnalogIn::GetDebugInfo(uint32_t &convsStarted, uint32_t &convsCompleted, ui
 	convsCompleted = conversionsCompleted;
 	convTimeouts = conversionTimeouts;
 	errs = errors;
+}
+
+AnalogIn::AdcTaskHookFunction *AnalogIn::SetTaskHook(AdcTaskHookFunction *func) noexcept
+{
+	const AdcTaskHookFunction *oldFunc = taskHookFunction;
+	taskHookFunction = func;
+	return oldFunc;
 }
 
 #endif

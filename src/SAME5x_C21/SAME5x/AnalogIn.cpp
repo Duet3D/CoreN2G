@@ -25,6 +25,7 @@ static uint32_t conversionsStarted = 0;
 static uint32_t conversionsCompleted = 0;
 static uint32_t conversionTimeouts = 0;
 static uint32_t errors = 0;
+static AnalogIn::AdcTaskHookFunction *taskHookFunction = nullptr;
 
 // DMA sequencing in this MCU is an abomination. It goes wrong in the presence of SBC SPI DMA and recovery is difficult, because we need to set the AUTOSTART bit
 // to convert a whole sequence, and that means that a new sequence will start as soon as the old one has finished.
@@ -86,7 +87,7 @@ private:
 	uint32_t whenLastConversionStarted;
 	uint32_t currentChannel;
 	volatile State state;
-	AnalogInCallbackFunction callbackFunctions[MaxSequenceLength];
+	volatile AnalogInCallbackFunction callbackFunctions[MaxSequenceLength];
 	CallbackParameter callbackParams[MaxSequenceLength];
 	uint32_t ticksPerCall[MaxSequenceLength];
 	uint32_t ticksAtLastCall[MaxSequenceLength];
@@ -318,9 +319,10 @@ void AdcClass::ExecuteCallbacks() noexcept
 		if (now - ticksAtLastCall[i] >= ticksPerCall[i])
 		{
 			ticksAtLastCall[i] = now;
-			if (callbackFunctions[i] != nullptr)
+			const AnalogInCallbackFunction fn = callbackFunctions[i];
+			if (fn != nullptr)
 			{
-				callbackFunctions[i](callbackParams[i], currentResult);
+				fn(callbackParams[i], (uint32_t)currentResult);
 			}
 		}
 	}
@@ -399,6 +401,11 @@ void AnalogIn::TaskLoop(void *) noexcept
 			}
 		}
 
+		if (taskHookFunction != nullptr)
+		{
+			taskHookFunction();
+		}
+
 		if (conversionStarted)
 		{
 			TaskBase::Take(100);
@@ -435,7 +442,7 @@ void AnalogIn::Exit() noexcept
 // Enable analog input on a pin.
 // Readings will be taken and about every 'ticksPerCall' milliseconds the callback function will be called with the specified parameter and ADC reading.
 // Set ticksPerCall to 0 to get a callback on every reading.
-bool AnalogIn::EnableChannel(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall, bool useAlternateAdc) noexcept
+bool AnalogIn::EnableChannel(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall) noexcept
 {
 	const unsigned int deviceNumber = GetDeviceNumber(adcin);
 	if (deviceNumber < ARRAY_SIZE(adcs))				// this test handles AdcInput::none as well as out-of-range ADC numbers
@@ -447,7 +454,7 @@ bool AnalogIn::EnableChannel(AdcInput adcin, AnalogInCallbackFunction fn, Callba
 
 // Readings will be taken and about every 'ticksPerCall' milliseconds the callback function will be called with the specified parameter and ADC reading.
 // Set ticksPerCall to 0 to get a callback on every reading.
-bool AnalogIn::SetCallback(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall, bool useAlternateAdc) noexcept
+bool AnalogIn::SetCallback(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall) noexcept
 {
 	const unsigned int deviceNumber = GetDeviceNumber(adcin);
 	if (deviceNumber < ARRAY_SIZE(adcs))				// this test handles AdcInput::none as well as out-of-range ADC numbers
@@ -458,7 +465,7 @@ bool AnalogIn::SetCallback(AdcInput adcin, AnalogInCallbackFunction fn, Callback
 }
 
 // Return whether or not the channel is enabled
-bool AnalogIn::IsChannelEnabled(AdcInput adcin, bool useAlternateAdc) noexcept
+bool AnalogIn::IsChannelEnabled(AdcInput adcin) noexcept
 {
 	const unsigned int deviceNumber = GetDeviceNumber(adcin);
 	if (deviceNumber < ARRAY_SIZE(adcs))				// this test handles AdcInput::none as well as out-of-range ADC numbers
@@ -470,7 +477,7 @@ bool AnalogIn::IsChannelEnabled(AdcInput adcin, bool useAlternateAdc) noexcept
 }
 
 // Disable a previously-enabled channel
-void AnalogIn::DisableChannel(AdcInput adcin, bool useAlternateAdc) noexcept
+void AnalogIn::DisableChannel(AdcInput adcin) noexcept
 {
 	//TODO not implemented yet (do we need it?)
 }
@@ -506,6 +513,13 @@ void AnalogIn::GetDebugInfo(uint32_t &convsStarted, uint32_t &convsCompleted, ui
 	convsCompleted = conversionsCompleted;
 	convTimeouts = conversionTimeouts;
 	errs = errors;
+}
+
+AnalogIn::AdcTaskHookFunction *AnalogIn::SetTaskHook(AdcTaskHookFunction *func) noexcept
+{
+	const AdcTaskHookFunction *oldFunc = taskHookFunction;
+	taskHookFunction = func;
+	return oldFunc;
 }
 
 #endif

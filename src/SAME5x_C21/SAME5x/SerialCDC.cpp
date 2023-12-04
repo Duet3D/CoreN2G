@@ -44,9 +44,12 @@ static struct usbd_descriptors single_desc[]
 };
 
 static SerialCDC *device;
-static bool isConnected = false, sending = false, receiving = false;
+static volatile bool isConnected = false;
+static volatile bool sending = false;
+static volatile bool receiving = false;
+
 /** Ctrl endpoint buffer */
-static uint8_t ctrl_buffer[64];
+alignas(4) static uint8_t ctrl_buffer[64];
 
 // Buffers to receive and send data. I am not sure that they need to be aligned.
 alignas(4) static uint8_t rxTempBuffer[64];
@@ -77,11 +80,11 @@ static bool usb_device_cb_bulk_tx(const uint8_t ep, const enum usb_xfer_code rc,
  */
 static bool usb_device_cb_state_c(usb_cdc_control_signal_t state)
 {
-	/* Clear pending data when the CDC device is opened */
-	device->ClearBuffers();
-
 	if (!isConnected)
 	{
+		/* Clear pending data when the CDC device is opened */
+		device->ClearBuffers();
+
 		isConnected = true;
 
 		/* Callbacks must be registered after endpoint allocation */
@@ -128,9 +131,7 @@ void SerialCDC::end() noexcept
 	cdcInitialised = false;
 
 	usbdc_deinit();
-
-	txBuffer.Clear();
-	rxBuffer.Clear();
+	ClearBuffers();
 }
 
 void SerialCDC::CheckCdc() noexcept
@@ -183,11 +184,7 @@ int SerialCDC::available() noexcept
 
 void SerialCDC::flush() noexcept
 {
-	if (isConnected)
-	{
-		while (!txBuffer.IsEmpty()) { }
-	}
-	//TODO wait until no data in the USB buffer
+	while (isConnected && (sending || !txBuffer.IsEmpty())) { }
 }
 
 size_t SerialCDC::canWrite() noexcept
@@ -250,64 +247,78 @@ void SerialCDC::ClearBuffers() noexcept
 
 void SerialCDC::StartSending() noexcept
 {
-	if (isConnected && !sending && !txBuffer.IsEmpty())
+	if (isConnected && !sending)
 	{
+		sending = true;						// set this first to prevent a race condition between the task and the ISR
 		const size_t count = txBuffer.GetBlock(txTempBuffer, sizeof(txTempBuffer));
-		if (count > 0)
-		{
-			if (cdcdf_acm_write(txTempBuffer, count) == ERR_NONE)
-			{
-				/* Wait for ISR to process outgoing data */
-				sending = true;
-			}
-			else
-			{
-				/* Unregister callbacks again */
-				cdcdf_acm_register_callback(CDCDF_ACM_CB_READ, nullptr);
-				cdcdf_acm_register_callback(CDCDF_ACM_CB_WRITE, nullptr);
-
-				/* Stop communication */
-				isConnected = sending = receiving = false;
-			}
-		}
-		else
+		if (count == 0)
 		{
 			/* Finished sending data */
 			sending = false;
 		}
+		else
+		{
+			const int32_t rc = cdcdf_acm_write(txTempBuffer, count);
+#if 0
+			(void)rc;
+#else
+			if (rc != ERR_NONE)
+			{
+				sending = false;
+				if (rc != USB_BUSY)			//TODO currently we will lose data if we had status USB_BUSY
+				{
+					/* Unregister callbacks again */
+					cdcdf_acm_register_callback(CDCDF_ACM_CB_READ, nullptr);
+					cdcdf_acm_register_callback(CDCDF_ACM_CB_WRITE, nullptr);
+
+					/* Stop communication */
+					isConnected = receiving = false;
+				}
+			}
+#endif
+		}
 	}
 
 #ifdef RTOS
-	if (!sending)
+	// Wake up the task waiting for data to go, there may be more to write
+	const TaskHandle t = txWaitingTask;
+	if (t != nullptr && txBuffer.SpaceLeft() >= txBuffer.GetCapacity()/4)
 	{
-		/* Wake up the task waiting for data to go, there may be more to write */
-		const TaskHandle t = txWaitingTask;
-		if (t != nullptr)
-		{
-			txWaitingTask = nullptr;
-			TaskBase::GiveFromISR(t);
-		}
+		txWaitingTask = nullptr;
+		TaskBase::GiveFromISR(t);
 	}
 #endif
 }
 
 void SerialCDC::StartReceiving() noexcept
 {
-	if (isConnected && !receiving && rxBuffer.SpaceLeft() > sizeof(rxTempBuffer))
+	if (isConnected && !receiving)
 	{
-		if (cdcdf_acm_read(rxTempBuffer, sizeof(rxTempBuffer)) == ERR_NONE)
+		receiving = true;						// set this first to prevent a race condition between the task and the ISR
+		if (rxBuffer.SpaceLeft() < sizeof(rxTempBuffer))
 		{
-			/* Wait for ISR to process incoming data */
-			receiving = true;
+			receiving = false;
 		}
 		else
 		{
-			/* Unregister callbacks again */
-			cdcdf_acm_register_callback(CDCDF_ACM_CB_READ, nullptr);
-			cdcdf_acm_register_callback(CDCDF_ACM_CB_WRITE, nullptr);
+			const int32_t rc = cdcdf_acm_read(rxTempBuffer, sizeof(rxTempBuffer));
+#if 0
+			(void)rc;
+#else
+			if (rc != ERR_NONE)
+			{
+				receiving = false;
+				if (rc != USB_BUSY)
+				{
+					/* Unregister callbacks again */
+					cdcdf_acm_register_callback(CDCDF_ACM_CB_READ, nullptr);
+					cdcdf_acm_register_callback(CDCDF_ACM_CB_WRITE, nullptr);
 
-			/* Stop communication */
-			isConnected = sending = receiving = false;
+					/* Stop communication */
+					isConnected = sending = false;
+				}
+			}
+#endif
 		}
 	}
 }

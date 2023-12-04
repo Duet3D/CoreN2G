@@ -17,6 +17,10 @@
 
 #include <ecv_duet3d.h>
 
+// Branch prediction macros. Must be defined before we include the part-specifi files, else some of them will define it in an unhelpful manner.
+#define likely(x)		__builtin_expect(!!(x), 1)
+#define unlikely(x)		__builtin_expect(!!(x), 0)
+
 #if defined(__SAME54P20A__) || defined(__SAME51P20A__)
 # include <same54.h>
 # define SAMC21				0
@@ -58,6 +62,7 @@
 # define RP2040				0
 # define STM32				0
 # define SUPPORT_SDHC		0			// SAMC21 doesn't support SDHC
+# define SUPPORT_USB		0			// SAMC21 doesn't support USB
 #elif defined(__SAM4E8E__)
 # include <parts.h>
 # include <sam4e8e.h>
@@ -113,10 +118,15 @@ extern "C" {
 
 static const uint32_t SystemCoreClockFreq = 120000000;	///< The processor clock frequency after initialisation
 
-static const unsigned int GclkNum120MHz = 0;
+static const unsigned int GclkNum120MHz = 0;			// clock used by the CPU and high speed peripherals
 static const unsigned int GclkNum31KHz = 1;				// frequency is 31250Hz
-static const unsigned int GclkNum60MHz = 3;
-static const unsigned int GclkNum48MHz = 4;
+static const unsigned int GclkNumEthernetPhy = 2;		// reserved for RepRapFirmware to use for the Ethernet PHY clock on the Duet 3 Mini Ethernet
+static const unsigned int GclkNum60MHz = 3;				// clock used for lower speed peripherals
+static const unsigned int GclkNum48MHz = 4;				// clock used for step timer and CAN timing
+static const unsigned int GclkSdhc = 5;					// clock used by SDHC, set up in RepRapFirmware
+static const unsigned int GclkClosedLoop = 5;			// clock used on the closed loop boards as the clock for the TMC2160A driver (can be same as GclkSdhc because no board uses both clocks)
+static const unsigned int GclkNumPB11 = 5;				// clock used by the LDC1612 on TOOL1RR
+static const unsigned int GclkNum1MHz = 6;				// clock used for EIC deglitching
 // Other GCLKs may be defined by the client application
 
 #elif SAMC21
@@ -125,6 +135,8 @@ static const uint32_t SystemCoreClockFreq = 48000000;	///< The processor clock f
 
 static const unsigned int GclkNum48MHz = 0;
 static const unsigned int GclkNum31KHz = 1;				// frequency is 31250Hz
+static const unsigned int GclkNum1MHz = 2;				// clock used for EIC deglitching
+static const unsigned int GclkNumPA23 = 7;				// clock we can output on PA23 e.g. for LDC1612
 // Other GCLKs may be defined by the client application
 
 #elif SAM4E
@@ -205,7 +217,7 @@ uint64_t millis64() noexcept;
 void delay(uint32_t ms) noexcept;
 
 /**
- * @brief Set the required mode fore an I/O pin for
+ * @brief Set the required mode for an I/O pin for
  * @param pin The pin number to set the mode for. If the pin number is not valid (e.g. NoPin), the call will be ignored.
  * @param mode The mode to set the pin to.
  */

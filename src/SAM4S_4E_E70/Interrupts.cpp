@@ -21,30 +21,32 @@
 
 struct InterruptCallback
 {
-	StandardCallbackFunction func;
+	StandardCallbackFunction _ecv_null func;
 	CallbackParameter param;
 
-	InterruptCallback() : func(nullptr) { }
+	// Constructor
+	InterruptCallback() noexcept : func(nullptr) { }
+
+	// Execute the callback if the function pointer is not null
+	void Execute() noexcept
+	{
+		if (func != nullptr)
+		{
+			func(param);
+		}
+	}
 };
 
-#if defined(ID_PIOE)
-static constexpr unsigned int NumCallbacks = 5 * 32;
-#elif defined(ID_PIOD)
-static constexpr unsigned int NumCallbacks = 4 * 32;
-#else
-static constexpr unsigned int NumCallbacks = 3 * 32;
+#if SAM4E || SAME70
+static constexpr unsigned int NumPins = (4 * 32) + 6;		// SAM4E and SAM4S both have only the first 6 pins of PIOE
+#elif SAM4S
+static constexpr unsigned int NumPins = (3 * 32);			// SAM4S has PIOA thru PIOC only
 #endif
 
-#if SAM4E
-static constexpr unsigned int NumPins = (4 * 32) + 6;		// SAM4E uses pin numbers 134 and higher to represent pins on the DueX. We must not attempt to assign interrupts to them.
-#else
-static constexpr unsigned int NumPins = NumCallbacks;
-#endif
-
-static InterruptCallback pinCallbacks[NumCallbacks];
+static InterruptCallback pinCallbacks[NumPins];
 
 /* Configure PIO interrupt sources */
-static void __initialize()
+static void __initialize() noexcept
 {
 	pmc_enable_periph_clk(ID_PIOA);
 	NVIC_DisableIRQ(PIOA_IRQn);
@@ -165,46 +167,46 @@ void detachInterrupt(Pin pin) noexcept
 }
 
 // Common PIO interrupt handler
-void CommonPioHandler(Pio *pio, const InterruptCallback callbacks[])
+static void CommonPioHandler(Pio *pio, unsigned int firstPin) noexcept
 {
 	uint32_t isr = pio->PIO_ISR & pio->PIO_IMR;
 	while (isr != 0)
 	{
 		const unsigned int pos = LowestSetBitNumber(isr);
-		if (callbacks[pos].func != nullptr)
+		if (pos + firstPin < NumPins)
 		{
-			callbacks[pos].func(callbacks[pos].param);
+			pinCallbacks[pos + firstPin].Execute();
 		}
 		isr &= ~(1u << pos);
 	}
 }
 
-extern "C" void PIOA_Handler(void)
+extern "C" void PIOA_Handler(void) noexcept
 {
-	CommonPioHandler(PIOA, pinCallbacks);
+	CommonPioHandler(PIOA, 0);
 }
 
-extern "C" void PIOB_Handler(void)
+extern "C" void PIOB_Handler(void) noexcept
 {
-	CommonPioHandler(PIOB, pinCallbacks + 32);
+	CommonPioHandler(PIOB, 32);
 }
 
-extern "C" void PIOC_Handler(void)
+extern "C" void PIOC_Handler(void) noexcept
 {
-	CommonPioHandler(PIOC, pinCallbacks + (2 * 32));
+	CommonPioHandler(PIOC, 2 * 32);
 }
 
 #ifdef ID_PIOD
-extern "C" void PIOD_Handler(void)
+extern "C" void PIOD_Handler(void) noexcept
 {
-	CommonPioHandler(PIOD, pinCallbacks + (3 * 32));
+	CommonPioHandler(PIOD, 3 * 32);
 }
 #endif
 
 #ifdef ID_PIOE
-extern "C" void PIOE_Handler(void)
+extern "C" void PIOE_Handler(void) noexcept
 {
-	CommonPioHandler(PIOE, pinCallbacks + (4 * 32));
+	CommonPioHandler(PIOE, 4 * 32);
 }
 #endif
 

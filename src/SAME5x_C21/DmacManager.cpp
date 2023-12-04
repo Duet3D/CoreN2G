@@ -193,33 +193,30 @@ void DmacManager::EnableChannel(const uint8_t channel, DmaPriority priority) noe
 
 // Disable a channel. Also clears its status and disables its interrupts.
 // On the SAME5x it is sometimes impossible to disable a channel. So we now return true if disabling it succeeded, false it it is still enabled.
+// From the datasheet: "Writing a '0' to this bit [CHCTRLA.ENABLE] during an ongoing transfer, the bit will not be cleared until the internal data transfer buffer is
+// empty and the DMA transfer is aborted. The internal data transfer buffer will be empty once the ongoing burst transfer is completed."
 bool DmacManager::DisableChannel(const uint8_t channel) noexcept
 {
-	unsigned int i = 0;
-	bool disabled;
 #if SAME5x
 	DmacChannel& chan = DMAC->Channel[channel];
-	do
-	{
-		chan.CHCTRLA.bit.ENABLE = 0;
-		disabled = (chan.CHCTRLA.bit.ENABLE == 0);
-	}
-	while (!disabled && ++i < 10);
+	chan.CHCTRLA.bit.ENABLE = 0;
 	chan.CHINTENCLR.reg = DMAC_CHINTENCLR_TCMPL | DMAC_CHINTENCLR_TERR | DMAC_CHINTENCLR_SUSP;
+	asm volatile("nop");
+	asm volatile("nop");
+	asm volatile("nop");
+	return (chan.CHCTRLA.bit.ENABLE == 0);
 #elif SAMC21
 	AtomicCriticalSectionLocker lock;
 	DMAC->CHID.reg = channel;
-	do
-	{
-		DMAC->CHCTRLA.bit.ENABLE = 0;
-		disabled = (DMAC->CHCTRLA.bit.ENABLE == 0);
-	}
-	while (!disabled && ++i < 10);
+	DMAC->CHCTRLA.bit.ENABLE = 0;
 	DMAC->CHINTFLAG.reg = DMAC_CHINTENCLR_TCMPL | DMAC_CHINTENCLR_TERR | DMAC_CHINTENCLR_SUSP;
+	asm volatile("nop");
+	asm volatile("nop");
+	asm volatile("nop");
+	return (DMAC->CHCTRLA.bit.ENABLE == 0);
 #else
 # error Unsupported processor
 #endif
-	return disabled;
 }
 
 void DmacManager::SetInterruptCallback(uint8_t channel, DmaCallbackFunction fn, CallbackParameter param) noexcept

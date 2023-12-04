@@ -125,37 +125,34 @@ void TmcUartInterface::ResetUart() noexcept
 	pio_sm_clear_fifos(pio_hw, tmcStateMachineNumber);							// clear Tx and Rx fifos
 	pio_sm_restart(pio_hw, tmcStateMachineNumber);								// reset the state
 	pio_sm_exec(pio_hw, tmcStateMachineNumber, tmcProgramOffset);				// force state machine to start from the beginning of the program
-	pio_sm_set_enabled(pio_hw, tmcStateMachineNumber, true);					// enable state machine
 }
 
 // This is called to stop any pending DMA ready for reprogramming the DMAC
 void TmcUartInterface::ResetDMA() noexcept
 {
-	dma_channel_abort(firstDmaChan);
-	dma_channel_abort(firstDmaChan + 1);
+	DmacManager::DisableChannel(firstDmaChan);
+	DmacManager::DisableChannel(firstDmaChan + 1);
 }
 
-// Set up the data to send
-void TmcUartInterface::SetTxData(const volatile uint8_t* data, unsigned int numBytes) noexcept
+// Set up the data to send and receive
+void TmcUartInterface::SetDmaData(const volatile uint8_t* txData, unsigned int numTxBytes, volatile uint8_t* rxData, unsigned int numRxBytes) noexcept
 {
+	// Transmit
 	dma_channel_config config = dma_channel_get_default_config(firstDmaChan);
 	channel_config_set_read_increment(&config, true);
 	channel_config_set_write_increment(&config, false);
 	channel_config_set_transfer_data_size(&config, DMA_SIZE_8);
 	channel_config_set_dreq(&config, pio_get_dreq(pio_hw, tmcStateMachineNumber, true));
-	dma_channel_configure(firstDmaChan, &config, &pio_hw->txf[tmcStateMachineNumber], data, numBytes, false);
-	pio_hw->txf[tmcStateMachineNumber] = numBytes - 1;							// put the byte count in the fifo
-}
+	dma_channel_configure(firstDmaChan, &config, &pio_hw->txf[tmcStateMachineNumber], txData, numTxBytes, false);
+	pio_hw->txf[tmcStateMachineNumber] = numTxBytes - 1;							// put the byte count in the fifo
 
-// Set up the data to receive
-void TmcUartInterface::SetRxData(volatile uint8_t* data, unsigned int numBytes) noexcept
-{
-	dma_channel_config config = dma_channel_get_default_config(firstDmaChan + 1);
+	// Receive
+	config = dma_channel_get_default_config(firstDmaChan + 1);
 	channel_config_set_read_increment(&config, false);
 	channel_config_set_write_increment(&config, true);
 	channel_config_set_transfer_data_size(&config, DMA_SIZE_8);
 	channel_config_set_dreq(&config, pio_get_dreq(pio_hw, tmcStateMachineNumber, false));
-	dma_channel_configure(firstDmaChan + 1, &config, data, (const volatile uint8_t*)&pio_hw->rxf[tmcStateMachineNumber] + 3, numBytes, false);
+	dma_channel_configure(firstDmaChan + 1, &config, rxData, (const volatile uint8_t*)&pio_hw->rxf[tmcStateMachineNumber] + 3, numRxBytes, false);
 }
 
 // Start the send and receive and enable the DMA receive complete interrupt
@@ -163,8 +160,8 @@ void TmcUartInterface::StartTransfer(TmcUartCallbackFn callbackFn) noexcept
 {
 	DmacManager::SetInterruptCallback(firstDmaChan + 1, callbackFn, CallbackParameter(0));
 	DmacManager::EnableCompletedInterrupt(firstDmaChan + 1);
-	dma_channel_start(firstDmaChan + 1);
-	dma_channel_start(firstDmaChan);
+	dma_start_channel_mask(3u << firstDmaChan);
+	pio_sm_set_enabled(pio_hw, tmcStateMachineNumber, true);					// enable state machine
 }
 
 // Disable the DMA complete interrupt
@@ -175,9 +172,8 @@ void TmcUartInterface::DisableCompletedCallback() noexcept
 
 void TmcUartInterface::AbortTransfer() noexcept
 {
-	dma_channel_abort(firstDmaChan);
-	dma_channel_abort(firstDmaChan + 1);
 	pio_sm_set_enabled(pio_hw, tmcStateMachineNumber, false);					// disable state machine
+	ResetDMA();
 }
 
 #endif

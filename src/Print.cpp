@@ -21,7 +21,7 @@ int Print::printf(const char * _ecv_array fmt, ...) noexcept
 {
 	va_list vargs;
 	va_start(vargs, fmt);
-	const int ret = printf(fmt, vargs);
+	const int ret = vprintf(fmt, vargs);
 	va_end(vargs);
 	return ret;
 }

@@ -77,10 +77,14 @@ void DmacManager::EnableChannel(const uint8_t channel, DmaPriority priority) noe
 }
 
 // Disable a channel. Also clears its status and disables its interrupts.
-// On the SAME5x it is sometimes impossible to disable a channel. So we now return true if disabling it succeeded, false it it is still enabled.
+// On the RP2040 we have to abort the channel because disabling it just suspends it.
 bool DmacManager::DisableChannel(const uint8_t channel) noexcept
 {
-	hw_clear_bits(&(dma_hw->ch[channel].al1_ctrl), DMA_CH0_CTRL_TRIG_EN_BITS);
+	hw_clear_bits(&(dma_hw->inte0), 1u << channel);			// see RP2040 erratum RP2040-E13
+    dma_hw->abort = 1u << channel;
+    // Bit will go 0 once channel has reached safe state (i.e. any in-flight transfers have retired)
+    while (dma_hw->ch[channel].ctrl_trig & DMA_CH0_CTRL_TRIG_BUSY_BITS) { }
+	dma_hw->ints0 = 1u << channel;							// see RP2040 erratum RP2040-E13
 	return true;
 }
 

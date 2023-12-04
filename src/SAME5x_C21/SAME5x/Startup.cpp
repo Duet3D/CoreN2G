@@ -279,14 +279,14 @@ static void InitClocks() noexcept
 	// - GCLK1 is used as the reference when we reprogram the DFLL
 
 	// GCLK0: from FDPLL0 direct
-	hri_gclk_write_GENCTRL_reg(GCLK, 0,
+	hri_gclk_write_GENCTRL_reg(GCLK, GclkNum120MHz,
 			  GCLK_GENCTRL_DIV(1) | (0 << GCLK_GENCTRL_RUNSTDBY_Pos)
 			| (0 << GCLK_GENCTRL_DIVSEL_Pos) | (0 << GCLK_GENCTRL_OE_Pos)
 			| (0 << GCLK_GENCTRL_OOV_Pos) | (0 << GCLK_GENCTRL_IDC_Pos)
 			| GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC_DPLL0);
 
 	// GCLK1: XOSC0 divided by 32 * frequency_in_MHz to give 31250Hz
-	hri_gclk_write_GENCTRL_reg(GCLK, 1,
+	hri_gclk_write_GENCTRL_reg(GCLK, GclkNum31KHz,
 			  GCLK_GENCTRL_DIV(32 * xoscFrequency) | (0 << GCLK_GENCTRL_RUNSTDBY_Pos)
 			| (0 << GCLK_GENCTRL_DIVSEL_Pos) | (0 << GCLK_GENCTRL_OE_Pos)
 			| (0 << GCLK_GENCTRL_OOV_Pos) | (0 << GCLK_GENCTRL_IDC_Pos)
@@ -317,18 +317,25 @@ static void InitClocks() noexcept
 
 	// Initialise the other GCLKs
 	// GCLK3: FDPLL0 divided by 2, 60MHz for peripherals that need less than 120MHz
-	hri_gclk_write_GENCTRL_reg(GCLK, 3,
+	hri_gclk_write_GENCTRL_reg(GCLK, GclkNum60MHz,
 			  GCLK_GENCTRL_DIV(2) | (0 << GCLK_GENCTRL_RUNSTDBY_Pos)
 			| (0 << GCLK_GENCTRL_DIVSEL_Pos) | (0 << GCLK_GENCTRL_OE_Pos)
 			| (0 << GCLK_GENCTRL_OOV_Pos) | (0 << GCLK_GENCTRL_IDC_Pos)
 			| GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC_DPLL0);
 
 	// GCLK4: DFLL48M for CAN and step timer
-	hri_gclk_write_GENCTRL_reg(GCLK, 4,
+	hri_gclk_write_GENCTRL_reg(GCLK, GclkNum48MHz,
 			  GCLK_GENCTRL_DIV(1) | (0 << GCLK_GENCTRL_RUNSTDBY_Pos)
 			| (0 << GCLK_GENCTRL_DIVSEL_Pos) | (0 << GCLK_GENCTRL_OE_Pos)
 			| (0 << GCLK_GENCTRL_OOV_Pos) | (0 << GCLK_GENCTRL_IDC_Pos)
 			| GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC_DFLL_Val);
+
+	// GCLK5: FDPLL0 divided by 120 to give 1MHz
+	hri_gclk_write_GENCTRL_reg(GCLK, GclkNum1MHz,
+			  GCLK_GENCTRL_DIV(120) | (0 << GCLK_GENCTRL_RUNSTDBY_Pos)
+			| (0 << GCLK_GENCTRL_DIVSEL_Pos) | (0 << GCLK_GENCTRL_OE_Pos)
+			| (0 << GCLK_GENCTRL_OOV_Pos) | (0 << GCLK_GENCTRL_IDC_Pos)
+			| GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC_DPLL0);
 
 	// Set up system clock frequency variable for FreeRTOS
 	SystemCoreClock = SystemCoreClockFreq;

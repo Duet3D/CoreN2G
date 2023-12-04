@@ -35,7 +35,12 @@
 
 
 // Delay for a specified number of CPU clock cycles from the starting time. Return the time at which we actually stopped waiting.
-extern "C" uint32_t DelayCycles(uint32_t start, uint32_t cycles) noexcept
+extern "C"
+#if RP2040
+// When bit-banging Neopixels we can't afford to wait for instructions to be fetched from flash memory
+[[gnu::optimize("03")]] __attribute__((section(".time_critical")))
+#endif
+uint32_t DelayCycles(uint32_t start, uint32_t cycles) noexcept
 {
 	const uint32_t reload = (SysTick->LOAD & 0x00FFFFFF) + 1;
 	uint32_t now = start;
@@ -651,7 +656,7 @@ void ResetProcessor() noexcept
 void ConfigureGclk(unsigned int index, GclkSource source, uint16_t divisor, bool enableOutput) noexcept
 {
 	uint32_t regVal = GCLK_GENCTRL_DIV(divisor) | GCLK_GENCTRL_SRC((uint32_t)source) | GCLK_GENCTRL_GENEN;
-	if (divisor & 1u)
+	if ((divisor & 1u) && divisor != 1u)
 	{
 		regVal |= 1u << GCLK_GENCTRL_IDC_Pos;
 	}
@@ -808,5 +813,26 @@ extern "C" uint32_t random32() noexcept
 
 #endif
 }
+
+#if RP2040
+# if SUPPORT_CAN
+extern void DisableCanCore1Processing() noexcept;
+extern void EnableCanCore1Processing() noexcept;
+# endif
+
+void DisableCore1Processing() noexcept
+{
+# if SUPPORT_CAN
+	DisableCanCore1Processing();
+# endif
+}
+
+void EnableCore1Processing() noexcept
+{
+# if SUPPORT_CAN
+	EnableCanCore1Processing();
+# endif
+}
+#endif
 
 // End

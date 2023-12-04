@@ -5,7 +5,7 @@
  *      Author: David
  *
  * This is the header file for the low-level driver for partial ISO CAN-FD support on the RP2040.
- * It is derived from Kevin Connor's CAN 2.0 implementation for the RP2040, see https://github.com/KevinOConnor/can2040
+ * It is derived from Kevin O'Connor's CAN 2.0 implementation for the RP2040, see https://github.com/KevinOConnor/can2040
  * In particular, the PIO code is from that project and the low-level functions are derived from it.
  *
  * IMPORTANT! Robert Bosch GmbH owns many relevant patents and requires a license fee to be paid for any commercial use of CAN-FD.
@@ -136,7 +136,6 @@ private:
 	void data_state_line_passive() noexcept;
 	void data_state_go_data() noexcept;
 	void data_state_go_stuff_count() noexcept;
-	void data_state_go_crc() noexcept;
 	void data_state_update_start(uint32_t data) noexcept;
 	void data_state_update_header(uint32_t data) noexcept;
 	void data_state_update_ext_header(uint32_t data) noexcept;

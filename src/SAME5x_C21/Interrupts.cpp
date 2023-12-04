@@ -9,10 +9,8 @@
 
 #if SAME5x
 #include <hri_gclk_e54.h>
-constexpr unsigned int ExintGclkNum = GclkNum120MHz;
 #elif SAMC21
 #include <hri_gclk_c21.h>
-constexpr unsigned int ExintGclkNum = GclkNum48MHz;
 #endif
 
 struct InterruptCallback
@@ -30,8 +28,9 @@ static InterruptCallback exintCallbacks[16];
 
 void InitialiseExints() noexcept
 {
+	// Use 1MHz EIC clock for input filtering
 	hri_mclk_set_APBAMASK_EIC_bit(MCLK);
-	hri_gclk_write_PCHCTRL_reg(GCLK, EIC_GCLK_ID, GCLK_PCHCTRL_GEN(ExintGclkNum) | GCLK_PCHCTRL_CHEN);
+	hri_gclk_write_PCHCTRL_reg(GCLK, EIC_GCLK_ID, GCLK_PCHCTRL_GEN(GclkNum1MHz) | GCLK_PCHCTRL_CHEN);
 
 	if (!hri_eic_is_syncing(EIC, EIC_SYNCBUSY_SWRST)) {
 		if (hri_eic_get_CTRLA_reg(EIC, EIC_CTRLA_ENABLE)) {
@@ -98,6 +97,9 @@ bool attachInterrupt(Pin pin, StandardCallbackFunction callback, InterruptMode m
 	default:						modeWord = EIC_CONFIG_SENSE0_NONE_Val; break;
 	}
 
+	const unsigned int shift = (exint & 7u) << 2u;
+	const uint32_t mask = ~(0x0000000F << shift);
+
 	{
 		AtomicCriticalSectionLocker lock;
 
@@ -107,20 +109,11 @@ bool attachInterrupt(Pin pin, StandardCallbackFunction callback, InterruptMode m
 		// Switch the pin into EIC mode
 		SetPinFunction(pin, GpioPinFunction::A);		// EIC is always on peripheral A
 
-		const unsigned int shift = (exint & 7u) << 2u;
-		const uint32_t mask = ~(0x0000000F << shift);
-
 		EIC->CTRLA.reg &= ~EIC_CTRLA_ENABLE;
 		hri_eic_wait_for_sync(EIC, EIC_SYNCBUSY_ENABLE);
 
-		if (exint < 8)
-		{
-			EIC->CONFIG[0].reg = (EIC->CONFIG[0].reg & mask) | (modeWord << shift);
-		}
-		else
-		{
-			EIC->CONFIG[1].reg = (EIC->CONFIG[1].reg & mask) | (modeWord << shift);
-		}
+		volatile uint32_t& reg = (exint < 8) ? EIC->CONFIG[0].reg : EIC->CONFIG[1].reg;
+		reg = (reg & mask) | (modeWord << shift);
 
 		EIC->CTRLA.reg |= EIC_CTRLA_ENABLE;
 		hri_eic_wait_for_sync(EIC, EIC_SYNCBUSY_ENABLE);

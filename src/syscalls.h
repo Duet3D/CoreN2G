@@ -13,10 +13,6 @@
 #include <cerrno>
 #include <new>
 
-#undef errno
-
-int errno;
-
 extern char _end;										// defined by the linker script
 extern uint32_t _estack;
 
@@ -33,7 +29,6 @@ extern uint32_t __StackBottom;
 
 const char *sysStackLimit = (const char*)&__StackBottom;
 const char *heapLimit = (const char*)&__StackLimit;
-char *heapTop = &_end;
 
 #else
 
@@ -42,8 +37,10 @@ char *heapTop = &_end;
 #endif
 
 const char *sysStackLimit = (const char*)&_estack - SystemStackSize;
-
 const char *heapLimit = (const char*)&_estack - SystemStackSize;
+
+#endif
+
 char *heapTop = &_end;
 
 /**
@@ -65,8 +62,6 @@ extern "C" void * _sbrk(ptrdiff_t incr) noexcept
 	errno = ENOMEM;
 	return reinterpret_cast<void*>(-1);
 }
-
-#endif
 
 /**
  * \brief Allocate memory permanently. In multi-threaded environments, take the malloc mutex before calling this.
@@ -129,8 +124,6 @@ extern "C" int _lseek(int file, int ptr, int dir) noexcept
 	return 0;
 }
 
-#if !RP2040
-
 /**
  * \brief Replacement of C library of _exit and related functions
  */
@@ -139,7 +132,7 @@ extern "C" void _exit(int status) noexcept
 	for (;;) { }
 }
 
-extern "C" void exit(int code)
+extern "C" void exit(int code) noexcept
 {
 	_exit(code);
 }
@@ -154,8 +147,6 @@ extern "C" int __register_exitproc (int type, void (*fn) (void), void *arg, void
 	// We don't support exit() so we don't need to register any calls
 	return 0;
 }
-
-#endif
 
 /**
  * \brief Replacement of C library of _kill
@@ -184,5 +175,41 @@ extern "C" int _write(int file, char *ptr, int len) noexcept
 	(void)file, (void)ptr;
 	return len;
 }
+
+#if RP2040
+
+// Replacements for RP2040 SDK functions that try to print stuff
+
+extern "C" [[noreturn]] void vAssertCalled(uint32_t line, const char *file) noexcept;
+
+extern "C" void __attribute__((noreturn)) panic_unsupported() noexcept
+{
+    panic("not supported");
+}
+
+extern "C" void __attribute__((noreturn)) __printflike(1, 0) panic(const char *fmt, ...) noexcept
+{
+	vAssertCalled(__LINE__, __FILE__);
+}
+
+extern "C" void __assert_func (const char *file, int line, const char *func, const char *failedexpr) noexcept
+{
+	vAssertCalled(__LINE__, __FILE__);
+}
+
+#include <cstdarg>
+
+extern "C" void debugVprintf(const char *fmt, va_list vargs) noexcept;
+
+extern "C" int printf(const char *fmt, ...) noexcept
+{
+	va_list vargs;
+	va_start(vargs, fmt);
+	debugVprintf(fmt, vargs);
+	va_end(vargs);
+	return 0;
+}
+
+#endif
 
 // End

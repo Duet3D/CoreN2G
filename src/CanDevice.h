@@ -173,6 +173,18 @@ public:
 		}
 	};
 
+	// Struct to represent CAN statistics
+	struct CanStats
+	{
+		unsigned int messagesQueuedForSending;
+		unsigned int messagesReceived;
+		unsigned int messagesLost;									// count of received messages lost because the receive FIFO was full
+		unsigned int protocolErrors;
+		unsigned int busOffCount;									// count of the number of times we have reset due to bus off
+
+		void Clear() noexcept;
+	};
+
 	// Type of the callback function called when a transmi event with a nonzero message marker occurs
 	typedef void (*TxEventCallbackFunction)(uint8_t marker, CanId id, uint16_t timeStamp) noexcept;
 
@@ -238,7 +250,7 @@ public:
 
 	void SetLocalCanTiming(const CanTiming& timing) noexcept;
 
-	void GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsigned int& rMessagesReceived, unsigned int& rMessagesLost, unsigned int& rBusOffCount) noexcept;
+	void GetAndClearStats(CanDevice::CanStats& dst) noexcept;
 
 	uint16_t ReadTimeStampCounter() noexcept
 	{
@@ -324,10 +336,7 @@ private:
 	CanStandardMessageFilterElement *rxStdFilter;				//!< Standard filter List
 	CanExtendedMessageFilterElement *rxExtFilter;				//!< Extended filter List
 
-	unsigned int messagesQueuedForSending;
-	unsigned int messagesReceived;
-	unsigned int messagesLost;									// count of received messages lost because the receive FIFO was full
-	unsigned int busOffCount;									// count of the number of times we have reset due to bus off
+	CanStats stats;												//!< Statistics gathered
 
 #if !RP2040	// we don't emulate the transmit event fifo on the RP2040
 	TxEventCallbackFunction txCallback;							// function that gets called by the ISR when a transmit event for a message with a nonzero marker occurs
