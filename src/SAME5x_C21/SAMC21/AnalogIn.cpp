@@ -17,6 +17,7 @@
 #include <RTOSIface/RTOSIface.h>
 #include <DmacManager.h>
 #include <Cache.h>
+#include <CoreNotifyIndices.h>
 
 #include <hri_adc_c21.h>
 #include <hri_sdadc_c21.h>
@@ -159,7 +160,7 @@ void AdcBase::ResultReadyCallback(DmaCallbackReason reason) noexcept
 	DmacManager::DisableChannel(dmaChan);			// disable the sequencer DMA, just in case it is out of sync
 	if (taskToWake != nullptr)
 	{
-		TaskBase::GiveFromISR(taskToWake);
+		TaskBase::GiveFromISR(taskToWake, NotifyIndices::AnalogIn);
 	}
 }
 
@@ -581,7 +582,7 @@ void AnalogIn::TaskLoop(void*) noexcept
 
 		if (conversionStarted)
 		{
-			TaskBase::Take(100);
+			TaskBase::TakeIndexed(NotifyIndices::AnalogIn, 100);
 		}
 		else
 		{

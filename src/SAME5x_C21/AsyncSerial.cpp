@@ -6,6 +6,7 @@
  */
 
 #include "AsyncSerial.h"
+#include <CoreNotifyIndices.h>
 #include <algorithm>		// for std::swap
 
 AsyncSerial::AsyncSerial(uint8_t sercomNum, uint8_t rxp, size_t numTxSlots, size_t numRxSlots, OnBeginFn p_onBegin, OnEndFn p_onEnd) noexcept
@@ -106,7 +107,7 @@ size_t AsyncSerial::write(uint8_t c) noexcept
 #endif
 			sercom->USART.INTENSET.reg = SERCOM_USART_INTENSET_DRE;
 #ifdef RTOS
-			TaskBase::Take(50);
+			TaskBase::TakeIndexed(NotifyIndices::UartTx, 50);
 #endif
 		}
 	}
@@ -140,7 +141,7 @@ size_t AsyncSerial::write(const uint8_t* buffer, size_t buflen) noexcept
 #endif
 		sercom->USART.INTENSET.reg = SERCOM_USART_INTENSET_DRE;
 #ifdef RTOS
-		TaskBase::Take(50);
+		TaskBase::TakeIndexed(NotifyIndices::UartTx, 50);
 #endif
 	}
 	return ret;
@@ -167,7 +168,7 @@ void AsyncSerial::Interrupt0() noexcept
 #ifdef RTOS
 		if (txWaitingTask != nullptr && txBuffer.SpaceLeft() >= txBuffer.GetCapacity()/2)
 		{
-			TaskBase::GiveFromISR(txWaitingTask);
+			TaskBase::GiveFromISR(txWaitingTask, NotifyIndices::UartTx);
 			txWaitingTask = nullptr;
 		}
 #endif
@@ -178,7 +179,7 @@ void AsyncSerial::Interrupt0() noexcept
 #ifdef RTOS
 		if (txWaitingTask != nullptr)
 		{
-			TaskBase::GiveFromISR(txWaitingTask);
+			TaskBase::GiveFromISR(txWaitingTask, NotifyIndices::UartTx);
 			txWaitingTask = nullptr;
 		}
 #endif
@@ -285,7 +286,7 @@ void AsyncSerial::Interrupt() noexcept
 #ifdef RTOS
 			if (txWaitingTask != nullptr && txBuffer.SpaceLeft() >= txBuffer.GetCapacity()/2)
 			{
-				TaskBase::GiveFromISR(txWaitingTask);
+				TaskBase::GiveFromISR(txWaitingTask, NotifyIndices::UartTx);
 				txWaitingTask = nullptr;
 			}
 #endif
@@ -296,7 +297,7 @@ void AsyncSerial::Interrupt() noexcept
 #ifdef RTOS
 			if (txWaitingTask != nullptr)
 			{
-				TaskBase::GiveFromISR(txWaitingTask);
+				TaskBase::GiveFromISR(txWaitingTask, NotifyIndices::UartTx);
 				txWaitingTask = nullptr;
 			}
 #endif
