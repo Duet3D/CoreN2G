@@ -17,6 +17,7 @@
 */
 
 #include "AsyncSerial.h"
+#include <CoreNotifyIndices.h>
 #include <asf.h>
 
 #include <cstdlib>
@@ -151,7 +152,7 @@ size_t AsyncSerial::write(uint8_t uc_data) noexcept
 #endif
 			_pUart->UART_IER = UART_IER_TXRDY;
 #ifdef RTOS
-			TaskBase::Take(50);
+			TaskBase::TakeIndexed(NotifyIndices::UartTx, 50);
 #endif
 		}
 	}
@@ -174,7 +175,7 @@ size_t AsyncSerial::write(const uint8_t *buffer, size_t buflen) noexcept
 #endif
 	    _pUart->UART_IER = UART_IER_TXRDY;
 #ifdef RTOS
-		TaskBase::Take(50);
+		TaskBase::TakeIndexed(NotifyIndices::UartTx, 50);
 #endif
 	}
 	return ret;
@@ -230,7 +231,7 @@ void AsyncSerial::IrqHandler() noexcept
 #ifdef RTOS
 			if (txWaitingTask != nullptr && txBuffer.SpaceLeft() >= txBuffer.GetCapacity()/2)
 			{
-				TaskBase::GiveFromISR(txWaitingTask);
+				TaskBase::GiveFromISR(txWaitingTask, NotifyIndices::UartTx);
 				txWaitingTask = nullptr;
 			}
 #endif
@@ -241,7 +242,7 @@ void AsyncSerial::IrqHandler() noexcept
 #ifdef RTOS
 			if (txWaitingTask != nullptr)
 			{
-				TaskBase::GiveFromISR(txWaitingTask);
+				TaskBase::GiveFromISR(txWaitingTask, NotifyIndices::UartTx);
 				txWaitingTask = nullptr;
 			}
 #endif

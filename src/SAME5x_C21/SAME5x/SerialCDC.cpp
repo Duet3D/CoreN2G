@@ -8,6 +8,7 @@
 #if SUPPORT_USB
 
 #include "SerialCDC.h"
+#include <CoreNotifyIndices.h>
 
 #ifdef RTOS
 # include <RTOSIface/RTOSIface.h>
@@ -207,7 +208,7 @@ size_t SerialCDC::write(uint8_t c) noexcept
 #endif
 		StartSending();
 #ifdef RTOS
-		TaskBase::Take(50);
+		TaskBase::TakeIndexed(NotifyIndices::Usb, 50);
 #endif
 	}
 	return 1;
@@ -231,7 +232,7 @@ size_t SerialCDC::write(const uint8_t *buffer, size_t buflen) noexcept
 #endif
 		StartSending();
 #ifdef RTOS
-		TaskBase::Take(50);
+		TaskBase::TakeIndexed(NotifyIndices::Usb, 50);
 #endif
 	}
 	return ret;
@@ -283,7 +284,7 @@ void SerialCDC::StartSending() noexcept
 	if (t != nullptr && txBuffer.SpaceLeft() >= txBuffer.GetCapacity()/4)
 	{
 		txWaitingTask = nullptr;
-		TaskBase::GiveFromISR(t);
+		TaskBase::GiveFromISR(t, NotifyIndices::Usb);
 	}
 #endif
 }

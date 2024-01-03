@@ -14,10 +14,11 @@
 
 namespace NotifyIndices
 {
-	constexpr uint32_t UartRx = NextAvailableAfterRTOS;
-	constexpr uint32_t UartTx = UartRx;						// we can use the same one because a task can;t be waiting for both Rx and Tx
-	constexpr uint32_t CanDevice = UartRx;					// CAN can share with UART
-	constexpr uint32_t AnalogIn = UartRx + 1;				// analog in needs its own because it calls a hook function
+	constexpr uint32_t UartTx = NextAvailableAfterRTOS;
+	constexpr uint32_t CanDevice = UartTx;					// CAN can share with UART
+	constexpr uint32_t Usb = UartTx;
+	constexpr uint32_t Sdhc = UartTx;
+	constexpr uint32_t AnalogIn = UartTx + 1;				// analog in best have its own because it calls a hook function that may call device drivers
 	constexpr uint32_t NextAvailableAfterCore = NextAvailableAfterRTOS + 2;
 }
 

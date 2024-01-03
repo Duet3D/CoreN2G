@@ -420,7 +420,7 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 			{
 				return false;
 			}
-			TaskBase::ClearCurrentTaskNotifyCountIndexed(NotifyIndices::CanDevice);
+			TaskBase::ClearCurrentTaskNotifyCount(NotifyIndices::CanDevice);
 			const unsigned int waitingIndex = (unsigned int)whichBuffer;
 			rxTaskWaiting[waitingIndex] = TaskBase::GetCallerTaskHandle();
 			const bool success = (getIndex != fifo.putIndex) || (TaskBase::TakeIndexed(NotifyIndices::CanDevice, timeout), getIndex != fifo.putIndex);
