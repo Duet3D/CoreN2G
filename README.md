@@ -45,3 +45,7 @@ AppInit() should call CoreInit(). If the application uses analog input, it shoul
 The client project must also initialise the 1000Hz Systick interrupt. If the application uses FreeRTOS, this will be done by FreeRTOS; but you must provide function vApplicationTickHook which is called by FreeRTOS, and that must call CoreSysTick() which this project provides. If the application doesn't use FreeRTOS then it must set up Systick itself and provide the systick handler, which must call CoreSysTick().
 
 DC, 2020-07-27
+
+
+##Dual license
+Not Duet3D reserves the right to Dual license this library in the future, although a GPL licensed version will remain the default, public option.
