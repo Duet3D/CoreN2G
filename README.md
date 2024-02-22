@@ -47,5 +47,5 @@ The client project must also initialise the 1000Hz Systick interrupt. If the app
 DC, 2020-07-27
 
 
-##Dual license
+### Dual license
 Note Duet3D reserves the right to Dual license this library in the future, although a GPL licensed version will remain the default, public option.
