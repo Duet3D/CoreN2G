@@ -240,12 +240,12 @@ static void InitClocks() noexcept
 	// The errata says that at 400kHz and below we can get false unlock indications. So we try to use 1MHz or above.
 	uint32_t multiplier;
 	uint32_t divisor;										// must be even
-	if ((xoscFrequency & 1) == 0)
+	if ((xoscFrequency & 1u) == 0)
 	{
 		divisor = xoscFrequency;							// use 1MHz
 		multiplier = 120;
 	}
-	else if ((xoscFrequency % 5) == 0)						// e.g. 25MHz as used on Duet 3 Mini 5+
+	else if ((xoscFrequency % 5u) == 0)						// e.g. 25MHz as used on Duet 3 Mini 5+
 	{
 		divisor = 2 * (xoscFrequency/5);					// e.g. for 25MHz crystal use 2.5MHz
 		multiplier = (2 * 120)/5;
@@ -257,22 +257,27 @@ static void InitClocks() noexcept
 	}
 
 	hri_oscctrl_write_DPLLRATIO_reg(OSCCTRL, 0,
-			  OSCCTRL_DPLLRATIO_LDRFRAC(0)
-			| OSCCTRL_DPLLRATIO_LDR(multiplier - 1));
+									  OSCCTRL_DPLLRATIO_LDRFRAC(0)
+									| OSCCTRL_DPLLRATIO_LDR(multiplier - 1)
+								   );
+	// The SAMD5x/E5x errata document section 2.13.1 says that false unlock indications can occur.
+	// The suggested mitigation is to enable Lock Bypass and Fast Wakeup.
 	hri_oscctrl_write_DPLLCTRLB_reg(OSCCTRL, 0,
-			  OSCCTRL_DPLLCTRLB_DIV(divisor/2 - 1)
-			| (0 << OSCCTRL_DPLLCTRLB_DCOEN_Pos)
-			| OSCCTRL_DPLLCTRLB_DCOFILTER(0)
-			| (0 << OSCCTRL_DPLLCTRLB_LBYPASS_Pos)
-			| OSCCTRL_DPLLCTRLB_LTIME(0)
-			| OSCCTRL_DPLLCTRLB_REFCLK(2u + xoscNumber)		// source is XOSC0 or XOSC1
-			| (0 << OSCCTRL_DPLLCTRLB_WUF_Pos)
-			| OSCCTRL_DPLLCTRLB_FILTER(0));
+									  OSCCTRL_DPLLCTRLB_DIV(divisor/2 - 1)
+									| (0 << OSCCTRL_DPLLCTRLB_DCOEN_Pos)
+									| OSCCTRL_DPLLCTRLB_DCOFILTER(0)
+									| (1u << OSCCTRL_DPLLCTRLB_LBYPASS_Pos)
+									| OSCCTRL_DPLLCTRLB_LTIME(0)
+									| OSCCTRL_DPLLCTRLB_REFCLK(2u + xoscNumber)		// source is XOSC0 or XOSC1
+									| (1u << OSCCTRL_DPLLCTRLB_WUF_Pos)
+									| OSCCTRL_DPLLCTRLB_FILTER(0)
+								   );
 	hri_oscctrl_write_DPLLCTRLA_reg(OSCCTRL, 0,
-			  (0 << OSCCTRL_DPLLCTRLA_RUNSTDBY_Pos)
-			| (1 << OSCCTRL_DPLLCTRLA_ENABLE_Pos));
+									  (0 << OSCCTRL_DPLLCTRLA_RUNSTDBY_Pos)
+									| (1 << OSCCTRL_DPLLCTRLA_ENABLE_Pos)
+								   );
 
-	while (!(hri_oscctrl_get_DPLLSTATUS_LOCK_bit(OSCCTRL, 0) || hri_oscctrl_get_DPLLSTATUS_CLKRDY_bit(OSCCTRL, 0))) { }
+	while ((hri_oscctrl_read_DPLLSTATUS_reg(OSCCTRL, 0) & (OSCCTRL_DPLLSTATUS_LOCK | OSCCTRL_DPLLSTATUS_CLKRDY)) != (OSCCTRL_DPLLSTATUS_LOCK | OSCCTRL_DPLLSTATUS_CLKRDY)) { }
 
 	// We must initialise GCLKs 0 and 1 before we touch the DFLL:
 	// - GCLK0 is the CPU clock and defaults to the DFLL

@@ -36,6 +36,7 @@
 #if SUPPORT_SDHC
 
 #include <CoreIO.h>
+#include <CoreNotifyIndices.h>
 
 // Define which SDHC controller we are using
 Sdhc* hw;
@@ -265,7 +266,7 @@ static bool WaitForDmaComplete() noexcept
 			hw->NISIER.reg = SDHC_NISIER_TRFC;
 			hw->EISIER.reg = ErrorInterruptMask;
 			__enable_irq();
-			if (!TaskBase::Take(500))
+			if (!TaskBase::TakeIndexed(NotifyIndices::Sdhc, 500))
 			{
 				sdhcWaitingTask = nullptr;
 				hw->NISIER.reg = 0;
@@ -799,7 +800,7 @@ void SDHC0_Handler() noexcept
 	hw->EISIER.reg = 0;					// disable error interrupts
 	if (sdhcWaitingTask != nullptr)
 	{
-		TaskBase::GiveFromISR(sdhcWaitingTask);
+		TaskBase::GiveFromISR(sdhcWaitingTask, NotifyIndices::Sdhc);
 		sdhcWaitingTask = nullptr;
 	}
 }

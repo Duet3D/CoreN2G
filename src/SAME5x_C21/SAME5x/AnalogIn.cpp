@@ -15,6 +15,7 @@
 
 #include "AnalogIn.h"
 #include <RTOSIface/RTOSIface.h>
+#include <CoreNotifyIndices.h>
 
 #include <hri_adc_e54.h>
 
@@ -344,7 +345,7 @@ void AdcClass::ResultReadyInterrupt() noexcept
 		{
 			state = State::ready;
 			++conversionsCompleted;
-			TaskBase::GiveFromISR(taskToWake);
+			TaskBase::GiveFromISR(taskToWake, NotifyIndices::AnalogIn);
 		}
 		else
 		{
@@ -408,7 +409,7 @@ void AnalogIn::TaskLoop(void *) noexcept
 
 		if (conversionStarted)
 		{
-			TaskBase::Take(100);
+			TaskBase::TakeIndexed(NotifyIndices::AnalogIn, 100);
 		}
 		else
 		{
