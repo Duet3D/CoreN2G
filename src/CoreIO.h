@@ -885,6 +885,22 @@ private:
 	uint32_t startCycles;
 };
 
+// A simple milliseconds timer class
+class MillisTimer
+{
+public:
+	MillisTimer() noexcept { running = false; }
+	void Start() noexcept;
+	void Stop() noexcept { running = false; }
+	bool CheckNoStop(uint32_t timeoutMillis) const noexcept;
+	bool CheckAndStop(uint32_t timeoutMillis) noexcept;
+	bool IsRunning() const noexcept { return running; }
+
+private:
+	uint32_t whenStarted;
+	bool running;
+};
+
 /**
  * @brief Initialise the application. Called after the main clocks have been set up.
  * You can use delayMicroseconds() in this function but not delay().

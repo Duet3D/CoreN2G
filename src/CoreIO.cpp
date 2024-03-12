@@ -469,6 +469,32 @@ uint32_t MicrosecondsTimer::Read() noexcept
 	return ((sc - cyclesNow) * 1000)/cyclesPerTick + (millisNow - startMillis) * 1000;
 }
 
+// class MillisTimer members
+
+// Start or restart the timer
+void MillisTimer::Start() noexcept
+{
+	whenStarted = millis();
+	running = true;
+}
+
+// Check whether the timer is running and a timeout has expired, but don't stop it
+bool MillisTimer::CheckNoStop(uint32_t timeoutMillis) const noexcept
+{
+	return running && millis() - whenStarted >= timeoutMillis;
+}
+
+// Check whether a timeout has expired and stop the timer if it has, else leave it running if it was running
+bool MillisTimer::CheckAndStop(uint32_t timeoutMillis) noexcept
+{
+	const bool ret = CheckNoStop(timeoutMillis);
+	if (ret)
+	{
+		running = false;
+	}
+	return ret;
+}
+
 // Optimised version of memcpy for when we know that the source and destination are 32-bit aligned and a whole number of 32-bit words are to be copied
 void __attribute__ ((__optimize__ ("-fno-tree-loop-distribute-patterns"))) memcpyu32(uint32_t *_ecv_array dst, const uint32_t *_ecv_array src, size_t numWords) noexcept
 {
