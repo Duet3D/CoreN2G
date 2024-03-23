@@ -818,6 +818,15 @@ enum class SercomIo : uint8_t
 };
 
 /**
+ * @brief combine a sercom ID snd a pad number
+ *
+ * @param sercom the SercomIo that encodes the sercom number and peripheral ID
+ * @param pad the SercomIo that endcodes just the pad number
+ * @return the composite SercomIo value
+ */
+constexpr SercomIo operator+(SercomIo sercom, SercomIo pad) noexcept { return (SercomIo)((uint8_t)sercom | (uint8_t)pad); }
+
+/**
  * @brief get the SERCOM number
  *
  * @param sercom The SercomIo
