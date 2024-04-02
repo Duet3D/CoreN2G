@@ -25,7 +25,7 @@ namespace Cache
 #if SAM4E || SAME5x
 	uint32_t GetHitCount() noexcept;
 #endif
-};
+}
 
 // Entry points that can be called from ASF C code
 extern "C" void CacheFlushBeforeDMAReceive(const volatile void *start, size_t length) noexcept;
