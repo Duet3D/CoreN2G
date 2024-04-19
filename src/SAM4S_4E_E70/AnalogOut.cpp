@@ -78,7 +78,7 @@ pre((pinDesc.ulPinAttribute & PIN_ATTR_PWM) != 0)
 #if SAME70
 			pmc_enable_periph_clk(ID_PWM0);
 			pmc_enable_periph_clk(ID_PWM1);
-			// The SAME70 PWM channels let us divide the system clock by 1 to 1024 or use CLKA or CLKB. Set up CLKA to divider by 2048 and CLKB to divide by 4096.
+			// The SAME70 PWM channels let us divide the system clock by 1 to 1024 or use CLKA or CLKB. Set up CLKA to divide by 2048 and CLKB to divide by 4096.
 			PWM0->PWM_CLK = PWM_CLK_PREA_CLK_DIV1024 | PWM_CLK_DIVA(2) | PWM_CLK_PREB_CLK_DIV1024 | PWM_CLK_DIVB(4);
 			PWM0->PWM_SCM = 0;										// ensure no sync channels
 			PWM1->PWM_CLK = PWM_CLK_PREA_CLK_DIV1024 | PWM_CLK_DIVA(2) | PWM_CLK_PREB_CLK_DIV1024 | PWM_CLK_DIVB(4);
@@ -225,6 +225,8 @@ pre((pinDesc.ulPinAttribute & PIN_ATTR_TIMER) != 0)
 			// Set up the timer mode and top count
 #if SAM4S || SAME70
 			// The timer/counters are only 16 bits wide on the SAM4S and SAME70 so we need to use a higher prescaler
+			// On the SAM4S with 120MHz clock the top value varies between 15 @ 62.500kHz and 65535 @ 14.3Hz
+			// On the SAME70 with 150MHz clock the top value varies between 18 @ 65.104kHz and 65535 @ 17.88Hz
 			tc_init(chTC, chNo,
 							TC_CMR_TCCLKS_TIMER_CLOCK4 |			// clock is MCLK/128 (SAM4S) or peripheral_clock/128 (SAME70)
 							TC_CMR_WAVE |         					// Waveform mode
@@ -233,7 +235,7 @@ pre((pinDesc.ulPinAttribute & PIN_ATTR_TIMER) != 0)
 							TC_CMR_ACPA_CLEAR | TC_CMR_ACPC_CLEAR |
 							TC_CMR_BCPB_CLEAR | TC_CMR_BCPC_CLEAR |
 							TC_CMR_ASWTRG_SET | TC_CMR_BSWTRG_SET);	// Software trigger will let us set the output high
-			const uint32_t top = min<uint32_t>((SystemPeripheralClock()/128)/(uint32_t)freq, 65535);	// with 120MHz clock (SAM4S) this varies between 14 @ 65.535kHz and 65535 @ 14.3Hz
+			const uint32_t top = min<uint32_t>((SystemPeripheralClock()/128)/(uint32_t)freq, 65535);
 #else
 			tc_init(chTC, chNo,
 							TC_CMR_TCCLKS_TIMER_CLOCK2 |			// clock is MCLK/8 to save a little power and avoid overflow later on
