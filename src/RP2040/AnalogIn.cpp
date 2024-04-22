@@ -18,6 +18,7 @@
 #include <DmacManager.h>
 #include <Cache.h>
 #include <General/Bitmap.h>
+#include <CoreNotifyIndices.h>
 
 #include <hardware/adc.h>
 #include <hardware/dma.h>
@@ -150,7 +151,7 @@ void AdcClass::ResultReadyCallback(DmaCallbackReason reason) noexcept
 	DmacManager::DisableChannel(dmaChan);					// disable the sequencer DMA, just in case it is out of sync
 	if (taskToWake != nullptr)
 	{
-		TaskBase::GiveFromISR(taskToWake);
+		TaskBase::GiveFromISR(taskToWake, NotifyIndices::CanDevice);
 	}
 }
 
@@ -324,7 +325,7 @@ void AnalogIn::TaskLoop(void*) noexcept
 
 		if (conversionStarted)
 		{
-			TaskBase::Take(100);
+			TaskBase::TakeIndexed(NotifyIndices::CanDevice, 100);
 			delay(2);
 		}
 		else

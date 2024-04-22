@@ -787,30 +787,44 @@ AnalogChannelNumber PinToSdAdcChannel(Pin p) noexcept;
 
 #endif
 
-#if !RP2040
+#if SAME5x || SAMC21
 
 /**
  * @brief SERCOM identifier. This encodes a SERCOM number and the peripheral that it is on.
- *
  */
 enum class SercomIo : uint8_t
 {
+	// Bits 0-2 encode the sercom number
+	// Bits 3-4 encode the peripheral number (SERCOMs are always on C or D so 2 bits will suffice)
+	// Bits 5-6 encode the pad number
+
 	// SERCOM pins on peripheral C
-	sercom0c = 0x00,
+	sercom0c = 2u << 3,
 	sercom1c, sercom2c, sercom3c, sercom4c, sercom5c,
-#if SAME5x
+# if SAME5x
 	sercom6c, sercom7c,
-#endif
+# endif
 
 	// SERCOM pins on peripheral D
-	sercom0d = 0x80,
+	sercom0d = 3u << 3,
 	sercom1d, sercom2d, sercom3d, sercom4d, sercom5d,
-#if SAME5x
+# if SAME5x
 	sercom6d, sercom7d,
-#endif
+# endif
+
+	pad0 = 0, pad1 = 1u << 5, pad2 = 2u << 5, pad3 = 3u << 5,
 
 	none = 0xFF
 };
+
+/**
+ * @brief combine a sercom ID snd a pad number
+ *
+ * @param sercom the SercomIo that encodes the sercom number and peripheral ID
+ * @param pad the SercomIo that endcodes just the pad number
+ * @return the composite SercomIo value
+ */
+constexpr SercomIo operator+(SercomIo sercom, SercomIo pad) noexcept { return (SercomIo)((uint8_t)sercom | (uint8_t)pad); }
 
 /**
  * @brief get the SERCOM number
@@ -821,12 +835,29 @@ enum class SercomIo : uint8_t
 static inline constexpr unsigned int GetDeviceNumber(SercomIo sercom) noexcept { return (uint8_t)sercom & 7; }
 
 /**
- * @brief Get the peripheral ID
+ * @brief Get the SERCOM peripheral ID
  *
  * @param sercom The SercomIo
  * @return The peripheral ID
  */
-static inline constexpr GpioPinFunction GetPeriNumber(SercomIo sercom) noexcept { return ((uint8_t)sercom >= 0x80) ? GpioPinFunction::D : GpioPinFunction::C; }
+static inline constexpr GpioPinFunction GetPeriNumber(SercomIo sercom) noexcept { return (GpioPinFunction)(((uint8_t)sercom >> 3) & 3); }
+
+/**
+ * @brief Get the SERCOM pad number
+ *
+ * @param sercom The SercomIo
+ * @return The pad number
+ */
+static inline constexpr uint8_t GetPadNumber(SercomIo sercom) noexcept { return ((uint8_t)sercom >> 5) & 3; }
+
+/**
+ * @brief Add a pad number to a SERCOM number without a pad
+ *
+ * @param sercom The SercomIo
+ * @param pad The pad number
+ * @return The composite Sercomio
+ */
+static inline constexpr SercomIo operator+(SercomIo sercom, uint8_t pad) noexcept { return (SercomIo)((uint8_t)sercom + pad); }
 
 #endif
 
@@ -883,6 +914,22 @@ public:
 private:
 	uint32_t startMillis;
 	uint32_t startCycles;
+};
+
+// A simple milliseconds timer class
+class MillisTimer
+{
+public:
+	MillisTimer() noexcept { running = false; }
+	void Start() noexcept;
+	void Stop() noexcept { running = false; }
+	bool CheckNoStop(uint32_t timeoutMillis) const noexcept;
+	bool CheckAndStop(uint32_t timeoutMillis) noexcept;
+	bool IsRunning() const noexcept { return running; }
+
+private:
+	uint32_t whenStarted;
+	bool running;
 };
 
 /**
