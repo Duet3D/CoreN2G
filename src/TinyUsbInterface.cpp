@@ -109,7 +109,7 @@ static tusb_desc_device_t const desc_device =
 
 // Invoked when received GET DEVICE DESCRIPTOR
 // Application return pointer to descriptor
-extern "C" uint8_t const * tud_descriptor_device_cb(void)
+extern "C" uint8_t const * tud_descriptor_device_cb(void) noexcept
 {
   return (uint8_t const *) &desc_device;
 }
@@ -202,7 +202,7 @@ extern "C" uint8_t const* tud_descriptor_other_speed_configuration_cb(uint8_t in
 // Invoked when received GET CONFIGURATION DESCRIPTOR
 // Application return pointer to descriptor
 // Descriptor contents must exist long enough for transfer to complete
-extern "C" uint8_t const * tud_descriptor_configuration_cb(uint8_t index)
+extern "C" uint8_t const * tud_descriptor_configuration_cb(uint8_t index) noexcept
 {
   (void) index; // for multiple configurations
 
@@ -217,7 +217,7 @@ extern "C" uint8_t const * tud_descriptor_configuration_cb(uint8_t index)
 #define DESC_STR_MAX (20)
 static uint16_t desc_str[DESC_STR_MAX];
 
-extern "C" const uint16_t *tud_descriptor_string_cb(uint8_t index, uint16_t langid)
+extern "C" const uint16_t *tud_descriptor_string_cb(uint8_t index, uint16_t langid) noexcept
 {
 	(void) langid;
 
