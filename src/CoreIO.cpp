@@ -39,53 +39,20 @@ extern "C"
 #if RP2040
 // When bit-banging Neopixels we can't afford to wait for instructions to be fetched from flash memory
 [[gnu::optimize("03")]] __attribute__((section(".time_critical")))
+#else
+[[gnu::optimize("03")]] __attribute__((aligned(16)))
 #endif
 uint32_t DelayCycles(uint32_t start, uint32_t cycles) noexcept
 {
-	const uint32_t reload = (SysTick->LOAD & 0x00FFFFFF) + 1;
-	uint32_t now = start;
-
-	// Wait for the systick counter to cycle round until we need to wait less than the reload value
-	while (cycles >= reload)
-	{
-		const uint32_t last = now;
-		now = SysTick->VAL & 0x00FFFFFF;
-		if (now > last)
-		{
-			cycles -= reload;
-		}
-	}
-
-	uint32_t when;
-	if (start >= cycles)
-	{
-		when = start - cycles;
-	}
-	else
-	{
-		when = start + reload - cycles;
-
-		// Wait for the counter to cycle again
-		while (true)
-		{
-			const uint32_t last = now;
-			now = SysTick->VAL & 0x00FFFFFF;
-			if (now > last)
-			{
-				break;
-			}
-		}
-	}
-
-	// Wait until the counter counts down to 'when' or below, or cycles again
+	const int32_t reload = (int32_t)((SysTick->LOAD & 0x00FFFFFF) + 1);
+	int32_t last = (int32_t)start;
+	int32_t target = (int32_t)start - (int32_t)cycles;
 	while (true)
 	{
-		const uint32_t last = now;
-		now = SysTick->VAL & 0x00FFFFFF;
-		if (now <= when || now > last)
-		{
-			return now;
-		}
+		const int32_t now = (int32_t)(SysTick->VAL & 0x00FFFFFF);
+		if (now >= last) { target += reload; }
+		if (now <= target) { return (uint32_t)now; }
+		last = now;
 	}
 }
 
@@ -467,6 +434,32 @@ uint32_t MicrosecondsTimer::Read() noexcept
 		--millisNow;
 	}
 	return ((sc - cyclesNow) * 1000)/cyclesPerTick + (millisNow - startMillis) * 1000;
+}
+
+// class MillisTimer members
+
+// Start or restart the timer
+void MillisTimer::Start() noexcept
+{
+	whenStarted = millis();
+	running = true;
+}
+
+// Check whether the timer is running and a timeout has expired, but don't stop it
+bool MillisTimer::CheckNoStop(uint32_t timeoutMillis) const noexcept
+{
+	return running && millis() - whenStarted >= timeoutMillis;
+}
+
+// Check whether a timeout has expired and stop the timer if it has, else leave it running if it was running
+bool MillisTimer::CheckAndStop(uint32_t timeoutMillis) noexcept
+{
+	const bool ret = CheckNoStop(timeoutMillis);
+	if (ret)
+	{
+		running = false;
+	}
+	return ret;
 }
 
 // Optimised version of memcpy for when we know that the source and destination are 32-bit aligned and a whole number of 32-bit words are to be copied

@@ -228,12 +228,12 @@ void Cache::Init() noexcept
 			ARM_MPU_RBAR(2, IRAM_ADDR),
 			ARM_MPU_RASR_EX(1u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_NORMAL(CACHE_MODE, CACHE_MODE, 0u), 0u, ARM_MPU_REGION_SIZE_256KB)
 		},
-		// First 64kb RAM, read-write, shared, execute disabled
+		// First 64kb RAM, read-write, shared, non-cacheable, execute disabled
 		{
 			ARM_MPU_RBAR(3, IRAM_ADDR),
 			ARM_MPU_RASR_EX(1u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_NORMAL(ARM_MPU_CACHEP_NOCACHE, ARM_MPU_CACHEP_NOCACHE, 1u), 0u, ARM_MPU_REGION_SIZE_64KB)
 		},
-		// Next 32kb RAM, read-write, shared, execute disabled
+		// Next 32kb RAM, read-write, shared, non-cacheable, execute disabled
 		{
 			ARM_MPU_RBAR(4, IRAM_ADDR + 0x00010000),
 			ARM_MPU_RASR_EX(1u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_NORMAL(ARM_MPU_CACHEP_NOCACHE, ARM_MPU_CACHEP_NOCACHE, 1u), 0u, ARM_MPU_REGION_SIZE_32KB)
