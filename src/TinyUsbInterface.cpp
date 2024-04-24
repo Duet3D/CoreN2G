@@ -33,7 +33,6 @@
 #if SAME70
 
 #include "pmc.h"
-#include "sysclk.h"
 
 # define __nocache		__attribute__((section(".ram_nocache")))
 
@@ -263,29 +262,19 @@ void CoreUsbInit(NvicPriority priority) noexcept
 	// Set the USB interrupt priority to a level that is allowed to make FreeRTOS calls
 	NVIC_SetPriority(USBHS_IRQn, priority);
 
-	// Enable peripheral clock for USBHS
-	pmc_enable_periph_clk(ID_USBHS);
-
 	// Start the UPLL clock. The default divider is 40 which is correct for 12MHz crystal.
 	pmc_enable_upll_clock();
 
-	// From the datasheet:
-	// "Before enabling the USB clock in the Power Management Controller, the USBHS must be enabled
-	// (by writing a one to the USBHS_CTRL.USBE bit and a zero to the USBHS_CTRL.FRZCLK bit)"
-# if 0
+# if TUD_OPT_HIGH_SPEED
 	pmc_switch_udpck_to_upllck(1 - 1);
-	USBHS->USBHS_DEVCTRL = USBHS_DEVCTRL_DETACH | USBHS_DEVCTRL_SPDCONF_FORCED_FS;
-# elif TUD_OPT_HIGH_SPEED
-	pmc_switch_udpck_to_upllck(1 - 1);
-	USBHS->USBHS_DEVCTRL = USBHS_DEVCTRL_DETACH;
 # else
 	pmc_switch_udpck_to_upllck(10 - 1);					// when high speed is disabled, tinyusb uses low power mode, which requires a 48MHz clock
-	USBHS->USBHS_DEVCTRL = USBHS_DEVCTRL_SPDCONF_LOW_POWER | USBHS_DEVCTRL_DETACH;
 # endif
-	USBHS->USBHS_CTRL = USBHS_CTRL_UIMOD_DEVICE | USBHS_CTRL_USBE;
 	pmc_enable_udpck();
 
 	pmc_set_fast_startup_input(PMC_FSMR_USBAL);
+	// Enable peripheral clock for USBHS
+	pmc_enable_periph_clk(ID_USBHS);
 
 #elif SAME5x
 
