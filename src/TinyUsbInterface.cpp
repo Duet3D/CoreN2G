@@ -387,27 +387,38 @@ extern "C" void CoreUsbDeviceTask(void* param) noexcept
 
 	while (true)
 	{
-		auto tusb_init = isHostMode ? tuh_init : tud_init;
-		auto tusb_int_enable = isHostMode ? hcd_int_enable : dcd_int_enable;
-		auto tusb_task = isHostMode ? tuh_task_ext : tud_task_ext;
-
 		digitalWrite(UsbVbusOn, isHostMode);
-		tusb_init(0);
+
+		auto tusb_init = isHostMode ? tuh_init : tud_init;
 		if (changingMode)
 		{
-			if (isHostMode)
+			auto tusb_inited = isHostMode ? tuh_inited : tud_inited;
+			if (tusb_inited())
 			{
-				if (tuh_inited())
+				// TinyUSB class drivers already inited previously, just call
+				// the functions to initialize the USB peripheral.
+				if (isHostMode)
 				{
 					hcd_init(0);
+					hcd_int_enable(0);
+				}
+				else
+				{
+					dcd_init(0);
+					dcd_int_enable(0);
 				}
 			}
 			else
 			{
-				tud_connect();
+				tusb_init(0);
 			}
 		}
-		tusb_int_enable(0);
+		else
+		{
+			tusb_init(0);
+		}
+
+		auto tusb_task = isHostMode ? tuh_task_ext : tud_task_ext;
 
 		changingMode = false;
 		while (!changingMode)
@@ -415,32 +426,53 @@ extern "C" void CoreUsbDeviceTask(void* param) noexcept
 			tusb_task(100, false);
 		}
 
-		// Deinit current tinyUSB context.
-		if (isHostMode)
-		{
-			hcd_event_device_remove(0, false);
-		}
-		else
-		{
-			tud_disconnect();
-		}
-		tusb_task(100, false);
-
-		// Reset USB hardware.
-		USBHS->USBHS_CTRL &= ~USBHS_CTRL_USBE;
+		// Disable pipes, deallocate DPRAM
 		for (int i = 9; i >= 0; i--)
 		{
 			if (isHostMode)
 			{
+				USBHS->USBHS_HSTPIP &= ~(USBHS_HSTPIP_PEN0 << i);
 				USBHS->USBHS_HSTPIPCFG[i] &= ~(USBHS_HSTPIPCFG_ALLOC);
 			}
 			else
 			{
+				USBHS->USBHS_DEVEPT &= ~(USBHS_DEVEPT_EPEN0 << i);
 				USBHS->USBHS_DEVEPTCFG[i] &= ~(USBHS_DEVEPTCFG_ALLOC);
 			}
 		}
 
-		// Complete the mode change.
+		// Reset DMA registers
+		for (int i = 0; i < 7; i++)
+		{
+			if (isHostMode)
+			{
+				USBHS->USBHS_HSTDMA[i].USBHS_HSTDMAADDRESS = 0;
+				USBHS->USBHS_HSTDMA[i].USBHS_HSTDMACONTROL = 0;
+				USBHS->USBHS_HSTDMA[i].USBHS_HSTDMASTATUS = 0;
+			}
+			else
+			{
+				USBHS->USBHS_DEVDMA[i].USBHS_DEVDMAADDRESS = 0;
+				USBHS->USBHS_DEVDMA[i].USBHS_DEVDMACONTROL = 0;
+				USBHS->USBHS_DEVDMA[i].USBHS_DEVDMASTATUS = 0;
+			}
+		}
+
+		// Deinit current tinyUSB host context. Not needed for device
+		// since changing mode requires the board to not be connected
+		// to a host, so if we are changing mode then the DCD_EVENT_UNPLUGGED
+		// must have been handled in the past already.
+		if (isHostMode)
+		{
+			hcd_event_device_remove(0, false);
+			tusb_task(100, false);
+		}
+
+		// Reset USB hardware
+		USBHS->USBHS_CTRL &= ~(USBHS_CTRL_USBE | USBHS_CTRL_UIMOD);
+		USBHS->USBHS_CTRL |= USBHS_CTRL_FRZCLK;
+
+		// Toggle mode for next loop
 		isHostMode = !isHostMode;
 	}
 }
