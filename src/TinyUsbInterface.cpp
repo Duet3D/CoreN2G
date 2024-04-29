@@ -279,13 +279,8 @@ static Pin UsbModeDetect;
 #endif
 
 // Call this to initialise the hardware
-#if CFG_TUH_ENABLED
 void CoreUsbInit(NvicPriority priority, Pin usbVbusDetect, Pin usbVbusOn, Pin usbModeSwitch, Pin usbModeDetect) noexcept
-#else
-void CoreUsbInit(NvicPriority priority) noexcept
-#endif
 {
-
 #if CFG_TUH_ENABLED
 	UsbVbusDetect = usbVbusDetect;
 	UsbVbusOn = usbVbusOn;
@@ -494,8 +489,17 @@ void CoreUsbStop()
 #if CFG_TUH_ENABLED
 	digitalWrite(UsbVbusOn, false);
 #endif
+
+#if SAME5x
+	NVIC_DisableIRQ(USB_0_IRQn);
+	NVIC_DisableIRQ(USB_1_IRQn);
+	NVIC_DisableIRQ(USB_2_IRQn);
+	NVIC_DisableIRQ(USB_3_IRQn);
+	USB->DEVICE.CTRLA.reg &= ~USB_CTRLA_ENABLE;
+#elif SAME70
 	NVIC_DisableIRQ((IRQn_Type)ID_USBHS);
 	USBHS->USBHS_CTRL &= ~USBHS_CTRL_USBE;
+#endif
 }
 
 #if RP2040		// RP2040 USB configuration has HID enabled by default
