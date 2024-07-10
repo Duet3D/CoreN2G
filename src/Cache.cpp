@@ -233,15 +233,15 @@ void Cache::Init() noexcept
 			ARM_MPU_RBAR(3, IRAM_ADDR),
 			ARM_MPU_RASR_EX(1u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_NORMAL(ARM_MPU_CACHEP_NOCACHE, ARM_MPU_CACHEP_NOCACHE, 1u), 0u, ARM_MPU_REGION_SIZE_64KB)
 		},
-		// Next 32kb RAM, read-write, shared, non-cacheable, execute disabled
+		// Next 16kb RAM, read-write, shared, non-cacheable, execute disabled
 		{
 			ARM_MPU_RBAR(4, IRAM_ADDR + 0x00010000),
-			ARM_MPU_RASR_EX(1u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_NORMAL(ARM_MPU_CACHEP_NOCACHE, ARM_MPU_CACHEP_NOCACHE, 1u), 0u, ARM_MPU_REGION_SIZE_32KB)
+			ARM_MPU_RASR_EX(1u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_NORMAL(ARM_MPU_CACHEP_NOCACHE, ARM_MPU_CACHEP_NOCACHE, 1u), 0u, ARM_MPU_REGION_SIZE_16KB)
 		},
 		// RAMFUNC memory. Read-only (the code has already been written to it), execution allowed. The initialised data memory follows, so it must be RW.
 		// 256 bytes is enough at present (check the linker memory map if adding more RAMFUNCs).
 		{
-			ARM_MPU_RBAR(5, IRAM_ADDR + 0x00018000),
+			ARM_MPU_RBAR(5, IRAM_ADDR + 0x00014000),
 			ARM_MPU_RASR_EX(0u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_NORMAL(CACHE_MODE, CACHE_MODE, 0u), 0u, ARM_MPU_REGION_SIZE_256B)
 		},
 		// Final 128kb RAM, read-write, cacheable, execute disabled
