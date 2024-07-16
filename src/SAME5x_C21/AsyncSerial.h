@@ -45,6 +45,11 @@ public:
     size_t write(uint8_t) noexcept override;
     size_t write(const uint8_t *buffer, size_t size) noexcept override;		// this has a default implementation, but can be overridden for efficiency
 
+	void ClearTransmitBuffer() noexcept;
+	void ClearReceiveBuffer() noexcept;
+	void DisableTransmit() noexcept;
+	void EnableTransmit() noexcept;
+
 	// Compatibility functions
 	void begin(uint32_t baudRate) noexcept;
 	void end() noexcept;
@@ -93,8 +98,10 @@ private:
 	Errors errors;
 	const uint8_t sercomNumber;
 	const uint8_t rxPad;
-    uint8_t numInterruptBytesMatched;
+
+	uint8_t numInterruptBytesMatched;
     bool bufferOverrunPending;
+    bool txEnabled;
 
     static constexpr uint8_t interruptSeq[2] = { 0xF0, 0x0F };
 };

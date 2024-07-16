@@ -83,16 +83,21 @@ public:
 
 	size_t canWrite() noexcept override;
 
+	void ClearTransmitBuffer() noexcept;
+	void ClearReceiveBuffer() noexcept;
+	void DisableTransmit() noexcept;
+	void EnableTransmit() noexcept;
+
 	void setInterruptPriority(uint32_t priority) noexcept;
 	uint32_t getInterruptPriority() noexcept;
-
-	void IrqHandler() noexcept;
 
 	InterruptCallbackFn SetInterruptCallback(InterruptCallbackFn f) noexcept;
 	OnTransmissionEndedFn SetOnTxEndedCallback(OnTransmissionEndedFn f) noexcept;
 
 	// Get and clear the errors
 	Errors GetAndClearErrors() noexcept;
+
+	void IrqHandler() noexcept;
 
 protected:
 	void init(const uint32_t dwBaudRate, const uint32_t config) noexcept;
@@ -111,8 +116,10 @@ protected:
 	OnEndFn onEnd;
 	OnTransmissionEndedFn onTransmissionEnded;
 	Errors errors;
-	size_t numInterruptBytesMatched;
+
+	uint8_t numInterruptBytesMatched;
 	bool bufferOverrunPending;
+    bool txEnabled;
 
 	static constexpr uint8_t interruptSeq[2] = { 0xF0, 0x0F };
 };
