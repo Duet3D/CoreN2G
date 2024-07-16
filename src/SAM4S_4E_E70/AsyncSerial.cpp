@@ -28,7 +28,7 @@
 
 AsyncSerial::AsyncSerial(Uart* pUart, IRQn_Type p_irqn, uint32_t p_id, size_t numTxSlots, size_t numRxSlots, OnBeginFn p_onBegin, OnEndFn p_onEnd) noexcept
 	: _pUart(pUart), irqn(p_irqn), id(p_id),
-	  interruptCallback(nullptr), onBegin(p_onBegin), onEnd(p_onEnd), onTransmissionEnded(nullptr),
+	  interruptCallback(nullptr), onBegin(p_onBegin), onEnd(p_onEnd), onTransmissionEndedFn(nullptr),
 	  numInterruptBytesMatched(0), txEnabled(false)
 {
 	txBuffer.Init(numTxSlots);
@@ -283,12 +283,12 @@ void AsyncSerial::IrqHandler() noexcept
 		else
 		{
 			_pUart->UART_IDR = UART_IDR_TXRDY;						// mask off transmit interrupt so we don't get it anymore
-			if (onTransmissionEnded != nullptr)						// if we want callback when the transmitter is empty
+			if (onTransmissionEndedFn != nullptr)					// if we want callback when the transmitter is empty
 			{
 				if ((status & UART_SR_TXEMPTY) != 0)				// if it is already empty
 				{
 					_pUart->UART_IDR = UART_IER_TXEMPTY;			// disable the transmitter empty interrupt
-					onTransmissionEnded(this);						// execute the callback
+					onTransmissionEndedFn(onTransmissionEndedCp);	// execute the callback
 				}
 				else
 				{
@@ -328,10 +328,12 @@ AsyncSerial::InterruptCallbackFn AsyncSerial::SetInterruptCallback(InterruptCall
 	return ret;
 }
 
-AsyncSerial::OnTransmissionEndedFn AsyncSerial::SetOnTxEndedCallback(OnTransmissionEndedFn f) noexcept
+AsyncSerial::OnTransmissionEndedFn AsyncSerial::SetOnTxEndedCallback(OnTransmissionEndedFn f, CallbackParameter cp) noexcept
 {
-	const OnTransmissionEndedFn ret = onTransmissionEnded;
-	onTransmissionEnded = f;
+	AtomicCriticalSectionLocker lock;
+	const OnTransmissionEndedFn ret = onTransmissionEndedFn;
+	onTransmissionEndedFn = f;
+	onTransmissionEndedCp = cp;
 	return ret;
 }
 

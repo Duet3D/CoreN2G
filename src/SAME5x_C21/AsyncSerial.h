@@ -8,6 +8,7 @@
 #ifndef SRC_HARDWARE_SAME5X_C21_ASYNCSERIAL_H_
 #define SRC_HARDWARE_SAME5X_C21_ASYNCSERIAL_H_
 
+#include <CoreIO.h>
 #include <Stream.h>
 #include <General/RingBuffer.h>
 #include "Serial.h"
@@ -19,7 +20,7 @@ public:
 	typedef void (*OnBeginFn)(AsyncSerial*) noexcept;
 	typedef void (*OnEndFn)(AsyncSerial*) noexcept;
 #if SAME5x
-	typedef void (*OnTransmissionEndedFn)(AsyncSerial*) noexcept;
+	typedef void (*OnTransmissionEndedFn)(CallbackParameter) noexcept;
 #endif
 
 	union Errors
@@ -58,7 +59,7 @@ public:
 	InterruptCallbackFn SetInterruptCallback(InterruptCallbackFn f) noexcept;
 
 #if SAME5x
-	OnTransmissionEndedFn SetOnTxEndedCallback(OnTransmissionEndedFn f) noexcept;
+	OnTransmissionEndedFn SetOnTxEndedCallback(OnTransmissionEndedFn f, CallbackParameter cp) noexcept;
 #endif
 
 #if 0
@@ -92,7 +93,8 @@ private:
     OnEndFn onEnd;
 
 #if SAME5x
-	OnTransmissionEndedFn onTransmissionEnded;
+	OnTransmissionEndedFn onTransmissionEndedFn;
+	CallbackParameter onTransmissionEndedCp;
 #endif
 
 	Errors errors;

@@ -16,7 +16,7 @@ AsyncSerial::AsyncSerial(uint8_t sercomNum, uint8_t rxp, size_t numTxSlots, size
 #endif
 	  interruptCallback(nullptr), onBegin(p_onBegin), onEnd(p_onEnd),
 #if SAME5x
-	  onTransmissionEnded(nullptr),
+	  onTransmissionEndedFn(nullptr),
 #endif
 	  sercomNumber(sercomNum), rxPad(rxp), txEnabled(false)
 {
@@ -226,7 +226,7 @@ void AsyncSerial::Interrupt0() noexcept
 	else
 	{
 		sercom->USART.INTENCLR.reg = SERCOM_USART_INTENCLR_DRE;
-		if (onTransmissionEnded != nullptr)				// if we want callback when the transmitter is empty
+		if (onTransmissionEndedFn != nullptr)				// if we want callback when the transmitter is empty
 		{
 			sercom->USART.INTENSET.reg = SERCOM_USART_INTENSET_TXC;
 		}
@@ -243,9 +243,9 @@ void AsyncSerial::Interrupt0() noexcept
 // Interrupt 1 signals transmit complete
 void AsyncSerial::Interrupt1() noexcept
 {
-	if (onTransmissionEnded != nullptr)					// if we want callback when the transmitter is empty
+	if (onTransmissionEndedFn != nullptr)					// if we want callback when the transmitter is empty
 	{
-		onTransmissionEnded(this);						// execute the callback
+		onTransmissionEndedFn(onTransmissionEndedCp);		// execute the callback
 	}
 	sercom->USART.INTENCLR.reg = SERCOM_USART_INTENCLR_TXC;
 }
@@ -399,10 +399,12 @@ AsyncSerial::InterruptCallbackFn AsyncSerial::SetInterruptCallback(InterruptCall
 
 #if SAME5x
 
-AsyncSerial::OnTransmissionEndedFn AsyncSerial::SetOnTxEndedCallback(OnTransmissionEndedFn f) noexcept
+AsyncSerial::OnTransmissionEndedFn AsyncSerial::SetOnTxEndedCallback(OnTransmissionEndedFn f, CallbackParameter cp) noexcept
 {
-	const OnTransmissionEndedFn ret = onTransmissionEnded;
-	onTransmissionEnded = f;
+	AtomicCriticalSectionLocker lock;
+	const OnTransmissionEndedFn ret = onTransmissionEndedFn;
+	onTransmissionEndedFn = f;
+	onTransmissionEndedCp = cp;
 	return ret;
 }
 

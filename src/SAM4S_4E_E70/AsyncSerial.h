@@ -19,7 +19,7 @@
 #ifndef SRC_HARDWARE_SAME4S_4E_E70_ASYNC_SERIAL_H_
 #define SRC_HARDWARE_SAME4S_4E_E70_ASYNC_SERIAL_H_
 
-#include <Core.h>
+#include <CoreIO.h>
 #include <Stream.h>
 #include <General/RingBuffer.h>
 
@@ -46,7 +46,7 @@ public:
 	typedef void (*InterruptCallbackFn)(AsyncSerial*) noexcept;
 	typedef void (*OnBeginFn)(AsyncSerial*) noexcept;
 	typedef void (*OnEndFn)(AsyncSerial*) noexcept;
-	typedef void (*OnTransmissionEndedFn)(AsyncSerial*) noexcept;
+	typedef void (*OnTransmissionEndedFn)(CallbackParameter cp) noexcept;
 
 	union Errors
 	{
@@ -92,7 +92,7 @@ public:
 	uint32_t getInterruptPriority() noexcept;
 
 	InterruptCallbackFn SetInterruptCallback(InterruptCallbackFn f) noexcept;
-	OnTransmissionEndedFn SetOnTxEndedCallback(OnTransmissionEndedFn f) noexcept;
+	OnTransmissionEndedFn SetOnTxEndedCallback(OnTransmissionEndedFn f, CallbackParameter cp) noexcept;
 
 	// Get and clear the errors
 	Errors GetAndClearErrors() noexcept;
@@ -114,7 +114,8 @@ protected:
 	InterruptCallbackFn interruptCallback;
 	OnBeginFn onBegin;
 	OnEndFn onEnd;
-	OnTransmissionEndedFn onTransmissionEnded;
+	OnTransmissionEndedFn onTransmissionEndedFn;
+	CallbackParameter onTransmissionEndedCp;
 	Errors errors;
 
 	uint8_t numInterruptBytesMatched;
