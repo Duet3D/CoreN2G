@@ -18,6 +18,9 @@ public:
 	typedef void (*InterruptCallbackFn)(AsyncSerial*) noexcept;
 	typedef void (*OnBeginFn)(AsyncSerial*) noexcept;
 	typedef void (*OnEndFn)(AsyncSerial*) noexcept;
+#if SAME5x
+	typedef void (*OnTransmissionEndedFn)(AsyncSerial*) noexcept;
+#endif
 
 	union Errors
 	{
@@ -46,7 +49,12 @@ public:
 	void begin(uint32_t baudRate) noexcept;
 	void end() noexcept;
 	void setInterruptPriority(uint32_t rxPrio, uint32_t txAndErrorPrio) const noexcept;
-    InterruptCallbackFn SetInterruptCallback(InterruptCallbackFn f) noexcept;
+
+	InterruptCallbackFn SetInterruptCallback(InterruptCallbackFn f) noexcept;
+
+#if SAME5x
+	OnTransmissionEndedFn SetOnTxEndedCallback(OnTransmissionEndedFn f) noexcept;
+#endif
 
 #if 0
 	// Non-blocking block write
@@ -57,7 +65,7 @@ public:
 
 #if SAME5x
 	void Interrupt0() noexcept;
-	// We don't use interrupt 1
+	void Interrupt1() noexcept;
 	void Interrupt2() noexcept;
 	void Interrupt3() noexcept;
 #elif SAMC21
@@ -77,6 +85,11 @@ private:
     InterruptCallbackFn interruptCallback;
     OnBeginFn onBegin;
     OnEndFn onEnd;
+
+#if SAME5x
+	OnTransmissionEndedFn onTransmissionEnded;
+#endif
+
 	Errors errors;
 	const uint8_t sercomNumber;
 	const uint8_t rxPad;

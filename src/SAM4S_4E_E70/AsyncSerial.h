@@ -46,6 +46,7 @@ public:
 	typedef void (*InterruptCallbackFn)(AsyncSerial*) noexcept;
 	typedef void (*OnBeginFn)(AsyncSerial*) noexcept;
 	typedef void (*OnEndFn)(AsyncSerial*) noexcept;
+	typedef void (*OnTransmissionEndedFn)(AsyncSerial*) noexcept;
 
 	union Errors
 	{
@@ -88,6 +89,7 @@ public:
 	void IrqHandler() noexcept;
 
 	InterruptCallbackFn SetInterruptCallback(InterruptCallbackFn f) noexcept;
+	OnTransmissionEndedFn SetOnTxEndedCallback(OnTransmissionEndedFn f) noexcept;
 
 	// Get and clear the errors
 	Errors GetAndClearErrors() noexcept;
@@ -107,6 +109,7 @@ protected:
 	InterruptCallbackFn interruptCallback;
 	OnBeginFn onBegin;
 	OnEndFn onEnd;
+	OnTransmissionEndedFn onTransmissionEnded;
 	Errors errors;
 	size_t numInterruptBytesMatched;
 	bool bufferOverrunPending;

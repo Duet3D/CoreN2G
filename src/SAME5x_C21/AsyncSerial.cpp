@@ -15,6 +15,9 @@ AsyncSerial::AsyncSerial(uint8_t sercomNum, uint8_t rxp, size_t numTxSlots, size
 	  txWaitingTask(nullptr),
 #endif
 	  interruptCallback(nullptr), onBegin(p_onBegin), onEnd(p_onEnd),
+#if SAME5x
+	  onTransmissionEnded(nullptr),
+#endif
 	  sercomNumber(sercomNum), rxPad(rxp)
 {
 	txBuffer.Init(numTxSlots);
@@ -176,6 +179,10 @@ void AsyncSerial::Interrupt0() noexcept
 	else
 	{
 		sercom->USART.INTENCLR.reg = SERCOM_USART_INTENCLR_DRE;
+		if (onTransmissionEnded != nullptr)				// if we want callback when the transmitter is empty
+		{
+			sercom->USART.INTENSET.reg = SERCOM_USART_INTENSET_TXC;
+		}
 #ifdef RTOS
 		if (txWaitingTask != nullptr)
 		{
@@ -186,7 +193,16 @@ void AsyncSerial::Interrupt0() noexcept
 	}
 }
 
-// We don't use interrupt 1, it signals transmit complete
+// Interrupt 1 signals transmit complete
+void AsyncSerial::Interrupt1() noexcept
+{
+	if (onTransmissionEnded != nullptr)					// if we want callback when the transmitter is empty
+	{
+		onTransmissionEnded(this);						// execute the callback
+	}
+	sercom->USART.INTENCLR.reg = SERCOM_USART_INTENCLR_TXC;
+}
+
 // Interrupt 2 means receive character available
 void AsyncSerial::Interrupt2() noexcept
 {
@@ -333,6 +349,17 @@ AsyncSerial::InterruptCallbackFn AsyncSerial::SetInterruptCallback(InterruptCall
 	interruptCallback = f;
 	return ret;
 }
+
+#if SAME5x
+
+AsyncSerial::OnTransmissionEndedFn AsyncSerial::SetOnTxEndedCallback(OnTransmissionEndedFn f) noexcept
+{
+	const OnTransmissionEndedFn ret = onTransmissionEnded;
+	onTransmissionEnded = f;
+	return ret;
+}
+
+#endif
 
 void AsyncSerial::setInterruptPriority(uint32_t rxPrio, uint32_t txAndErrorPrio) const noexcept
 {
