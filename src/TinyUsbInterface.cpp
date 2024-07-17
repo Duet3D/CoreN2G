@@ -350,17 +350,13 @@ bool CoreUsbSetHostMode(bool hostMode, const StringRef& reply)
 		return false;
 	}
 
-	if (hostMode && digitalRead(UsbVbusDetect))
+	if (!CoreUsbIsHostMode() && hostMode && digitalRead(UsbVbusDetect))
 	{
 		reply.printf("Unable to change to host mode, board plugged in to computer\n");
 		return false;
 	}
 
-	if (hostMode == CoreUsbIsHostMode())
-	{
-		reply.printf("Already in %s mode\n", hostMode ? "host" : "device");
-	}
-	else
+	if (hostMode != CoreUsbIsHostMode())
 	{
 		CoreUsbStop();
 		changingMode = true;
