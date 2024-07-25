@@ -11,6 +11,8 @@
 
 #include <Core.h>
 
+#if SAMC21 || RP2040
+
 extern "C" uint8_t __atomic_sub_fetch_1(volatile void *ptr, uint8_t val, int memorder) noexcept
 {
 	const irqflags_t flags = IrqSave();
@@ -75,5 +77,7 @@ extern "C" unsigned int __atomic_fetch_add_4(volatile void *ptr, unsigned int va
 	IrqRestore(flags);
 	return ret;
 }
+
+#endif
 
 // End
