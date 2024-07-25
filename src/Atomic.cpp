@@ -8,6 +8,7 @@
 // Atomic functions for ARM Cortex M0/M0+ processors missing from the standard library
 // There are many other such functions missing. They can be added if/when the linker complains about not finding them.
 // See section 6.55 of the gcc manual for more information about them.
+// CAUTION: this version does not handle the case of both cores of the RP2040 accessing the same atomic variable!
 
 #include <Core.h>
 
