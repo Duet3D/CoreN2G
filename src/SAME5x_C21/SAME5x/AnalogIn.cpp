@@ -36,7 +36,7 @@ static AnalogIn::AdcTaskHookFunction *taskHookFunction = nullptr;
 constexpr uint32_t CtrlB = ADC_CTRLB_RESSEL_16BIT;
 constexpr uint32_t RefCtrl = ADC_REFCTRL_REFSEL_INTVCC1;
 constexpr uint32_t AvgCtrl = ADC_AVGCTRL_SAMPLENUM_64;
-constexpr uint32_t SampCtrl = ADC_SAMPCTRL_OFFCOMP;
+constexpr uint32_t SampCtrl = ADC_SAMPCTRL_SAMPLEN(32);					// was ADC_SAMPCTRL_OFFCOMP in 3.5.2 and earlier
 
 class AdcClass
 {
