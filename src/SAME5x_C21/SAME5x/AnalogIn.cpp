@@ -192,7 +192,7 @@ void AdcClass::ReInit() noexcept
 	hri_adc_write_EVCTRL_reg(device, 0);
 	hri_adc_write_INPUTCTRL_reg(device, ADC_INPUTCTRL_MUXNEG_GND);
 	hri_adc_write_AVGCTRL_reg(device, AvgCtrl);
-	hri_adc_write_SAMPCTRL_reg(device, SampCtrl);						// this also extends the sample time to 4 ADC clocks
+	hri_adc_write_SAMPCTRL_reg(device, SampCtrl);
 	hri_adc_write_WINLT_reg(device, 0);
 	hri_adc_write_WINUT_reg(device, 0xFFFF);
 	hri_adc_write_GAINCORR_reg(device, 1u << 11);
