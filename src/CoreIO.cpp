@@ -33,10 +33,9 @@
 # include <hardware/adc.h>
 #endif
 
-
 // Delay for a specified number of CPU clock cycles from the starting time. Return the time at which we actually stopped waiting.
 extern "C"
-#if RP2040
+#if SAMC21 || RP2040
 // When bit-banging Neopixels we can't afford to wait for instructions to be fetched from flash memory
 [[gnu::optimize("03")]] __attribute__((section(".time_critical")))
 #else
