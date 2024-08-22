@@ -15,7 +15,10 @@ AsyncSerial::AsyncSerial(uint8_t sercomNum, uint8_t rxp, size_t numTxSlots, size
 	  txWaitingTask(nullptr),
 #endif
 	  interruptCallback(nullptr), onBegin(p_onBegin), onEnd(p_onEnd),
-	  sercomNumber(sercomNum), rxPad(rxp)
+#if SAME5x
+	  onTransmissionEndedFn(nullptr),
+#endif
+	  sercomNumber(sercomNum), rxPad(rxp), txEnabled(false)
 {
 	txBuffer.Init(numTxSlots);
 	rxBuffer.Init(numRxSlots);
@@ -36,9 +39,11 @@ void AsyncSerial::begin(uint32_t baudRate) noexcept
 	const IRQn irqNumber = Serial::GetSercomIRQn(sercomNumber);
 	NVIC_EnableIRQ(irqNumber);
 #if SAME5x
+	NVIC_EnableIRQ((IRQn)(irqNumber + 1));
 	NVIC_EnableIRQ((IRQn)(irqNumber + 2));
 	NVIC_EnableIRQ((IRQn)(irqNumber + 3));
 #endif
+	txEnabled = true;
 }
 
 void AsyncSerial::end() noexcept
@@ -48,11 +53,13 @@ void AsyncSerial::end() noexcept
 
 	// Wait for any outstanding data to be sent
 	flush();
+	txEnabled = false;
 
 	// Disable UART interrupt in NVIC
 	const IRQn irqNumber = Serial::GetSercomIRQn(sercomNumber);
 	NVIC_DisableIRQ(irqNumber);
 #if SAME5x
+	NVIC_DisableIRQ((IRQn)(irqNumber + 1));
 	NVIC_DisableIRQ((IRQn)(irqNumber + 2));
 	NVIC_DisableIRQ((IRQn)(irqNumber + 3));
 #endif
@@ -86,10 +93,10 @@ size_t AsyncSerial::canWrite() noexcept
 	return txBuffer.SpaceLeft();
 }
 
-// Write single character, blocking
+// Write single character, blocking unless transmission is disabled
 size_t AsyncSerial::write(uint8_t c) noexcept
 {
-	if (txBuffer.IsEmpty() && sercom->USART.INTFLAG.bit.DRE)
+	if (txEnabled && txBuffer.IsEmpty() && sercom->USART.INTFLAG.bit.DRE)
 	{
 		sercom->USART.DATA.reg = c;
 	}
@@ -99,8 +106,15 @@ size_t AsyncSerial::write(uint8_t c) noexcept
 		{
 			if (txBuffer.PutItem(c))
 			{
-				sercom->USART.INTENSET.reg = SERCOM_USART_INTENSET_DRE;
+				if (txEnabled)
+				{
+					sercom->USART.INTENSET.reg = SERCOM_USART_INTENSET_DRE;
+				}
 				break;
+			}
+			if (!txEnabled)
+			{
+				return 0;
 			}
 #ifdef RTOS
 			txWaitingTask = RTOSIface::GetCurrentTask();
@@ -119,23 +133,35 @@ size_t AsyncSerial::write(uint8_t c) noexcept
 size_t AsyncSerial::TryPutBlock(const uint8_t* buffer, size_t buflen) noexcept
 {
 	const size_t written = txBuffer.PutBlock(buffer, buflen);
-	sercom->USART.INTENSET.reg = SERCOM_USART_INTENSET_DRE;
+	if (txEnabled)
+	{
+		sercom->USART.INTENSET.reg = SERCOM_USART_INTENSET_DRE;
+	}
 	return written;
 }
 #endif
 
-// Blocking write block
+// Write block, blocking if transmitter is enabled
 size_t AsyncSerial::write(const uint8_t* buffer, size_t buflen) noexcept
 {
-	const size_t ret = buflen;
+	size_t ret = 0;
 	for (;;)
 	{
-		buflen -= txBuffer.PutBlock(buffer, buflen);
+		const size_t numPut = txBuffer.PutBlock(buffer, buflen);
+		buflen -= numPut;
+		buffer += numPut;
+		ret += numPut;
+		if (!txEnabled)
+		{
+			break;
+		}
+
 		if (buflen == 0)
 		{
 			sercom->USART.INTENSET.reg = SERCOM_USART_INTENSET_DRE;
 			break;
 		}
+
 #ifdef RTOS
 		txWaitingTask = RTOSIface::GetCurrentTask();
 #endif
@@ -145,6 +171,30 @@ size_t AsyncSerial::write(const uint8_t* buffer, size_t buflen) noexcept
 #endif
 	}
 	return ret;
+}
+
+void AsyncSerial::ClearTransmitBuffer() noexcept
+{
+	AtomicCriticalSectionLocker lock;
+	txBuffer.Clear();
+}
+
+void AsyncSerial::ClearReceiveBuffer() noexcept
+{
+	AtomicCriticalSectionLocker lock;
+	rxBuffer.Clear();
+}
+
+void AsyncSerial::DisableTransmit() noexcept
+{
+	txEnabled = false;
+	sercom->USART.INTENCLR.reg = SERCOM_USART_INTENCLR_DRE;
+}
+
+void AsyncSerial::EnableTransmit() noexcept
+{
+	txEnabled = true;
+	sercom->USART.INTENSET.reg = SERCOM_USART_INTENSET_DRE;
 }
 
 // Get and clear the errors
@@ -176,6 +226,10 @@ void AsyncSerial::Interrupt0() noexcept
 	else
 	{
 		sercom->USART.INTENCLR.reg = SERCOM_USART_INTENCLR_DRE;
+		if (onTransmissionEndedFn != nullptr)				// if we want callback when the transmitter is empty
+		{
+			sercom->USART.INTENSET.reg = SERCOM_USART_INTENSET_TXC;
+		}
 #ifdef RTOS
 		if (txWaitingTask != nullptr)
 		{
@@ -186,7 +240,16 @@ void AsyncSerial::Interrupt0() noexcept
 	}
 }
 
-// We don't use interrupt 1, it signals transmit complete
+// Interrupt 1 signals transmit complete
+void AsyncSerial::Interrupt1() noexcept
+{
+	if (onTransmissionEndedFn != nullptr)					// if we want callback when the transmitter is empty
+	{
+		onTransmissionEndedFn(onTransmissionEndedCp);		// execute the callback
+	}
+	sercom->USART.INTENCLR.reg = SERCOM_USART_INTENCLR_TXC;
+}
+
 // Interrupt 2 means receive character available
 void AsyncSerial::Interrupt2() noexcept
 {
@@ -333,6 +396,19 @@ AsyncSerial::InterruptCallbackFn AsyncSerial::SetInterruptCallback(InterruptCall
 	interruptCallback = f;
 	return ret;
 }
+
+#if SAME5x
+
+AsyncSerial::OnTransmissionEndedFn AsyncSerial::SetOnTxEndedCallback(OnTransmissionEndedFn f, CallbackParameter cp) noexcept
+{
+	AtomicCriticalSectionLocker lock;
+	const OnTransmissionEndedFn ret = onTransmissionEndedFn;
+	onTransmissionEndedFn = f;
+	onTransmissionEndedCp = cp;
+	return ret;
+}
+
+#endif
 
 void AsyncSerial::setInterruptPriority(uint32_t rxPrio, uint32_t txAndErrorPrio) const noexcept
 {

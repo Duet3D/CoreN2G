@@ -28,8 +28,8 @@
 
 AsyncSerial::AsyncSerial(Uart* pUart, IRQn_Type p_irqn, uint32_t p_id, size_t numTxSlots, size_t numRxSlots, OnBeginFn p_onBegin, OnEndFn p_onEnd) noexcept
 	: _pUart(pUart), irqn(p_irqn), id(p_id),
-	  interruptCallback(nullptr), onBegin(p_onBegin), onEnd(p_onEnd),
-	  numInterruptBytesMatched(0)
+	  interruptCallback(nullptr), onBegin(p_onBegin), onEnd(p_onEnd), onTransmissionEndedFn(nullptr),
+	  numInterruptBytesMatched(0), txEnabled(false)
 {
 	txBuffer.Init(numTxSlots);
 	rxBuffer.Init(numRxSlots);
@@ -84,6 +84,7 @@ void AsyncSerial::init(const uint32_t dwBaudRate, const uint32_t modeReg) noexce
 	// Enable receiver and transmitter
 	errors.all = 0;
 	_pUart->UART_CR = UART_CR_RXEN | UART_CR_TXEN;
+	txEnabled = true;
 }
 
 void AsyncSerial::end( void ) noexcept
@@ -93,6 +94,7 @@ void AsyncSerial::end( void ) noexcept
 
 	// Wait for any outstanding data to be sent
 	flush();
+	txEnabled = false;
 
 	// Disable UART interrupt in NVIC
 	NVIC_DisableIRQ(irqn);
@@ -132,9 +134,10 @@ void AsyncSerial::flush( void ) noexcept
 	while ((_pUart->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY) { }	// wait for transmission to complete
 }
 
+// Write single character, blocking unless transmission is disabled
 size_t AsyncSerial::write(uint8_t uc_data) noexcept
 {
-	if (txBuffer.IsEmpty() && (_pUart->UART_SR & UART_SR_TXRDY) != 0)
+	if (txEnabled && txBuffer.IsEmpty() && (_pUart->UART_SR & UART_SR_TXRDY) != 0)
 	{
 		_pUart->UART_THR = uc_data;									// bypass buffering and send character directly
 	}
@@ -144,8 +147,15 @@ size_t AsyncSerial::write(uint8_t uc_data) noexcept
 		{
 			if (txBuffer.PutItem(uc_data))
 			{
-				_pUart->UART_IER = UART_IER_TXRDY;
+				if (txEnabled)
+				{
+					_pUart->UART_IER = UART_IER_TXRDY;
+				}
 				break;
+			}
+			if (!txEnabled)
+			{
+				return 0;
 			}
 #ifdef RTOS
 			txWaitingTask = RTOSIface::GetCurrentTask();
@@ -159,15 +169,25 @@ size_t AsyncSerial::write(uint8_t uc_data) noexcept
 	return 1;
 }
 
+// Write block, blocking if transmitter is enabled
 size_t AsyncSerial::write(const uint8_t *buffer, size_t buflen) noexcept
 {
-	const size_t ret = buflen;
+	size_t ret = 0;
 	for (;;)
 	{
-		buflen -= txBuffer.PutBlock(buffer, buflen);
+		const size_t numPut = txBuffer.PutBlock(buffer, buflen);
+		buflen -= numPut;
+		buffer += numPut;
+		ret += numPut;
+
+		if (!txEnabled)
+		{
+			break;
+		}
+
 		if (buflen == 0)
 		{
-		    _pUart->UART_IER = UART_IER_TXRDY;
+			_pUart->UART_IER = UART_IER_TXRDY;
 			break;
 		}
 #ifdef RTOS
@@ -179,6 +199,30 @@ size_t AsyncSerial::write(const uint8_t *buffer, size_t buflen) noexcept
 #endif
 	}
 	return ret;
+}
+
+void AsyncSerial::ClearTransmitBuffer() noexcept
+{
+	AtomicCriticalSectionLocker lock;
+	txBuffer.Clear();
+}
+
+void AsyncSerial::ClearReceiveBuffer() noexcept
+{
+	AtomicCriticalSectionLocker lock;
+	rxBuffer.Clear();
+}
+
+void AsyncSerial::DisableTransmit() noexcept
+{
+	txEnabled = false;
+	_pUart->UART_IDR = UART_IDR_TXRDY;
+}
+
+void AsyncSerial::EnableTransmit() noexcept
+{
+	txEnabled = true;
+	_pUart->UART_IER = UART_IER_TXRDY;
 }
 
 void AsyncSerial::IrqHandler() noexcept
@@ -238,7 +282,19 @@ void AsyncSerial::IrqHandler() noexcept
 		}
 		else
 		{
-			_pUart->UART_IDR = UART_IDR_TXRDY;			// mask off transmit interrupt so we don't get it anymore
+			_pUart->UART_IDR = UART_IDR_TXRDY;						// mask off transmit interrupt so we don't get it anymore
+			if (onTransmissionEndedFn != nullptr)					// if we want callback when the transmitter is empty
+			{
+				if ((status & UART_SR_TXEMPTY) != 0)				// if it is already empty
+				{
+					_pUart->UART_IDR = UART_IER_TXEMPTY;			// disable the transmitter empty interrupt
+					onTransmissionEndedFn(onTransmissionEndedCp);	// execute the callback
+				}
+				else
+				{
+					_pUart->UART_IER = UART_IER_TXEMPTY;			// enable the transmitter empty interrupt
+				}
+			}
 #ifdef RTOS
 			if (txWaitingTask != nullptr)
 			{
@@ -267,8 +323,17 @@ void AsyncSerial::IrqHandler() noexcept
 
 AsyncSerial::InterruptCallbackFn AsyncSerial::SetInterruptCallback(InterruptCallbackFn f) noexcept
 {
-	InterruptCallbackFn ret = interruptCallback;
+	const InterruptCallbackFn ret = interruptCallback;
 	interruptCallback = f;
+	return ret;
+}
+
+AsyncSerial::OnTransmissionEndedFn AsyncSerial::SetOnTxEndedCallback(OnTransmissionEndedFn f, CallbackParameter cp) noexcept
+{
+	AtomicCriticalSectionLocker lock;
+	const OnTransmissionEndedFn ret = onTransmissionEndedFn;
+	onTransmissionEndedFn = f;
+	onTransmissionEndedCp = cp;
 	return ret;
 }
 

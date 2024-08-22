@@ -36,7 +36,7 @@ static AnalogIn::AdcTaskHookFunction *taskHookFunction = nullptr;
 constexpr uint32_t CtrlB = ADC_CTRLB_RESSEL_16BIT;
 constexpr uint32_t RefCtrl = ADC_REFCTRL_REFSEL_INTVCC1;
 constexpr uint32_t AvgCtrl = ADC_AVGCTRL_SAMPLENUM_64;
-constexpr uint32_t SampCtrl = ADC_SAMPCTRL_OFFCOMP;
+constexpr uint32_t SampCtrl = ADC_SAMPCTRL_SAMPLEN(32);					// was ADC_SAMPCTRL_OFFCOMP in 3.5.2 and earlier
 
 class AdcClass
 {
@@ -192,7 +192,7 @@ void AdcClass::ReInit() noexcept
 	hri_adc_write_EVCTRL_reg(device, 0);
 	hri_adc_write_INPUTCTRL_reg(device, ADC_INPUTCTRL_MUXNEG_GND);
 	hri_adc_write_AVGCTRL_reg(device, AvgCtrl);
-	hri_adc_write_SAMPCTRL_reg(device, SampCtrl);						// this also extends the sample time to 4 ADC clocks
+	hri_adc_write_SAMPCTRL_reg(device, SampCtrl);
 	hri_adc_write_WINLT_reg(device, 0);
 	hri_adc_write_WINUT_reg(device, 0xFFFF);
 	hri_adc_write_GAINCORR_reg(device, 1u << 11);

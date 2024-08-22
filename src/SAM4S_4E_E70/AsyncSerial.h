@@ -19,7 +19,7 @@
 #ifndef SRC_HARDWARE_SAME4S_4E_E70_ASYNC_SERIAL_H_
 #define SRC_HARDWARE_SAME4S_4E_E70_ASYNC_SERIAL_H_
 
-#include <Core.h>
+#include <CoreIO.h>
 #include <Stream.h>
 #include <General/RingBuffer.h>
 
@@ -46,6 +46,7 @@ public:
 	typedef void (*InterruptCallbackFn)(AsyncSerial*) noexcept;
 	typedef void (*OnBeginFn)(AsyncSerial*) noexcept;
 	typedef void (*OnEndFn)(AsyncSerial*) noexcept;
+	typedef void (*OnTransmissionEndedFn)(CallbackParameter cp) noexcept;
 
 	union Errors
 	{
@@ -82,15 +83,21 @@ public:
 
 	size_t canWrite() noexcept override;
 
+	void ClearTransmitBuffer() noexcept;
+	void ClearReceiveBuffer() noexcept;
+	void DisableTransmit() noexcept;
+	void EnableTransmit() noexcept;
+
 	void setInterruptPriority(uint32_t priority) noexcept;
 	uint32_t getInterruptPriority() noexcept;
 
-	void IrqHandler() noexcept;
-
 	InterruptCallbackFn SetInterruptCallback(InterruptCallbackFn f) noexcept;
+	OnTransmissionEndedFn SetOnTxEndedCallback(OnTransmissionEndedFn f, CallbackParameter cp) noexcept;
 
 	// Get and clear the errors
 	Errors GetAndClearErrors() noexcept;
+
+	void IrqHandler() noexcept;
 
 protected:
 	void init(const uint32_t dwBaudRate, const uint32_t config) noexcept;
@@ -107,9 +114,13 @@ protected:
 	InterruptCallbackFn interruptCallback;
 	OnBeginFn onBegin;
 	OnEndFn onEnd;
+	OnTransmissionEndedFn onTransmissionEndedFn;
+	CallbackParameter onTransmissionEndedCp;
 	Errors errors;
-	size_t numInterruptBytesMatched;
+
+	uint8_t numInterruptBytesMatched;
 	bool bufferOverrunPending;
+    bool txEnabled;
 
 	static constexpr uint8_t interruptSeq[2] = { 0xF0, 0x0F };
 };
