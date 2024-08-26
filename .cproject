@@ -1280,7 +1280,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/SAM4S_4E_E70/asf/sam/drivers/usbhs|src/SAM4S_4E_E70/asf/common/services/usb|src/RP2040|src/SAM4S_4E_E70/SAM4S|src/SAM4S_4E_E70/SAM4E|src/SAM4S_4E_E70/asf/sam/drivers/aes|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/drivers/pdc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/udp|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twi|src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4e|src/SAME5x_C21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/RP2040|src/SAM4S_4E_E70/SAM4S|src/SAM4S_4E_E70/SAM4E|src/SAM4S_4E_E70/asf/sam/drivers/aes|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/drivers/pdc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/udp|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twi|src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4e|src/SAME5x_C21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
