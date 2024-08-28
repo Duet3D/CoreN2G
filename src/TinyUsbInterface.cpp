@@ -224,8 +224,8 @@ extern "C" const uint16_t *tud_descriptor_string_cb(uint8_t index, uint16_t lang
 	{
 		[USBD_STR_0] = "",
 		[USBD_STR_MANUF] = "Duet 3D",
-		[USBD_STR_PRODUCT] = "Duet 3",
-		[USBD_STR_SERIAL] = "123456789ABCDEF",
+		[USBD_STR_PRODUCT] = "Duet",
+		[USBD_STR_SERIAL] = "",
 		[USBD_STR_CDC] = "Board CDC",
 	};
 
