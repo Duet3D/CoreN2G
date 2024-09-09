@@ -103,10 +103,10 @@ extern "C" {
 # error unsupported processor
 #endif
 
-#if RP2040
-# define CORE_USES_TINYUSB	1
+#if SAME70 || RP2040 || SAME5x
+# define CORE_USES_TINYUSB		1
 #else
-# define CORE_USES_TINYUSB	0
+# define CORE_USES_TINYUSB		0
 #endif
 
 #include <inttypes.h>					// for PRIu32 etc.

@@ -7,7 +7,10 @@
 
 #if SUPPORT_USB
 
-#include <SerialCDC.h>
+#include "SerialCDC.h"
+
+#if !CORE_USES_TINYUSB
+
 #include <Interrupts.h>
 #include "conf_usb.h"		// include this to check that the signatures of the callback functions are correct
 #include "udi_cdc.h"		// Atmel CDC module
@@ -162,6 +165,8 @@ void core_vbus_off(CallbackParameter) noexcept
 		serialUSBDevice->cdcSetConnected(false);
 	}
 }
+
+#endif
 
 #endif
 

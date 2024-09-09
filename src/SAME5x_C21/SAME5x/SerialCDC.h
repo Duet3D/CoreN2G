@@ -10,6 +10,14 @@
 
 #if SUPPORT_USB
 
+#include <Core.h>
+
+#if CORE_USES_TINYUSB
+
+#include <SerialCDC_tusb.h>
+
+#else
+
 #include "Stream.h"
 #include <General/RingBuffer.h>
 #include <RTOSIface/RTOSIface.h>
@@ -48,6 +56,8 @@ private:
 	const Pin vbusPin;
 	bool cdcInitialised;
 };
+
+#endif
 
 #endif
 

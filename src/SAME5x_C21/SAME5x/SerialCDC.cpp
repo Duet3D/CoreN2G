@@ -10,6 +10,8 @@
 #include "SerialCDC.h"
 #include <CoreNotifyIndices.h>
 
+#if !CORE_USES_TINYUSB
+
 #ifdef RTOS
 # include <RTOSIface/RTOSIface.h>
 #endif
@@ -327,6 +329,8 @@ void SerialCDC::DataReceived(uint32_t count) noexcept
 	rxBuffer.PutBlock(rxTempBuffer, count);
 	StartReceiving();
 }
+
+#endif
 
 #endif
 
