@@ -964,7 +964,7 @@ extern unsigned int AppGetXoscNumber() noexcept;
  * @param p Pin number
  * @return Pointer to the pin table entry for that pin, or nullptr if the pin does not exist
  */
-extern const PinDescriptionBase *AppGetPinDescription(Pin p) noexcept;
+extern const PinDescriptionBase *_ecv_from _ecv_null AppGetPinDescription(Pin p) noexcept;
 
 #if SAME5x
 
