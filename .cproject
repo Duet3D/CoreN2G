@@ -1077,7 +1077,7 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactExtension="a" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.staticLib" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.staticLib,org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.1657433415" name="SAME5x_CAN_SDHC_USB_RTOS" optionalBuildProperties="org.eclipse.cdt.docker.launcher.containerbuild.property.selectedvolumes=,org.eclipse.cdt.docker.launcher.containerbuild.property.volumes=" parent="cdt.managedbuild.config.gnu.cross.lib.release">
+				<configuration artifactExtension="a" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.staticLib" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.staticLib,org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release" cleanCommand="rm -rf" description="" errorParsers="org.eclipse.cdt.core.GASErrorParser;org.eclipse.cdt.core.GmakeErrorParser;org.eclipse.cdt.core.CWDLocator;org.eclipse.cdt.core.GCCErrorParser" id="cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.1657433415" name="SAME5x_CAN_SDHC_USB_RTOS" optionalBuildProperties="org.eclipse.cdt.docker.launcher.containerbuild.property.enablement=null,org.eclipse.cdt.docker.launcher.containerbuild.property.selectedvolumes=,org.eclipse.cdt.docker.launcher.containerbuild.property.volumes=,org.eclipse.cdt.docker.launcher.containerbuild.property.image=null,org.eclipse.cdt.docker.launcher.containerbuild.property.connection=null" parent="cdt.managedbuild.config.gnu.cross.lib.release">
 					<folderInfo id="cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.1657433415." name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.cross.lib.release.534569210" name="Cross GCC" superClass="cdt.managedbuild.toolchain.gnu.cross.lib.release">
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.1593638196" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
@@ -1141,7 +1141,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/LibTinyusb/src/tinyusb/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/LibTinyusb/src}&quot;"/>
 								</option>
-								<option id="gnu.cpp.compiler.option.other.other.1105272520" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" useByScannerDiscovery="true" value="-c -mcpu=cortex-m4 -mthumb -fno-math-errno -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mfp16-format=ieee -ffunction-sections -fdata-sections -fno-threadsafe-statics -fno-rtti -fexceptions -nostdlib -Wundef -Wdouble-promotion -Werror=return-type -Wsuggest-override -fsingle-precision-constant &quot;-Wa,-ahl=$*.s&quot; -fstack-usage -fdump-rtl-expand" valueType="string"/>
+								<option id="gnu.cpp.compiler.option.other.other.1105272520" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" useByScannerDiscovery="true" value="-c -mcpu=cortex-m4 -mthumb -fno-math-errno -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mfp16-format=ieee -ffunction-sections -fdata-sections -fno-threadsafe-statics -fno-rtti -fno-exceptions -nostdlib -Wundef -Wdouble-promotion -Werror=return-type -Wsuggest-override -fsingle-precision-constant &quot;-Wa,-ahl=$*.s&quot; -fstack-usage -fdump-rtl-expand" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.dialect.std.734951782" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" useByScannerDiscovery="true" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.dialect.flags.197960286" name="Other dialect flags" superClass="gnu.cpp.compiler.option.dialect.flags" useByScannerDiscovery="true" value="-std=gnu++17" valueType="string"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1958305500" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
@@ -1150,6 +1150,7 @@
 							<tool id="cdt.managedbuild.tool.gnu.cross.cpp.linker.1576846198" name="Cross G++ Linker" superClass="cdt.managedbuild.tool.gnu.cross.cpp.linker"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.archiver.1228155848" name="Cross GCC Archiver" superClass="cdt.managedbuild.tool.gnu.cross.archiver"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.assembler.84605655" name="Cross GCC Assembler" superClass="cdt.managedbuild.tool.gnu.cross.assembler">
+								<option defaultValue="gnu.asm.debugging.level.none" id="gnu.asm.option.debugging.level.417239759" superClass="gnu.asm.option.debugging.level" valueType="enumerated"/>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.2123460480" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
 						</toolChain>
@@ -1179,7 +1180,7 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactExtension="a" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.staticLib" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.staticLib,org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.1657433415.1166824645" name="SAME70_CAN_SDHC_USB_RTOS" optionalBuildProperties="org.eclipse.cdt.docker.launcher.containerbuild.property.selectedvolumes=,org.eclipse.cdt.docker.launcher.containerbuild.property.volumes=" parent="cdt.managedbuild.config.gnu.cross.lib.release">
+				<configuration artifactExtension="a" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.staticLib" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.staticLib,org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.1657433415.1166824645" name="SAME70_CAN_SDHC_USB_RTOS" optionalBuildProperties="org.eclipse.cdt.docker.launcher.containerbuild.property.volumes=,org.eclipse.cdt.docker.launcher.containerbuild.property.selectedvolumes=" parent="cdt.managedbuild.config.gnu.cross.lib.release">
 					<folderInfo id="cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.1657433415.1166824645." name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.cross.lib.release.2098809904" name="Cross GCC" superClass="cdt.managedbuild.toolchain.gnu.cross.lib.release">
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.1556864438" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
@@ -2426,28 +2427,16 @@
 	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>
 	<storageModule moduleId="scannerConfiguration">
 		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.1657433415.1166824645;cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.1657433415.1166824645.;cdt.managedbuild.tool.gnu.cross.c.compiler.173003622;cdt.managedbuild.tool.gnu.c.compiler.input.1853757898">
-			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982;cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.;cdt.managedbuild.tool.gnu.cross.c.compiler.1235249504;cdt.managedbuild.tool.gnu.c.compiler.input.1988253188">
-			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.1657433415.1166824645.1367362087;cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.1657433415.1166824645.1367362087.;cdt.managedbuild.tool.gnu.cross.c.compiler.1522241615;cdt.managedbuild.tool.gnu.c.compiler.input.122836599">
-			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-		</scannerConfigBuildInfo>
 		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.cross.lib.release.675522878;cdt.managedbuild.config.gnu.cross.lib.release.675522878.;cdt.managedbuild.tool.gnu.cross.c.compiler.1582350876;cdt.managedbuild.tool.gnu.c.compiler.input.773787034">
-			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982;cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.;cdt.managedbuild.tool.gnu.cross.cpp.compiler.725127879;cdt.managedbuild.tool.gnu.cpp.compiler.input.535464652">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
 		</scannerConfigBuildInfo>
 		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.cross.lib.release.675522878;cdt.managedbuild.config.gnu.cross.lib.release.675522878.;cdt.managedbuild.tool.gnu.cross.cpp.compiler.441310148;cdt.managedbuild.tool.gnu.cpp.compiler.input.2093512984">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
 		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.1657433415.1166824645.1367362087;cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.1657433415.1166824645.1367362087.;cdt.managedbuild.tool.gnu.cross.cpp.compiler.356511046;cdt.managedbuild.tool.gnu.cpp.compiler.input.1877236176">
+		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982;cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.;cdt.managedbuild.tool.gnu.cross.c.compiler.1235249504;cdt.managedbuild.tool.gnu.c.compiler.input.1988253188">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
 		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.1657433415.1166824645;cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.1657433415.1166824645.;cdt.managedbuild.tool.gnu.cross.cpp.compiler.682353212;cdt.managedbuild.tool.gnu.cpp.compiler.input.167957578">
+		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982;cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.;cdt.managedbuild.tool.gnu.cross.cpp.compiler.725127879;cdt.managedbuild.tool.gnu.cpp.compiler.input.535464652">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
 		</scannerConfigBuildInfo>
 	</storageModule>
