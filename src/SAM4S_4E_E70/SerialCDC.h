@@ -10,6 +10,14 @@
 
 #if SUPPORT_USB
 
+#include <Core.h>
+
+#if CORE_USES_TINYUSB
+
+#include <SerialCDC_tusb.h>
+
+#else
+
 #include "Stream.h"
 #include <General/RingBuffer.h>
 #include <RTOSIface/RTOSIface.h>
@@ -18,11 +26,6 @@
 
 class SerialCDC : public Stream
 {
-private:
-	size_t txBufsize;
-	bool isConnected;
-	Pin vBusPin;
-
 public:
 	SerialCDC() noexcept;
 
@@ -43,7 +46,14 @@ public:
 	void cdcSetConnected(bool b) noexcept;
 	void cdcRxNotify() noexcept;
 	void cdcTxEmptyNotify() noexcept;
+
+private:
+	size_t txBufsize;
+	bool isConnected;
+	Pin vBusPin;
 };
+
+#endif
 
 #endif
 

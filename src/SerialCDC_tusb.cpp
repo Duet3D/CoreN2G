@@ -5,9 +5,11 @@
  *      Author: David
  */
 
+#if SUPPORT_USB
+
 #include "SerialCDC_tusb.h"
 
-#if SUPPORT_USB && CORE_USES_TINYUSB
+#if CORE_USES_TINYUSB
 
 #if RP2040
 # define PICO_MUTEX_ENABLE_SDK120_COMPATIBILITY		0
@@ -106,28 +108,6 @@ size_t SerialCDC::write(const uint8_t *buf, size_t length) noexcept
 		return 0;
 	}
 
-#if RP2040
-	// Hack to allow debug output from core1
-	if (get_core_num() != 0)
-	{
-		size_t cnt = 0;
-		while (cnt < length)
-		{
-			const uint32_t nextPut = (putIndex + 1) % core1BufferSize;
-			if (nextPut != getIndex)
-			{
-				core1Buffer[putIndex] = buf[cnt++];
-				putIndex = nextPut;
-			}
-			else
-			{
-				return cnt;
-			}
-		}
-		return cnt;
-	}
-#endif
-
 	static uint64_t last_avail_time;
 	int written = 0;
 	if (tud_cdc_connected())
@@ -166,29 +146,9 @@ size_t SerialCDC::write(const uint8_t *buf, size_t length) noexcept
 	return written;
 }
 
-#if RP2040
-extern "C" void debugPrintf(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
-void SerialCDC::Spin()
-{
-	while (tud_cdc_connected() && (getIndex != putIndex))
-	{
-		if (tud_cdc_write((uint8_t *)(core1Buffer + getIndex), 1) == 1)
-		{
-			tud_cdc_write_flush();
-			getIndex = (getIndex + 1) % core1BufferSize;
-		}
-		else
-		{
-			tud_cdc_write_flush();
-			return;
-		}
-	}
-}
-#endif
-
 // USB Device callbacks
 // Invoked when cdc when line state changed e.g connected/disconnected
-extern "C" void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts) noexcept
+extern "C" void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
 {
 	(void) itf;
 	(void) rts;
@@ -196,10 +156,12 @@ extern "C" void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts) noexcept
 }
 
 // Invoked when CDC interface received data from host
-extern "C" void tud_cdc_rx_cb(uint8_t itf) noexcept
+extern "C" void tud_cdc_rx_cb(uint8_t itf)
 {
 	(void) itf;
 }
+
+#endif
 
 #endif
 

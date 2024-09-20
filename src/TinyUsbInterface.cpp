@@ -33,7 +33,6 @@
 #if SAME70
 
 #include "pmc.h"
-#include "sysclk.h"
 
 # define __nocache		__attribute__((section(".ram_nocache")))
 
@@ -133,7 +132,13 @@ enum
 static uint8_t const desc_fs_configuration[] =
 {
   // Config number, interface count, string index, total length, attribute, power in mA
-  TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0x00, 100),
+  TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0x00,
+#if SAME70
+  200
+#else
+  100
+#endif
+  ),
 
   // 1st CDC: Interface number, string index, EP notification address and size, EP data address (out, in) and size.
   TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_0, 4, EPNUM_CDC_0_NOTIF, 8, EPNUM_CDC_0_OUT, EPNUM_CDC_0_IN, 64),
@@ -150,7 +155,13 @@ static uint8_t const desc_fs_configuration[] =
 static uint8_t const desc_hs_configuration[] =
 {
   // Config number, interface count, string index, total length, attribute, power in mA
-  TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0x00, 100),
+  TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0x00,
+#if SAME70
+  200
+#else
+  100
+#endif
+  ),
 
   // 1st CDC: Interface number, string index, EP notification address and size, EP data address (out, in) and size.
   TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_0, 4, EPNUM_CDC_0_NOTIF, 8, EPNUM_CDC_0_OUT, EPNUM_CDC_0_IN, 512),
@@ -225,8 +236,8 @@ extern "C" const uint16_t *tud_descriptor_string_cb(uint8_t index, uint16_t lang
 	{
 		[USBD_STR_0] = "",
 		[USBD_STR_MANUF] = "Duet 3D",
-		[USBD_STR_PRODUCT] = "Duet 3",
-		[USBD_STR_SERIAL] = "123456789ABCDEF",
+		[USBD_STR_PRODUCT] = "Duet",
+		[USBD_STR_SERIAL] = "",
 		[USBD_STR_CDC] = "Board CDC",
 	};
 
@@ -263,29 +274,19 @@ void CoreUsbInit(NvicPriority priority) noexcept
 	// Set the USB interrupt priority to a level that is allowed to make FreeRTOS calls
 	NVIC_SetPriority(USBHS_IRQn, priority);
 
-	// Enable peripheral clock for USBHS
-	pmc_enable_periph_clk(ID_USBHS);
-
 	// Start the UPLL clock. The default divider is 40 which is correct for 12MHz crystal.
 	pmc_enable_upll_clock();
 
-	// From the datasheet:
-	// "Before enabling the USB clock in the Power Management Controller, the USBHS must be enabled
-	// (by writing a one to the USBHS_CTRL.USBE bit and a zero to the USBHS_CTRL.FRZCLK bit)"
-# if 0
+# if TUD_OPT_HIGH_SPEED
 	pmc_switch_udpck_to_upllck(1 - 1);
-	USBHS->USBHS_DEVCTRL = USBHS_DEVCTRL_DETACH | USBHS_DEVCTRL_SPDCONF_FORCED_FS;
-# elif TUD_OPT_HIGH_SPEED
-	pmc_switch_udpck_to_upllck(1 - 1);
-	USBHS->USBHS_DEVCTRL = USBHS_DEVCTRL_DETACH;
 # else
 	pmc_switch_udpck_to_upllck(10 - 1);					// when high speed is disabled, tinyusb uses low power mode, which requires a 48MHz clock
-	USBHS->USBHS_DEVCTRL = USBHS_DEVCTRL_SPDCONF_LOW_POWER | USBHS_DEVCTRL_DETACH;
 # endif
-	USBHS->USBHS_CTRL = USBHS_CTRL_UIMOD_DEVICE | USBHS_CTRL_USBE;
 	pmc_enable_udpck();
 
 	pmc_set_fast_startup_input(PMC_FSMR_USBAL);
+	// Enable peripheral clock for USBHS
+	pmc_enable_periph_clk(ID_USBHS);
 
 #elif SAME5x
 
