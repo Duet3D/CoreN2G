@@ -8,11 +8,9 @@
 #ifndef SRC_SERIALCDC__TUSB_H_
 #define SRC_SERIALCDC__TUSB_H_
 
-#if SUPPORT_USB
-
 #include <Core.h>
 
-#if CORE_USES_TINYUSB
+#if SUPPORT_USB && CORE_USES_TINYUSB
 
 #include "Stream.h"
 #include <General/RingBuffer.h>
@@ -43,8 +41,6 @@ private:
     bool running = false;
 	Pin vBusPin;
 };
-
-#endif
 
 #endif
 

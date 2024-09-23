@@ -5,6 +5,8 @@
  *      Author: David
  */
 
+#include <Core.h>
+
 #if SUPPORT_USB
 
 #include "SerialCDC_tusb.h"
