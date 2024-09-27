@@ -17,9 +17,15 @@
 
 #include <ecv_duet3d.h>
 
-// Branch prediction macros. Must be defined before we include the part-specifi files, else some of them will define it in an unhelpful manner.
-#define likely(x)		__builtin_expect(!!(x), 1)
-#define unlikely(x)		__builtin_expect(!!(x), 0)
+// Branch prediction macros. Must be defined before we include the part-specific files, else some of them will define it in an unhelpful manner.
+#ifdef __ECV__
+// Using __builtin_expect involves implicit type conversions so define these differently for eCv
+# define likely(x)		(x)
+# define unlikely(x)	(x)
+#else
+# define likely(x)		__builtin_expect(!!(x), 1)
+# define unlikely(x)	__builtin_expect(!!(x), 0)
+#endif
 
 #if defined(__SAME54P20A__) || defined(__SAME51P20A__)
 # include <same54.h>
