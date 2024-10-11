@@ -107,7 +107,7 @@ void SetPinFunction(Pin p, GpioPinFunction f) noexcept
 	p_pio->PIO_ABCDSR[1] = sr1;
 	p_pio->PIO_PDR = mask;									// remove the pins from under the control of PIO
 #elif RP2040
-	gpio_set_function(p, (gpio_function)f);
+	gpio_set_function(p, (gpio_function_t)f);
 #else
 # error Unsupported processor
 #endif
