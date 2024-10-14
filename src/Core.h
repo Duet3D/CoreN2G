@@ -165,6 +165,16 @@ static const uint32_t SystemCoreClockFreq = 125000000;	///< The processor clock 
 # error unsupported processor
 #endif
 
+#ifdef __ECV__
+// Redeclare functions imported from CMSIS as noexcept
+_ecv_spec void __DMB() noexcept;
+_ecv_spec void __enable_irq() noexcept;
+_ecv_spec void __disable_irq() noexcept;
+_ecv_spec uint32_t __get_PRIMASK() noexcept;
+_ecv_spec void __set_PRIMASK(uint32_t priMask) noexcept;
+_ecv_spec uint32_t __get_IPSR() noexcept;
+#endif
+
 /// Pin mode enumeration
 enum PinMode
 {
