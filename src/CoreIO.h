@@ -44,16 +44,16 @@ constexpr unsigned int NumTotalPins = 30;				// RP2040 goes up to GPIO29
 #if RP2040
 
 inline constexpr Pin GpioPin(unsigned int n) noexcept { return n; }
-inline constexpr uint32_t GpioMask(Pin p) { return (uint32_t)1 << p; }
+inline constexpr uint32_t GpioMask(Pin p) noexcept { return (uint32_t)1 << p; }
 
 #else
 
-inline uint32_t GpioPortNumber(Pin p) { return p >> 5; }
-inline constexpr uint32_t GpioPinNumber(Pin p) { return p & 0x1F; }
-inline constexpr uint32_t GpioMask(Pin p) { return (uint32_t)1 << GpioPinNumber(p); }
+inline uint32_t GpioPortNumber(Pin p) noexcept { return p >> 5; }
+inline constexpr uint32_t GpioPinNumber(Pin p) noexcept { return p & 0x1F; }
+inline constexpr uint32_t GpioMask(Pin p) noexcept { return (uint32_t)1 << GpioPinNumber(p); }
 
 #if SAME70 || SAM4E || SAM4S
-inline Pio *GpioPort(Pin p) { return (Pio*)((uint32_t)PIOA + GpioPortNumber(p) * 0x200); }
+inline Pio *GpioPort(Pin p) noexcept { return (Pio*)((uint32_t)PIOA + GpioPortNumber(p) * 0x200); }
 #endif
 
 /**
