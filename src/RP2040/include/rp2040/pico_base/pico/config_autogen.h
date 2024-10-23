@@ -4,11 +4,7 @@
 
 // based on PICO_CONFIG_HEADER_FILES:
 
-#include <boards/pico.h>
+#include "../../pico-sdk/src/boards/include/boards/pico.h"
+#include "../../pico-sdk/src/rp2_common/cmsis/include/cmsis/rename_exceptions.h"
 
 // based on PICO_RP2040_CONFIG_HEADER_FILES:
-
-#define LIB_CMSIS_CORE		0				// added by DC
-#include <cmsis/rename_exceptions.h>
-
-// End

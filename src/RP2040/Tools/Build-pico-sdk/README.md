@@ -13,4 +13,6 @@ To build the library under Windows:
 4. Ensure that 'ar' (the GNU library manager) is on your PATH. You can use the one in your ARM compiler folder or the one in MSYS2.
 5. Open a command prompt and run: make-libpico.bat
 
-The make-libpico.sh file is the original one from Arduino. If you wish to build libpico under Linux, you will need to modify it to align with make-libpico.bat. Please submit a PR for the required changes to it if you get it working under Linux.
+Run the `make-libpico.sh` script to build the SDK
+
+> It should run on both linux and Windows, Windows may need Visual Studio installed to complete the build.

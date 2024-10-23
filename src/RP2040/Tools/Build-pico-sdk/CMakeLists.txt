@@ -12,12 +12,12 @@ if (${cpu} MATCHES "rp2040")
 	set(PICO_PLATFORM rp2040)
 	set(PICO_CYW43_SUPPORTED 0)
 elseif(${cpu} MATCHES "rp2350$")
-	set(PICO_BOARD pico2)  # Pico2 sets to RP2350A which disables all code for RP2350B
+	set(PICO_BOARD solderparty_rp2350_stamp_xl)  # Pico2 sets to RP2350A which disables all code for RP2350B
 	set(PICO_PLATFORM rp2350)
 	set(PICO_CYW43_SUPPORTED 0)
 elseif(${cpu} MATCHES "rp2350-riscv$")
 	message(INFO "Building RISCV")
-	set(PICO_BOARD pico2)  # Pico2 sets to RP2350A which disables all code for RP2350B
+	set(PICO_BOARD solderparty_rp2350_stamp_xl)  # Pico2 sets to RP2350A which disables all code for RP2350B
 	set(PICO_PLATFORM rp2350-riscv)
 	set(PICO_CYW43_SUPPORTED 0)
 else()
@@ -53,13 +53,13 @@ if (${cpu} MATCHES "rp2040")
 		PICO_RP2040_B0_SUPPORTED=1
 		PICO_RP2040_B1_SUPPORTED=1
 		PICO_RP2040_B2_SUPPORTED=1
-		PICO_CYW43_ARCH_THREADSAFE_BACKGROUND=1
+		PICO_CYW43_ARCH_THREADSAFE_BACKGROUND=0
 		CYW43_WARN=//
 		PICO_XOSC_STARTUP_DELAY_MULTIPLIER=64
 		PICO_FLOAT_SUPPORT_ROM_V1=1
 		PICO_DOUBLE_SUPPORT_ROM_V1=1
 		PICO_RP2040=1
-		PICO_CYW43_SUPPORTED=1)
+		PICO_CYW43_SUPPORTED=0)
 elseif (${cpu} MATCHES "rp2350")
 	set(xcd
 		CFG_TUSB_DEBUG=0
@@ -126,16 +126,16 @@ endif()
 
 # Use a longer XOSC startup time, to accommodate Adafruit and other boards that may need it.
 target_compile_definitions(common-${cpu} INTERFACE
-	PICO_PRINTF_ALWAYS_INCLUDED=0
+	PICO_PRINTF_ALWAYS_INCLUDED=0	# changed
 	PICO_FLASH_SIZE_BYTES=16777216
-	# PICO_NO_BINARY_INFO=1
+	# PICO_NO_BINARY_INFO=1			# changed
 	LWIP_IPV4=1
 	LWIP_UDP=1
 	LWIP_IGMP=1
 	LWIP_CHECKSUM_CTRL_PER_NETIF=1
-	CFG_TUSB_OS=OPT_OS_FREERTOS
-	__RP2040__=1
-	noexcept=
+	CFG_TUSB_OS=OPT_OS_FREERTOS		# added
+	__RP2040__=1					# added
+	noexcept=						# added
 	${xcd}
 	${ppp}
 )
@@ -146,6 +146,7 @@ target_compile_options(common-${cpu} INTERFACE
 	$<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
 )
 
+# changed
 include_directories(BEFORE ${PICO_SDK_PATH}/../tools/Build-pico-sdk)
 include_directories(BEFORE ${PICO_SDK_PATH}/../../../../FreeRTOS/src/include)
 include_directories(BEFORE ${PICO_SDK_PATH}/../../../../FreeRTOS/src/portable/GCC/ARM_CM0)
@@ -215,129 +216,129 @@ target_link_libraries(pico-${cpu}
 	tinyusb_device_unmarked
 )
 
-add_library(ipv4-${cpu} STATIC)
-target_compile_definitions(ipv4-${cpu} PUBLIC
-    LWIP_IPV6=0
-)
+# add_library(ipv4-${cpu} STATIC)
+# target_compile_definitions(ipv4-${cpu} PUBLIC
+#     LWIP_IPV6=0
+# )
 
-add_library(ipv4-big-${cpu} STATIC)
-target_compile_definitions(ipv4-big-${cpu} PUBLIC
-    __LWIP_MEMMULT=2
-    LWIP_IPV6=0
-)
+# add_library(ipv4-big-${cpu} STATIC)
+# target_compile_definitions(ipv4-big-${cpu} PUBLIC
+#     __LWIP_MEMMULT=2
+#     LWIP_IPV6=0
+# )
 
 if (${cpu} MATCHES "rp2040")
-    set(xll pico_cyw43_driver cyw43_driver cyw43_driver_picow pico_cyw43_driver pico_cyw43_arch pico_cyw43_arch_threadsafe_background)
+	# set(xll pico_cyw43_driver cyw43_driver cyw43_driver_picow pico_cyw43_driver pico_cyw43_arch pico_cyw43_arch_threadsafe_background)
+	set(xll)
 elseif(${cpu} MATCHES "rp2350")
-    set(xll)
+	set(xll)
 endif()
 set(picow_link_libraries
-    common-${cpu}
-    pico_async_context
-    pico_async_context_threadsafe_background
-    ${xll}
-    pico_lwip
-    pico_lwip_nosys
-    pico_lwip_sntp
-    pico_stdlib
+	common-${cpu}
+	pico_async_context
+	pico_async_context_threadsafe_background
+	${xll}
+	pico_lwip
+	pico_lwip_nosys
+	pico_lwip_sntp
+	pico_stdlib
 )
 
-target_link_libraries(ipv4-${cpu}
-    ${picow_link_libraries}
-)
-
-target_link_libraries(ipv4-big-${cpu}
-    ${picow_link_libraries}
-)
-
-add_library(ipv4-ipv6-${cpu} STATIC)
-target_compile_definitions(ipv4-ipv6-${cpu} PUBLIC
-    LWIP_IPV6=1
-)
-
-add_library(ipv4-ipv6-big-${cpu} STATIC)
-target_compile_definitions(ipv4-ipv6-big-${cpu} PUBLIC
-    __LWIP_MEMMULT=2
-    LWIP_IPV6=1
-)
-
-target_link_libraries(ipv4-ipv6-${cpu}
-    ${picow_link_libraries}
-)
-  
-target_link_libraries(ipv4-ipv6-big-${cpu}
-    ${picow_link_libraries}
-)
-
-if(${cpu} MATCHES "rp2040")
-    add_library(ipv4-bt-${cpu} STATIC)
-    target_compile_definitions(ipv4-bt-${cpu} PUBLIC
-        LWIP_IPV6=0
-    )
-
-    add_library(ipv4-bt-big-${cpu} STATIC)
-    target_compile_definitions(ipv4-bt-${cpu} PUBLIC
-        __LWIP_MEMMULT=2
-        LWIP_IPV6=0
-    )
-
-    set(picow_bt_link_libraries
-        pico_btstack_cyw43
-        pico_btstack_ble
-        pico_btstack_classic
-        pico_btstack_sbc_encoder
-        pico_btstack_sbc_decoder
-    )
-
-    target_link_libraries(ipv4-bt-${cpu}
-        ${picow_link_libraries}
-        ${picow_bt_link_libraries}
-    )
-
-    target_link_libraries(ipv4-bt-big-${cpu}
-        ${picow_link_libraries}
-        ${picow_bt_link_libraries}
-    )
-
-    add_library(ipv4-ipv6-bt-${cpu} STATIC)
-    target_compile_definitions(ipv4-ipv6-bt-${cpu} PUBLIC
-        LWIP_IPV6=1
-    )
-
-    add_library(ipv4-ipv6-bt-big-${cpu} STATIC)
-    target_compile_definitions(ipv4-ipv6-bt-big-${cpu} PUBLIC
-        __LWIP_MEMMULT=2
-        LWIP_IPV6=1
-    )
-
-    target_link_libraries(ipv4-ipv6-bt-${cpu}
-        ${picow_link_libraries}
-        ${picow_bt_link_libraries}
-    )
-
-    target_link_libraries(ipv4-ipv6-bt-big-${cpu}
-        ${picow_link_libraries}
-        ${picow_bt_link_libraries}
-    )
-endif()
-
-if(${cpu} MATCHES "rp2040")
-    # set(tx ipv4-bt ipv4-ipv6-bt ipv4-bt-big ipv4-ipv6-bt-big)
-    set(tx)
-elseif(${cpu} MATCHES "rp2350")
-    set(tx)
-endif()
-foreach(tgt pico ipv4 ipv4-ipv6 ipv4-big ipv4-ipv6-big ${tx})
-    add_custom_command(TARGET ${tgt}-${cpu} POST_BUILD
-        COMMAND ar d lib${tgt}-${cpu}.a stdio.c.obj stdio_uart.c.obj stdio_usb.c.obj stdio_usb_descriptors.c.obj pico_malloc.c.obj newlib_interface.c.obj
-        COMMAND ar d lib${tgt}-${cpu}.a btstack_flash_bank.c.obj  # Need to override with our own implementation
-        # COMMAND cp lib${tgt}-${cpu}.a ../../../lib/${cpu}/lib${tgt}.a
-    )
-endforeach()
-# add_custom_command(TARGET pico-${cpu} POST_BUILD
-    # COMMAND mkdir -p ../../../include/${cpu}/pico_base/pico
-    # COMMAND cp ./generated/pico_base/pico/version.h ../../../include/${cpu}/pico_base/pico/.
-    # COMMAND sed 's/include.*pico-sdk/include \"..\\/..\\/pico-sdk/' ./generated/pico_base/pico/config_autogen.h > ../../../include/${cpu}/pico_base/pico/config_autogen.h
-    # COMMAND cp ../tusb_config.h ../../../include/${cpu}/.
-    # COMMAND cp ../btstack_config.h ../../../include/${cpu}/.
+# target_link_libraries(ipv4-${cpu}
+#     ${picow_link_libraries}
 # )
+
+# target_link_libraries(ipv4-big-${cpu}
+#     ${picow_link_libraries}
+# )
+
+# add_library(ipv4-ipv6-${cpu} STATIC)
+# target_compile_definitions(ipv4-ipv6-${cpu} PUBLIC
+#     LWIP_IPV6=1
+# )
+
+# add_library(ipv4-ipv6-big-${cpu} STATIC)
+# target_compile_definitions(ipv4-ipv6-big-${cpu} PUBLIC
+#     __LWIP_MEMMULT=2
+#     LWIP_IPV6=1
+# )
+
+# target_link_libraries(ipv4-ipv6-${cpu}
+#     ${picow_link_libraries}
+# )
+  
+# target_link_libraries(ipv4-ipv6-big-${cpu}
+#     ${picow_link_libraries}
+# )
+
+# if(${cpu} MATCHES "rp2040")
+#     add_library(ipv4-bt-${cpu} STATIC)
+#     target_compile_definitions(ipv4-bt-${cpu} PUBLIC
+#         LWIP_IPV6=0
+#     )
+
+#     add_library(ipv4-bt-big-${cpu} STATIC)
+#     target_compile_definitions(ipv4-bt-${cpu} PUBLIC
+#         __LWIP_MEMMULT=2
+#         LWIP_IPV6=0
+#     )
+
+#     set(picow_bt_link_libraries
+#         pico_btstack_cyw43
+#         pico_btstack_ble
+#         pico_btstack_classic
+#         pico_btstack_sbc_encoder
+#         pico_btstack_sbc_decoder
+#     )
+
+#     target_link_libraries(ipv4-bt-${cpu}
+#         ${picow_link_libraries}
+#         ${picow_bt_link_libraries}
+#     )
+
+#     target_link_libraries(ipv4-bt-big-${cpu}
+#         ${picow_link_libraries}
+#         ${picow_bt_link_libraries}
+#     )
+
+#     add_library(ipv4-ipv6-bt-${cpu} STATIC)
+#     target_compile_definitions(ipv4-ipv6-bt-${cpu} PUBLIC
+#         LWIP_IPV6=1
+#     )
+
+#     add_library(ipv4-ipv6-bt-big-${cpu} STATIC)
+#     target_compile_definitions(ipv4-ipv6-bt-big-${cpu} PUBLIC
+#         __LWIP_MEMMULT=2
+#         LWIP_IPV6=1
+#     )
+
+#     target_link_libraries(ipv4-ipv6-bt-${cpu}
+#         ${picow_link_libraries}
+#         ${picow_bt_link_libraries}
+#     )
+
+#     target_link_libraries(ipv4-ipv6-bt-big-${cpu}
+#         ${picow_link_libraries}
+#         ${picow_bt_link_libraries}
+#     )
+# endif()
+
+if(${cpu} MATCHES "rp2040")
+	set(tx ipv4-bt ipv4-ipv6-bt ipv4-bt-big ipv4-ipv6-bt-big)
+elseif(${cpu} MATCHES "rp2350")
+	set(tx)
+endif()
+foreach(tgt pico)# ipv4 ipv4-ipv6 ipv4-big ipv4-ipv6-big ${tx}) # changed
+	add_custom_command(TARGET ${tgt}-${cpu} POST_BUILD
+		COMMAND ar d lib${tgt}-${cpu}.a stdio.c.obj stdio_uart.c.obj stdio_usb.c.obj stdio_usb_descriptors.c.obj pico_malloc.c.obj newlib_interface.c.obj
+		COMMAND ar d lib${tgt}-${cpu}.a btstack_flash_bank.c.obj  # Need to override with our own implementation
+		COMMAND cp lib${tgt}-${cpu}.a ../../../lib/${cpu}/lib${tgt}.a
+	)
+endforeach()
+add_custom_command(TARGET pico-${cpu} POST_BUILD
+	COMMAND mkdir -p ../../../include/${cpu}/pico_base/pico
+	COMMAND cp ./generated/pico_base/pico/version.h ../../../include/${cpu}/pico_base/pico/.
+	COMMAND sed 's/include.*pico-sdk/include \"..\\/..\\/pico-sdk/' ./generated/pico_base/pico/config_autogen.h > ../../../include/${cpu}/pico_base/pico/config_autogen.h
+	COMMAND cp ../tusb_config.h ../../../include/${cpu}/.
+	COMMAND cp ../btstack_config.h ../../../include/${cpu}/.
+)
