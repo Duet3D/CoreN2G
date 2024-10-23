@@ -11,7 +11,7 @@ rm -rf build-rp2040
 mkdir build-rp2040
 cd build-rp2040
 CPU=rp2040 cmake .. -DIPV6=0 -G "MSYS Makefiles"
-cmake --build .
+cmake --build . -j
 
 rm -rf boot
 mkdir boot
@@ -52,11 +52,11 @@ rm -rf build-rp2350
 mkdir build-rp2350
 cd build-rp2350
 CPU=rp2350 cmake .. -DIPV6=0 -G "MSYS Makefiles"
-cmake --build .
+cmake --build . -j
 
 # cd ..
 # rm -rf build-rp2350-riscv
 # mkdir build-rp2350-riscv
 # cd build-rp2350-riscv
 # CPU=rp2350-riscv cmake ..
-# cmake --build .
+# cmake --build . -j

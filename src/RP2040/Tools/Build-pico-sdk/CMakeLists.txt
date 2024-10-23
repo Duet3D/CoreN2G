@@ -59,6 +59,7 @@ if (${cpu} MATCHES "rp2040")
 		PICO_FLOAT_SUPPORT_ROM_V1=1
 		PICO_DOUBLE_SUPPORT_ROM_V1=1
 		PICO_RP2040=1
+		__RP2040__=1					# added
 		PICO_CYW43_SUPPORTED=0)
 elseif (${cpu} MATCHES "rp2350")
 	set(xcd
@@ -112,6 +113,7 @@ elseif (${cpu} MATCHES "rp2350")
 		PICO_RP2040_USB_DEVICE_ENUMERATION_FIX=1
 		PICO_RP2040_USB_DEVICE_UFRAME_FIX=1
 		PICO_RP2350=1
+		__RP2350__=1					# added
 		PICO_USE_BLOCKED_RAM=0
 		${xcda})
 endif()
@@ -134,7 +136,6 @@ target_compile_definitions(common-${cpu} INTERFACE
 	LWIP_IGMP=1
 	LWIP_CHECKSUM_CTRL_PER_NETIF=1
 	CFG_TUSB_OS=OPT_OS_FREERTOS		# added
-	__RP2040__=1					# added
 	noexcept=						# added
 	${xcd}
 	${ppp}
@@ -149,7 +150,11 @@ target_compile_options(common-${cpu} INTERFACE
 # changed
 include_directories(BEFORE ${PICO_SDK_PATH}/../tools/Build-pico-sdk)
 include_directories(BEFORE ${PICO_SDK_PATH}/../../../../FreeRTOS/src/include)
-include_directories(BEFORE ${PICO_SDK_PATH}/../../../../FreeRTOS/src/portable/GCC/ARM_CM0)
+if (${cpu} MATCHES "rp2040")
+	include_directories(BEFORE ${PICO_SDK_PATH}/../../../../FreeRTOS/src/portable/GCC/ARM_CM0)
+	elseif(${cpu} MATCHES "rp2350$")
+	include_directories(BEFORE ${PICO_SDK_PATH}/../../../../FreeRTOS/src/portable/GCC/ARM_CM33/non_secure)
+endif()
 
 add_library(pico-${cpu} STATIC)
 target_compile_definitions(pico-${cpu} PUBLIC
@@ -338,7 +343,7 @@ endforeach()
 add_custom_command(TARGET pico-${cpu} POST_BUILD
 	COMMAND mkdir -p ../../../include/${cpu}/pico_base/pico
 	COMMAND cp ./generated/pico_base/pico/version.h ../../../include/${cpu}/pico_base/pico/.
-	COMMAND sed 's/include.*pico-sdk/include \"..\\/..\\/pico-sdk/' ./generated/pico_base/pico/config_autogen.h > ../../../include/${cpu}/pico_base/pico/config_autogen.h
+	COMMAND sed 's/include.*pico-sdk/include \"..\\/..\\/..\\/..\\/pico-sdk/' ./generated/pico_base/pico/config_autogen.h > ../../../include/${cpu}/pico_base/pico/config_autogen.h
 	COMMAND cp ../tusb_config.h ../../../include/${cpu}/.
 	COMMAND cp ../btstack_config.h ../../../include/${cpu}/.
 )

@@ -2265,6 +2265,8 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/FreeRTOS/src/portable/GCC/ARM_CM0}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/RP2040/pico-sdk/src/rp2_common/cmsis/stub/CMSIS/Device/RP2040/Include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/RP2040/pico-sdk/src/rp2_common/hardware_sync_spin_lock/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/RP2040/include/rp2040/pico_base}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/RP2040/include/rp2040}&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.other.other.234816983" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" useByScannerDiscovery="true" value="-c -mcpu=cortex-m0plus -mthumb -fno-math-errno -mfp16-format=ieee -ffunction-sections -fdata-sections -fno-threadsafe-statics -fno-rtti -fno-exceptions -nostdlib -Wundef -Wdouble-promotion -Werror=return-type -Wsuggest-override -fsingle-precision-constant &quot;-Wa,-ahl=$*.s&quot;" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.dialect.std.1038631310" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" useByScannerDiscovery="true" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
@@ -2280,7 +2282,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/RP2040/pico-sdk|src/SAME5x_C21|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x|src/atmel|src/arm|src/RP2040/Tools/Build-pico-sdk/build/" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name=""/>
+						<entry excluding="src/RP2040/pico-sdk|src/SAME5x_C21|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x|src/atmel|src/arm|src/RP2040/Tools/Build-pico-sdk/build*/" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
