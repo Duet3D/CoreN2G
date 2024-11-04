@@ -51,8 +51,10 @@ void DmacManager::Init() noexcept
 	DMAC->CTRL.reg = DMAC_CTRL_LVLEN0 | DMAC_CTRL_LVLEN1 | DMAC_CTRL_LVLEN2 | DMAC_CTRL_LVLEN3;
 
 #if SAME5x
-	DMAC->PRICTRL0.reg =  DMAC_PRICTRL0_RRLVLEN0 | DMAC_PRICTRL0_RRLVLEN1 | DMAC_PRICTRL0_RRLVLEN2 | DMAC_PRICTRL0_RRLVLEN3
-							| DMAC_PRICTRL0_QOS0(0x02) | DMAC_PRICTRL0_QOS1(0x02)| DMAC_PRICTRL0_QOS2(0x02)| DMAC_PRICTRL0_QOS3(0x02);
+	DMAC->PRICTRL0.reg =  DMAC_PRICTRL0_RRLVLEN0 | DMAC_PRICTRL0_RRLVLEN1 | DMAC_PRICTRL0_RRLVLEN2 | DMAC_PRICTRL0_RRLVLEN3		// round robin arbitration for channels of equal priority
+							| DMAC_PRICTRL0_QOS0(0x00)									// level 0 is not critical e.g. TMC UART transmit
+							| DMAC_PRICTRL0_QOS1(0x02)									// level 1 has medium sensitive to latency e.g. TMA UART receive, WS2812 send
+							| DMAC_PRICTRL0_QOS2(0x03) | DMAC_PRICTRL0_QOS3(0x03);		// levels 2 and 3 have critical latency e.g. WiFi Tx/Rx
 #elif SAMC21
 	DMAC->PRICTRL0.reg = DMAC_PRICTRL0_RRLVLEN0 | DMAC_PRICTRL0_RRLVLEN1 | DMAC_PRICTRL0_RRLVLEN2 | DMAC_PRICTRL0_RRLVLEN3;
 	DMAC->QOSCTRL.reg = DMAC_QOSCTRL_WRBQOS(0x02) | DMAC_QOSCTRL_FQOS(0x02) | DMAC_QOSCTRL_DQOS(0x02);
@@ -199,23 +201,83 @@ bool DmacManager::DisableChannel(const uint8_t channel) noexcept
 {
 #if SAME5x
 	DmacChannel& chan = DMAC->Channel[channel];
-	chan.CHCTRLA.bit.ENABLE = 0;
 	chan.CHINTENCLR.reg = DMAC_CHINTENCLR_TCMPL | DMAC_CHINTENCLR_TERR | DMAC_CHINTENCLR_SUSP;
-	asm volatile("nop");
-	asm volatile("nop");
-	asm volatile("nop");
-	return (chan.CHCTRLA.bit.ENABLE == 0);
+	chan.CHCTRLA.bit.ENABLE = 0;
+	unsigned int count = 0;
+	bool disabled;
+	do
+	{
+		++count;
+		asm volatile("nop");
+		asm volatile("nop");
+		asm volatile("nop");
+		disabled = (chan.CHCTRLA.bit.ENABLE == 0);
+	} while (!disabled && count < 20);
+	return disabled;
 #elif SAMC21
 	AtomicCriticalSectionLocker lock;
 	DMAC->CHID.reg = channel;
+	DMAC->CHINTENCLR.reg = DMAC_CHINTENCLR_TCMPL | DMAC_CHINTENCLR_TERR | DMAC_CHINTENCLR_SUSP;
 	DMAC->CHCTRLA.bit.ENABLE = 0;
-	DMAC->CHINTFLAG.reg = DMAC_CHINTENCLR_TCMPL | DMAC_CHINTENCLR_TERR | DMAC_CHINTENCLR_SUSP;
-	asm volatile("nop");
-	asm volatile("nop");
-	asm volatile("nop");
-	return (DMAC->CHCTRLA.bit.ENABLE == 0);
+	unsigned int count = 0;
+	bool disabled;
+	do
+	{
+		++count;
+		asm volatile("nop");
+		asm volatile("nop");
+		asm volatile("nop");
+		disabled = (DMAC->CHCTRLA.bit.ENABLE == 0);
+	} while (!disabled && count < 20);
+	return disabled;
 #else
 # error Unsupported processor
+#endif
+}
+
+bool DmacManager::SuspendChannel(DmaChannel channel) noexcept
+{
+#if SAME5x
+	DmacChannel& chan = DMAC->Channel[channel];
+	chan.CHCTRLB.reg = DMAC_CHCTRLB_CMD_SUSPEND_Val;
+	unsigned int count = 0;
+	bool suspended;
+	do
+	{
+		++count;
+		asm volatile("nop");
+		asm volatile("nop");
+		asm volatile("nop");
+		suspended = chan.CHINTFLAG.bit.SUSP;
+	} while (!suspended && count < 20);
+	return suspended;
+#elif SAMC21
+	AtomicCriticalSectionLocker lock;
+	DMAC->CHID.reg = channel;
+	DMAC->CHCTRLB.bit.CMD = DMAC_CHCTRLB_CMD_SUSPEND_Val;
+	unsigned int count = 0;
+	bool suspended;
+	do
+	{
+		++count;
+		asm volatile("nop");
+		asm volatile("nop");
+		asm volatile("nop");
+		suspended = DMAC->CHINTFLAG.bit.SUSP;
+	} while (!suspended && count < 20);
+	return suspended;
+#endif
+}
+
+void DmacManager::ResumeChannel(DmaChannel channel) noexcept
+{
+#if SAME5x
+	DmacChannel& chan = DMAC->Channel[channel];
+	chan.CHCTRLB.reg = DMAC_CHCTRLB_CMD_RESUME_Val;
+#elif SAMC21
+	AtomicCriticalSectionLocker lock;
+	DMAC->CHID.reg = channel;
+	DMAC->CHCTRLB.bit.CMD = DMAC_CHCTRLB_CMD_RESUME_Val;
 #endif
 }
 
