@@ -101,6 +101,17 @@ extern "C" [[noreturn]] void Reset_Handler() noexcept
 	while (1) { }
 }
 
+// Clock setup for SAME5x (see Core.h):
+// XOSC0 25MHz crystal (12MHz on older EXP3HC boards)
+// FDPLL0 120MHz locked to XOSC0
+// GCLK0 120MHz from FDPLL0, for CPU and fast peripherals
+// GCLK1 XOSC0 divided by (32 * XOSC0_frequency) to give 31250Hz for SERCOM slow clock
+// GCLK2 XOSC0 direct, used by Ethernet PHY on Duet 3 Mini
+// DFLL48M 48MHz locked to GCLK0
+// GCLK3: FDPLL0 divided by 2, 60MHz for peripherals that need less than 120MHz
+// GCLK4: DFLL48M for CAN and step timer
+// GCLK5: For use by the application, e.g. SDHC on Duet 3 Mini, TMC clock on EXP1HCL/M23CL, LDC1612 clock on TOOL1RR and SZP
+// GCLK6: DPLL0 divided by 120 to give 1MHz, for EIC deglitching
 static void InitClocks() noexcept
 {
 #if 1
