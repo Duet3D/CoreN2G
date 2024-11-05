@@ -40,6 +40,7 @@
 
 #define CFG_TUSB_RHPORT0_MODE     OPT_MODE_DEVICE
 #ifndef CFG_TUSB_OS
+# warning "Setting CFG_TUSB_OS = OPT_OS_FREERTOS"
 # define CFG_TUSB_OS              OPT_OS_FREERTOS
 #endif
 

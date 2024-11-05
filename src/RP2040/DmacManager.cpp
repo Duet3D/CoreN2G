@@ -16,7 +16,7 @@
 #include <hardware/regs/dma.h>
 #include <hardware/structs/dma.h>
 #include <hardware/regs/intctrl.h>
-#include <RP2040.h>
+// #include <RP2040.h>
 
 constexpr NvicPriority TempNvicPriorityDMA = 2;			// temporary DMA interrupt priority, low enough to allow FreeRTOS system calls
 
@@ -30,11 +30,11 @@ extern "C" void DMAC_0_Handler() noexcept;
 // We route all DMA complete interrupts through the first of the two available DMA controller interrupts. This is reasonable if only one core uses the DMAC.
 void DmacManager::Init() noexcept
 {
-	NVIC_DisableIRQ(DMA_IRQ_0_IRQn);
-	NVIC_ClearPendingIRQ(DMA_IRQ_0_IRQn);
-	NVIC_SetPriority(DMA_IRQ_0_IRQn, TempNvicPriorityDMA);
+	irq_set_enabled(DMA_IRQ_0_IRQn, false);
+	irq_clear(DMA_IRQ_0_IRQn);
+	irq_set_priority(DMA_IRQ_0_IRQn, TempNvicPriorityDMA);
 	irq_set_exclusive_handler(DMA_IRQ_0, DMAC_0_Handler);
-	NVIC_EnableIRQ(DMA_IRQ_0_IRQn);
+	irq_set_enabled(DMA_IRQ_0_IRQn, true);
 }
 
 void DmacManager::SetBtctrl(const uint8_t channel, const uint32_t val) noexcept
