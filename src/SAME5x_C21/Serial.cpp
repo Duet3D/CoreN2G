@@ -26,7 +26,7 @@ constexpr uint32_t DiagBaudRate = 57600;		// the baud rate we default to
 // This will only be useful if GCLK5 has been set up at a suitable frequency, for example on Duet 3 Mini main boards it is set to 95MHz to use as the SDHC clock.
 // Setting this will of course mess up the baud rate calculation, so it's most likely to be useful in SPI slave mode.
 void Serial::EnableSercomClock(uint8_t sercomNumber
-#if SAME5x && SUPPORT_SDHC
+#if SAME5x
 								, bool useSdhcClock
 #endif
 							   ) noexcept
@@ -80,9 +80,9 @@ void Serial::EnableSercomClock(uint8_t sercomNumber
 // Initialise the serial port. This does not set up the I/O pins. It assumes that we always transmit on pad 0.
 void Serial::InitUart(uint8_t sercomNumber, uint32_t baudRate, uint8_t rxPad
 #if SAME5x
-	, bool use32bitMode
+						, bool use32bitMode
 #endif
-	) noexcept
+					 ) noexcept
 {
 	EnableSercomClock(sercomNumber);
 	Sercom * const sercom = GetSercom(sercomNumber);

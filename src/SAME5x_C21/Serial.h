@@ -48,7 +48,7 @@ namespace Serial
 	inline constexpr IRQn GetSercomIRQn(uint8_t sercomNumber) noexcept { return SercomIRQns[sercomNumber]; }
 
 	void EnableSercomClock(uint8_t sercomNumber
-#if SAME5x && SUPPORT_SDHC
+#if SAME5x
 							, bool useSdhcClock = false
 #endif
 						  ) noexcept;
