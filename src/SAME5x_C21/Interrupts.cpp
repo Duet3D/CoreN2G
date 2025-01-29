@@ -378,7 +378,7 @@ extern "C" void EIC_15_Handler() noexcept
 extern "C" void EIC_Handler() noexcept
 {
 	uint16_t intflag;
-	while ((intflag = EIC->INTFLAG.reg) != 0)
+	while ((intflag = (EIC->INTFLAG.reg & EIC->INTENSET.reg)) != 0)
 	{
 		uint16_t mask = 1;
 		size_t exintNumber = 0;
