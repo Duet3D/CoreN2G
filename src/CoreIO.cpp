@@ -181,31 +181,39 @@ void SetDriveStrength(Pin p, unsigned int strength) noexcept
 
 // IoPort::SetPinMode calls this
 // Warning! Changing pin mode will reset the output drive strength to normal.
-void SetPinMode(Pin pin, enum PinMode mode, uint32_t debounceCutoff = 0) noexcept
+void SetPinMode(Pin pin, enum PinMode mode, bool debounce) noexcept
 {
 #if SAM4E || SAM4S || SAME70
-	constexpr uint32_t PioIds[] =
-	{
-		ID_PIOA, ID_PIOB, ID_PIOC,
+	// Define the debounce divider. Pulses longer than one period of the divided slow clock are guaranteed to get through. Pulses shorter than half that period are guaranteed not to get through.
+	// Only even divisors are available. The slow clock is nominally 32768Hz.
+	// This means that a divisor of 2 gives us a period of about 60us and a divisor of 4 gives us about 120us.
+	// The debounce filter also introduces a latency of up to 1.5 times this period and a latency jitter of (I think) half this period.
+	constexpr uint32_t DebounceDivisor = 4;
+	constexpr uint32_t DebounceDivisorReg = (DebounceDivisor/2) - 1;
+
+	constexpr uint32_t PioIds[] =	{	ID_PIOA, ID_PIOB, ID_PIOC,
 # if SAM4E || SAME70
-		ID_PIOD, ID_PIOE,
+										ID_PIOD, ID_PIOE,
 # endif
-	};
+									};
 #endif
 
 	if (pin < NumTotalPins)
 	{
+#if SAM4E || SAM4S || SAME70
+		Pio *pio = GpioPort(pin);
+#endif
+#if !RP2040
+		const uint32_t mask = GpioMask(pin);
+#endif
 		switch (mode)
 		{
 		case INPUT:
 #if SAM4E || SAM4S || SAME70
-			pmc_enable_periph_clk(PioIds[GpioPortNumber(pin)]);				// enable peripheral for clocking input *
-			GpioPort(pin)->PIO_PPDDR = GpioMask(pin);						// turn off pulldown
-			pio_set_input(GpioPort(pin), GpioMask(pin), (debounceCutoff == 0) ? 0 : PIO_DEBOUNCE);
-			if (debounceCutoff != 0)
-			{
-				pio_set_debounce_filter(GpioPort(pin), GpioMask(pin), debounceCutoff);	// enable debounce filter with specified cutoff frequency
-			}
+			pmc_enable_periph_clk(PioIds[GpioPortNumber(pin)]);		// enable peripheral for clocking input
+			pio->PIO_SCDR = DebounceDivisorReg;
+			pio->PIO_PPDDR = mask;									// turn off pulldown
+			pio_set_input(pio, mask, (debounce) ? PIO_DEBOUNCE : PIO_DEGLITCH);
 #elif RP2040
 			ClearPinFunction(pin);
 			gpio_disable_pulls(pin);
@@ -214,20 +222,17 @@ void SetPinMode(Pin pin, enum PinMode mode, uint32_t debounceCutoff = 0) noexcep
 #else
 			ClearPinFunction(pin);
 			// The direction must be set before the pullup, otherwise setting the pullup doesn't work
-			PORT->Group[GpioPortNumber(pin)].DIRCLR.reg = GpioMask(pin);
+			PORT->Group[GpioPortNumber(pin)].DIRCLR.reg = mask;
 			PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].reg = PORT_PINCFG_INEN;
 #endif
 			break;
 
 		case INPUT_PULLUP:
 #if SAM4E || SAM4S || SAME70
-			pmc_enable_periph_clk(PioIds[GpioPortNumber(pin)]);				// enable peripheral for clocking input *
-			GpioPort(pin)->PIO_PPDDR = GpioMask(pin);						// turn off pulldown
-			pio_set_input(GpioPort(pin), GpioMask(pin), (debounceCutoff == 0) ? PIO_PULLUP : PIO_PULLUP | PIO_DEBOUNCE);
-			if (debounceCutoff != 0)
-			{
-				pio_set_debounce_filter(GpioPort(pin), GpioMask(pin), debounceCutoff);	// enable debounce filter with specified cutoff frequency
-			}
+			pmc_enable_periph_clk(PioIds[GpioPortNumber(pin)]);		// enable peripheral for clocking input
+			pio->PIO_SCDR = DebounceDivisorReg;
+			pio->PIO_PPDDR = mask;									// turn off pulldown
+			pio_set_input(pio, mask, PIO_PULLUP | ((debounce) ? PIO_DEBOUNCE : PIO_DEGLITCH));
 #elif RP2040
 			ClearPinFunction(pin);
 			gpio_pull_up(pin);
@@ -236,22 +241,19 @@ void SetPinMode(Pin pin, enum PinMode mode, uint32_t debounceCutoff = 0) noexcep
 #else
 			ClearPinFunction(pin);
 			// The direction must be set before the pullup, otherwise setting the pullup doesn't work
-			PORT->Group[GpioPortNumber(pin)].DIRCLR.reg = GpioMask(pin);
-			PORT->Group[GpioPortNumber(pin)].OUTSET.reg = GpioMask(pin);
+			PORT->Group[GpioPortNumber(pin)].DIRCLR.reg = mask;
+			PORT->Group[GpioPortNumber(pin)].OUTSET.reg = mask;
 			PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].reg = PORT_PINCFG_PULLEN | PORT_PINCFG_INEN;
 #endif
 			break;
 
 		case INPUT_PULLDOWN:
 #if SAM4E || SAM4S || SAME70
-			pmc_enable_periph_clk(PioIds[GpioPortNumber(pin)]);				// enable peripheral for clocking input *
-			GpioPort(pin)->PIO_PUDR = GpioMask(pin);						// turn off pullup
-			GpioPort(pin)->PIO_PPDER = GpioMask(pin);						// turn on pulldown
-			pio_set_input(GpioPort(pin), GpioMask(pin), (debounceCutoff == 0) ? 0 : PIO_DEBOUNCE);
-			if (debounceCutoff != 0)
-			{
-				pio_set_debounce_filter(GpioPort(pin), GpioMask(pin), debounceCutoff);	// enable debounce filter with specified cutoff frequency
-			}
+			pmc_enable_periph_clk(PioIds[GpioPortNumber(pin)]);		// enable peripheral for clocking input
+			pio->PIO_SCDR = DebounceDivisorReg;
+			pio->PIO_PUDR = mask;									// turn off pullup
+			pio->PIO_PPDER = mask;									// turn on pulldown
+			pio_set_input(pio, mask, (debounce) ? PIO_DEBOUNCE : PIO_DEGLITCH);
 #elif RP2040
 			ClearPinFunction(pin);
 			gpio_pull_down(pin);
@@ -260,17 +262,17 @@ void SetPinMode(Pin pin, enum PinMode mode, uint32_t debounceCutoff = 0) noexcep
 #else
 			ClearPinFunction(pin);
 			// The direction must be set before the pullup, otherwise setting the pullup doesn't work
-			PORT->Group[GpioPortNumber(pin)].DIRCLR.reg = GpioMask(pin);
-			PORT->Group[GpioPortNumber(pin)].OUTCLR.reg = GpioMask(pin);
+			PORT->Group[GpioPortNumber(pin)].DIRCLR.reg = mask;
+			PORT->Group[GpioPortNumber(pin)].OUTCLR.reg = mask;
 			PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].reg = PORT_PINCFG_PULLEN | PORT_PINCFG_INEN;
 #endif
 			break;
 
 		case OUTPUT_LOW:
 #if SAM4E || SAM4S || SAME70
-			pio_set_output(GpioPort(pin), GpioMask(pin), 0, 0, 0);
+			pio_set_output(pio, mask, 0, 0, 0);
 			// If all pins are output, disable PIO Controller clocking, reduce power consumption
-			if (GpioPort(pin)->PIO_OSR == 0xffffffff)
+			if (pio->PIO_OSR == 0xffffffff)
 			{
 				pmc_disable_periph_clk(PioIds[GpioPortNumber(pin)]);
 			}
@@ -281,17 +283,17 @@ void SetPinMode(Pin pin, enum PinMode mode, uint32_t debounceCutoff = 0) noexcep
 			gpio_set_dir(pin, true);
 #else
 			ClearPinFunction(pin);
-			PORT->Group[GpioPortNumber(pin)].OUTCLR.reg = GpioMask(pin);
-			PORT->Group[GpioPortNumber(pin)].DIRSET.reg = GpioMask(pin);
+			PORT->Group[GpioPortNumber(pin)].OUTCLR.reg = mask;
+			PORT->Group[GpioPortNumber(pin)].DIRSET.reg = mask;
 			PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].reg = PORT_PINCFG_INEN;
 #endif
 			break;
 
 		case OUTPUT_HIGH:
 #if SAM4E || SAM4S || SAME70
-			pio_set_output(GpioPort(pin), GpioMask(pin), 1, 0, 0);
+			pio_set_output(pio, mask, 1, 0, 0);
 			// If all pins are output, disable PIO Controller clocking, reduce power consumption
-			if (GpioPort(pin)->PIO_OSR == 0xffffffff)
+			if (pio->PIO_OSR == 0xffffffff)
 			{
 				pmc_disable_periph_clk(PioIds[GpioPortNumber(pin)]);
 			}
@@ -302,8 +304,8 @@ void SetPinMode(Pin pin, enum PinMode mode, uint32_t debounceCutoff = 0) noexcep
 			gpio_set_dir(pin, true);
 #else
 			ClearPinFunction(pin);
-			PORT->Group[GpioPortNumber(pin)].OUTSET.reg = GpioMask(pin);
-			PORT->Group[GpioPortNumber(pin)].DIRSET.reg = GpioMask(pin);
+			PORT->Group[GpioPortNumber(pin)].OUTSET.reg = mask;
+			PORT->Group[GpioPortNumber(pin)].DIRSET.reg = mask;
 			PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].reg = PORT_PINCFG_INEN;
 #endif
 			break;
@@ -311,14 +313,14 @@ void SetPinMode(Pin pin, enum PinMode mode, uint32_t debounceCutoff = 0) noexcep
 		case AIN:
 #if SAM4E || SAM4S || SAME70
 			// The SAME70 errata says we must disable the pullup resistor before enabling the AFEC channel
-			GpioPort(pin)->PIO_PUDR = GpioMask(pin);						// turn off pullup
-			GpioPort(pin)->PIO_PPDDR = GpioMask(pin);						// turn off pulldown
+			pio->PIO_PUDR = mask;						// turn off pullup
+			pio->PIO_PPDDR = mask;						// turn off pulldown
 			// Ideally we should record which pins are being used as analog inputs, then we can disable the clock
 			// on any PIO that is being used solely for outputs and ADC inputs. But for now we don't do that.
 #elif RP2040
 			adc_gpio_init(pin);
 #else
-			PORT->Group[GpioPortNumber(pin)].DIRCLR.reg = GpioMask(pin);
+			PORT->Group[GpioPortNumber(pin)].DIRCLR.reg = mask;
 			PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].reg = 0;
 			SetPinFunction(pin, GpioPinFunction::B);						// ADC is always on peripheral B for the SAMC21 and SAME5x
 #endif
