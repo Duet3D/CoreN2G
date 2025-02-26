@@ -232,12 +232,16 @@ uint64_t millis64() noexcept;
  */
 void delay(uint32_t ms) noexcept;
 
+#ifndef __cplusplus		// this doesn't have the debounce option so it should only be used for internal calls from C functions
+
 /**
  * @brief Set the required mode for an I/O pin for
  * @param pin The pin number to set the mode for. If the pin number is not valid (e.g. NoPin), the call will be ignored.
  * @param mode The mode to set the pin to.
  */
 void pinMode(Pin pin, enum PinMode mode) noexcept;
+
+#endif
 
 /**
  * @brief Read from an I/O pin

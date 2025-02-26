@@ -117,7 +117,7 @@ void AnalogOut::Write(Pin pin, float val, PwmFrequency freq) noexcept
 	}
 
 	// Fall back to digital write
-	pinMode(pin, (val < 0.5) ? OUTPUT_LOW : OUTPUT_HIGH);
+	SetPinMode(pin, (val < 0.5) ? OUTPUT_LOW : OUTPUT_HIGH);
 }
 
 // End

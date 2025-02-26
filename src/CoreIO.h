@@ -158,7 +158,7 @@ void EnablePullup(Pin p) noexcept;
 void DisablePullup(Pin p) noexcept;
 
 // Set the mode of a pin with optional debouncing
-void SetPinMode(Pin pin, enum PinMode mode, bool debounce = true) noexcept;
+void SetPinMode(Pin pin, enum PinMode mode, bool debounce = false) noexcept;
 
 #if SAME5x || SAMC21
 

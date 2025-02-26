@@ -664,7 +664,7 @@ void CanFD2040::Entry(VirtualCanRegisters *p_regs) noexcept
     for (;;)
     {
     	// Disable CAN - set output to recessive
-    	pinMode(regs->txPin, OUTPUT_HIGH);
+    	SetPinMode(regs->txPin, OUTPUT_HIGH);
 
     	// Wait for the signal to enable CAN
     	while (!regs->canEnabled) { }

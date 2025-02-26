@@ -335,7 +335,7 @@ void SetPinMode(Pin pin, enum PinMode mode, bool debounce) noexcept
 // C-callable version of SetPinMode
 extern "C" void pinMode(Pin pin, enum PinMode mode) noexcept
 {
-	SetPinMode(pin, mode, 0);
+	SetPinMode(pin, mode, false);
 }
 
 // IoPort::ReadPin calls this

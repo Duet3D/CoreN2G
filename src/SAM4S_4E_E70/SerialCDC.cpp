@@ -34,7 +34,7 @@ void SerialCDC::Start(Pin p_vBusPin) noexcept
 
 	if (vBusPin != NoPin)
 	{
-		pinMode(vBusPin, INPUT);
+		SetPinMode(vBusPin, INPUT, true);
 		AttachPinInterrupt(vBusPin, core_vbus_off, InterruptMode::falling, CallbackParameter(nullptr));
 	}
 
