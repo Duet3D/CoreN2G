@@ -328,6 +328,25 @@ inline void SetBasePriority(uint32_t prio) noexcept
 	__set_BASEPRI(prio << (8 - __NVIC_PRIO_BITS));
 }
 
+// Class to change the base priority of the CPU temporarily and restore the original base priority when it goes out of scope.
+// Usually used to boost base priority, hence the name.
+class BasePriorityBooster
+{
+public:
+	explicit BasePriorityBooster(uint32_t tempPriority) noexcept
+	{
+		oldPriority = ChangeBasePriority(tempPriority);
+	}
+
+	~BasePriorityBooster()
+	{
+		RestoreBasePriority(oldPriority);
+	}
+
+private:
+	uint32_t oldPriority;
+};
+
 #endif
 
 /**
