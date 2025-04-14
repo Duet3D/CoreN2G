@@ -250,25 +250,25 @@ public:
 	void SetExtendedFilterElement(unsigned int index, RxBufferNumber whichBuffer, uint32_t id, uint32_t mask) noexcept
 		pre(index < NumShortFilterElements);
 
-	void GetLocalCanTiming(CanTiming& timing) noexcept;
+	void GetLocalCanTiming(CanTiming& timing) const noexcept;
 
 	void SetLocalCanTiming(const CanTiming& timing) noexcept;
 
 	void GetAndClearStats(CanDevice::CanStats& dst) noexcept;
 
-	uint16_t ReadTimeStampCounter() noexcept
+	uint16_t ReadTimeStampCounter() const noexcept
 	{
 #if RP2040
 		return timer_hw->timerawl;									// read lower 32 bits of the hardware timer, which we also use for CAN time stamping
 #elif SAME70
 		return hw->MCAN_TSCV;
 #else
-		return hw->TSCV.reg;
+		return hw->TSCV.bit.TSC;
 #endif
 	}
 
 #if !SAME70 && !RP2040
-	uint16_t GetTimeStampPeriod() noexcept
+	uint16_t GetTimeStampPeriod() const noexcept
 	{
 		return bitPeriod;
 	}
@@ -310,7 +310,7 @@ private:
 #else
 	CanRxBufferHeader *GetRxBuffer(uint32_t index) const noexcept;
 	CanTxBufferHeader *GetTxBuffer(uint32_t index) const noexcept;
-	TxEvent *GetTxEvent(uint32_t index) const noexcept;
+	volatile TxEvent *GetTxEvent(uint32_t index) const noexcept;
 #endif
 
 	void CopyMessageForTransmit(CanMessageBuffer *buffer, volatile CanTxBufferHeader *f) noexcept;
@@ -339,7 +339,7 @@ private:
 #else
 	volatile uint32_t *rxBuffers;								//!< Receive direct buffers start
 	uint32_t *txBuffers;										//!< Transmit direct buffers start (the Tx fifo buffers follow them)
-	TxEvent *txEventFifo;										//!< Transfer event fifo
+	volatile TxEvent *txEventFifo;								//!< Transmit event fifo
 #endif
 	CanStandardMessageFilterElement *rxStdFilter;				//!< Standard filter List
 	CanExtendedMessageFilterElement *rxExtFilter;				//!< Extended filter List

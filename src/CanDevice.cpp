@@ -170,7 +170,7 @@ inline CanRxBufferHeader *CanDevice::GetRxFifo0Buffer(uint32_t index) const noex
 inline CanRxBufferHeader *CanDevice::GetRxFifo1Buffer(uint32_t index) const noexcept { return (CanRxBufferHeader*)(rx1Fifo + (index * GetRxBufferSize())); }
 inline CanRxBufferHeader *CanDevice::GetRxBuffer(uint32_t index) const noexcept { return (CanRxBufferHeader*)(rxBuffers + (index * GetRxBufferSize())); }
 inline CanTxBufferHeader *CanDevice::GetTxBuffer(uint32_t index) const noexcept { return (CanTxBufferHeader*)(txBuffers + (index * GetTxBufferSize())); }
-inline CanDevice::TxEvent *CanDevice::GetTxEvent(uint32_t index) const noexcept { return &txEventFifo[index]; }
+inline volatile CanDevice::TxEvent *CanDevice::GetTxEvent(uint32_t index) const noexcept { return &txEventFifo[index]; }
 
 // Clear statistics
 void CanDevice::CanStats::Clear() noexcept
@@ -204,7 +204,7 @@ void CanDevice::CanStats::Clear() noexcept
 	devicesByPort[p_whichPort] = &dev;
 
 	// Set up pointers to the individual parts of the buffer memory
-	memset(memStart, 0, p_config.GetMemorySize());						// clear out filters, transmit pending flags etc.
+	memset(memStart, 0, p_config.GetMemorySize() * sizeof(uint32_t));	// clear out filters, transmit pending flags etc.
 
 #if SAME70
 	// Set upper 16 bits of DMA addresses. The CAN memory must not cross a 64kb boundary.
@@ -350,7 +350,7 @@ void CanDevice::DoHardwareInit() noexcept
 	// The datasheet says that when using CAN-FD, the external timestamp counter must be used, which is TC0. So TC0 must be the step clock lower 16 bits on SAME70 boards.
 	hw->MCAN_TSCC = MCAN_TSCC_TSS_EXT_TIMESTAMP;
 #else
-	hw->TSCC.reg = CAN_TSCC_TSS_INC | CAN_TSCC_TCP(0);						// run timestamp counter at CAN bit speed
+	hw->TSCC.reg = CAN_TSCC_TSS_INC | CAN_TSCC_TCP(0);						// run timestamp counter at CAN bit speed (prescaler = 1)
 #endif
 
 #ifdef RTOS
@@ -417,15 +417,19 @@ void CanDevice::PollTxEventFifo(TxEventCallbackFunction p_txCallback) noexcept
 	while (((txefs = hw->REG(TXEFS)) & CAN_(TXEFS_EFFL_Msk)) != 0)
 	{
 		const uint32_t index = (txefs & CAN_(TXEFS_EFGI_Msk)) >> CAN_(TXEFS_EFGI_Pos);
-		const volatile TxEvent* const elem = GetTxEvent(index);
-		if (elem->R1.bit.ET == 1)
+		const volatile TxEvent *const elemPtr = GetTxEvent(index);
+		Cache::InvalidateAfterDMAReceive(elemPtr, sizeof(TxEvent));					// this is essential to avoid reading old events
+		TxEvent event;
+		event.R0.val = elemPtr->R0.val;
+		event.R1.val = elemPtr->R1.val;
+		if (event.R1.bit.ET == 1)
 		{
 			CanId id;
-			id.SetReceivedId(elem->R0.bit.ID);
-			p_txCallback(elem->R1.bit.MM, id, elem->R1.bit.TXTS);
+			id.SetReceivedId(event.R0.bit.ID);
+			p_txCallback(event.R1.bit.MM, id, event.R1.bit.TXTS);
 		}
 		hw->REG(TXEFA) = index;
-		__DSB();					// probably not needed, but just in case
+		__DSB();						// probably not needed, but just in case
 	}
 }
 
@@ -551,13 +555,11 @@ void CanDevice::CopyMessageForTransmit(CanMessageBuffer *buffer, volatile CanTxB
 	}
 	else
 	{
-		/* A standard identifier is stored into ID[28:18] */
-		f->T0.val = buffer->id.GetWholeId() << 18;
+		f->T0.val = buffer->id.GetWholeId() << 18;			// an 11-bit identifier is stored into ID[28:18]
 		f->T0.bit.XTD = 0;
 	}
 
 	f->T0.bit.RTR = buffer->remote;
-
 	f->T1.bit.MM = buffer->marker;
 	f->T1.bit.EFCbit = buffer->reportInFifo;
 	uint32_t dataLength = buffer->dataLength;
@@ -617,6 +619,7 @@ void CanDevice::CopyMessageForTransmit(CanMessageBuffer *buffer, volatile CanTxB
 }
 
 // Queue a message for sending via a buffer or FIFO. If the buffer isn't free, cancel the previous message (or oldest message in the fifo) and send it anyway.
+// If the buffer or fifo is used by multiple tasks then the caller must acquire the mutex for that buffer or fifo first
 // On return the caller must free or re-use the buffer.
 uint32_t CanDevice::SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept
 {
@@ -666,18 +669,19 @@ void CanDevice::CopyReceivedMessage(CanMessageBuffer *null buffer, const volatil
 
 		switch (dlc)
 		{
-		case 4:
 		case 5:
 		case 6:
 		case 7:
 		case 8:
 			buffer->msg.raw32[1] = data[1];
 			// no break
-		case 0:
 		case 1:
 		case 2:
 		case 3:
+		case 4:
 			buffer->msg.raw32[0] = data[0];
+			// no break
+		case 0:
 			buffer->dataLength = dlc;
 			break;
 
@@ -712,7 +716,7 @@ void CanDevice::CopyReceivedMessage(CanMessageBuffer *null buffer, const volatil
 			buffer->msg.raw32[2] = data[2];
 			buffer->dataLength = dlc2len[dlc];
 		}
-  }
+	}
 
 	++stats.messagesReceived;
 }
@@ -878,7 +882,7 @@ void CanDevice::SetShortFilterElement(unsigned int index, RxBufferNumber whichBu
 	if (index < config->numShortFilterElements)
 	{
 		CanStandardMessageFilterElement::S0Type s0;
-		s0.val = 0;										// disable filter, clear reserved fields
+		s0.val = 0;									// disable filter, clear reserved fields
 		s0.bit.SFID1 = id;
 		s0.bit.SFT = 0x02;							// classic filter
 		switch (whichBuffer)
@@ -961,7 +965,7 @@ void CanDevice::SetExtendedFilterElement(unsigned int index, RxBufferNumber whic
 	}
 }
 
-void CanDevice::GetLocalCanTiming(CanTiming &timing) noexcept
+void CanDevice::GetLocalCanTiming(CanTiming &timing) const noexcept
 {
 	const uint32_t localNbtp = hw->REG(NBTP);
 	const uint32_t tseg1 = (localNbtp & CAN_(NBTP_NTSEG1_Msk)) >> CAN_(NBTP_NTSEG1_Pos);
@@ -1007,7 +1011,7 @@ void CanDevice::UpdateLocalCanTiming(const CanTiming &timing) noexcept
 	}
 
 #if !SAME70
-	bitPeriod = period * prescaler;				// the actual CAN normal bit period, in 48MHz clocks
+	bitPeriod = period * prescaler;				// the actual CAN normal bit period in 48MHz clocks (may be different from timing.period)
 #endif
 
 	nbtp = ((tseg1 - 1) << CAN_(NBTP_NTSEG1_Pos))
@@ -1123,14 +1127,19 @@ void CanDevice::Interrupt() noexcept
 			while (((txefs = hw->REG(TXEFS)) & CAN_(TXEFS_EFFL_Msk)) != 0)
 			{
 				const uint32_t index = (txefs & CAN_(TXEFS_EFGI_Msk)) >> CAN_(TXEFS_EFGI_Pos);
-				const TxEvent* elem = GetTxEvent(index);
-				if (elem->R1.bit.ET == 1)
+				const volatile TxEvent *const elemPtr = GetTxEvent(index);
+				Cache::InvalidateAfterDMAReceive(elemPtr, sizeof(TxEvent));					// this is essential to avoid reading old events
+				TxEvent event;
+				event.R0.val = elemPtr->R0.val;
+				event.R1.val = elemPtr->R1.val;
+				if (event.R1.bit.ET == 1)
 				{
 					CanId id;
-					id.SetReceivedId(elem->R0.bit.ID);
-					txCallback(elem->R1.bit.MM, id, elem->R1.bit.TXTS);
+					id.SetReceivedId(event.R0.bit.ID);
+					txCallback(event.R1.bit.MM, id, event.R1.bit.TXTS);
 				}
 				hw->REG(TXEFA) = index;
+				__DSB();						// probably not needed, but just in case
 			}
 		}
 	}
