@@ -112,15 +112,16 @@ extern "C" [[noreturn]] void Reset_Handler() noexcept
 
 // Clock setup for SAME5x (see Core.h):
 // XOSC0 25MHz crystal (12MHz on older EXP3HC boards)
-// FDPLL0 120MHz locked to XOSC0
+// DPLL0 120MHz locked to XOSC0
 // GCLK0 120MHz from FDPLL0, for CPU and fast peripherals
-// GCLK1 XOSC0 divided by (32 * XOSC0_frequency) to give 31250Hz for SERCOM slow clock
+// GCLK1 XOSC0 divided by (32 * XOSC0_frequency_MHz) to give 31250Hz for SERCOM slow clock
 // GCLK2 XOSC0 direct, used by Ethernet PHY on Duet 3 Mini
-// DFLL48M 48MHz locked to GCLK0
-// GCLK3: FDPLL0 divided by 2, 60MHz for peripherals that need less than 120MHz
+// DFLL48M no longer used because it has high jitter
+// GCLK3: DPLL0 divided by 2, 60MHz for peripherals that need less than 120MHz
 // GCLK4: DFLL48M for CAN and step timer
 // GCLK5: For use by the application, e.g. SDHC on Duet 3 Mini, TMC clock on EXP1HCL/M23CL, LDC1612 clock on TOOL1RR and SZP
 // GCLK6: DPLL0 divided by 120 to give 1MHz, for EIC deglitching
+// GCLK7: XOSC0 divided by (1000 * XOSC0_frequency_MHz) to give 1kHz reference fore DFLL48M (may give less jitter than using 31.25kHz reference)
 static void InitClocks() noexcept
 {
 #if 1
@@ -257,106 +258,116 @@ static void InitClocks() noexcept
 
 	// Initialise DPLL0
 	// We can divide the crystal oscillator by any even number up to 512 to get an input in the range 32kHz to 3MHz for the DPLL
-	// The errata says that at 400kHz and below we can get false unlock indications. So we try to use 1MHz or above.
-	uint32_t multiplier;
-	uint32_t divisor;										// must be even
-	if ((xoscFrequency & 1u) == 0)
 	{
-		divisor = xoscFrequency;							// use 1MHz
-		multiplier = 120;
-	}
-	else if ((xoscFrequency % 5u) == 0)						// e.g. 25MHz as used on Duet 3 Mini 5+
-	{
-		divisor = 2 * (xoscFrequency/5);					// e.g. for 25MHz crystal use 2.5MHz
-		multiplier = (2 * 120)/5;
-	}
-	else
-	{
-		divisor = 2 * xoscFrequency;						// use 500kHz
-		multiplier = 2 * 120;
+		uint32_t multiplier;
+		uint32_t divisor;										// must be even
+		if ((xoscFrequency & 1u) == 0)
+		{
+			divisor = xoscFrequency;							// use 1MHz
+			multiplier = 120;
+		}
+		else if ((xoscFrequency % 5u) == 0)						// e.g. 25MHz as used on Duet 3 Mini 5+
+		{
+			divisor = 2 * (xoscFrequency/5);					// e.g. for 25MHz crystal use 2.5MHz
+			multiplier = (2 * 120)/5;
+		}
+		else
+		{
+			divisor = 2 * xoscFrequency;						// use 500kHz
+			multiplier = 2 * 120;
+		}
+
+		hri_oscctrl_write_DPLLRATIO_reg(OSCCTRL, 0,
+										  OSCCTRL_DPLLRATIO_LDRFRAC(0)
+										| OSCCTRL_DPLLRATIO_LDR(multiplier - 1)
+									   );
+		// The SAMD5x/E5x errata document section 2.13.1 says that false unlock indications can occur.
+		// The suggested mitigation is to enable Lock Bypass and Fast Wakeup.
+		hri_oscctrl_write_DPLLCTRLB_reg(OSCCTRL, 0,
+										  OSCCTRL_DPLLCTRLB_DIV(divisor/2 - 1)
+										| (0 << OSCCTRL_DPLLCTRLB_DCOEN_Pos)
+										| OSCCTRL_DPLLCTRLB_DCOFILTER(0)
+										| (1u << OSCCTRL_DPLLCTRLB_LBYPASS_Pos)
+										| OSCCTRL_DPLLCTRLB_LTIME(0)
+										| OSCCTRL_DPLLCTRLB_REFCLK(2u + xoscNumber)		// source is XOSC0 or XOSC1
+										| (1u << OSCCTRL_DPLLCTRLB_WUF_Pos)
+										| OSCCTRL_DPLLCTRLB_FILTER(0)
+									   );
+		hri_oscctrl_write_DPLLCTRLA_reg(OSCCTRL, 0,
+										  (0 << OSCCTRL_DPLLCTRLA_RUNSTDBY_Pos)
+										| (1u << OSCCTRL_DPLLCTRLA_ENABLE_Pos)
+									   );
+
+		while ((hri_oscctrl_read_DPLLSTATUS_reg(OSCCTRL, 0) & (OSCCTRL_DPLLSTATUS_LOCK | OSCCTRL_DPLLSTATUS_CLKRDY)) != (OSCCTRL_DPLLSTATUS_LOCK | OSCCTRL_DPLLSTATUS_CLKRDY)) { }
 	}
 
-	hri_oscctrl_write_DPLLRATIO_reg(OSCCTRL, 0,
-									  OSCCTRL_DPLLRATIO_LDRFRAC(0)
-									| OSCCTRL_DPLLRATIO_LDR(multiplier - 1)
-								   );
-	// The SAMD5x/E5x errata document section 2.13.1 says that false unlock indications can occur.
-	// The suggested mitigation is to enable Lock Bypass and Fast Wakeup.
-	hri_oscctrl_write_DPLLCTRLB_reg(OSCCTRL, 0,
-									  OSCCTRL_DPLLCTRLB_DIV(divisor/2 - 1)
-									| (0 << OSCCTRL_DPLLCTRLB_DCOEN_Pos)
-									| OSCCTRL_DPLLCTRLB_DCOFILTER(0)
-									| (1u << OSCCTRL_DPLLCTRLB_LBYPASS_Pos)
-									| OSCCTRL_DPLLCTRLB_LTIME(0)
-									| OSCCTRL_DPLLCTRLB_REFCLK(2u + xoscNumber)		// source is XOSC0 or XOSC1
-									| (1u << OSCCTRL_DPLLCTRLB_WUF_Pos)
-									| OSCCTRL_DPLLCTRLB_FILTER(0)
-								   );
-	hri_oscctrl_write_DPLLCTRLA_reg(OSCCTRL, 0,
-									  (0 << OSCCTRL_DPLLCTRLA_RUNSTDBY_Pos)
-									| (1 << OSCCTRL_DPLLCTRLA_ENABLE_Pos)
-								   );
+	// Initialise DPLL1 to generate 96MHz. This is divided by 2 to get the step clock and CAN clock. It may also be used as the clock for the SDHC.
+	// Before RRF 3.6 we used the DFLL48M in closed loop mode to generate the 48MHz step and CAN clocks, but it turns out to have horrible jitter. DPLL1 has much lower jitter.
+	{
+		const uint32_t dpll1Divisor = 2 * xoscFrequency;		// this works for all crystal frequencies we use, in particular 25MHz (divide by 50 and multiply by 192)
+		const uint32_t dpll1Multiplier = 2 * 96;
+		hri_oscctrl_write_DPLLRATIO_reg(OSCCTRL, 1,
+				  OSCCTRL_DPLLRATIO_LDRFRAC(0)
+				| OSCCTRL_DPLLRATIO_LDR(dpll1Multiplier - 1));
+		// The SAMD5x/E5x errata document section 2.13.1 says that false unlock indications can occur.
+		// The suggested mitigation is to enable Lock Bypass and Fast Wakeup.
+		hri_oscctrl_write_DPLLCTRLB_reg(OSCCTRL, 1,
+				  OSCCTRL_DPLLCTRLB_DIV(dpll1Divisor/2 - 1)
+				| (0 << OSCCTRL_DPLLCTRLB_DCOEN_Pos)
+				| OSCCTRL_DPLLCTRLB_DCOFILTER(0)
+				| (1u << OSCCTRL_DPLLCTRLB_LBYPASS_Pos)
+				| OSCCTRL_DPLLCTRLB_LTIME(0)
+				| OSCCTRL_DPLLCTRLB_REFCLK(2u + xoscNumber)		// source is XOSC0 or XOSC1
+				| (1u << OSCCTRL_DPLLCTRLB_WUF_Pos)
+				| OSCCTRL_DPLLCTRLB_FILTER(0));
+		hri_oscctrl_write_DPLLCTRLA_reg(OSCCTRL, 1,
+				  (0 << OSCCTRL_DPLLCTRLA_RUNSTDBY_Pos)
+				| (1u << OSCCTRL_DPLLCTRLA_ENABLE_Pos));
 
-	while ((hri_oscctrl_read_DPLLSTATUS_reg(OSCCTRL, 0) & (OSCCTRL_DPLLSTATUS_LOCK | OSCCTRL_DPLLSTATUS_CLKRDY)) != (OSCCTRL_DPLLSTATUS_LOCK | OSCCTRL_DPLLSTATUS_CLKRDY)) { }
+		while (!(hri_oscctrl_get_DPLLSTATUS_LOCK_bit(OSCCTRL, 1) || hri_oscctrl_get_DPLLSTATUS_CLKRDY_bit(OSCCTRL, 1))) { }
+	}
 
-	// We must initialise GCLKs 0 and 1 before we touch the DFLL:
+	// Note, if we use the DFLL then we must initialise GCLKs 0 and 1 first before we initialise it:
 	// - GCLK0 is the CPU clock and defaults to the DFLL
-	// - GCLK1 is used as the reference when we reprogram the DFLL
+	// - GCLK1 is used as the slow clock
 
-	// GCLK0: from FDPLL0 direct
+	// GCLK0: from DPLL0 direct. This is also the source of MCLK.
 	hri_gclk_write_GENCTRL_reg(GCLK, GclkNum120MHz,
 			  GCLK_GENCTRL_DIV(1) | (0 << GCLK_GENCTRL_RUNSTDBY_Pos)
 			| (0 << GCLK_GENCTRL_DIVSEL_Pos) | (0 << GCLK_GENCTRL_OE_Pos)
 			| (0 << GCLK_GENCTRL_OOV_Pos) | (0 << GCLK_GENCTRL_IDC_Pos)
 			| GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC_DPLL0);
 
-	// GCLK1: XOSC0 divided by 32 * frequency_in_MHz to give 31250Hz
+	// GCLK1: XOSC0 divided by 32 * XOSC0 frequency_in_MHz to give 31250Hz
 	hri_gclk_write_GENCTRL_reg(GCLK, GclkNum31KHz,
 			  GCLK_GENCTRL_DIV(32 * xoscFrequency) | (0 << GCLK_GENCTRL_RUNSTDBY_Pos)
 			| (0 << GCLK_GENCTRL_DIVSEL_Pos) | (0 << GCLK_GENCTRL_OE_Pos)
 			| (0 << GCLK_GENCTRL_OOV_Pos) | (0 << GCLK_GENCTRL_IDC_Pos)
 			| GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC(GCLK_GENCTRL_SRC_XOSC0_Val + xoscNumber));
 
-	// Initialise DFLL48M in closed loop mode
-	hri_gclk_write_PCHCTRL_reg(GCLK, OSCCTRL_GCLK_ID_DFLL48, GCLK_PCHCTRL_GEN_GCLK1_Val | GCLK_PCHCTRL_CHEN);		// set GCLK1 as DFLL reference
-	hri_oscctrl_write_DFLLCTRLA_reg(OSCCTRL, 0);
-	while (hri_oscctrl_get_DFLLSYNC_ENABLE_bit(OSCCTRL)) { }
-
-	hri_oscctrl_write_DFLLMUL_reg(OSCCTRL, OSCCTRL_DFLLMUL_CSTEP(4) | OSCCTRL_DFLLMUL_FSTEP(4) | OSCCTRL_DFLLMUL_MUL(48 * 32));
-	while (hri_oscctrl_get_DFLLSYNC_DFLLMUL_bit(OSCCTRL)) { }
-
-	hri_oscctrl_write_DFLLCTRLB_reg(OSCCTRL, 0);
-	while (hri_oscctrl_get_DFLLSYNC_DFLLCTRLB_bit(OSCCTRL)) { }
-
-	hri_oscctrl_write_DFLLCTRLA_reg(OSCCTRL, (0 << OSCCTRL_DFLLCTRLA_RUNSTDBY_Pos) | OSCCTRL_DFLLCTRLA_ENABLE);
-	while (hri_oscctrl_get_DFLLSYNC_ENABLE_bit(OSCCTRL)) { }
-
-	hri_oscctrl_write_DFLLVAL_reg(OSCCTRL, hri_oscctrl_read_DFLLVAL_reg(OSCCTRL));
-	while (hri_oscctrl_get_DFLLSYNC_DFLLVAL_bit(OSCCTRL)) { }
-
-	hri_oscctrl_write_DFLLCTRLB_reg(OSCCTRL,
-			  (0 << OSCCTRL_DFLLCTRLB_WAITLOCK_Pos) | (0 << OSCCTRL_DFLLCTRLB_BPLCKC_Pos)
-			| (0 << OSCCTRL_DFLLCTRLB_QLDIS_Pos) | (0 << OSCCTRL_DFLLCTRLB_CCDIS_Pos)
-			| (0 << OSCCTRL_DFLLCTRLB_USBCRM_Pos) | (0 << OSCCTRL_DFLLCTRLB_LLAW_Pos)
-			| (0 << OSCCTRL_DFLLCTRLB_STABLE_Pos) | (1u << OSCCTRL_DFLLCTRLB_MODE_Pos));
-	while (hri_oscctrl_get_DFLLSYNC_DFLLCTRLB_bit(OSCCTRL)) { }
-
 	// Initialise the other GCLKs
-	// GCLK3: FDPLL0 divided by 2, 60MHz for peripherals that need less than 120MHz
+	// GCLK3: DPLL0 divided by 2, 60MHz for peripherals that need less than 120MHz
 	hri_gclk_write_GENCTRL_reg(GCLK, GclkNum60MHz,
 			  GCLK_GENCTRL_DIV(2) | (0 << GCLK_GENCTRL_RUNSTDBY_Pos)
 			| (0 << GCLK_GENCTRL_DIVSEL_Pos) | (0 << GCLK_GENCTRL_OE_Pos)
 			| (0 << GCLK_GENCTRL_OOV_Pos) | (0 << GCLK_GENCTRL_IDC_Pos)
 			| GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC_DPLL0);
 
-	// GCLK4: DFLL48M for CAN and step timer
+	// GCLK4: DPLL1 divided by 2, 48MHz for CAN and step timer
 	hri_gclk_write_GENCTRL_reg(GCLK, GclkNum48MHz,
+			  GCLK_GENCTRL_DIV(2) | (0 << GCLK_GENCTRL_RUNSTDBY_Pos)
+			| (0 << GCLK_GENCTRL_DIVSEL_Pos) | (0 << GCLK_GENCTRL_OE_Pos)
+			| (0 << GCLK_GENCTRL_OOV_Pos) | (0 << GCLK_GENCTRL_IDC_Pos)
+			| GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC_DPLL1_Val);
+
+	// GCLK7: DPLL1 direct, 96MHz for SERCOMs and SDHC
+	hri_gclk_write_GENCTRL_reg(GCLK, GclkNum96MHz,
 			  GCLK_GENCTRL_DIV(1) | (0 << GCLK_GENCTRL_RUNSTDBY_Pos)
 			| (0 << GCLK_GENCTRL_DIVSEL_Pos) | (0 << GCLK_GENCTRL_OE_Pos)
 			| (0 << GCLK_GENCTRL_OOV_Pos) | (0 << GCLK_GENCTRL_IDC_Pos)
-			| GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC_DFLL_Val);
+			| GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC_DPLL1);
 
-	// GCLK5: FDPLL0 divided by 120 to give 1MHz
+	// GCLK6: DPLL0 divided by 120 to give 1MHz
 	hri_gclk_write_GENCTRL_reg(GCLK, GclkNum1MHz,
 			  GCLK_GENCTRL_DIV(120) | (0 << GCLK_GENCTRL_RUNSTDBY_Pos)
 			| (0 << GCLK_GENCTRL_DIVSEL_Pos) | (0 << GCLK_GENCTRL_OE_Pos)

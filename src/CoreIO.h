@@ -994,12 +994,6 @@ extern const PinDescriptionBase *_ecv_from _ecv_null AppGetPinDescription(Pin p)
 #if SAME5x
 
 /**
- * @brief Return the frequency of the SDHC peripheral clock. Only needs to be provided if the SDHC subsystem is used.
- * @return Frequency in Hz
- */
-extern uint32_t AppGetSdhcClockSpeed() noexcept;
-
-/**
  * @brief Set the Quality of Service requirement for CPU accesses to SRAM.
  * 0 = Background (no sensitive operation)
  * 1 = Sensitive Bandwidth

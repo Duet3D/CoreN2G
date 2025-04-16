@@ -129,11 +129,22 @@ static const unsigned int GclkNum31KHz = 1;				// frequency is 31250Hz
 static const unsigned int GclkNumEthernetPhy = 2;		// reserved for RepRapFirmware to use for the Ethernet PHY clock on the Duet 3 Mini Ethernet
 static const unsigned int GclkNum60MHz = 3;				// clock used for lower speed peripherals
 static const unsigned int GclkNum48MHz = 4;				// clock used for step timer and CAN timing
-static const unsigned int GclkSdhc = 5;					// clock used by SDHC, set up in RepRapFirmware
 static const unsigned int GclkClosedLoop = 5;			// clock used on the closed loop boards as the clock for the TMC2160A driver (can be same as GclkSdhc because no board uses both clocks)
 static const unsigned int GclkNumPB11 = 5;				// clock used by the LDC1612 on TOOL1RR
 static const unsigned int GclkNum1MHz = 6;				// clock used for EIC deglitching
-// Other GCLKs may be defined by the client application
+static const unsigned int GclkNum96MHz = 7;				// 96MHz used for SERCOMs and possibly SDHC
+
+// SDHC clock support (in configurations that support it)
+// We have two possible clock sources for SDHC:
+// 1. 96MHz from DPLL1 via GCLK5. This allows a maximum SD card speed of 24MHz, which is within spec but may not be reliable. We previously found 22.5MHz reliable.
+// 2. 120MHz from GCLK0. This allows a maximum SD card speed of 20MHz.
+# if 1
+static const uint32_t SdhcClockFreq = 96000000;
+static const unsigned int GclkNumSdhc = GclkNum96MHz;
+# else
+static const uint32_t SdhcClockFreq = 120000000;
+static const unsigned int GclkNumSdhc = GclkNum120MHz;
+# endif
 
 #elif SAMC21
 

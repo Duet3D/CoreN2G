@@ -65,13 +65,7 @@ void Serial::EnableSercomClock(uint8_t sercomNumber
 	if (sercomNumber < ARRAY_SIZE(SercomClockTable))
 	{
 		const SercomClockParams p = SercomClockTable[sercomNumber];
-		GCLK->PCHCTRL[p.gclkFastIndex].reg =
-#if SAME5x && SUPPORT_SDHC
-											  GCLK_PCHCTRL_GEN((useSdhcClock) ? GclkSdhc : SercomFastGclkNum)
-#else
-											  GCLK_PCHCTRL_GEN(SercomFastGclkNum)
-#endif
-											| GCLK_PCHCTRL_CHEN;
+		GCLK->PCHCTRL[p.gclkFastIndex].reg = GCLK_PCHCTRL_GEN(SercomFastGclkNum) | GCLK_PCHCTRL_CHEN;
 		GCLK->PCHCTRL[p.gclkSlowIndex].reg = GCLK_PCHCTRL_GEN(SercomSlowGclkNum) | GCLK_PCHCTRL_CHEN;
 		p.mclkMaskReg |= p.mcklBitVal;
 	}
