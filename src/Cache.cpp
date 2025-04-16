@@ -153,23 +153,23 @@ static inline void cache_invalidate_region(const volatile void *start, size_t le
 		if (numLines > MaxSelectiveInvalidateCacheLines)						// if more than a small part the cache needs to be invalidated, invalidate the whole cache
 #endif
 		{
-			const auto flags = IrqSave();
+			AtomicCriticalSectionLocker lock;
 			cache_disable();
 			cache_invalidate_all();
 			cache_enable();
-			IrqRestore(flags);
 		}
 #ifdef RTOS
 		else
 		{
 			// Unfortunately we have to disable the cache to invalidate cache lines.
 			// We must do no data writes while the cache is disabled, or we might subsequently read stale data. Therefore interrupts must be disabled.
+			// As we limit the number of lines we invalidate, we now disable the cache and interrupts just once for the entire operation
 			uint32_t startLine = startAddr >> CacheLineShift;					// this will have extraneous bits set, but CMCC_MAINT1_INDEX will mask those off
-			while (numLines != 0)
+			AtomicCriticalSectionLocker lock;
+			cache_disable();
+			do
 			{
 				// Invalidate this cache line in all 4 ways
-				const auto flags = IrqSave();
-				cache_disable();
 # if SAME5x
 				CMCC->MAINT1.reg = CMCC_MAINT1_WAY(0) | CMCC_MAINT1_INDEX(startLine);
 				CMCC->MAINT1.reg = CMCC_MAINT1_WAY(1) | CMCC_MAINT1_INDEX(startLine);
@@ -180,13 +180,14 @@ static inline void cache_invalidate_region(const volatile void *start, size_t le
 				CMCC->CMCC_MAINT1 = CMCC_MAINT1_WAY_WAY1 | CMCC_MAINT1_INDEX(startLine);
 				CMCC->CMCC_MAINT1 = CMCC_MAINT1_WAY_WAY2 | CMCC_MAINT1_INDEX(startLine);
 				CMCC->CMCC_MAINT1 = CMCC_MAINT1_WAY_WAY3 | CMCC_MAINT1_INDEX(startLine);
+# else
+#  error Unsupported processor
 # endif
-				cache_enable();
-				IrqRestore(flags);
 
 				++startLine;
 				--numLines;
-			}
+			} while (numLines != 0);
+			cache_enable();
 		}
 #endif
 	}
