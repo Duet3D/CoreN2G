@@ -255,7 +255,7 @@ static void InitClocks() noexcept
 	// Initialise MCLK
 	hri_mclk_write_CPUDIV_reg(MCLK, MCLK_CPUDIV_DIV(MCLK_CPUDIV_DIV_DIV1_Val));
 
-	// Initialise FDPLL0
+	// Initialise DPLL0
 	// We can divide the crystal oscillator by any even number up to 512 to get an input in the range 32kHz to 3MHz for the DPLL
 	// The errata says that at 400kHz and below we can get false unlock indications. So we try to use 1MHz or above.
 	uint32_t multiplier;
@@ -320,6 +320,7 @@ static void InitClocks() noexcept
 	// Initialise DFLL48M in closed loop mode
 	hri_gclk_write_PCHCTRL_reg(GCLK, OSCCTRL_GCLK_ID_DFLL48, GCLK_PCHCTRL_GEN_GCLK1_Val | GCLK_PCHCTRL_CHEN);		// set GCLK1 as DFLL reference
 	hri_oscctrl_write_DFLLCTRLA_reg(OSCCTRL, 0);
+	while (hri_oscctrl_get_DFLLSYNC_ENABLE_bit(OSCCTRL)) { }
 
 	hri_oscctrl_write_DFLLMUL_reg(OSCCTRL, OSCCTRL_DFLLMUL_CSTEP(4) | OSCCTRL_DFLLMUL_FSTEP(4) | OSCCTRL_DFLLMUL_MUL(48 * 32));
 	while (hri_oscctrl_get_DFLLSYNC_DFLLMUL_bit(OSCCTRL)) { }
