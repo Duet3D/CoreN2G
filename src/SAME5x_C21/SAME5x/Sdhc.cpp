@@ -152,27 +152,32 @@ static bool hsmci_set_speed(uint32_t speed) noexcept
 {
 	if (speed != currentRequestedClockFrequency)
 	{
-		currentRequestedClockFrequency = currentActualClockFrequency = 0;
-
 		// The following is based on the code from Harmony
 		hsmciStopClock();								// disable clock before changing it
 
 		// Get the base clock frequency
-		const uint32_t baseclk_frq = AppGetSdhcClockSpeed()/2;
+		const uint32_t baseclk_frq = SdhcClockFreq/2;
 
 		// Use programmable clock mode if it is supported. Note, clkmul is 1 on the SAME54P20, not 0 as specified in the data sheet.
 		const uint32_t clkmul = (hw->CA1R.reg & SDHC_CA1R_CLKMULT_Msk) >> SDHC_CA1R_CLKMULT_Pos;
-		uint16_t divider = 0;
-		if (clkmul > 0)
+		uint16_t divider;
+		if (clkmul != 0)
 		{
 			/* F_SDCLK = F_MULTCLK/(DIV+1), where F_MULTCLK = F_BASECLK x (CLKMULT+1)
 			   F_SDCLK = (F_BASECLK x (CLKMULT + 1))/(DIV + 1)
 			   For a given F_SDCLK, DIV = [(F_BASECLK x (CLKMULT + 1))/F_SDCLK] - 1
 			*/
-			divider = (baseclk_frq * (clkmul + 1)) / speed;
-			if (divider > 0)
+			divider = (baseclk_frq * (clkmul + 1) + speed - 1) / speed;			// DC bugfix here to round the divisor up
+			if (divider != 0)
 			{
 				divider = divider - 1;
+			}
+			currentActualClockFrequency =  (baseclk_frq * (clkmul + 1)) / (divider + 1);
+			if (divider == 0 && currentActualClockFrequency > 25000000)
+			{
+				// IP limitation, if high speed mode is active divider must be non zero
+				divider = 1;
+				currentActualClockFrequency = (baseclk_frq * (clkmul + 1)) / (divider + 1);
 			}
 			hw->CCR.reg |= SDHC_CCR_CLKGSEL;
 		}
@@ -182,23 +187,20 @@ static bool hsmci_set_speed(uint32_t speed) noexcept
 			/* F_SDCLK = F_BASECLK/(2 x DIV).
 			   For a given F_SDCLK, DIV = F_BASECLK/(2 x F_SDCLK)
 			*/
-			divider =  baseclk_frq/(2 * speed);
+			divider = (baseclk_frq + 2 * speed - 1)/(2 * speed);				// DC bugfix here to round the divisor up
 			if (divider == 0)
 			{
 				divider = 1;
 			}
 			hw->CCR.reg &= ~SDHC_CCR_CLKGSEL;
+			currentActualClockFrequency = baseclk_frq/(divider * 2);
 		}
 
-		if (speed > 25000000)
+		currentRequestedClockFrequency = speed;
+		if (currentActualClockFrequency > 25000000)
 		{
 			// Enable the high speed mode
 			hw->HC1R.reg |= SDHC_HC1R_HSEN;
-			if (divider == 0)
-			{
-				// IP limitation, if high speed mode is active divider must be non zero
-				divider = 1;
-			}
 		}
 		else
 		{
@@ -216,8 +218,6 @@ static bool hsmci_set_speed(uint32_t speed) noexcept
 		// Wait for the internal clock to stabilize
 		while ((hw->CCR.reg & SDHC_CCR_INTCLKS) == 0) { }
 
-		currentRequestedClockFrequency = speed;
-		currentActualClockFrequency = ((hw->CCR.reg & SDHC_CCR_CLKGSEL) != 0) ? (baseclk_frq * (clkmul + 1)) / (divider + 1) : baseclk_frq/(divider * 2);
 	}
 
 	// Enable the SDCLK
