@@ -418,18 +418,18 @@ void CanDevice::PollTxEventFifo(TxEventCallbackFunction p_txCallback) noexcept
 	{
 		const uint32_t index = (txefs & CAN_(TXEFS_EFGI_Msk)) >> CAN_(TXEFS_EFGI_Pos);
 		const volatile TxEvent *const elemPtr = GetTxEvent(index);
-		Cache::InvalidateAfterDMAReceive(elemPtr, sizeof(TxEvent));					// this is essential to avoid reading old events
+		Cache::InvalidateAfterDMAReceive(elemPtr, sizeof(TxEvent));		// this is essential to avoid reading old events
 		TxEvent event;
 		event.R0.val = elemPtr->R0.val;
 		event.R1.val = elemPtr->R1.val;
+		hw->REG(TXEFA) = index;											// doing this early instead of at the end of the loop helps
 		if (event.R1.bit.ET == 1)
 		{
 			CanId id;
 			id.SetReceivedId(event.R0.bit.ID);
 			p_txCallback(event.R1.bit.MM, id, event.R1.bit.TXTS);
 		}
-		hw->REG(TXEFA) = index;
-		__DSB();						// probably not needed, but just in case
+		__DSB();														// probably not needed, but just in case
 	}
 }
 
@@ -1128,18 +1128,18 @@ void CanDevice::Interrupt() noexcept
 			{
 				const uint32_t index = (txefs & CAN_(TXEFS_EFGI_Msk)) >> CAN_(TXEFS_EFGI_Pos);
 				const volatile TxEvent *const elemPtr = GetTxEvent(index);
-				Cache::InvalidateAfterDMAReceive(elemPtr, sizeof(TxEvent));					// this is essential to avoid reading old events
+				Cache::InvalidateAfterDMAReceive(elemPtr, sizeof(TxEvent));		// to avoid reading old events
 				TxEvent event;
 				event.R0.val = elemPtr->R0.val;
 				event.R1.val = elemPtr->R1.val;
+				hw->REG(TXEFA) = index;											// doing this early instead of at the end of the loop helps
 				if (event.R1.bit.ET == 1)
 				{
 					CanId id;
 					id.SetReceivedId(event.R0.bit.ID);
 					txCallback(event.R1.bit.MM, id, event.R1.bit.TXTS);
 				}
-				hw->REG(TXEFA) = index;
-				__DSB();						// probably not needed, but just in case
+				__DSB();														// probably not needed, but just in case
 			}
 		}
 	}
