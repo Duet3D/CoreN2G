@@ -171,8 +171,14 @@ static void hsmci_reset(void)
  * \param speed    HSMCI clock speed in Hz.
  * \param mck      MCK clock speed in Hz.
  */
+
+#if 1	// dc42
+static uint32_t requestedSpeed = 0;
+#endif
+
 static void hsmci_set_speed(uint32_t speed, uint32_t mck)
 {
+	requestedSpeed = speed;
 #if (SAM4E || SAMV70 || SAMV71 || SAME70 || SAMS70)
 	uint32_t clkdiv = 0;
 	uint32_t clkodd = 0;
@@ -223,12 +229,11 @@ static void hsmci_set_speed(uint32_t speed, uint32_t mck)
 	HSMCI->HSMCI_MR &= ~HSMCI_MR_CLKDIV_Msk;
 	HSMCI->HSMCI_MR |= HSMCI_MR_CLKDIV(clkdiv);
 #endif
-
 }
 
 #if 1  // dc42
 // Get the speed of the HSMCI interface for reporting purposes, in bytes/sec
-uint32_t hsmci_get_speed()
+uint32_t hsmci_get_speed(uint32_t *reqSpeed)
 {
 #if SAME70
 	const uint32_t clkdiv = HSMCI->HSMCI_MR & HSMCI_MR_CLKDIV_Msk;
@@ -242,7 +247,11 @@ uint32_t hsmci_get_speed()
 	const uint32_t clkdiv = HSMCI->HSMCI_MR & HSMCI_MR_CLKDIV_Msk;
 	const uint32_t hsmciClock =  sysclk_get_cpu_hz()/((2 * clkdiv) + 2);
 #endif
-	return hsmciClock/2;            // HSMCI interface is 4 bits wide, so divide by 2 to get bytes/sec
+	if (reqSpeed != NULL)
+	{
+		*reqSpeed = requestedSpeed/2;   // HSMCI interface is 4 bits wide, so divide by 2 to get bytes/sec
+	}
+	return hsmciClock/2;            	// HSMCI interface is 4 bits wide, so divide by 2 to get bytes/sec
 }
 
 static hsmciIdleFunc_t _ecv_null hsmciIdleFunc = NULL;

@@ -194,7 +194,7 @@ bool hsmci_wait_end_of_write_blocks(void) noexcept;
 #if 1  //dc42
 
 // Get the speed of the HSMCI interface for reporting purposes, in bytes/sec
-uint32_t hsmci_get_speed(void) noexcept;
+uint32_t hsmci_get_speed(uint32_t *reqSpeed) noexcept;
 
 // Define the type of the HSMCI idle function
 typedef void (*hsmciIdleFunc_t)(uint32_t, uint32_t) noexcept;

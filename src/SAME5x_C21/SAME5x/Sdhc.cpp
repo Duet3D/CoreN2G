@@ -301,11 +301,6 @@ static bool WaitForDmaComplete() noexcept
 	}
 }
 
-static uint32_t hsmci_get_clock_speed() noexcept
-{
-	return currentActualClockFrequency;
-}
-
 /**
  * \brief Wait the end of busy signal on data line
  *
@@ -499,9 +494,13 @@ bool hsmci_is_high_speed_capable() noexcept
 }
 
 // Get the transfer rate in bytes/sec
-uint32_t hsmci_get_speed() noexcept
+uint32_t hsmci_get_speed(uint32_t *reqSpeed) noexcept
 {
-	return hsmci_get_clock_speed()/(8/HSMCI_SLOT_0_SIZE);
+	if (reqSpeed != nullptr)
+	{
+		*reqSpeed = currentRequestedClockFrequency/(8/HSMCI_SLOT_0_SIZE);
+	}
+	return currentActualClockFrequency/(8/HSMCI_SLOT_0_SIZE);
 }
 
 /**

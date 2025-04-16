@@ -221,7 +221,7 @@ bool hsmci_wait_end_of_read_blocks() noexcept;
  */
 bool hsmci_wait_end_of_write_blocks() noexcept;
 
-uint32_t hsmci_get_speed() noexcept;
+uint32_t hsmci_get_speed(uint32_t *reqSpeed) noexcept;
 
 #ifdef __cplusplus
 }
