@@ -58,3 +58,4 @@
 /RP2040_CAN_RTOS/
 /RP2040_RTOS/
 /.clangd
+/.clang-format
