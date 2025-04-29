@@ -314,12 +314,12 @@ void DetachEvent(Pin pin) noexcept
 // Common EXINT handler
 static inline void CommonExintHandler(size_t exintNumber) noexcept
 {
+	EIC->INTFLAG.reg = 1ul << exintNumber;				// clear the interrupt
 	const InterruptCallback& cb = exintCallbacks[exintNumber];
 	if (cb.func != nullptr)
 	{
 		cb.func(cb.param);
 	}
-	EIC->INTFLAG.reg = 1ul << exintNumber;				// clear the interrupt
 }
 
 extern "C" void EIC_0_Handler() noexcept
@@ -415,12 +415,12 @@ extern "C" void EIC_Handler() noexcept
 		{
 			if ((intflag & mask) != 0)
 			{
+				EIC->INTFLAG.reg = mask;
 				const InterruptCallback& cb = exintCallbacks[exintNumber];
 				if (cb.func != nullptr)
 				{
 					cb.func(cb.param);
 				}
-				EIC->INTFLAG.reg = mask;
 				intflag &= ~mask;
 			}
 			++exintNumber;
