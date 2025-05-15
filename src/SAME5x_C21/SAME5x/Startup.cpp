@@ -25,8 +25,8 @@ extern uint32_t _szero;
 extern uint32_t _ezero;
 //extern uint32_t _sstack;
 
-extern uint32_t _sDmaBuffers;					// defined in linker script
-extern uint32_t _eDmaBuffers;					// defined in linker script
+extern uint32_t _sDmaBuffers;				// defined in linker script
+extern uint32_t _eDmaBuffers;				// defined in linker script
 
 #if SUPPORT_CAN
 extern uint32_t _sCanMessage;				// defined in linker script
