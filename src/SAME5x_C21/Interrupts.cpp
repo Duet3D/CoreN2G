@@ -41,7 +41,7 @@ void InitialiseExints() noexcept
 	}
 	hri_eic_wait_for_sync(EIC, EIC_SYNCBUSY_SWRST);
 
-	hri_eic_write_CTRLA_CKSEL_bit(EIC, 0);				// clocked by GCLK
+	hri_eic_write_CTRLA_CKSEL_bit(EIC, 0);				// clocked by GCLK, not by CLK_ULP32K
 
 	// Leave NMI disabled (hri_eic_write_NMICTRL_reg)
 	// Leave event control disabled (hri_eic_write_EVCTRL_reg)
@@ -49,19 +49,19 @@ void InitialiseExints() noexcept
 	hri_eic_write_ASYNCH_reg(EIC, 0);					// all channels synchronous (needed to have debouncing or filtering)
 
 #if SAME5x
-	hri_eic_write_DEBOUNCEN_reg(EIC, 0);				// debouncing disabled
+	hri_eic_write_DEBOUNCEN_reg(EIC, 0);				// debouncing disabled for now
+	constexpr uint32_t DebouncePrescaler = 0x04;		// 0x04 = prescaler, debounce clock is EIC clock divided by 32
+	constexpr uint32_t DebounceStates = 0x01;			// 0x01 = require 7 consecutive samples to register a change of state
+	constexpr uint32_t DebounceTickon = 0x01;			// 0x01 = sample the input at the low frequency (i.e. prescaled) clock
+	hri_eic_write_DPRESCALER_reg(
+	    EIC,
+	    	  (EIC_DPRESCALER_PRESCALER0(DebouncePrescaler)) | (DebounceStates << EIC_DPRESCALER_STATES0_Pos)
+	        | (EIC_DPRESCALER_PRESCALER1(DebouncePrescaler)) | (DebounceStates << EIC_DPRESCALER_STATES1_Pos)
+	        | DebounceTickon << EIC_DPRESCALER_TICKON_Pos);
 #elif SAMC21
 	// Only the SAMC21N has the debounce register, the SAMC21G that we use doesn't have it
 #else
 # error Undefined processor
-#endif
-
-#if 0
-	hri_eic_write_DPRESCALER_reg(
-	    EIC,
-	    (EIC_DPRESCALER_PRESCALER0(CONF_EIC_DPRESCALER0)) | (CONF_EIC_STATES0 << EIC_DPRESCALER_STATES0_Pos)
-	        | (EIC_DPRESCALER_PRESCALER1(CONF_EIC_DPRESCALER1)) | (CONF_EIC_STATES1 << EIC_DPRESCALER_STATES1_Pos)
-	        | CONF_EIC_TICKON << EIC_DPRESCALER_TICKON_Pos | 0);
 #endif
 
 	hri_eic_write_CONFIG_reg(EIC, 0, 0);
@@ -89,12 +89,19 @@ bool AttachPinInterrupt(Pin pin, StandardCallbackFunction callback, InterruptMod
 	uint32_t modeWord;
 	switch (mode)
 	{
-	case InterruptMode::low:		modeWord = EIC_CONFIG_SENSE0_LOW_Val  | EIC_CONFIG_FILTEN0; break;
-	case InterruptMode::high:		modeWord = EIC_CONFIG_SENSE0_HIGH_Val | EIC_CONFIG_FILTEN0; break;
-	case InterruptMode::falling:	modeWord = EIC_CONFIG_SENSE0_FALL_Val | EIC_CONFIG_FILTEN0; break;
-	case InterruptMode::rising:		modeWord = EIC_CONFIG_SENSE0_RISE_Val | EIC_CONFIG_FILTEN0; break;
-	case InterruptMode::change:		modeWord = EIC_CONFIG_SENSE0_BOTH_Val | EIC_CONFIG_FILTEN0; break;
-	default:						modeWord = EIC_CONFIG_SENSE0_NONE_Val; break;
+	case InterruptMode::low:					modeWord = EIC_CONFIG_SENSE0_LOW_Val  | EIC_CONFIG_FILTEN0; break;
+	case InterruptMode::high:					modeWord = EIC_CONFIG_SENSE0_HIGH_Val | EIC_CONFIG_FILTEN0; break;
+	case InterruptMode::falling:				modeWord = EIC_CONFIG_SENSE0_FALL_Val | EIC_CONFIG_FILTEN0; break;
+	case InterruptMode::rising:					modeWord = EIC_CONFIG_SENSE0_RISE_Val | EIC_CONFIG_FILTEN0; break;
+	case InterruptMode::change:					modeWord = EIC_CONFIG_SENSE0_BOTH_Val | EIC_CONFIG_FILTEN0; break;
+#if SAME5x
+	case InterruptMode::lowWithDebounce:		modeWord = EIC_CONFIG_SENSE0_LOW_Val;  break;
+	case InterruptMode::highWithDebounce:		modeWord = EIC_CONFIG_SENSE0_HIGH_Val; break;
+	case InterruptMode::fallingWithDebounce:	modeWord = EIC_CONFIG_SENSE0_FALL_Val; break;
+	case InterruptMode::risingWithDebounce:		modeWord = EIC_CONFIG_SENSE0_RISE_Val; break;
+	case InterruptMode::changeWithDebounce:		modeWord = EIC_CONFIG_SENSE0_BOTH_Val; break;
+#endif
+	default:									modeWord = EIC_CONFIG_SENSE0_NONE_Val; break;
 	}
 
 	const unsigned int shift = (exint & 7u) << 2u;
@@ -115,6 +122,16 @@ bool AttachPinInterrupt(Pin pin, StandardCallbackFunction callback, InterruptMod
 		volatile uint32_t& reg = (exint < 8) ? EIC->CONFIG[0].reg : EIC->CONFIG[1].reg;
 		reg = (reg & mask) | (modeWord << shift);
 
+#if SAME5x
+		if (((uint8_t)mode & (uint8_t)InterruptMode::debounce) != 0)
+		{
+			EIC->DEBOUNCEN.reg |= 1ul << exint;
+		}
+		else
+		{
+			EIC->DEBOUNCEN.reg &= ~(1ul << exint);
+		}
+#endif
 		EIC->CTRLA.reg |= EIC_CTRLA_ENABLE;
 		hri_eic_wait_for_sync(EIC, EIC_SYNCBUSY_ENABLE);
 
@@ -199,6 +216,23 @@ void DisablePinInterrupt(Pin pin) noexcept
 		}
 	}
 }
+
+#if SAME5x
+
+// Read the state of an input pin state after it has passed through the interrupt debouncer.
+// This is only valid if an interrupt has been attached to the pin with debouncing enabled.
+bool ReadDebouncedPin(Pin pin) noexcept
+{
+	const PinDescriptionBase * const pinDesc = AppGetPinDescription(pin);
+	if (pinDesc != nullptr)
+	{
+		const ExintNumber exint = pinDesc->exintNumber;
+		return (EIC->PINSTATE.reg & (1ul << exint)) != 0;
+	}
+	return false;
+}
+
+#endif
 
 ExintNumber AttachEvent(Pin pin, InterruptMode mode, bool enableFilter) noexcept
 {
@@ -314,12 +348,18 @@ void DetachEvent(Pin pin) noexcept
 // Common EXINT handler
 static inline void CommonExintHandler(size_t exintNumber) noexcept
 {
-	EIC->INTFLAG.reg = 1ul << exintNumber;				// clear the interrupt
+	const uint32_t mask = 1ul << exintNumber;
 	const InterruptCallback& cb = exintCallbacks[exintNumber];
-	if (cb.func != nullptr)
+	EIC->INTENCLR.reg = mask;
+	do
 	{
-		cb.func(cb.param);
-	}
+		EIC->INTFLAG.reg = mask;				// clear the interrupt
+		if (cb.func != nullptr)
+		{
+			cb.func(cb.param);
+		}
+	} while ((EIC->INTFLAG.reg & mask) != 0);
+	EIC->INTENSET.reg = mask;
 }
 
 extern "C" void EIC_0_Handler() noexcept
