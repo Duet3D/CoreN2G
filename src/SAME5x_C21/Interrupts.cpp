@@ -53,6 +53,7 @@ void InitialiseExints() noexcept
 	constexpr uint32_t DebouncePrescaler = 0x04;		// 0x04 = prescaler, debounce clock is EIC clock divided by 32
 	constexpr uint32_t DebounceStates = 0x01;			// 0x01 = require 7 consecutive samples to register a change of state
 	constexpr uint32_t DebounceTickon = 0x01;			// 0x01 = sample the input at the low frequency (i.e. prescaled) clock
+	// The EIC clock is 1MHz so the above values give a debounce latency of 7 * 32 = 224us
 	hri_eic_write_DPRESCALER_reg(
 	    EIC,
 	    	  (EIC_DPRESCALER_PRESCALER0(DebouncePrescaler)) | (DebounceStates << EIC_DPRESCALER_STATES0_Pos)
