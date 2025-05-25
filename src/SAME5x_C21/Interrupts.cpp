@@ -351,7 +351,6 @@ static inline void CommonExintHandler(size_t exintNumber) noexcept
 {
 	const uint32_t mask = 1ul << exintNumber;
 	const InterruptCallback& cb = exintCallbacks[exintNumber];
-	EIC->INTENCLR.reg = mask;
 	do
 	{
 		EIC->INTFLAG.reg = mask;				// clear the interrupt
@@ -359,8 +358,7 @@ static inline void CommonExintHandler(size_t exintNumber) noexcept
 		{
 			cb.func(cb.param);
 		}
-	} while ((EIC->INTFLAG.reg & mask) != 0);
-	EIC->INTENSET.reg = mask;
+	} while ((EIC->INTFLAG.reg & EIC->INTENSET.reg & mask) != 0);	// we must check here that the interrupt is still enabled because the callback may have disabled it
 }
 
 extern "C" void EIC_0_Handler() noexcept
