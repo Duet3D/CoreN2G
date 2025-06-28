@@ -111,17 +111,18 @@ extern "C" [[noreturn]] void Reset_Handler() noexcept
 }
 
 // Clock setup for SAME5x (see Core.h):
-// XOSC0 25MHz crystal (12MHz on older EXP3HC boards)
-// DPLL0 120MHz locked to XOSC0
-// GCLK0 120MHz from FDPLL0, for CPU and fast peripherals
-// GCLK1 XOSC0 divided by (32 * XOSC0_frequency_MHz) to give 31250Hz for SERCOM slow clock
-// GCLK2 XOSC0 direct, used by Ethernet PHY on Duet 3 Mini
+// XOSCn (n=0 or 1) 25MHz crystal (12MHz on older EXP3HC boards)
+// DPLL0 120MHz locked to XOSCn
+// DPLL1 96MHz locked to XOSCn
 // DFLL48M no longer used because it has high jitter
-// GCLK3: DPLL0 divided by 2, 60MHz for peripherals that need less than 120MHz
-// GCLK4: DFLL48M for CAN and step timer
-// GCLK5: For use by the application, e.g. SDHC on Duet 3 Mini, TMC clock on EXP1HCL/M23CL, LDC1612 clock on TOOL1RR and SZP
+// GCLK0 120MHz from DPLL0, for CPU and fast peripherals
+// GCLK1 XOSCn divided by (32 * XOSCn_frequency_MHz) to give 31250Hz for SERCOM slow clock
+// GCLK2 XOSCn direct, used by Ethernet PHY on Duet 3 Mini
+// GCLK3: DPLL0 divided by 2, 60MHz for peripherals that need slower than 120MHz
+// GCLK4: DPLL1 divided by 2, 48MHz for CAN and step timer
+// GCLK5: For use by the application, e.g. TMC clock on EXP1HCL/M23CL, LDC1612 clock on TOOL1RR and SZP
 // GCLK6: DPLL0 divided by 120 to give 1MHz, for EIC deglitching
-// GCLK7: XOSC0 divided by (1000 * XOSC0_frequency_MHz) to give 1kHz reference fore DFLL48M (may give less jitter than using 31.25kHz reference)
+// GCLK7: DPLL1 direct to give 96MHz for SDHC interface on Duet 3 Mini
 static void InitClocks() noexcept
 {
 #if 1
@@ -156,7 +157,7 @@ static void InitClocks() noexcept
 
 	if (xoscFrequency == 0)
 	{
-		// Start up the crystal oscillator with high gain to guaranteed operation, so that we can measure its frequency
+		// Start up the crystal oscillator with high gain to guarantee operation, so that we can measure its frequency
 		// We have one EXP3HC board with a 12MHz crystal for which OSCCTRL_XOSCCTRL_STARTUP(5) does not give enough time for the oscillator to stabilise
 		hri_oscctrl_write_XOSCCTRL_reg(OSCCTRL, xoscNumber,
 				  OSCCTRL_XOSCCTRL_CFDPRESC(3)
@@ -289,7 +290,7 @@ static void InitClocks() noexcept
 										| OSCCTRL_DPLLCTRLB_DCOFILTER(0)
 										| (1u << OSCCTRL_DPLLCTRLB_LBYPASS_Pos)
 										| OSCCTRL_DPLLCTRLB_LTIME(0)
-										| OSCCTRL_DPLLCTRLB_REFCLK(2u + xoscNumber)		// source is XOSC0 or XOSC1
+										| OSCCTRL_DPLLCTRLB_REFCLK(OSCCTRL_DPLLCTRLB_REFCLK_XOSC0_Val + xoscNumber)		// source is XOSC0 or XOSC1
 										| (1u << OSCCTRL_DPLLCTRLB_WUF_Pos)
 										| OSCCTRL_DPLLCTRLB_FILTER(0)
 									   );
@@ -317,7 +318,7 @@ static void InitClocks() noexcept
 				| OSCCTRL_DPLLCTRLB_DCOFILTER(0)
 				| (1u << OSCCTRL_DPLLCTRLB_LBYPASS_Pos)
 				| OSCCTRL_DPLLCTRLB_LTIME(0)
-				| OSCCTRL_DPLLCTRLB_REFCLK(2u + xoscNumber)		// source is XOSC0 or XOSC1
+				| OSCCTRL_DPLLCTRLB_REFCLK(OSCCTRL_DPLLCTRLB_REFCLK_XOSC0_Val + xoscNumber)		// source is XOSC0 or XOSC1
 				| (1u << OSCCTRL_DPLLCTRLB_WUF_Pos)
 				| OSCCTRL_DPLLCTRLB_FILTER(0));
 		hri_oscctrl_write_DPLLCTRLA_reg(OSCCTRL, 1,
@@ -338,7 +339,7 @@ static void InitClocks() noexcept
 			| (0 << GCLK_GENCTRL_OOV_Pos) | (0 << GCLK_GENCTRL_IDC_Pos)
 			| GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC_DPLL0);
 
-	// GCLK1: XOSC0 divided by 32 * XOSC0 frequency_in_MHz to give 31250Hz
+	// GCLK1: XOSCn divided by 32 * XOSCn frequency_in_MHz to give 31250Hz
 	hri_gclk_write_GENCTRL_reg(GCLK, GclkNum31KHz,
 			  GCLK_GENCTRL_DIV(32 * xoscFrequency) | (0 << GCLK_GENCTRL_RUNSTDBY_Pos)
 			| (0 << GCLK_GENCTRL_DIVSEL_Pos) | (0 << GCLK_GENCTRL_OE_Pos)
