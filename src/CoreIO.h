@@ -295,6 +295,11 @@ public:
 	{
 	}
 
+	void Cancel() noexcept
+	{
+		IrqRestore(flags);
+	}
+
 	~AtomicCriticalSectionLocker()
 	{
 		IrqRestore(flags);
@@ -308,11 +313,11 @@ private:
 
 // Functions to change the base priority, to shut out interrupts up to a priority level
 
-// Get the base priority and shut out interrupts lower than or equal to a specified priority
+// Get the base priority and shut out interrupts with priority higher than than or equal to a specified priority (i.e. shut out interrupts with lower urgency)
 inline uint32_t ChangeBasePriority(uint32_t prio) noexcept
 {
 	const uint32_t oldPrio = __get_BASEPRI();
-	__set_BASEPRI_MAX(prio << (8 - __NVIC_PRIO_BITS));
+	__set_BASEPRI_MAX(prio << (8u - __NVIC_PRIO_BITS));
 	return oldPrio;
 }
 
@@ -320,12 +325,6 @@ inline uint32_t ChangeBasePriority(uint32_t prio) noexcept
 inline void RestoreBasePriority(uint32_t prio) noexcept
 {
 	__set_BASEPRI(prio);
-}
-
-// Set the base priority when we are not interested in the existing value i.e. definitely in non-interrupt code
-inline void SetBasePriority(uint32_t prio) noexcept
-{
-	__set_BASEPRI(prio << (8 - __NVIC_PRIO_BITS));
 }
 
 // Class to change the base priority of the CPU temporarily and restore the original base priority when it goes out of scope.
@@ -339,6 +338,11 @@ public:
 	}
 
 	~BasePriorityBooster()
+	{
+		RestoreBasePriority(oldPriority);
+	}
+
+	void Cancel() noexcept
 	{
 		RestoreBasePriority(oldPriority);
 	}
