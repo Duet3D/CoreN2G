@@ -262,7 +262,7 @@ void SetPinMode(Pin pin, enum PinMode mode, bool debounce) noexcept
 			gpio_set_dir(pin, false);
 #else
 			ClearPinFunction(pin);
-			// The direction must be set before the pullup, otherwise setting the pullup doesn't work
+			// The direction must be set before the pulldown, otherwise setting the pulldown doesn't work
 			PORT->Group[GpioPortNumber(pin)].DIRCLR.reg = mask;
 			PORT->Group[GpioPortNumber(pin)].OUTCLR.reg = mask;
 			PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].reg = PORT_PINCFG_PULLEN | PORT_PINCFG_INEN;
