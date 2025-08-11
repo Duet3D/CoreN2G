@@ -10,6 +10,7 @@
 
 #include <CoreIO.h>
 #include "DmacManager.h"
+#include <General/Bitmap.h>		// for LowestSetBit
 
 #if SAME70
 # include <pmc/pmc.h>
@@ -42,21 +43,19 @@ namespace DmacManager
 // DMAC interrupt service routine
 extern "C" void XDMAC_Handler() noexcept
 {
-	uint32_t pendingChannels = XDMAC->XDMAC_GIS;
-	for (size_t i = 0; i < NumDmaChannelsSupported; ++i)
+	constexpr uint32_t pendingMask = (1ul << NumDmaChannelsSupported) - 1;
+	uint32_t pendingChannels;
+	while ((pendingChannels = XDMAC->XDMAC_GIS & pendingMask) != 0)
 	{
-		if ((pendingChannels & 1u) != 0)
+		const size_t i = LowestSetBit(pendingChannels);
+		if (DmacManager::callbackFunctions[i] != nullptr)
 		{
-			if (DmacManager::callbackFunctions[i] != nullptr)
-			{
-				DmacManager::callbackFunctions[i](DmacManager::callbackParameters[i], DmaCallbackReason::complete);	// we rely on the callback to clear the interrupt
-			}
-			else
-			{
-				XDMAC->XDMAC_CHID[i].XDMAC_CID = 0xFFFFFFFF;							// no callback, so just clear the interrupt
-			}
+			DmacManager::callbackFunctions[i](DmacManager::callbackParameters[i], DmaCallbackReason::complete);		// we rely on the callback to clear the interrupt
 		}
-		pendingChannels >>= 1;
+		else
+		{
+			XDMAC->XDMAC_CHID[i].XDMAC_CID = 0xFFFFFFFF;							// no callback, so just clear the interrupt
+		}
 	}
 }
 
