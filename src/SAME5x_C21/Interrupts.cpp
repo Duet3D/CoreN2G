@@ -191,6 +191,8 @@ void DetachPinInterrupt(Pin pin) noexcept
 	}
 }
 
+// Enable an interrupt that has already been attached.
+// We also clear the interrupt flag, otherwise a previous level may be remembered even after the level has returned to the non-interrupting value.
 void EnablePinInterrupt(Pin pin) noexcept
 {
 	const PinDescriptionBase * const pinDesc = AppGetPinDescription(pin);
@@ -199,11 +201,13 @@ void EnablePinInterrupt(Pin pin) noexcept
 		const ExintNumber exint = pinDesc->exintNumber;
 		if (exint < 16)
 		{
+			EIC->INTFLAG.reg = 1ul << exint;
 			EIC->INTENSET.reg = 1ul << exint;
 		}
 	}
 }
 
+// Disable an interrupt that has already been attached. Also clears any pending interrupt.
 void DisablePinInterrupt(Pin pin) noexcept
 {
 	const PinDescriptionBase * const pinDesc = AppGetPinDescription(pin);
