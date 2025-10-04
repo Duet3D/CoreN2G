@@ -674,13 +674,13 @@ void CanDevice::CopyReceivedMessage(CanMessageBuffer *null buffer, const volatil
 		case 7:
 		case 8:
 			buffer->msg.raw32[1] = data[1];
-			// no break
+			[[fallthrough]];
 		case 1:
 		case 2:
 		case 3:
 		case 4:
 			buffer->msg.raw32[0] = data[0];
-			// no break
+			[[fallthrough]];
 		case 0:
 			buffer->dataLength = dlc;
 			break;
@@ -690,26 +690,26 @@ void CanDevice::CopyReceivedMessage(CanMessageBuffer *null buffer, const volatil
 			buffer->msg.raw32[13] = data[13];
 			buffer->msg.raw32[14] = data[14];
 			buffer->msg.raw32[15] = data[15];
-			// no break
+			[[fallthrough]];
 		case 14:		// 48 bytes
 			buffer->msg.raw32[8] = data[8];
 			buffer->msg.raw32[9] = data[9];
 			buffer->msg.raw32[10] = data[10];
 			buffer->msg.raw32[11] = data[11];
-			// no break
+			[[fallthrough]];
 		case 13:		// 32 bytes
 			buffer->msg.raw32[6] = data[6];
 			buffer->msg.raw32[7] = data[7];
-			// no break
+			[[fallthrough]];
 		case 12:		// 24 bytes
 			buffer->msg.raw32[5] = data[5];
-			// no break
+			[[fallthrough]];
 		case 11:		// 20 bytes
 			buffer->msg.raw32[4] = data[4];
-			// no break
+			[[fallthrough]];
 		case 10:		// 16 bytes
 			buffer->msg.raw32[3] = data[3];
-			// no break
+			[[fallthrough]];
 		case 9:			// 12 bytes
 			buffer->msg.raw32[0] = data[0];
 			buffer->msg.raw32[1] = data[1];
