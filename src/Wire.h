@@ -53,7 +53,7 @@ public:
 	size_t Transfer(uint16_t address, uint8_t *_ecv_array buffer, size_t numToWrite, size_t numToRead, WaitForStatusFunc statusWaitFunc = DefaultWaitForStatusFunc) noexcept;
 	ErrorCounts GetErrorCounts(bool clear) noexcept;
 
-	static uint32_t DefaultWaitForStatusFunc(Twi *twi, uint32_t bitsToWaitFor) noexcept;
+	static uint32_t DefaultWaitForStatusFunc(Twi *twiInstance, uint32_t bitsToWaitFor) noexcept;
 
 private:
 	void ReInit() noexcept;

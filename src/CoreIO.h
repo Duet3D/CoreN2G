@@ -62,7 +62,7 @@ inline Pio *GpioPort(Pin p) noexcept { return (Pio*)((uint32_t)PIOA + GpioPortNu
  * @param n The bit number of the pin on Port A
  * @return The global pin number
  */
-inline constexpr Pin PortAPin(unsigned int n) noexcept { return n; }
+inline constexpr Pin PortAPin(unsigned int n) noexcept { return (Pin)n; }
 
 /**
  * @brief Return the global pin number for a Port B pin
@@ -70,7 +70,7 @@ inline constexpr Pin PortAPin(unsigned int n) noexcept { return n; }
  * @param n The bit number of the pin on Port B
  * @return The global pin number
  */
-inline constexpr Pin PortBPin(unsigned int n) noexcept { return 32+n; }
+inline constexpr Pin PortBPin(unsigned int n) noexcept { return (Pin)(32+n); }
 
 #if SAME5x || SAM4E || SAM4S || SAME70
 
@@ -80,7 +80,7 @@ inline constexpr Pin PortBPin(unsigned int n) noexcept { return 32+n; }
  * @param n The bit number of the pin on Port C
  * @return The global pin number
  */
-inline constexpr Pin PortCPin(unsigned int n) noexcept { return 64+n; }
+inline constexpr Pin PortCPin(unsigned int n) noexcept { return (Pin)(64+n); }
 
 #endif
 
@@ -92,7 +92,7 @@ inline constexpr Pin PortCPin(unsigned int n) noexcept { return 64+n; }
  * @param n The bit number of the pin on Port D
  * @return The global pin number
  */
-inline constexpr Pin PortDPin(unsigned int n) noexcept { return 96+n; }
+inline constexpr Pin PortDPin(unsigned int n) noexcept { return (Pin)(96+n); }
 
 #endif
 
@@ -104,7 +104,7 @@ inline constexpr Pin PortDPin(unsigned int n) noexcept { return 96+n; }
  * @param n The bit number of the pin on Port E
  * @return The global pin number
  */
-inline constexpr Pin PortEPin(unsigned int n) noexcept { return 128+n; }
+inline constexpr Pin PortEPin(unsigned int n) noexcept { return (Pin)(128+n); }
 
 #endif
 

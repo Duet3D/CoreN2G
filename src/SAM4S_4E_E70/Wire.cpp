@@ -40,7 +40,7 @@ void TwoWire::ErrorCounts::Clear() noexcept
 // This is the default wait-for-status function.
 // It wait until either 2 clock ticks have passed (so we have waited for at least 1ms) or one or more of the status bits we are interested in has been set.
 // Reading some status bits clears them, so we return the status.
-/*static*/ uint32_t TwoWire::DefaultWaitForStatusFunc(Twi *twi, uint32_t bitsToWaitFor) noexcept
+/*static*/ uint32_t TwoWire::DefaultWaitForStatusFunc(Twi *twiInstance, uint32_t bitsToWaitFor) noexcept
 {
 	const uint32_t startMillis = millis();
 	bool timedOut;
@@ -48,7 +48,7 @@ void TwoWire::ErrorCounts::Clear() noexcept
 	do
 	{
 		timedOut = (millis() - startMillis > 2);
-		sr = twi->TWI_SR;							// read this after checking for timeout, in case we get descheduled between the two statements
+		sr = twiInstance->TWI_SR;							// read this after checking for timeout, in case we get descheduled between the two statements
 	} while (!timedOut && (sr & bitsToWaitFor) == 0);
 	return sr;
 }
