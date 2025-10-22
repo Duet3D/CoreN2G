@@ -185,11 +185,11 @@ void SetPinMode(Pin pin, enum PinMode mode, bool debounce) noexcept
 {
 #if SAM4E || SAM4S || SAME70
 	// Define the debounce divider. Pulses longer than one period of the divided slow clock are guaranteed to get through. Pulses shorter than half that period are guaranteed not to get through.
-	// Only even divisors are available. The slow clock is nominally 32768Hz.
+	// The slow clock is nominally 32768Hz. Only even divisors are available. The maximum divisor is 2^15.
 	// This means that a divisor of 2 gives us a period of about 60us and a divisor of 4 gives us about 120us.
 	// The debounce filter also introduces a latency of up to 1.5 times this period and a latency jitter of (I think) half this period.
 	// So with a divisor of 4 the latency is between 60us and 180us.
-	constexpr uint32_t DebounceDivisor = 4;
+	constexpr uint32_t DebounceDivisor = 66;								// a divisor of 34 gives us a nominal debounce time of 2.104ms, so a 1ms pulse is guaranteed not to get through.
 	constexpr uint32_t DebounceDivisorReg = (DebounceDivisor/2) - 1;
 
 	constexpr uint32_t PioIds[] =	{	ID_PIOA, ID_PIOB, ID_PIOC,
