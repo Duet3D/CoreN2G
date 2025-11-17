@@ -23,13 +23,9 @@ constexpr uint32_t DiagBaudRate = 57600;		// the baud rate we default to
 
 // Enable the clocks for the SERCOM.
 // Set the "useSdhcClock" parameter true to use GCLK5 as the main SERCOM clock instead of the 60MHz clock.
-// This will only be useful if GCLK5 has been set up at a suitable frequency, for example on Duet 3 Mini main boards it is set to 95MHz to use as the SDHC clock.
+// This will only be useful if GCLK5 has been set up at a suitable frequency, for example on Duet 3 Mini main boards it is set to 96MHz to use as the SDHC clock.
 // Setting this will of course mess up the baud rate calculation, so it's most likely to be useful in SPI slave mode.
-void Serial::EnableSercomClock(uint8_t sercomNumber
-#if SAME5x
-								, bool useSdhcClock
-#endif
-							   ) noexcept
+void Serial::EnableSercomClock(uint8_t sercomNumber) noexcept
 {
 	struct SercomClockParams
 	{
