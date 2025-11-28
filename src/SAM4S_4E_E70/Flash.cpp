@@ -313,6 +313,16 @@ bool Flash::Init() noexcept
 }
 
 /**
+ * \brief De=initialize the flash service.
+ *
+ * \return true if successful
+ */
+void Flash::Deinit() noexcept
+{
+	// Nothing needed here
+}
+
+/**
  * \brief Erase the flash sector.
  *
  * \note Erase sector command needs a page number parameter which belongs to the sector to be erased.

@@ -33,6 +33,11 @@ bool Flash::Init() noexcept
 	return (lastFlashError = flash_init(&flash, NVMCTRL)) == 0;
 }
 
+void Flash::Deinit() noexcept
+{
+	flash_deinit(&flash);
+}
+
 bool Flash::Unlock(uint32_t start, uint32_t length) noexcept
 {
 	// The flash_unlock command only works if the number of pages passed is exactly 1 lock region. So we need to loop calling it.

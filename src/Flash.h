@@ -13,6 +13,7 @@
 namespace Flash
 {
 	bool Init() noexcept;
+	void Deinit() noexcept;
 	bool Unlock(uint32_t start, uint32_t length) noexcept;
 	bool Lock(uint32_t start, uint32_t length) noexcept;
 	bool Write(uint32_t start, uint32_t length, const uint32_t *data) noexcept;
