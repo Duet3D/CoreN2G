@@ -979,7 +979,7 @@ void CanDevice::GetLocalCanTiming(CanTiming &timing) const noexcept
 
 void CanDevice::SetLocalCanTiming(const CanTiming &timing) noexcept
 {
-	UpdateLocalCanTiming(timing);				// set up nbtp and dbtp variables
+	UpdateLocalCanTiming(timing);					// set up nbtp and dbtp variables
 	Disable();
 	hw->REG(NBTP) = nbtp;
 	hw->REG(DBTP) = dbtp;
@@ -992,13 +992,14 @@ void CanDevice::UpdateLocalCanTiming(const CanTiming &timing) noexcept
 	uint32_t period = timing.period;
 	uint32_t tseg1 = timing.tseg1;
 	uint32_t jumpWidth = timing.jumpWidth;
-	uint32_t prescaler = 1;						// 48MHz main clock
+	uint32_t prescaler = 1;							// 48MHz main clock
 	uint32_t tseg2;
 
+	// Use the highest prescaled clock frequency we can in order to get the most accurate timing
 	for (;;)
 	{
 		tseg2 = period - tseg1 - 1;
-		if (tseg1 <= 32 && tseg2 <= 16 && jumpWidth <= 16)
+		if (tseg1 <= 256 && tseg2 <= 128)
 		{
 			break;
 		}
@@ -1010,8 +1011,10 @@ void CanDevice::UpdateLocalCanTiming(const CanTiming &timing) noexcept
 		jumpWidth >>= 1;
 	}
 
+	if (jumpWidth > tseg2) { jumpWidth = tseg2; }	// jump width cannot exceed tseg2
+
 #if !SAME70
-	bitPeriod = period * prescaler;				// the actual CAN normal bit period in 48MHz clocks (may be different from timing.period)
+	bitPeriod = period * prescaler;					// the actual CAN normal bit period in 48MHz clocks (may be different from timing.period)
 #endif
 
 	nbtp = ((tseg1 - 1) << CAN_(NBTP_NTSEG1_Pos))
