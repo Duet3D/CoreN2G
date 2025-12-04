@@ -523,7 +523,7 @@ void CanDevice::SetExtendedFilterElement(unsigned int index, RxBufferNumber whic
 void CanDevice::GetLocalCanTiming(CanTiming &timing) const noexcept
 {
 #if 1
-	timing.SetDefaults_1Mb();
+	timing.SetDefaults(CanTiming::DefaultCanBitRate);
 #else
 	const uint32_t localNbtp = hw->REG(NBTP);
 	const uint32_t tseg1 = (localNbtp & CAN_(NBTP_NTSEG1_Msk)) >> CAN_(NBTP_NTSEG1_Pos);
