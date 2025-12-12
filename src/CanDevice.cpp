@@ -1022,10 +1022,15 @@ void CanDevice::UpdateLocalCanTiming(const CanTiming &timing) noexcept
 		| ((jumpWidth - 1) << CAN_(NBTP_NSJW_Pos))
 		| ((prescaler - 1) << CAN_(NBTP_NBRP_Pos));
 
-	// The fast data rate defaults to the same timing
-	dbtp = ((tseg1 - 1) << CAN_(DBTP_DTSEG1_Pos))
-		| ((tseg2 - 1) << CAN_(DBTP_DTSEG2_Pos))
-		| ((jumpWidth - 1) << CAN_(DBTP_DSJW_Pos))
+	// We don't currently use BRS. For now we default the fast data rate to 2Mbps (or lower if the prescaler is greater than 1) with fixed timing,
+	// just to have some sensible values to write to the register.
+	constexpr uint32_t fast_period = CanTiming::ClockFrequency/2'000'000;	// 2Mbps divided by the prescaler
+	constexpr uint32_t fast_tseg1 = fast_period/2 - 1;						// set sample point to 50%
+	constexpr uint32_t fast_tseg2 = fast_period - fast_tseg1 - 1;			// make up the correct period
+	constexpr uint32_t fast_jumpWidth = fast_tseg2;							// set jump width to maximum
+	dbtp = ((fast_tseg1 - 1) << CAN_(DBTP_DTSEG1_Pos))
+		| ((fast_tseg2 - 1) << CAN_(DBTP_DTSEG2_Pos))
+		| ((fast_jumpWidth - 1) << CAN_(DBTP_DSJW_Pos))
 		| ((prescaler - 1) << CAN_(DBTP_DBRP_Pos));
 }
 
