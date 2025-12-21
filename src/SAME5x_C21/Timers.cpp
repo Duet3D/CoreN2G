@@ -11,14 +11,14 @@
 // Some TCs and TCCs share a clock selection, so we always use the same GCLK
 // 'counterBits' is 16 or 24 but we might also use 8 in future
 // Return the prescaler register value
-uint32_t Timers::ChoosePrescaler(uint16_t freq, unsigned int counterBits, uint32_t& top) noexcept
+uint32_t Timers::ChoosePrescaler(uint32_t freq, unsigned int counterBits, uint32_t& top) noexcept
 {
 	static const unsigned int PrescalerShifts[] = { 0, 1, 2, 3, 4, 6, 8, 10 };		// available prescalers are 1 2 4 8 16 64 256 1024
 	for (uint32_t i = 0; i < ARRAY_SIZE(PrescalerShifts); ++i)
 	{
-		if ((TcGclkFreq >> (PrescalerShifts[i] + counterBits)) <= (uint32_t)freq)
+		if ((TcGclkFreq >> (PrescalerShifts[i] + counterBits)) <= freq)
 		{
-			top = ((TcGclkFreq >> PrescalerShifts[i])/(uint32_t)freq) - 1;
+			top = ((TcGclkFreq >> PrescalerShifts[i])/freq) - 1;
 			return i;
 		}
 	}

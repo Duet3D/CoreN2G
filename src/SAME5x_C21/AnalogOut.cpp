@@ -39,7 +39,7 @@ namespace AnalogOut
 			volatile Tc * const tcdev = Timers::TcDevices[device];
 			if (freq != tcFreq[device])
 			{
-				const uint32_t prescaler = Timers::ChoosePrescaler(freq, 16, tcTop[device]);
+				const uint32_t prescaler = Timers::ChoosePrescaler((uint32_t)freq, 16, tcTop[device]);
 				if (output == 0)
 				{
 					// We need to use CC0 for the compare output, so we can't use it to define TOP. We will get a lower frequency than requested.
@@ -115,7 +115,7 @@ namespace AnalogOut
 			const unsigned int outputToUse = output % Timers::TccNumChannels[device];		// some TCCs have more outputs than compare channels, so we can't always use the compare channel that corresponds to the output
 			if (freq != tccFreq[device])
 			{
-				const uint32_t prescaler = Timers::ChoosePrescaler(freq, Timers::TccCounterBits[device], tccTop[device]);
+				const uint32_t prescaler = Timers::ChoosePrescaler((uint32_t)freq, Timers::TccCounterBits[device], tccTop[device]);
 				const uint32_t cc = Timers::ConvertRange(val, tccTop[device]);
 
 				if (tccFreq[device] == 0)

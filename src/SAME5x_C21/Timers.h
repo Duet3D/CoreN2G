@@ -16,7 +16,10 @@ namespace Timers
 	{
 		TC0, TC1, TC2, TC3, TC4,
 #if SAME5x
-		TC5, TC6, TC7					// CAUTION! lower pin count variants of SAME5x devices may not have all of these
+		TC5,
+# if defined(SAME51N19A) || defined(SAME51P20A)
+		TC6, TC7					// CAUTION! lower pin count variants of SAME5x devices don't have these
+# endif
 #endif
 	};
 
@@ -38,7 +41,7 @@ namespace Timers
 # error Unsupported processor
 #endif
 
-	constexpr unsigned int NumTcDevices = ARRAY_SIZE(TcDevices);			// CAUTION! lower pin count versions of SAME5x don't have as many as this
+	constexpr unsigned int NumTcDevices = ARRAY_SIZE(TcDevices);
 	constexpr unsigned int NumTccDevices = ARRAY_SIZE(TccDevices);
 
 	constexpr unsigned int TccCounterBits[NumTccDevices] =
@@ -70,7 +73,7 @@ namespace Timers
 	// Some TCs and TCCs share a clock selection, so we always use the same GCLK
 	// 'counterBits' is 16 or 24 but we might also use 8 in future
 	// Return the prescaler register value and set 'top' to the required TC or TCC TOP value
-	uint32_t ChoosePrescaler(uint16_t freq, unsigned int counterBits, uint32_t& top) noexcept;
+	uint32_t ChoosePrescaler(uint32_t freq, unsigned int counterBits, uint32_t& top) noexcept;
 }
 
 #endif /* SRC_SAME5X_C21_TIMERS_H_ */
