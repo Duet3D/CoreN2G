@@ -6,74 +6,29 @@
  */
 
 #include "AnalogOut.h"
+#include "Timers.h"
 
 #if SAME5x
-
 # include <hri_tc_e54.h>
 # include <hri_tcc_e54.h>
 # include <hri_mclk_e54.h>
-
-constexpr unsigned int TcGclkNum = GclkNum60MHz;
-constexpr uint32_t TcGclkFreq = 60000000;
-
 #elif SAMC21
-
 # include <hri_tc_c21.h>
 # include <hri_tcc_c21.h>
 # include <hri_mclk_c21.h>
-
-constexpr unsigned int TcGclkNum = GclkNum48MHz;
-constexpr uint32_t TcGclkFreq = 48000000;
-
 #else
 # error Unsupported processor
 #endif
 
 namespace AnalogOut
 {
-
-	// Convert a float in 0..1 to unsigned integer in 0..N
-	static inline uint32_t ConvertRange(float f, uint32_t top) noexcept
-	pre(0.0 <= ulValue; ulValue <= 1.0)
-	post(result <= top)
-	{
-		return lrintf(f * (float)(top + 1));
-	}
-
-	// Choose the most appropriate TC or TCC prescaler for the PWM frequency we want.
-	// Some TCs and TCCs share a clock selection, so we always use the same GCLK
-	// 'counterBits' is 16 or 24 but we might also use 8 in future
-	// Return the prescaler register value
-	static uint32_t ChoosePrescaler(uint16_t freq, unsigned int counterBits, uint32_t& top) noexcept
-	{
-		static const unsigned int PrescalerShifts[] = { 0, 1, 2, 3, 4, 6, 8, 10 };		// available prescalers are 1 2 4 8 16 64 256 1024
-		for (uint32_t i = 0; i < ARRAY_SIZE(PrescalerShifts); ++i)
-		{
-			if ((TcGclkFreq >> (PrescalerShifts[i] + counterBits)) <= (uint32_t)freq)
-			{
-				top = ((TcGclkFreq >> PrescalerShifts[i])/(uint32_t)freq) - 1;
-				return i;
-			}
-		}
-		top = (1ul << counterBits) - 1;
-		return ARRAY_SIZE(PrescalerShifts) - 1;
-	}
-
 	// Write PWM to the specified TC device. 'output' may be 0 or 1.
 	static bool AnalogWriteTc(Pin pin, unsigned int device, unsigned int output, GpioPinFunction peri, float val, PwmFrequency freq) noexcept
 	{
-		static volatile Tc* const TcDevices[] =
-		{
-			TC0, TC1, TC2, TC3, TC4,
-#if SAME5x
-			TC5, TC6, TC7
-#endif
-		};
+		static uint16_t tcFreq[Timers::NumTcDevices] = { 0 };
+		static uint32_t tcTop[Timers::NumTcDevices] = { 0 };
 
-		static uint16_t tcFreq[ARRAY_SIZE(TcDevices)] = { 0 };
-		static uint32_t tcTop[ARRAY_SIZE(TcDevices)] = { 0 };
-
-		if (device < ARRAY_SIZE(TcDevices))
+		if (device < Timers::NumTcDevices)
 		{
 			if (freq == 0)
 			{
@@ -81,10 +36,10 @@ namespace AnalogOut
 				return false;
 			}
 
-			volatile Tc * const tcdev = TcDevices[device];
+			volatile Tc * const tcdev = Timers::TcDevices[device];
 			if (freq != tcFreq[device])
 			{
-				const uint32_t prescaler = ChoosePrescaler(freq, 16, tcTop[device]);
+				const uint32_t prescaler = Timers::ChoosePrescaler(freq, 16, tcTop[device]);
 				if (output == 0)
 				{
 					// We need to use CC0 for the compare output, so we can't use it to define TOP. We will get a lower frequency than requested.
@@ -92,11 +47,11 @@ namespace AnalogOut
 					tcTop[device] = 0xFFFF;
 				}
 
-				const uint32_t cc = ConvertRange(val, tcTop[device]);
+				const uint32_t cc = Timers::ConvertRange(val, tcTop[device]);
 
 				if (tcFreq[device] == 0)
 				{
-					EnableTcClock(device, TcGclkNum);
+					EnableTcClock(device, Timers::TcGclkNum);
 
 					// Initialise the TC
 					hri_tc_clear_CTRLA_ENABLE_bit(tcdev);
@@ -131,7 +86,7 @@ namespace AnalogOut
 			{
 				// Just update the compare register
 				// Don't call hri_tccount16_write_CCBUF_CCBUF_bf here! It loops for up to one TC period waiting for sync.
-				const uint16_t cc = ConvertRange(val, tcTop[device]);
+				const uint16_t cc = Timers::ConvertRange(val, tcTop[device]);
 				tcdev->COUNT16.CCBUF[output].bit.CCBUF = cc;
 			}
 
@@ -141,37 +96,14 @@ namespace AnalogOut
 		return false;
 	}
 
-	static volatile Tcc* const TccDevices[] =
-	{
-		TCC0, TCC1, TCC2,
-#if SAME5x
-		TCC3, TCC4
-#endif
-	};
-
 	// Write PWM to the specified TCC device. 'output' may be 0..5.]
 	// If 'bipolar' is true then 'output must be 0, and we invert output 0 but no other outputs.
 	static bool AnalogWriteTcc(Pin pin, unsigned int device, unsigned int output, GpioPinFunction peri, float val, PwmFrequency freq, bool bipolar) noexcept
 	{
-		static constexpr unsigned int TccCounterBits[ARRAY_SIZE(TccDevices)] =
-		{
-			24, 24, 16,
-#if SAME5x
-			16, 16
-#endif
-		};
-		static constexpr uint8_t NumChannels[ARRAY_SIZE(TccDevices)] =
-		{
-#if SAME5x
-			6, 4, 3, 2, 2
-#elif SAMC21
-			4, 2, 2
-#endif
-		};
-		static uint16_t tccFreq[ARRAY_SIZE(TccDevices)] = { 0 };
-		static uint32_t tccTop[ARRAY_SIZE(TccDevices)] = { 0 };
+		static uint16_t tccFreq[Timers::NumTccDevices] = { 0 };
+		static uint32_t tccTop[Timers::NumTccDevices] = { 0 };
 
-		if (device < ARRAY_SIZE(TccDevices))
+		if (device < Timers::NumTccDevices)
 		{
 			if (freq == 0)
 			{
@@ -179,16 +111,16 @@ namespace AnalogOut
 				return false;
 			}
 
-			volatile Tcc * const tccdev = TccDevices[device];
-			const unsigned int outputToUse = output % NumChannels[device];		// some TCCs have more outputs than compare channels, so we can't always use the compare channel that corresponds to the output
+			volatile Tcc * const tccdev = Timers::TccDevices[device];
+			const unsigned int outputToUse = output % Timers::TccNumChannels[device];		// some TCCs have more outputs than compare channels, so we can't always use the compare channel that corresponds to the output
 			if (freq != tccFreq[device])
 			{
-				const uint32_t prescaler = ChoosePrescaler(freq, TccCounterBits[device], tccTop[device]);
-				const uint32_t cc = ConvertRange(val, tccTop[device]);
+				const uint32_t prescaler = Timers::ChoosePrescaler(freq, Timers::TccCounterBits[device], tccTop[device]);
+				const uint32_t cc = Timers::ConvertRange(val, tccTop[device]);
 
 				if (tccFreq[device] == 0)
 				{
-					EnableTccClock(device, TcGclkNum);
+					EnableTccClock(device, Timers::TcGclkNum);
 
 					// Initialise the TCC
 					hri_tcc_clear_CTRLA_ENABLE_bit(tccdev);
@@ -222,7 +154,7 @@ namespace AnalogOut
 			else
 			{
 				// Just update the compare register
-				const uint32_t cc = ConvertRange(val, tccTop[device]);
+				const uint32_t cc = Timers::ConvertRange(val, tccTop[device]);
 				tccdev->CCBUF[outputToUse].bit.CCBUF = cc;
 			}
 
