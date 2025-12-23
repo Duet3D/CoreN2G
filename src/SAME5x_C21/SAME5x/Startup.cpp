@@ -117,7 +117,7 @@ extern "C" [[noreturn]] void Reset_Handler() noexcept
 // DFLL48M no longer used because it has high jitter
 // GCLK0 120MHz from DPLL0, for CPU and fast peripherals
 // GCLK1 XOSCn divided by (32 * XOSCn_frequency_MHz) to give 31250Hz for SERCOM slow clock
-// GCLK2 XOSCn direct, used by Ethernet PHY on Duet 3 Mini
+// GCLK2 Reserved for XOSCn direct, used by Ethernet PHY on Duet 3 Mini. May also be used on some tool boards. Not set up here.
 // GCLK3: DPLL0 divided by 2, 60MHz for peripherals that need slower than 120MHz
 // GCLK4: DPLL1 divided by 2, 48MHz for CAN and step timer
 // GCLK5: For use by the application, e.g. TMC clock on EXP1HCL/M23CL, LDC1612 clock on TOOL1RR and SZP

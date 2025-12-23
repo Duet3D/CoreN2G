@@ -126,8 +126,7 @@ static const uint32_t SystemCoreClockFreq = 120000000;	///< The processor clock 
 
 static const unsigned int GclkNum120MHz = 0;			// clock used by the CPU and high speed peripherals
 static const unsigned int GclkNum31KHz = 1;				// frequency is 31250Hz
-static const unsigned int GclkNumEthernetPhy = 2;		// reserved for RepRapFirmware to use for the Ethernet PHY clock on the Duet 3 Mini Ethernet
-static const unsigned int GclkNum60MHz = 3;				// clock used for lower speed peripherals
+static const unsigned int GclkNum25MHz = 2;				// reserved for crystal oscillator direct, used for the Ethernet PHY clock on the Duet 3 Mini Ethernet and on some tool boards. CAUTION: not 25MHz on older EXP3HC boards!
 static const unsigned int GclkNum48MHz = 4;				// clock used for step timer and CAN timing
 static const unsigned int GclkClosedLoop = 5;			// clock used on the closed loop boards as the clock for the TMC2160A driver (can be same as GclkSdhc because no board uses both clocks)
 static const unsigned int GclkNumPB11 = 5;				// clock used by the LDC1612 on TOOL1RR
