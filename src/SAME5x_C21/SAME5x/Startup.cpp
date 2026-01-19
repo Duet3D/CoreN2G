@@ -361,7 +361,7 @@ static void InitClocks() noexcept
 			| (0 << GCLK_GENCTRL_OOV_Pos) | (0 << GCLK_GENCTRL_IDC_Pos)
 			| GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC_DPLL1_Val);
 
-	// GCLK7: DPLL1 direct, 96MHz for SERCOMs and SDHC
+	// GCLK8: DPLL1 direct, 96MHz for SERCOMs and SDHC
 	hri_gclk_write_GENCTRL_reg(GCLK, GclkNum96MHz,
 			  GCLK_GENCTRL_DIV(1) | (0 << GCLK_GENCTRL_RUNSTDBY_Pos)
 			| (0 << GCLK_GENCTRL_DIVSEL_Pos) | (0 << GCLK_GENCTRL_OE_Pos)

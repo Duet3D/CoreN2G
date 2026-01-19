@@ -129,10 +129,10 @@ static const unsigned int GclkNum31KHz = 1;				// frequency is 31250Hz
 static const unsigned int GclkNum25MHz = 2;				// reserved for crystal oscillator direct, used for the Ethernet PHY clock on the Duet 3 Mini Ethernet and on some tool boards. CAUTION: not 25MHz on older EXP3HC boards!
 static const unsigned int GclkNum60MHz = 3;				// clock used for lower speed peripherals
 static const unsigned int GclkNum48MHz = 4;				// clock used for step timer and CAN timing
-static const unsigned int GclkClosedLoop = 5;			// clock used on the closed loop boards as the clock for the TMC2160A driver (can be same as GclkSdhc because no board uses both clocks)
-static const unsigned int GclkNumPB11 = 5;				// clock used by the LDC1612 on TOOL1RR
+static const unsigned int GclkNumApp1 = 5;				// clock used for the TMC2160A driver on closed loop boards, or as the LDC1612 clock
 static const unsigned int GclkNum1MHz = 6;				// clock used for EIC deglitching
-static const unsigned int GclkNum96MHz = 7;				// 96MHz used for SERCOMs and possibly SDHC
+static const unsigned int GclkNumApp2 = 7;				// clock used by the LDC1612 on TOOL1RR, or the TMC driver clock
+static const unsigned int GclkNum96MHz = 8;				// 96MHz used for SERCOMs, and for SDHC on Duet 3 Mini
 
 // SDHC clock support (in configurations that support it)
 // We have two possible clock sources for SDHC:
