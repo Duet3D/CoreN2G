@@ -1069,7 +1069,7 @@ void CanDevice::Interrupt() noexcept
 		{
 			// Check which receive buffers have new messages
 			uint32_t newData;
-			while (((newData = hw->REG(NDAT1)) & rxBuffersWaiting) != 0)
+			while ((newData = hw->REG(NDAT1) & rxBuffersWaiting) != 0)
 			{
 				const unsigned int rxBufferNumber = LowestSetBit(newData);
 				rxBuffersWaiting &= ~((uint32_t)1 << rxBufferNumber);
