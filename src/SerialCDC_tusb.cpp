@@ -21,7 +21,8 @@ extern "C" {
 #include "tusb.h"
 }
 
-SerialCDC::SerialCDC() noexcept
+SerialCDC::SerialCDC(size_t interface_index) noexcept
+	: interfaceIndex(interface_index)
 {
 }
 
@@ -38,7 +39,7 @@ void SerialCDC::end() noexcept
 
 bool SerialCDC::IsConnected() const noexcept
 {
-	return tud_cdc_connected();
+	return tud_cdc_n_connected(interfaceIndex);
 }
 
 // Overridden virtual functions
@@ -54,9 +55,9 @@ int SerialCDC::read() noexcept
     	return -1;
     }
 
-    if (tud_cdc_available())
+    if (tud_cdc_n_available(interfaceIndex))
     {
-        return tud_cdc_read_char();
+        return tud_cdc_n_read_char(interfaceIndex);
     }
     return -1;
 }
@@ -68,12 +69,12 @@ int SerialCDC::available() noexcept
     	return 0;
     }
 
-    return tud_cdc_available();
+    return tud_cdc_n_available(interfaceIndex);
 }
 
 size_t SerialCDC::readBytes(char * _ecv_array buffer, size_t length) noexcept
 {
-	return tud_cdc_read (buffer, length);
+	return tud_cdc_n_read(interfaceIndex, buffer, length);
 }
 
 void SerialCDC::flush() noexcept
@@ -83,7 +84,7 @@ void SerialCDC::flush() noexcept
 		return;
 	}
 
-	tud_cdc_write_flush();
+	tud_cdc_n_write_flush(interfaceIndex);
 }
 
 size_t SerialCDC::canWrite() noexcept
@@ -93,7 +94,7 @@ size_t SerialCDC::canWrite() noexcept
 		return 0;
 	}
 
-	return tud_cdc_write_available();
+	return tud_cdc_n_write_available(interfaceIndex);
 }
 
 // Write single character, blocking
@@ -112,28 +113,28 @@ size_t SerialCDC::write(const uint8_t *buf, size_t length) noexcept
 
 	static uint64_t last_avail_time;
 	int written = 0;
-	if (tud_cdc_connected())
+	if (tud_cdc_n_connected(interfaceIndex))
 	{
 		for (size_t i = 0; i < length;)
 		{
 			unsigned int n = length - i;
-			unsigned int avail = tud_cdc_write_available();
+			unsigned int avail = tud_cdc_n_write_available(interfaceIndex);
 			if (n > avail)
 			{
 				n = avail;
 			}
 			if (n != 0)
 			{
-				const unsigned int n2 = tud_cdc_write(buf + i, n);
-				tud_cdc_write_flush();
+				const unsigned int n2 = tud_cdc_n_write(interfaceIndex, buf + i, n);
+				tud_cdc_n_write_flush(interfaceIndex);
 				i += n2;
 				written += n2;
 				last_avail_time = millis();
 			}
 			else
 			{
-				tud_cdc_write_flush();
-				if (!tud_cdc_connected() || (!tud_cdc_write_available() && millis() > last_avail_time + 1000 /* 1 second */))
+				tud_cdc_n_write_flush(interfaceIndex);
+				if (!tud_cdc_n_connected(interfaceIndex) || (!tud_cdc_n_write_available(interfaceIndex) && millis() > last_avail_time + 1000 /* 1 second */))
 				{
 					break;
 				}

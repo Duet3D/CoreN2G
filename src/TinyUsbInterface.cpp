@@ -48,7 +48,7 @@
 
 #endif
 
-#define DUAL_CDC		(0)		// dual CDC does not work yet!
+#define DUAL_CDC		(1)
 
 #define USBD_MAX_POWER_MA (250)
 

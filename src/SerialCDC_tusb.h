@@ -21,7 +21,7 @@
 class SerialCDC : public Stream
 {
 public:
-	SerialCDC() noexcept;
+	SerialCDC(size_t interface_index = 0) noexcept;
 
 	void Start(Pin p_vBusPin) noexcept;
 	void end(void) noexcept;
@@ -40,6 +40,7 @@ private:
 	volatile TaskHandle txWaitingTask;
     bool running = false;
 	Pin vBusPin;
+	size_t interfaceIndex;
 };
 
 #endif
