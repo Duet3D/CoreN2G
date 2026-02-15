@@ -22,7 +22,7 @@
 
 #include <cstdlib>
 #include <cstring>
-#include <algorithm>		// for std::swap
+#include <utility>		// for std::swap
 
 // Constructors ////////////////////////////////////////////////////////////////
 
@@ -75,7 +75,7 @@ void AsyncSerial::init(const uint32_t dwBaudRate, const uint32_t modeReg) noexce
 	bufferOverrunPending = false;
 
 	// Configure interrupts
-	_pUart->UART_IDR = 0xFFFFFFFF;
+	_pUart->UART_IDR = 0xFFFFFFFFu;
 	_pUart->UART_IER = UART_IER_RXRDY | UART_IER_OVRE | UART_IER_FRAME;
 
 	// Enable UART interrupt in NVIC
@@ -125,7 +125,7 @@ size_t AsyncSerial::canWrite() noexcept
 int AsyncSerial::read() noexcept
 {
 	uint8_t c;
-	return (rxBuffer.GetItem(c)) ? c : -1;
+	return (rxBuffer.GetItem(c)) ? (int)c : -1;
 }
 
 void AsyncSerial::flush( void ) noexcept
@@ -170,7 +170,7 @@ size_t AsyncSerial::write(uint8_t uc_data) noexcept
 }
 
 // Write block, blocking if transmitter is enabled
-size_t AsyncSerial::write(const uint8_t *buffer, size_t buflen) noexcept
+size_t AsyncSerial::write(const uint8_t *_ecv_array buffer, size_t buflen) noexcept
 {
 	size_t ret = 0;
 	for (;;)
@@ -308,11 +308,11 @@ void AsyncSerial::IrqHandler() noexcept
 	// Acknowledge errors
 	if ((status & (UART_SR_OVRE | UART_SR_FRAME)) != 0)
 	{
-		if (status & UART_SR_OVRE)
+		if ((status & UART_SR_OVRE) != 0)
 		{
 			++errors.uartOverrun;
 		}
-		if (status & UART_SR_FRAME)
+		if ((status & UART_SR_FRAME) != 0)
 		{
 			++errors.framing;
 		}

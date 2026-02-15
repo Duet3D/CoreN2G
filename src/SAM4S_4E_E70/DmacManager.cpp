@@ -17,7 +17,7 @@
 
 namespace DmacManager
 {
-	static DmaCallbackFunction callbackFunctions[NumDmaChannelsSupported] = { 0 };
+	static DmaCallbackFunction _ecv_null callbackFunctions[NumDmaChannelsSupported] = { 0 };
 	static CallbackParameter callbackParameters[NumDmaChannelsSupported];
 
 	void Init() noexcept
@@ -25,7 +25,7 @@ namespace DmacManager
 		pmc_enable_periph_clk(ID_XDMAC);
 		for (unsigned int i = 0; i < NumDmaChannelsSupported; ++i)
 		{
-			XDMAC->XDMAC_CHID[i].XDMAC_CID = 0xFFFFFFFF;	// disable all XDMAC interrupts from the channel
+			XDMAC->XDMAC_CHID[i].XDMAC_CID = 0xFFFFFFFFu;	// disable all XDMAC interrupts from the channel
 		}
 		NVIC_EnableIRQ(XDMAC_IRQn);
 	}
@@ -54,7 +54,7 @@ extern "C" void XDMAC_Handler() noexcept
 		}
 		else
 		{
-			XDMAC->XDMAC_CHID[i].XDMAC_CID = 0xFFFFFFFF;							// no callback, so just clear the interrupt
+			XDMAC->XDMAC_CHID[i].XDMAC_CID = 0xFFFFFFFFu;							// no callback, so just clear the interrupt
 		}
 	}
 }

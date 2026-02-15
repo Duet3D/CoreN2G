@@ -16,7 +16,7 @@ namespace Flash
 	void Deinit() noexcept;
 	bool Unlock(uint32_t start, uint32_t length) noexcept;
 	bool Lock(uint32_t start, uint32_t length) noexcept;
-	bool Write(uint32_t start, uint32_t length, const uint32_t *data) noexcept;
+	bool Write(uint32_t start, uint32_t length, const uint32_t *_ecv_array data) noexcept;
 #if SAM4S || SAM4E || SAME70
 	bool EraseSector(uint32_t) noexcept;
 #else
@@ -27,10 +27,10 @@ namespace Flash
 	bool RwwErase(uint32_t start, uint32_t length) noexcept;
 	bool RwwWrite(uint32_t start, uint32_t length, const uint8_t *data) noexcept;
 #elif SAM4S || SAM4E || SAME70
-	bool ReadUserSignature(uint32_t *p_data, uint32_t ul_size) noexcept;
-	bool WriteUserSignature(const uint32_t *p_buffer) noexcept;
+	bool ReadUserSignature(uint32_t *_ecv_array p_data, uint32_t ul_size) noexcept;
+	bool WriteUserSignature(const uint32_t *_ecv_array p_buffer) noexcept;
 	bool EraseUserSignature() noexcept;
-	bool ReadUniqueId(uint32_t* pul_data) noexcept;
+	bool ReadUniqueId(uint32_t *_ecv_array pul_data) noexcept;
 	int IsGpNvmSet(uint32_t gpnvm) noexcept;
 	uint32_t ReadGpNvmBits() noexcept;
 	bool ClearGpNvm(uint32_t gpnvm) noexcept;

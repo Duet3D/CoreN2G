@@ -46,7 +46,7 @@ extern uint32_t _szero_nocache;
 extern uint32_t _ezero_nocache;
 #endif
 
-extern "C" void __libc_init_array();
+extern "C" void __libc_init_array() noexcept;
 
 // Forward declaration
 static void InitClocks() noexcept;
@@ -72,7 +72,7 @@ const uint32_t FlashWaitStates = 5;
 #define SYS_BOARD_MCKR      (PMC_MCKR_PRES_CLK_1 | PMC_MCKR_CSS_PLLA_CLK | PMC_MCKR_MDIV_PCK_DIV2)
 
 // This must be marked noinline so that R0 is loaded with the required value for SP. Return is via LR so it's OK to return with a different SP.
-inline void SetStackPointer(uint32_t *topOfStack)
+inline void SetStackPointer(uint32_t *topOfStack) noexcept
 {
 	__asm volatile("msr msp, %0" : : "r"(topOfStack));
 }
@@ -90,12 +90,12 @@ extern "C" [[noreturn]] void Reset_Handler() noexcept
 
 	// Initialize the relocate segment
 	{
-		const uint32_t *pSrc = &_etext;
-		uint32_t *pDest = &_srelocate;
+		const uint32_t *_ecv_array pSrc = (const uint32_t *_ecv_array)&_etext;
+		uint32_t *_ecv_array pDest = (uint32_t *_ecv_array)&_srelocate;
 
 		if (pSrc != pDest)
 		{
-			while (pDest < &_erelocate)
+			while (pDest < (const uint32_t *_ecv_array)&_erelocate)
 			{
 				*pDest++ = *pSrc++;
 			}
@@ -103,14 +103,14 @@ extern "C" [[noreturn]] void Reset_Handler() noexcept
 	}
 
 	/* Clear the zero segment */
-	for (uint32_t *pDest = &_szero; pDest < &_ezero;)
+	for (uint32_t *_ecv_array pDest = (uint32_t *_ecv_array)&_szero; pDest < (const uint32_t *_ecv_array)&_ezero;)
 	{
 		*pDest++ = 0;
 	}
 
 	// Check that no TCM is allocated before we relocate the stack to the top of memory. This uses a RAMFUNC, so we must initialise the relocate segment before here.
 	// The temporary stack we are on is in the non-cached memory segment, so don't clear that segment until after we have relocated the stack.
-	if (Flash::ReadGpNvmBits() & ((1ul << 7) | (1ul << 8)))
+	if ((Flash::ReadGpNvmBits() & ((1ul << 7) | (1ul << 8))) != 0)
 	{
 		// TCM is allocated - we are probably downgrading from later firmware that uses TCM. Disable TCM and reboot.
 		Flash::ClearGpNvm(7);
@@ -128,7 +128,7 @@ extern "C" [[noreturn]] void Reset_Handler() noexcept
 
 #if SUPPORT_CAN
 	// Clear the nocache RAM segment
-	for (uint32_t *pDest = &_szero_nocache; pDest < &_ezero_nocache;)
+	for (uint32_t *_ecv_array pDest = (uint32_t *_ecv_array)&_szero_nocache; pDest < (const uint32_t *_ecv_array)&_ezero_nocache;)
 	{
 		*pDest++ = 0;
 	}
@@ -163,7 +163,7 @@ extern "C" [[noreturn]] void Reset_Handler() noexcept
 	AppMain();
 
 	// Infinite loop
-	while (1);
+	while (1) { }
 }
 
 void InitClocks() noexcept

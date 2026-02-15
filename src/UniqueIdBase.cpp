@@ -88,10 +88,10 @@ void UniqueIdBase::AppendCharsTo(function_ref_noexcept<void(char) noexcept> fn) 
 	size_t i = 0;
 	for (;;)
 	{
-		const size_t index = (i * 5) / 32;
-		const size_t shift = (i * 5) % 32;
+		const size_t index = (i * 5u) / 32u;
+		const size_t shift = (i * 5u) % 32u;
 		uint32_t val = data[index] >> shift;
-		if (shift > 32 - 5)
+		if (shift > 32u - 5u)
 		{
 			// We need some bits from the next dword too
 			val |= data[index + 1] << (32 - shift);
@@ -100,11 +100,11 @@ void UniqueIdBase::AppendCharsTo(function_ref_noexcept<void(char) noexcept> fn) 
 		char c;
 		if (val < 10)
 		{
-			c = val + '0';
+			c = (char)(val + (unsigned int)'0');
 		}
 		else
 		{
-			c = val + ('A' - 10);
+			c = (char)(val + ((unsigned int)'A' - 10));
 			// We have 26 letters in the usual A-Z alphabet and we only need 22 of them plus 0-9.
 			// So avoid using letters C, E, I and O which are easily mistaken for G, F, 1 and 0.
 			if (c >= 'C')

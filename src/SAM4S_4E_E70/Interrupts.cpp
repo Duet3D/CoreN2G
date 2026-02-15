@@ -81,7 +81,7 @@ static void __initialize() noexcept
 // Attach an interrupt to the specified pin returning true if successful
 bool AttachPinInterrupt(Pin pin, StandardCallbackFunction callback, InterruptMode mode, CallbackParameter param, bool enable) noexcept
 {
-	const PinDescriptionBase * const pinDesc = AppGetPinDescription(pin);
+	const PinDescriptionBase *_ecv_from _ecv_null const pinDesc = AppGetPinDescription(pin);
 	if (pinDesc == nullptr || pin >= NumPins)
 	{
 		return false;
@@ -157,7 +157,7 @@ bool AttachPinInterrupt(Pin pin, StandardCallbackFunction callback, InterruptMod
 
 void DetachPinInterrupt(Pin pin) noexcept
 {
-	const PinDescriptionBase * const pinDesc = AppGetPinDescription(pin);
+	const PinDescriptionBase *_ecv_from _ecv_null const pinDesc = AppGetPinDescription(pin);
 	if (pinDesc != nullptr && pin < NumPins)
 	{
 		// Retrieve pin information
@@ -171,7 +171,7 @@ void DetachPinInterrupt(Pin pin) noexcept
 
 void EnablePinInterrupt(Pin pin) noexcept
 {
-	const PinDescriptionBase * const pinDesc = AppGetPinDescription(pin);
+	const PinDescriptionBase *_ecv_from _ecv_null const pinDesc = AppGetPinDescription(pin);
 	if (pinDesc != nullptr && pin < NumPins)
 	{
 		Pio * const pio = GpioPort(pin);
@@ -182,7 +182,7 @@ void EnablePinInterrupt(Pin pin) noexcept
 
 void DisablePinInterrupt(Pin pin) noexcept
 {
-	const PinDescriptionBase * const pinDesc = AppGetPinDescription(pin);
+	const PinDescriptionBase *_ecv_from _ecv_null const pinDesc = AppGetPinDescription(pin);
 	if (pinDesc != nullptr && pin < NumPins)
 	{
 		Pio * const pio = GpioPort(pin);

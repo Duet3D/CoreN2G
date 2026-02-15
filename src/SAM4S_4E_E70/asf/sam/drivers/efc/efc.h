@@ -55,7 +55,7 @@ typedef enum efc_rc {
 	EFC_RC_NO = 1,      //!< No
 	EFC_RC_ERROR = 1,   //!< General error
 	EFC_RC_INVALID,     //!< Invalid argument input
-	EFC_RC_NOT_SUPPORT = 0xFFFFFFFF //!< Operation is not supported
+	EFC_RC_NOT_SUPPORT = 0xFFFFFFFFu //!< Operation is not supported
 } efc_rc_t;
 //! @}
 
@@ -127,7 +127,7 @@ uint32_t efc_get_status(Efc *p_efc);
 uint32_t efc_get_result(Efc *p_efc);
 uint32_t efc_perform_read_sequence(Efc *p_efc,
 		uint32_t ul_cmd_st, uint32_t ul_cmd_sp,
-		uint32_t *p_ul_buf, uint32_t ul_size);
+		uint32_t *_ecv_array p_ul_buf, uint32_t ul_size);
 
 /// @cond 0
 /**INDENT-OFF**/

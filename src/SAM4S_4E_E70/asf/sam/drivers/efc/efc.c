@@ -298,7 +298,7 @@ uint32_t efc_get_result(Efc *p_efc)
  */
 __no_inline
 RAMFUNC
-uint32_t efc_perform_read_sequence(Efc *p_efc, uint32_t ul_cmd_st, uint32_t ul_cmd_sp, uint32_t *p_ul_buf, uint32_t ul_size)
+uint32_t efc_perform_read_sequence(Efc *p_efc, uint32_t ul_cmd_st, uint32_t ul_cmd_sp, uint32_t _ecv_array *p_ul_buf, uint32_t ul_size)
 {
 #if (SAM3U4 || SAM3XA || SAM4SD16 || SAM4SD32 || SAM4C32 || SAM4CMS32|| SAM4CMP32)
 	uint32_t *p_ul_data = (uint32_t *) ((p_efc == EFC0) ? READ_BUFF_ADDR0 : READ_BUFF_ADDR1);

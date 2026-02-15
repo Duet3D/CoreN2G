@@ -43,9 +43,9 @@
 class AsyncSerial : public Stream
 {
 public:
-	typedef void (*InterruptCallbackFn)(AsyncSerial*) noexcept;
-	typedef void (*OnBeginFn)(AsyncSerial*) noexcept;
-	typedef void (*OnEndFn)(AsyncSerial*) noexcept;
+	typedef void (*InterruptCallbackFn)(AsyncSerial *_ecv_from) noexcept;
+	typedef void (*OnBeginFn)(AsyncSerial*_ecv_from) noexcept;
+	typedef void (*OnEndFn)(AsyncSerial*_ecv_from) noexcept;
 	typedef void (*OnTransmissionEndedFn)(CallbackParameter cp) noexcept;
 
 	union Errors
@@ -78,8 +78,8 @@ public:
 	int available(void) noexcept override;
 	int read() noexcept override;
 	void flush() noexcept override;
-	size_t write(const uint8_t c) noexcept override;
-	size_t write(const uint8_t * _ecv_array buffer, size_t buflen) noexcept override;
+	size_t write(uint8_t c) noexcept override;
+	size_t write(const uint8_t *_ecv_array buffer, size_t buflen) noexcept override;
 
 	size_t canWrite() noexcept override;
 
@@ -109,7 +109,7 @@ protected:
 	const IRQn_Type irqn;
 	const uint32_t id;
 #ifdef RTOS
-	volatile TaskHandle txWaitingTask;
+	volatile TaskHandle _ecv_null txWaitingTask;
 #endif
 	InterruptCallbackFn _ecv_null interruptCallback;
 	OnBeginFn onBegin;
