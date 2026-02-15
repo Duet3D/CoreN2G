@@ -257,7 +257,7 @@ void Cache::Init() noexcept
 		},
 		// USBHS
 		{
-			ARM_MPU_RBAR(8, 0xA0100000),
+			ARM_MPU_RBAR(8, 0xA0100000u),
 			ARM_MPU_RASR_EX(1u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_DEVICE(1u), 0u, ARM_MPU_REGION_SIZE_1MB)
 		},
 		// ROM
@@ -267,7 +267,7 @@ void Cache::Init() noexcept
 		},
 		// ARM Private Peripheral Bus
 		{
-			ARM_MPU_RBAR(10, 0xE0000000),
+			ARM_MPU_RBAR(10, 0xE0000000u),
 			ARM_MPU_RASR_EX(1u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_ORDERED, 0u, ARM_MPU_REGION_SIZE_1MB)
 		}
 	};
@@ -347,14 +347,14 @@ bool Cache::Disable() noexcept
 
 #if SAME70
 
-extern "C" [[noreturn]] void vAssertCalled(uint32_t line, const char *file) noexcept;
+extern "C" [[noreturn]] void vAssertCalled(uint32_t line, const char *_ecv_array file) noexcept;
 
 void Cache::Flush(const volatile void *start, size_t length) noexcept
 {
 	if ((SCB->CCR & SCB_CCR_DC_Msk) != 0)			// if data cache is enabled
 	{
 		// The DMA buffer should be entirely inside the non-cached RAM area
-		if ((const char *)start < (const char *)&_nocache_ram_start || (const char *)start + length > (const char *)&_nocache_ram_end)
+		if ((const char *_ecv_array)start < (const char *_ecv_array)&_nocache_ram_start || (const char *_ecv_array)start + length > (const char *_ecv_array)&_nocache_ram_end)
 		{
 			vAssertCalled(__LINE__, __FILE__);
 		}
@@ -370,7 +370,7 @@ void Cache::Invalidate(const volatile void *start, size_t length) noexcept
 	if ((SCB->CCR & SCB_CCR_DC_Msk) != 0)			// if data cache is enabled
 	{
 		// The DMA buffer should be entirely inside the non-cached RAM area, unless we are reading the user signature area
-		if ((const char *)start < (const char *)&_nocache_ram_start || (const char *)start + length > (const char *)&_nocache_ram_end)
+		if ((const char *_ecv_array)start < (const char *_ecv_array)&_nocache_ram_start || (const char *_ecv_array)start + length > (const char *_ecv_array)&_nocache_ram_end)
 		{
 			if (reinterpret_cast<uint32_t>(start) == IFLASH_ADDR)
 			{
