@@ -163,7 +163,7 @@ static inline bool cpu_irq_is_enabled_flags(irqflags_t flags)
 static inline void cpu_irq_restore(irqflags_t flags)
 {
 	if (cpu_irq_is_enabled_flags(flags))
-		cpu_irq_enable();
+		{ cpu_irq_enable(); }
 }
 
 void cpu_irq_enter_critical(void);

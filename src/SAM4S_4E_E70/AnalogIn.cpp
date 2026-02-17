@@ -52,19 +52,19 @@ static volatile uint16_t results[NumChannels] = { 0 };
 #endif
 
 #if SAM3XA || SAM4S
-static inline adc_channel_num_t GetAdcChannel(AnalogChannelNumber channel)
+static inline adc_channel_num_t GetAdcChannel(AnalogChannelNumber channel) noexcept
 {
 	return static_cast<adc_channel_num_t>((unsigned int)channel);
 }
 #endif
 
 #if SAM4E || SAME70
-static inline Afec *GetAfec(AnalogChannelNumber channel)
+static inline Afec *GetAfec(AnalogChannelNumber channel) noexcept
 {
 	return (GetDeviceNumber(channel) == 1) ? AFEC1 : AFEC0;
 }
 
-static inline afec_channel_num GetAfecChannel(AnalogChannelNumber channel)
+static inline afec_channel_num GetAfecChannel(AnalogChannelNumber channel) noexcept
 {
 	return static_cast<afec_channel_num>((unsigned int)channel & 15);
 }
@@ -73,7 +73,7 @@ static inline afec_channel_num GetAfecChannel(AnalogChannelNumber channel)
 namespace LegacyAnalogIn
 {
 	// Module initialisation
-	void AnalogInInit()
+	void AnalogInInit() noexcept
 	{
 #if SAM3XA || SAM4S
 		pmc_enable_periph_clk(ID_ADC);
@@ -127,7 +127,7 @@ namespace LegacyAnalogIn
 	}
 
 	// Enable or disable a channel. Use AnalogCheckReady to make sure the ADC is ready before calling this.
-	void AnalogInEnableChannel(AnalogChannelNumber channel, bool enable)
+	void AnalogInEnableChannel(AnalogChannelNumber channel, bool enable) noexcept
 	{
 		if ((uint8_t)channel >= 0 && (unsigned int)channel < NumChannels)
 		{
@@ -190,7 +190,7 @@ namespace LegacyAnalogIn
 	}
 
 	// Read the most recent 12-bit result from a channel
-	uint16_t AnalogInReadChannel(AnalogChannelNumber channel)
+	uint16_t AnalogInReadChannel(AnalogChannelNumber channel) noexcept
 	{
 		if ((uint8_t)channel >= 0 && (unsigned int)channel < NumChannels)
 		{
@@ -232,7 +232,7 @@ namespace LegacyAnalogIn
 #endif
 #if SAM4E || SAME70
 
-	static void StartConversion(Afec *afec)
+	static void StartConversion(Afec *afec) noexcept
 	{
 		// Clear out any existing conversion complete bits in the status register
 		for (uint32_t chan = 0;
@@ -255,7 +255,7 @@ namespace LegacyAnalogIn
 #endif
 
 	// Start converting the enabled channels
-	void AnalogInStartConversion(uint32_t channels)
+	void AnalogInStartConversion(uint32_t channels) noexcept
 	{
 #if SAM3XA || SAM4S
 		// Clear out any existing conversion complete bits in the status register
@@ -283,13 +283,13 @@ namespace LegacyAnalogIn
 
 #if SAME70
 
-	static void SaveResults(Afec *afec, volatile uint16_t * resultArea)
+	static void SaveResults(Afec *afec, volatile uint16_t *_ecv_array resultArea) noexcept
 	{
 		uint32_t channelsCompleted = afec->AFEC_CHSR & afec->AFEC_ISR & ~afec->AFEC_OVER & 0x00000FFF;
 		uint32_t channel = 0;
 		while (channelsCompleted != 0)
 		{
-			if (channelsCompleted & 1u)
+			if ((channelsCompleted & 1u) != 0)
 			{
 				const irqflags_t flags = IrqSave();
 				afec->AFEC_CSELR = channel;
@@ -303,7 +303,7 @@ namespace LegacyAnalogIn
 
 
 	// Finalise a conversion
-	void AnalogInFinaliseConversion()
+	void AnalogInFinaliseConversion() noexcept
 	{
 		// We use the SAME70 ADCs in averaging mode in order to reduce noise. This means that the result registers don;t always hold the result of the most recent conversion.
 		// So when the conversion has finished, we save all the results.
@@ -314,7 +314,7 @@ namespace LegacyAnalogIn
 #endif
 
 	// Check whether all conversions have been completed since the last call to AnalogStartConversion
-	bool AnalogInCheckReady(uint32_t channels)
+	bool AnalogInCheckReady(uint32_t channels) noexcept
 	{
 #if SAM3XA || SAM4S
 		const uint32_t mask = channels & activeChannels;
@@ -329,7 +329,7 @@ namespace LegacyAnalogIn
 	}
 
 	// Convert an Arduino Due analog pin number to the corresponding ADC channel number
-	AnalogChannelNumber PinToAdcChannel(uint32_t pin)
+	AnalogChannelNumber PinToAdcChannel(uint32_t pin) noexcept
 	{
 #if SAM3XA
 		// Arduino Due uses separate analog pin numbers
@@ -338,15 +338,15 @@ namespace LegacyAnalogIn
 			pin += A0;
 		}
 #endif
-		const PinDescriptionBase * const pinDesc = AppGetPinDescription(pin);
+		const PinDescriptionBase *_ecv_from _ecv_null const pinDesc = AppGetPinDescription(pin);
 		return (pinDesc != nullptr) ? pinDesc->adc : AdcInput::none;
 	}
 
 	// Get the temperature measurement channel
-	AnalogChannelNumber GetTemperatureAdcChannel()
+	AnalogChannelNumber GetTemperatureAdcChannel() noexcept
 	{
 #if SAM4E || SAME70
-		return static_cast<AnalogChannelNumber>(AFEC_TEMPERATURE_SENSOR);		// AFEC0 channel 15 on SAM4E and channel 11 on SAME70
+		return static_cast<AnalogChannelNumber>((uint8_t)AFEC_TEMPERATURE_SENSOR);		// AFEC0 channel 15 on SAM4E and channel 11 on SAME70
 #elif SAM3XA || SAM4S
 		return static_cast<AnalogChannelNumber>(ADC_TEMPERATURE_SENSOR);
 #endif
