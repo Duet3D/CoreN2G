@@ -21,7 +21,7 @@
 class SerialCDC : public Stream
 {
 public:
-	SerialCDC(size_t interface_index = 0) noexcept;
+	explicit SerialCDC(size_t interface_index = 0) noexcept;
 
 	void Start(Pin p_vBusPin) noexcept;
 	void end(void) noexcept;
