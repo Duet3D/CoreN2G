@@ -53,8 +53,9 @@
 #define USBD_MAX_POWER_MA (250)
 
 // USB VID/PID (note that PID can change depending on the add'l interfaces)
-#define USBD_VID		(0x1d50)		// Duet 3D
-#define USBD_PID		(0x60ee)		// Duet 3
+#define USBD_VID		(0x1d50)		// OpenMoku
+//#define USBD_PID		(0x60ee)		// Duet 3 electronics with single CDC channel
+#define USBD_PID		(0x60ef)		// Duet 3 electronics with dual CDC channels
 
 #define USB_BCD   		(0x0200)
 
