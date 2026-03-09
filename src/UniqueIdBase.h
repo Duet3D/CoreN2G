@@ -32,8 +32,8 @@ public:
 	void AppendCharsTo(function_ref_noexcept<void(char) noexcept> fn) const noexcept;
 	void AppendCharsToString(const StringRef& str) const noexcept;
 
-	const uint8_t *_ecv_array GetRaw() const { return (const uint8_t *_ecv_array)data; }
-	const uint32_t *_ecv_array GetDwords() const { return data; }
+	const uint8_t *_ecv_array GetRaw() const noexcept { return (const uint8_t *_ecv_array)data; }
+	const uint32_t *_ecv_array GetDwords() const noexcept { return data; }
 
 protected:
 	void SetChecksumWord() noexcept;
