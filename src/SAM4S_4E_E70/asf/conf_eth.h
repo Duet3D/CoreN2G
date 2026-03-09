@@ -68,13 +68,13 @@ extern "C" {
 # define LWIP_NETIF_TX_SINGLE_PBUF                     1
 
 /** Number of buffer for RX */
-# define GMAC_RX_BUFFERS  8
+# define GMAC_RX_BUFFERS  (8u)
 
 /** Number of buffer for TX */
-# define GMAC_TX_BUFFERS  4
+# define GMAC_TX_BUFFERS  (4u)
 
 /** MAC PHY operation max retry count */
-# define MAC_PHY_RETRY_MAX 1000000
+# define MAC_PHY_RETRY_MAX (1000000)
 
 /** Ethernet MII/RMII mode */
 # define ETH_PHY_MODE                                  GMAC_PHY_RMII
@@ -90,13 +90,13 @@ extern "C" {
 # define BOARD_EMAC_MODE_RMII 1
 
 /** Number of buffer for RX */
-# define EMAC_RX_BUFFERS  (32)
+# define EMAC_RX_BUFFERS  (32u)
 
 /** Number of buffer for TX */
 # define EMAC_TX_BUFFERS  (8)
 
 /** MAC PHY operation max retry count */
-# define MAC_PHY_RETRY_MAX 1000000
+# define MAC_PHY_RETRY_MAX (1000000)
 
 /** Ethernet MII/RMII mode */
 # define ETH_PHY_MODE                                  BOARD_EMAC_MODE_RMII

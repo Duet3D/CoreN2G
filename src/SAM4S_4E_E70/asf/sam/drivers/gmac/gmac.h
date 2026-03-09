@@ -950,7 +950,7 @@ static inline void gmac_set_hash64(Gmac* p_gmac, uint64_t ull_hash)
  * \param p_mac_addr  GMAC address.
  */
 static inline void gmac_set_address(Gmac* p_gmac, uint8_t uc_index,
-		uint8_t* p_mac_addr)
+		uint8_t *_ecv_array p_mac_addr)
 {
 	p_gmac->GMAC_SA[uc_index].GMAC_SAB = (p_mac_addr[3] << 24)
 			| (p_mac_addr[2] << 16)
