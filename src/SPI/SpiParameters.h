@@ -30,6 +30,17 @@ struct SpiParameters
 	DmaPriority dmaPrioRx;
 };
 
+#elif SAME70 || SAM4E || SAM4S
+
+struct SpiParameters
+{
+	uint8_t usartNumber;
+	Pin mosiPin;
+	Pin misoPin;
+	Pin sclkPin;
+	GpioPinFunction pinFunction;
+};
+
 #endif
 
 #endif /* SRC_HARDWARE_SPI_SPIPARAMETERS_H_ */
