@@ -23,7 +23,6 @@ SAME70_C_SRCS := $(shell find $(SAME70_SRC_DIR) -name '*.c' \
 	! -path '*/SAM4S_4E_E70/asf/common/services/clock/sam4s/*' \
 	! -path '*/SAM4S_4E_E70/asf/common/services/clock/sam4e/*' \
 	! -path '*/SAM4S_4E_E70/asf/sam/drivers/adc/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/aes/*' \
 	! -path '*/SAM4S_4E_E70/asf/sam/drivers/cmcc/*' \
 	! -path '*/SAM4S_4E_E70/asf/sam/drivers/crccu/*' \
 	! -path '*/SAM4S_4E_E70/asf/sam/drivers/dmac/*' \

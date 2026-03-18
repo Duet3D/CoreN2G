@@ -62,7 +62,6 @@ SAME70_CAN_CSRC := $(shell find $(SAME70_CAN_SRC_DIR) -name '*.c' \
 	! -path '*/RP2040/*' \
 	! -path '*/SAM4S_4E_E70/SAM4S/*' \
 	! -path '*/SAM4S_4E_E70/SAM4E/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/aes/*' \
 	! -path '*/SAM4S_4E_E70/asf/sam/drivers/adc/*' \
 	! -path '*/SAM4S_4E_E70/asf/sam/drivers/cmcc/*' \
 	! -path '*/SAM4S_4E_E70/asf/sam/drivers/crccu/*' \

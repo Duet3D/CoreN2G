@@ -14,6 +14,11 @@
 #include <cstring>
 #include <cstdint>
 
+/* AesGcm and AesEcb share the same AES peripheral. Any AesGcm use invalidates
+ * AesEcb's cached peripheral configuration so subsequent ECB calls reconfigure
+ * safely. */
+extern "C" void aes_ecb_invalidate_cache() noexcept;
+
 // ============================================================
 // SAME70 AES-GCM — uses ASF aes.h + pmc.h
 // ============================================================
@@ -604,11 +609,14 @@ extern "C" int aes_gcm_encrypt(
 	(void)key; (void)key_len; (void)iv; (void)iv_len;
 	(void)aad; (void)aad_len; (void)plaintext; (void)plaintext_len;
 	(void)ciphertext; (void)tag; (void)tag_len;
+	aes_ecb_invalidate_cache();
 	return -1;
 #else
-	return aes_gcm_process(true, key, key_len, iv, iv_len,
-					   aad, aad_len, plaintext, plaintext_len,
-					   ciphertext, tag, tag_len);
+	const int ret = aes_gcm_process(true, key, key_len, iv, iv_len,
+							aad, aad_len, plaintext, plaintext_len,
+							ciphertext, tag, tag_len);
+	aes_ecb_invalidate_cache();
+	return ret;
 #endif
 }
 
@@ -624,6 +632,7 @@ extern "C" int aes_gcm_decrypt(
 	(void)key; (void)key_len; (void)iv; (void)iv_len;
 	(void)aad; (void)aad_len; (void)ciphertext; (void)ciphertext_len;
 	(void)plaintext; (void)tag; (void)tag_len;
+	aes_ecb_invalidate_cache();
 	return -1;
 #else
 	uint8_t computed_tag[16];
@@ -634,7 +643,10 @@ extern "C" int aes_gcm_decrypt(
 							  plaintext, computed_tag, actual_tag_len);
 
 	if (ret != 0)
+	{
+		aes_ecb_invalidate_cache();
 		return ret;
+	}
 
 	// Constant-time tag comparison
 	uint8_t diff = 0;
@@ -646,8 +658,10 @@ extern "C" int aes_gcm_decrypt(
 	{
 		// Authentication failed — zero plaintext to prevent misuse
 		memset(plaintext, 0, ciphertext_len);
+		aes_ecb_invalidate_cache();
 		return -2;
 	}
+	aes_ecb_invalidate_cache();
 	return 0;
 #endif
 }
@@ -667,6 +681,7 @@ extern "C" int aes_gcm_decrypt_and_tag(
 	(void)key; (void)key_len; (void)iv; (void)iv_len;
 	(void)aad; (void)aad_len; (void)ciphertext; (void)ciphertext_len;
 	(void)plaintext; (void)tag; (void)tag_len;
+	aes_ecb_invalidate_cache();
 	return -1;
 #else
 	#if defined(__SAME70Q20B__) || defined(__SAME70Q21B__) || defined(__SAME70N20B__) || defined(__SAME70N21B__)
@@ -679,16 +694,21 @@ extern "C" int aes_gcm_decrypt_and_tag(
 							  plaintext, dummy_tag, 16);
 	if (ret != 0)
 	{
+		aes_ecb_invalidate_cache();
 		return ret;
 	}
 
-	return aes_gcm_process(true, key, key_len, iv, iv_len,
-					  aad, aad_len, plaintext, ciphertext_len,
-					  nullptr, tag, tag_len);
+	ret = aes_gcm_process(true, key, key_len, iv, iv_len,
+						 aad, aad_len, plaintext, ciphertext_len,
+						 nullptr, tag, tag_len);
+	aes_ecb_invalidate_cache();
+	return ret;
 	#else
-	return aes_gcm_process(false, key, key_len, iv, iv_len,
-						   aad, aad_len, ciphertext, ciphertext_len,
-						   plaintext, tag, tag_len);
+	const int ret = aes_gcm_process(false, key, key_len, iv, iv_len,
+							 aad, aad_len, ciphertext, ciphertext_len,
+							 plaintext, tag, tag_len);
+	aes_ecb_invalidate_cache();
+	return ret;
 	#endif
 #endif
 }

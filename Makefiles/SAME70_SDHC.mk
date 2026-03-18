@@ -58,7 +58,6 @@ SAME70_SDHC_CSRC := $(shell find $(SAME70_SDHC_SRC_DIR) -name '*.c' \
 	! -path '*/SAM4S_4E_E70/asf/sam/drivers/usbhs/*' \
 	! -path '*/SAM4S_4E_E70/SAM4S/*' \
 	! -path '*/SAM4S_4E_E70/SAM4E/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/aes/*' \
 	! -path '*/SAM4S_4E_E70/asf/sam/drivers/adc/*' \
 	! -path '*/SAM4S_4E_E70/asf/sam/drivers/cmcc/*' \
 	! -path '*/SAM4S_4E_E70/asf/sam/drivers/crccu/*' \
