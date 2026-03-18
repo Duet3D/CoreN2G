@@ -37,7 +37,7 @@
  * Support and FAQ: visit <a href="https://www.microchip.com/support/">Microchip Support</a>
  */
 
-#include <aes.h>
+#include <aes/aes.h>
 #include <sysclk.h>
 #include <sleepmgr.h>
 

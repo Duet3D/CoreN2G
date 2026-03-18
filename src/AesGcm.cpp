@@ -5,8 +5,7 @@
  * Provides one-shot aes_gcm_encrypt() and aes_gcm_decrypt() using the
  * on-chip AES peripheral in GCM mode.
  *
- * Supports SAME70 and SAME5x (SAME54/SAME51) chip families.
- * Uses direct register access (same approach as TrngEntropy.cpp).
+ * Supports SAME70 (using the ASF aes driver) and SAME5x (SAME54/SAME51).
  *
  * Thread safety: the AES peripheral is only used from the networking
  * task, so no locking is needed. Do not call from multiple tasks.
@@ -16,123 +15,67 @@
 #include <cstdint>
 
 // ============================================================
-// SAME70 AES-GCM — peripheral at 0x4006C000
+// SAME70 AES-GCM — uses ASF aes.h + pmc.h
 // ============================================================
 #if defined(__SAME70Q20B__) || defined(__SAME70Q21B__) || defined(__SAME70N20B__) || defined(__SAME70N21B__)
 
-#define AES_BASE				0x4006C000U
-
-#define AES_CR					(*(volatile uint32_t *)(AES_BASE + 0x00U))
-#define AES_MR					(*(volatile uint32_t *)(AES_BASE + 0x04U))
-#define AES_IER					(*(volatile uint32_t *)(AES_BASE + 0x10U))
-#define AES_IDR					(*(volatile uint32_t *)(AES_BASE + 0x14U))
-#define AES_ISR					(*(volatile const uint32_t *)(AES_BASE + 0x1CU))
-#define AES_KEYWR				((volatile uint32_t *)(AES_BASE + 0x20U))
-#define AES_IDATAR				((volatile uint32_t *)(AES_BASE + 0x40U))
-#define AES_ODATAR				((volatile const uint32_t *)(AES_BASE + 0x50U))
-#define AES_IVR					((volatile uint32_t *)(AES_BASE + 0x60U))
-#define AES_AADLENR				(*(volatile uint32_t *)(AES_BASE + 0x70U))
-#define AES_CLENR				(*(volatile uint32_t *)(AES_BASE + 0x74U))
-#define AES_TAGR				((volatile const uint32_t *)(AES_BASE + 0x88U))
-
-// CR bits
-#define AES_CR_START			(1U << 0)
-#define AES_CR_SWRST			(1U << 8)
-
-// MR bits
-#define AES_MR_CIPHER			(1U << 0)			// 1 = encrypt, 0 = decrypt
-#define AES_MR_GTAGEN			(1U << 1)			// GCM auto-tag generation
-#define AES_MR_SMOD_AUTO		(1U << 8)			// auto-start on IDATAR write
-#define AES_MR_OPMOD_GCM		(5U << 12)			// GCM mode
-#define AES_MR_KEYSIZE_128		(0U << 10)
-#define AES_MR_KEYSIZE_192		(1U << 10)
-#define AES_MR_KEYSIZE_256		(2U << 10)
-
-// ISR bits
-#define AES_ISR_DATRDY			(1U << 0)
-#define AES_ISR_TAGRDY			(1U << 16)
-
-// PMC for clock enable
-#define PMC_BASE				0x400E0600U
-#define PMC_PCR					(*(volatile uint32_t *)(PMC_BASE + 0x010CU))
-#define PMC_PCR_EN				(1U << 28)
-#define PMC_PCR_CMD				(1U << 12)
-#define ID_AES					56U
+#include <aes/aes.h>
+#include <pmc/pmc.h>
 
 static void aes_hw_init() noexcept
 {
-	// Enable peripheral clock
-	PMC_PCR = (ID_AES & 0x7FU);
-	PMC_PCR = PMC_PCR | PMC_PCR_EN | PMC_PCR_CMD;
-
-	// Software reset
-	AES_CR = AES_CR_SWRST;
+	struct aes_config init_cfg;
+	aes_get_config_defaults(&init_cfg);
+	aes_init(AES, &init_cfg);
+	aes_enable();
 }
 
-static uint32_t aes_keysize_bits_to_mr(size_t key_bits) noexcept
+// Write byte-array key into the AES key registers (using the ASF function which
+// reads key length from AES_MR, so we must call aes_set_config first).
+static void aes_write_key_bytes(const uint8_t *key, size_t key_len) noexcept
 {
-	switch (key_bits)
-	{
-	case 128: return AES_MR_KEYSIZE_128;
-	case 192: return AES_MR_KEYSIZE_192;
-	case 256: return AES_MR_KEYSIZE_256;
-	default:  return 0xFFFFFFFFU;
-	}
+	// aes_write_key expects 32-bit words; copy bytes into a word array first.
+	uint32_t key_words[8] = {};
+	memcpy(key_words, key, key_len);
+	aes_write_key(AES, key_words);
 }
 
-static void aes_write_key(const uint8_t *key, size_t key_len) noexcept
+// Write the 16-byte IV (as bytes) into AES_IVR.
+static void aes_write_iv_bytes(const uint8_t *iv) noexcept
 {
-	const size_t words = key_len / 4;
-	for (size_t i = 0; i < words; i++)
-	{
-		uint32_t w;
-		memcpy(&w, key + i * 4, 4);
-		AES_KEYWR[i] = w;
-	}
+	uint32_t iv_words[4];
+	memcpy(iv_words, iv, 16);
+	aes_write_initvector(AES, iv_words);
 }
 
-static void aes_write_iv(const uint8_t *iv) noexcept
+// Write one 16-byte block (as bytes) to AES_IDATAR.
+static void aes_write_block_bytes(const uint8_t *data) noexcept
 {
-	for (size_t i = 0; i < 4; i++)
-	{
-		uint32_t w;
-		memcpy(&w, iv + i * 4, 4);
-		AES_IVR[i] = w;
-	}
+	uint32_t words[4];
+	memcpy(words, data, 16);
+	aes_write_input_data(AES, words);
 }
 
-static void aes_write_block(const uint8_t *data) noexcept
+// Read one 16-byte block from AES_ODATAR.
+static void aes_read_block_bytes(uint8_t *data) noexcept
 {
-	for (size_t i = 0; i < 4; i++)
-	{
-		uint32_t w;
-		memcpy(&w, data + i * 4, 4);
-		AES_IDATAR[i] = w;
-	}
-}
-
-static void aes_read_block(uint8_t *data) noexcept
-{
-	for (size_t i = 0; i < 4; i++)
-	{
-		uint32_t w = AES_ODATAR[i];
-		memcpy(data + i * 4, &w, 4);
-	}
+	uint32_t words[4];
+	aes_read_output_data(AES, words);
+	memcpy(data, words, 16);
 }
 
 static inline void aes_wait_datrdy() noexcept
 {
-	while ((AES_ISR & AES_ISR_DATRDY) == 0) {}
+	while (!(aes_read_interrupt_status(AES) & AES_ISR_DATRDY)) {}
 }
 
-static void aes_read_tag(uint8_t *tag, size_t tag_len) noexcept
+static void aes_read_tag_bytes(uint8_t *tag, size_t tag_len) noexcept
 {
-	// Wait for tag ready
-	while ((AES_ISR & AES_ISR_TAGRDY) == 0) {}
+	while (!(aes_read_interrupt_status(AES) & AES_ISR_TAGRDY)) {}
 	uint8_t full_tag[16];
 	for (size_t i = 0; i < 4; i++)
 	{
-		uint32_t w = AES_TAGR[i];
+		uint32_t w = aes_read_tag(AES, i);
 		memcpy(full_tag + i * 4, &w, 4);
 	}
 	memcpy(tag, full_tag, (tag_len < 16) ? tag_len : 16);
@@ -258,48 +201,59 @@ static int aes_gcm_process(
 		return -1;
 
 	const size_t key_bits = key_len * 8;
-	const uint32_t ks = aes_keysize_bits_to_mr(key_bits);
-	if (ks == 0xFFFFFFFFU)
-		return -1;
-
+	enum aes_key_size ks;
+	switch (key_bits)
+	{
+	case 128: ks = AES_KEY_SIZE_128; break;
+	case 192: ks = AES_KEY_SIZE_192; break;
+	case 256: ks = AES_KEY_SIZE_256; break;
+	default:  return -1;
+	}
 	if (!aes_initialised)
 	{
 		aes_hw_init();
 		aes_initialised = true;
 	}
 
-	// Software reset to clear state
-	AES_CR = AES_CR_SWRST;
+	// Use a fresh per-message config instead of carrying state in a shared
+	// global config object.
+	struct aes_config cfg;
+	aes_get_config_defaults(&cfg);
+	cfg.encrypt_mode = encrypt ? AES_ENCRYPTION : AES_DECRYPTION;
+	cfg.key_size     = ks;
+	cfg.start_mode   = AES_AUTO_START;
+	cfg.opmode       = AES_GCM_MODE;
+	cfg.cfb_size     = AES_CFB_SIZE_128;
+	cfg.lod          = false;
+	cfg.gtag_en      = true;
+	cfg.processing_delay = 0;
+	aes_set_config(AES, &cfg);
 
-	// Configure: GCM mode, auto-start, tag generation, encrypt/decrypt
-	uint32_t mr = AES_MR_OPMOD_GCM | AES_MR_SMOD_AUTO | AES_MR_GTAGEN | ks;
-	if (encrypt)
-		mr |= AES_MR_CIPHER;
-	AES_MR = mr;
+	// Write key — this also triggers GCMH (hash subkey) generation; wait for DATRDY
+	aes_write_key_bytes(key, key_len);
+	aes_wait_datrdy();
 
-	// Write key
-	aes_write_key(key, key_len);
-
-	// Write IV: GCM uses 12-byte IV + 32-bit counter starting at 1
-	// The hardware expects a 16-byte IV with counter = 2 for data blocks.
-	// We write the 12-byte nonce padded with 0x00000001 (big-endian counter).
+	// Build J0+1: 12-byte IV || counter=2 in big-endian.
+	// The 32-bit counter word with value 2 in big-endian is bytes {0,0,0,2},
+	// which when stored as a little-endian uint32_t equals 0x02000000.
 	uint8_t iv_block[16];
 	memcpy(iv_block, iv, 12);
-	iv_block[12] = 0;
-	iv_block[13] = 0;
-	iv_block[14] = 0;
-	iv_block[15] = 1;
-	aes_write_iv(iv_block);
+	// Write {0x00, 0x00, 0x00, 0x02} as a big-endian counter word
+	iv_block[12] = 0x00;
+	iv_block[13] = 0x00;
+	iv_block[14] = 0x00;
+	iv_block[15] = 0x02;
+	aes_write_iv_bytes(iv_block);
 
-	// Set AAD and ciphertext/plaintext lengths
-	AES_AADLENR = (uint32_t)aad_len;
-	AES_CLENR = (uint32_t)input_len;
+	// Set AAD length and cipher text/plain text length
+	aes_write_authen_datalength(AES, (uint32_t)aad_len);
+	aes_write_pctext_length(AES, (uint32_t)input_len);
 
 	// Process AAD in 16-byte blocks
 	size_t pos = 0;
 	while (pos + 16 <= aad_len)
 	{
-		aes_write_block(aad + pos);
+		aes_write_block_bytes(aad + pos);
 		aes_wait_datrdy();
 		pos += 16;
 	}
@@ -309,7 +263,7 @@ static int aes_gcm_process(
 	{
 		uint8_t pad[16] = {};
 		memcpy(pad, aad + pos, aad_len - pos);
-		aes_write_block(pad);
+		aes_write_block_bytes(pad);
 		aes_wait_datrdy();
 	}
 
@@ -317,9 +271,17 @@ static int aes_gcm_process(
 	pos = 0;
 	while (pos + 16 <= input_len)
 	{
-		aes_write_block(input + pos);
+		aes_write_block_bytes(input + pos);
 		aes_wait_datrdy();
-		aes_read_block(output + pos);
+		if (output != nullptr)
+		{
+			aes_read_block_bytes(output + pos);
+		}
+		else
+		{
+			uint8_t discard[16];
+			aes_read_block_bytes(discard);
+		}
 		pos += 16;
 	}
 
@@ -330,14 +292,17 @@ static int aes_gcm_process(
 		uint8_t pad_out[16];
 		const size_t rem = input_len - pos;
 		memcpy(pad_in, input + pos, rem);
-		aes_write_block(pad_in);
+		aes_write_block_bytes(pad_in);
 		aes_wait_datrdy();
-		aes_read_block(pad_out);
-		memcpy(output + pos, pad_out, rem);
+		aes_read_block_bytes(pad_out);
+		if (output != nullptr)
+		{
+			memcpy(output + pos, pad_out, rem);
+		}
 	}
 
 	// Read authentication tag
-	aes_read_tag(tag, tag_len);
+	aes_read_tag_bytes(tag, tag_len);
 	return 0;
 }
 
@@ -619,6 +584,14 @@ static int aes_gcm_process(
 // Public C API
 // ============================================================
 
+extern "C" int aes_gcm_decrypt_and_tag(
+	const uint8_t *key, size_t key_len,
+	const uint8_t *iv, size_t iv_len,
+	const uint8_t *aad, size_t aad_len,
+	const uint8_t *ciphertext, size_t ciphertext_len,
+	uint8_t *plaintext,
+	uint8_t *tag, size_t tag_len) noexcept;
+
 extern "C" int aes_gcm_encrypt(
 	const uint8_t *key, size_t key_len,
 	const uint8_t *iv, size_t iv_len,
@@ -656,7 +629,7 @@ extern "C" int aes_gcm_decrypt(
 	uint8_t computed_tag[16];
 	const size_t actual_tag_len = (tag_len < 16) ? tag_len : 16;
 
-	int ret = aes_gcm_process(false, key, key_len, iv, iv_len,
+	int ret = aes_gcm_decrypt_and_tag(key, key_len, iv, iv_len,
 							  aad, aad_len, ciphertext, ciphertext_len,
 							  plaintext, computed_tag, actual_tag_len);
 
@@ -696,8 +669,26 @@ extern "C" int aes_gcm_decrypt_and_tag(
 	(void)plaintext; (void)tag; (void)tag_len;
 	return -1;
 #else
+	#if defined(__SAME70Q20B__) || defined(__SAME70Q21B__) || defined(__SAME70N20B__) || defined(__SAME70N21B__)
+	// SAME70 demo flow does not rely on decrypt-mode tag generation. Do a
+	// two-pass operation: decrypt to plaintext, then encrypt plaintext again to
+	// regenerate the authentication tag.
+	uint8_t dummy_tag[16];
+	int ret = aes_gcm_process(false, key, key_len, iv, iv_len,
+							  aad, aad_len, ciphertext, ciphertext_len,
+							  plaintext, dummy_tag, 16);
+	if (ret != 0)
+	{
+		return ret;
+	}
+
+	return aes_gcm_process(true, key, key_len, iv, iv_len,
+					  aad, aad_len, plaintext, ciphertext_len,
+					  nullptr, tag, tag_len);
+	#else
 	return aes_gcm_process(false, key, key_len, iv, iv_len,
 						   aad, aad_len, ciphertext, ciphertext_len,
 						   plaintext, tag, tag_len);
+	#endif
 #endif
 }
