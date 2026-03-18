@@ -28,10 +28,7 @@
 #endif
 
 #if defined(__SAME54P20A__) || defined(__SAME51P20A__)
-# define UsbDevice UsbDevice_Atmel	// rename to avoid conflict with application class of the same name
 # include <same54.h>
-# include <parts.h>
-# undef UsbDevice
 # define SAMC21				0
 # define SAM3XA				0
 # define SAM4E				0
@@ -41,10 +38,7 @@
 # define RP2040				0
 # define STM32				0
 #elif defined(__SAME51N19A__) || defined(__SAME51G19A__) || defined(__SAME51J19A__)
-# define UsbDevice UsbDevice_Atmel
 # include <same51.h>
-# include <parts.h>
-# undef UsbDevice
 # define SAMC21				0
 # define SAM3XA				0
 # define SAM4E				0
@@ -54,10 +48,7 @@
 # define RP2040				0
 # define STM32				0
 #elif defined(__SAMD51N19A__)
-# define UsbDevice UsbDevice_Atmel
 # include <samd51.h>
-# include <parts.h>
-# undef UsbDevice
 # define SAMC21				0
 # define SAM3XA				0
 # define SAM4E				0
