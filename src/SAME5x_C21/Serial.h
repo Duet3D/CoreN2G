@@ -32,7 +32,7 @@ namespace Serial
 #endif
 	};
 
-	static constexpr IRQn SercomIRQns[] =
+	constexpr IRQn SercomIRQns[] =
 	{
 #if SAMC21
 		SERCOM0_IRQn, SERCOM1_IRQn, SERCOM2_IRQn, SERCOM3_IRQn, SERCOM4_IRQn, SERCOM5_IRQn
