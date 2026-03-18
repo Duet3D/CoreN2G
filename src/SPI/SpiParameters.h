@@ -13,7 +13,7 @@
 
 // Structure to pass SPI device parameters. The details depend on the MCU.
 
-#if SAME5x
+#if SAME5x || SAMC21
 
 struct SpiParameters
 {
@@ -39,6 +39,16 @@ struct SpiParameters
 	Pin misoPin;
 	Pin sclkPin;
 	GpioPinFunction pinFunction;
+};
+
+#elif RP2040
+
+struct SpiParameters
+{
+	uint8_t instanceNumber;
+	Pin mosiPin;
+	Pin misoPin;
+	Pin sclkPin;
 };
 
 #endif
