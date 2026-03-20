@@ -17,6 +17,10 @@
 # include <DmacManager.h>
 #endif
 
+#if RP2040
+# include <hardware/spi.h>
+#endif
+
 // This class represents a master SPI interface, but not the associated CS pin(s).
 // It is used as the base class for SharedSpiDevice. It can also be used by itself to control a non-shared SPI master.
 class SpiDevice
@@ -29,7 +33,7 @@ public:
 
 	// Set the clock frequency, SPI mode and character length. 9-bit mode is currently only implemented on the SAME5x.
 	void SetClockFrequencyAndMode(uint32_t freq, SpiMode mode
-#if SAME5x || SAMC21
+#if SAME5x
 									, bool nineBits
 #endif
 								 ) const noexcept;
@@ -39,9 +43,11 @@ public:
 	// Either way, caller must already have asserted CS for the selected SPI slave.
 	bool TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t *_ecv_array null rx_data, size_t len) noexcept;
 
-#if SAME5x || SAMC21
+#if SAME5x
 	bool TransceivePacketNineBit(const uint16_t *_ecv_array null tx_data, uint16_t *_ecv_array null rx_data, size_t len) noexcept;
+#endif
 
+#if SAME5x || SAMC21
 	static void DmaComplete(CallbackParameter param, DmaCallbackReason reason) noexcept;
 #endif
 
@@ -57,11 +63,15 @@ private:
 #if SAME5x || SAMC21
 	Sercom * const hardware;
 	const uint8_t sercomNumber;
+# ifdef RTOS
 	TaskBase *null waitingTask = nullptr;
+# endif
 	DmaChannel dmaChanTx;
 	DmaPriority dmaPrioTx;
 #elif SAME70 || SAM4E || SAM4S
 	Usart * const hardware;
+#elif RP2040
+	spi_inst_t *hardware;
 #else
 # error Unsupported configuration
 #endif

@@ -5,32 +5,18 @@
  *      Author: David
  */
 
-#include "SpiDevice.h"
+#include <SPI/SpiDevice.h>
 #include <CoreNotifyIndices.h>
 
-#if SAME5x || SAMC21
 # include <SAME5x_C21/Serial.h>
 # include <peripheral_clk_config.h>
-#elif SAME70 || SAM4E || SAM4S
-# include <pmc/pmc.h>
-# include <Serial.h>
-#else
-# error Unsupported configuration
-#endif
 
 constexpr uint32_t DefaultSharedSpiClockFrequency = 2000000;
 constexpr uint32_t SpiTimeout = 10000;
 
 SpiDevice::SpiDevice(const SpiParameters& params) noexcept
-#if SAME5x || SAMC21
 	: hardware(Serial::GetSercom(params.sercomNumber)), sercomNumber(params.sercomNumber), dmaChanTx(params.dmaChanTx), dmaPrioTx(params.dmaPrioTx)
-#elif SAME70 || SAM4E || SAM4S
-	: hardware(Serial::GetUsart(params.usartNumber))
-#else
-# error Unsupported configuration
-#endif
 {
-#if SAME5x || SAMC21
 	SetPinMode(params.mosiPin, INPUT_PULLDOWN);
 	SetPinMode(params.misoPin, INPUT_PULLDOWN);
 	SetPinMode(params.sclkPin, INPUT_PULLDOWN);
@@ -45,7 +31,9 @@ SpiDevice::SpiDevice(const SpiParameters& params) noexcept
 	// Set up the SERCOM
 	const uint32_t regCtrlA = SERCOM_SPI_CTRLA_MODE(3) | SERCOM_SPI_CTRLA_DIPO(params.dataInPad) | SERCOM_SPI_CTRLA_DOPO(params.dataOutPad) | SERCOM_SPI_CTRLA_FORM(0);
 	const uint32_t regCtrlB = 0;											// 8 bits, slave select disabled, receiver disabled for now
+# if SAME5x
 	const uint32_t regCtrlC = 0;											// not 32-bit mode
+# endif
 
 	if ((hardware->SPI.SYNCBUSY.reg & SERCOM_SPI_SYNCBUSY_SWRST) == 0)
 	{
@@ -61,69 +49,32 @@ SpiDevice::SpiDevice(const SpiParameters& params) noexcept
 
 	hardware->SPI.CTRLA.reg = regCtrlA;
 	hardware->SPI.CTRLB.reg = regCtrlB;
+#if SAME5x
 	hardware->SPI.CTRLC.reg = regCtrlC;
+#endif
 	hardware->SPI.BAUD.reg = SERCOM_SPI_BAUD_BAUD(Serial::SercomFastGclkFreq/(2 * DefaultSharedSpiClockFrequency) - 1);
 	hardware->SPI.DBGCTRL.reg = SERCOM_SPI_DBGCTRL_DBGSTOP;					// baud rate generator is stopped when CPU halted by debugger
 
 	hardware->SPI.CTRLB.bit.RXEN = 1;
-
-#elif SAME70 || SAM4E || SAM4S
-	SetPinFunction(params.sclkPin, params.pinFunction);
-	SetPinFunction(params.mosiPin, params.pinFunction);
-	SetPinFunction(params.misoPin, params.pinFunction);
-
-	pmc_enable_periph_clk(Serial::GetUsartId(params.usartNumber));
-
-	// Set USART in SPI master mode
-	hardware->US_IDR = ~0u;
-	hardware->US_CR = US_CR_RSTRX | US_CR_RSTTX | US_CR_RXDIS | US_CR_TXDIS;
-	hardware->US_MR = US_MR_USART_MODE_SPI_MASTER
-					| US_MR_USCLKS_MCK
-					| US_MR_CHRL_8_BIT
-					| US_MR_CHMODE_NORMAL;
-	hardware->US_BRGR = SystemPeripheralClock()/DefaultSharedSpiClockFrequency;
-	hardware->US_CR = US_CR_RSTRX | US_CR_RSTTX | US_CR_RXDIS | US_CR_TXDIS | US_CR_RSTSTA;
-
-#else
-# error Unsupported configuration
-#endif
 }
 
 void SpiDevice::Disable() const noexcept
 {
-#if SAME5x || SAMC21
 	hardware->SPI.CTRLA.bit.ENABLE = 0;
 	while (hardware->SPI.SYNCBUSY.reg & SERCOM_SPI_SYNCBUSY_ENABLE) { }
-#elif SAME70 || SAM4E || SAM4S
-	hardware->US_CR = US_CR_RXDIS | US_CR_TXDIS;			// disable transmitter and receiver
-#else
-# error Unsupported configuration
-#endif
 }
 
 void SpiDevice::Enable() const noexcept
 {
-#if SAME5x || SAMC21
 	hardware->SPI.CTRLA.bit.ENABLE = 1;
 	while (hardware->SPI.SYNCBUSY.reg & SERCOM_SPI_SYNCBUSY_ENABLE) { }
-#elif SAME70 || SAM4E || SAM4S
-	hardware->US_CR = US_CR_RXEN | US_CR_TXEN;				// enable transmitter and receiver
-#else
-# error Unsupported configuration
-#endif
 }
 
 // Wait for transmitter ready returning true if timed out
 inline bool SpiDevice::waitForTxReady() const noexcept
 {
 	uint32_t timeout = SpiTimeout;
-#if SAME5x || SAMC21
 	while (!(hardware->SPI.INTFLAG.bit.DRE))
-#elif SAME70 || SAM4E || SAM4S
-	while (!usart_is_tx_ready(hardware))
-#else
-# error Unsupported configuration
-#endif
 	{
 		if (--timeout == 0)
 		{
@@ -137,13 +88,7 @@ inline bool SpiDevice::waitForTxReady() const noexcept
 inline bool SpiDevice::waitForTxEmpty() const noexcept
 {
 	uint32_t timeout = SpiTimeout;
-#if SAME5x || SAMC21
 	while (!(hardware->SPI.INTFLAG.bit.TXC))
-#elif SAME70 || SAM4E || SAM4S
-	while (!usart_is_tx_empty(hardware))
-#else
-# error Unsupported configuration
-#endif
 	{
 		if (!timeout--)
 		{
@@ -157,13 +102,7 @@ inline bool SpiDevice::waitForTxEmpty() const noexcept
 inline bool SpiDevice::waitForRxReady() const noexcept
 {
 	uint32_t timeout = SpiTimeout;
-#if SAME5x || SAMC21
 	while (!(hardware->SPI.INTFLAG.bit.RXC))
-#elif SAME70 || SAM4E || SAM4S
-	while (!usart_is_rx_ready(hardware))
-#else
-# error Unsupported configuration
-#endif
 	{
 		if (--timeout == 0)
 		{
@@ -174,20 +113,23 @@ inline bool SpiDevice::waitForRxReady() const noexcept
 }
 
 void SpiDevice::SetClockFrequencyAndMode(uint32_t freq, SpiMode mode
-#if SAME5x || SAMC21
+#if SAME5x
 											, bool nineBits
 #endif
 										) const noexcept
 {
 	// We have to disable SPI device in order to change the baud rate, mode and character length
-#if SAME5x || SAMC21
 	Disable();
 	// Round the clock frequency rate down. For example, using 60MHz clock, if we ask for 4MHz:
 	// Without rounding, divisor = 60/(2*4) = 7, actual clock rate = 4.3MHz
 	// With rounding, divisor = 67/8 = 8, actual clock rate = 3.75MHz
 	// To get more accurate speeds we could increase the clock frequency to 100MHz
 	hardware->SPI.BAUD.reg = SERCOM_SPI_BAUD_BAUD((Serial::SercomFastGclkFreq + (2 * freq) - 1)/(2 * freq) - 1);
-	hardware->SPI.CTRLB.bit.CHSIZE = (nineBits) ? 1 : 0;
+	hardware->SPI.CTRLB.bit.CHSIZE =
+#if SAME5x
+									(nineBits) ? 1 :
+#endif
+											0;
 	while (hardware->SPI.SYNCBUSY.bit.CTRLB) { }
 
 	uint32_t regCtrlA = SERCOM_SPI_CTRLA_MODE(3) | SERCOM_SPI_CTRLA_DIPO(3) | SERCOM_SPI_CTRLA_DOPO(0) | SERCOM_SPI_CTRLA_FORM(0);
@@ -201,43 +143,15 @@ void SpiDevice::SetClockFrequencyAndMode(uint32_t freq, SpiMode mode
 	}
 	hardware->SPI.CTRLA.reg = regCtrlA;
 	Enable();
-#elif SAME70 || SAM4E || SAM4S
-	Disable();
-	hardware->US_BRGR = SystemPeripheralClock()/freq;
-	uint32_t mr = US_MR_USART_MODE_SPI_MASTER
-					| US_MR_USCLKS_MCK
-					| US_MR_CHRL_8_BIT
-					| US_MR_CHMODE_NORMAL
-					| US_MR_CLKO;
-	if ((uint8_t)mode & 2)
-	{
-		mr |= US_MR_CPOL;
-	}
-	if (((uint8_t)mode & 1) == 0)							// the bit is called CPHA but is actually NPCHA
-	{
-		mr |= US_MR_CPHA;
-	}
-	hardware->US_MR = mr;
-	hardware->US_CR = US_CR_RSTRX | US_CR_RSTTX;			// reset transmitter and receiver (required - see datasheet)
-	Enable();
-#else
-# error Unsupported configuration
-#endif
 }
 
 // Send and receive data returning true if successful
 bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t *_ecv_array null rx_data, size_t len) noexcept
 {
 	// Clear any existing data
-#if SAME5x || SAMC21
 	(void)hardware->SPI.DATA.reg;
-#elif SAME70 || SAM4E || SAM4S
-	(void)hardware->US_RHR;
-#else
-# error Unsupported configuration
-#endif
 
-#if SAME5x || SAMC21
+# if defined(RTOS)
 	if (len >= 40 && rx_data == nullptr && tx_data != nullptr)
 	{
 		// Sending a large amount of data to LCD, so use DMA
@@ -254,7 +168,7 @@ bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t
 		TaskBase::TakeIndexed(NotifyIndices::Spi, 10);			// maximum 3kb transfer should complete in about 2ms @ 14MHz clock speed
 	}
 	else
-#endif
+# endif
 	{
 		for (uint32_t i = 0; i < len; ++i)
 		{
@@ -265,13 +179,7 @@ bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t
 			}
 
 			// Write to transmit register
-#if SAME5x || SAMC21
 			hardware->SPI.DATA.reg = dOut;
-#elif SAME70 || SAM4E || SAM4S
-			hardware->US_THR = dOut;
-#else
-# error Unsupported configuration
-#endif
 
 			// Some devices are transmit-only e.g. 12864 display, so don't wait for received data if we don't need to
 			if (rx_data != nullptr)
@@ -284,13 +192,7 @@ bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t
 
 				// Get data from receive register
 				const uint8_t dIn =
-#if SAME5x || SAMC21
 					(uint8_t)hardware->SPI.DATA.reg;
-#elif SAME70 || SAM4E || SAM4S
-					(uint8_t)hardware->US_RHR;
-#else
-# error Unsupported configuration
-#endif
 				*rx_data++ = dIn;
 			}
 		}
@@ -302,37 +204,25 @@ bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t
 	// If we were not receiving, clear data from the receive buffer
 	if (rx_data == nullptr)
 	{
-#if SAME5x || SAMC21
 		// The SAME5x seems to buffer more than one received character
 		while (hardware->SPI.INTFLAG.bit.RXC)
 		{
 			(void)hardware->SPI.DATA.reg;
 		}
-#elif SAME70 || SAM4E || SAM4S
-		(void)hardware->US_RHR;
-#else
-# error Unsupported configuration
-#endif
 	}
 
 	return true;	// success
 }
 
-#if SAME5x || SAMC21
+#if SAME5x
 
 // Send and receive data returning true if successful, using 16-bit data transfers (needed when using 9-bit characters). 'len' is in 16-bit words.
 bool SpiDevice::TransceivePacketNineBit(const uint16_t *_ecv_array null tx_data, uint16_t *_ecv_array null rx_data, size_t len) noexcept
 {
 	// Clear any existing data
-#if SAME5x || SAMC21
 	(void)hardware->SPI.DATA.reg;
-#elif SAME70 || SAM4E || SAM4S
-	(void)hardware->US_RHR;
-#else
-# error Unsupported configuration
-#endif
 
-#if SAME5x || SAMC21
+#if defined(RTOS)
 	if (len >= 40 && rx_data == nullptr && tx_data != nullptr)
 	{
 		// Sending a large amount of data to LCD, so use DMA. Currently only the TFT LCD uses this device, so we use a fixed DMA channel number.
@@ -360,13 +250,7 @@ bool SpiDevice::TransceivePacketNineBit(const uint16_t *_ecv_array null tx_data,
 			}
 
 			// Write to transmit register
-#if SAME5x || SAMC21
 			hardware->SPI.DATA.reg = dOut;
-#elif SAME70 || SAM4E || SAM4S
-			hardware->US_THR = dOut;
-#else
-# error Unsupported configuration
-#endif
 
 			// Some devices are transmit-only e.g. 12864 display, so don't wait for received data if we don't need to
 			if (rx_data != nullptr)
@@ -378,14 +262,7 @@ bool SpiDevice::TransceivePacketNineBit(const uint16_t *_ecv_array null tx_data,
 				}
 
 				// Get data from receive register
-				const uint16_t dIn =
-#if SAME5x || SAMC21
-					(uint16_t)hardware->SPI.DATA.reg;
-#elif SAME70 || SAM4E || SAM4S
-					(uint16_t)hardware->US_RHR;
-#else
-# error Unsupported configuration
-#endif
+				const uint16_t dIn = (uint16_t)hardware->SPI.DATA.reg;
 				*rx_data++ = dIn;
 			}
 		}
@@ -398,21 +275,19 @@ bool SpiDevice::TransceivePacketNineBit(const uint16_t *_ecv_array null tx_data,
 	// If we were not receiving, clear data from the receive buffer
 	if (rx_data == nullptr)
 	{
-#if SAME5x || SAMC21
 		// The SAME5x seems to buffer more than one received character
 		while (hardware->SPI.INTFLAG.bit.RXC)
 		{
 			(void)hardware->SPI.DATA.reg;
 		}
-#elif SAME70 || SAM4E || SAM4S
-		(void)hardware->US_RHR;
-#else
-# error Unsupported configuration
-#endif
 	}
 
 	return true;	// success
 }
+
+#endif
+
+#if defined(RTOS)
 
 void SpiDevice::DmaComplete(DmaCallbackReason reason) noexcept
 {
