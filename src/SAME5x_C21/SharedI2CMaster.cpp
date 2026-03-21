@@ -76,6 +76,11 @@ SharedI2CMaster::SharedI2CMaster(const I2cParameters& params) noexcept
 #endif
 
 	const IRQn irqn = Serial::GetSercomIRQn(params.sercomNumber);
+#if SAMC21
+	Serial::SetSercomVector(params.sercomNumber, CommonInterrupt, this);
+#elif SAME5x
+	Serial::SetSercomVector(params.sercomNumber, CommonInterrupt, CommonInterrupt, nullptr, CommonInterrupt, this);		// we use interrupts 0, 1, 3
+#endif
 	NVIC_SetPriority(irqn, params.irqPriority);
 	NVIC_ClearPendingIRQ(irqn);
 	NVIC_EnableIRQ(irqn);
@@ -236,7 +241,8 @@ void SharedI2CMaster::ProtocolError() noexcept
 	taskWaiting = nullptr;
 }
 
-void SharedI2CMaster::Interrupt() noexcept
+// The following is inline because it is only called from one place
+inline void SharedI2CMaster::Interrupt() noexcept
 {
 	const uint8_t flags = hardware->I2CM.INTFLAG.reg & (SERCOM_I2CM_INTFLAG_MB | SERCOM_I2CM_INTFLAG_SB | SERCOM_I2CM_INTFLAG_ERROR);
 	hardware->I2CM.INTENCLR.reg = 0xFF;
@@ -317,6 +323,12 @@ void SharedI2CMaster::Interrupt() noexcept
 		}
 		break;
 	}
+}
+
+// Common interrupt entry for all I2C masters
+/*static*/ void SharedI2CMaster::CommonInterrupt(void *param) noexcept
+{
+	((SharedI2CMaster*)param)->Interrupt();
 }
 
 #endif

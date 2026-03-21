@@ -37,8 +37,12 @@ void AsyncSerial::begin(uint32_t baudRate) noexcept
 	sercom->USART.INTENSET.reg = SERCOM_USART_INTENSET_RXC | SERCOM_USART_INTENSET_ERROR;
 
 	const IRQn irqNumber = Serial::GetSercomIRQn(sercomNumber);
+#if SAMC21
+	Serial::SetSercomVector(sercomNumber, CommonInterrupt, this);
 	NVIC_EnableIRQ(irqNumber);
-#if SAME5x
+#elif SAME5x
+	Serial::SetSercomVector(sercomNumber, CommonInterrupt0, CommonInterrupt1, CommonInterrupt2, CommonInterrupt3, this);
+	NVIC_EnableIRQ(irqNumber);
 	NVIC_EnableIRQ((IRQn)(irqNumber + 1));
 	NVIC_EnableIRQ((IRQn)(irqNumber + 2));
 	NVIC_EnableIRQ((IRQn)(irqNumber + 3));
@@ -57,12 +61,14 @@ void AsyncSerial::end() noexcept
 
 	// Disable UART interrupt in NVIC
 	const IRQn irqNumber = Serial::GetSercomIRQn(sercomNumber);
+
 	NVIC_DisableIRQ(irqNumber);
 #if SAME5x
 	NVIC_DisableIRQ((IRQn)(irqNumber + 1));
 	NVIC_DisableIRQ((IRQn)(irqNumber + 2));
 	NVIC_DisableIRQ((IRQn)(irqNumber + 3));
 #endif
+	Serial::ReleaseSercomVector(sercomNumber);
 	onEnd(this);
 }
 
@@ -209,7 +215,7 @@ AsyncSerial::Errors AsyncSerial::GetAndClearErrors() noexcept
 
 // Interrupts from the SERCOM arrive here
 // Interrupt 0 means transmit data register empty
-void AsyncSerial::Interrupt0() noexcept
+inline void AsyncSerial::Interrupt0() noexcept
 {
 	uint8_t c;
 	if (txBuffer.GetItem(c))
@@ -241,7 +247,7 @@ void AsyncSerial::Interrupt0() noexcept
 }
 
 // Interrupt 1 signals transmit complete
-void AsyncSerial::Interrupt1() noexcept
+inline void AsyncSerial::Interrupt1() noexcept
 {
 	if (onTransmissionEndedFn != nullptr)					// if we want callback when the transmitter is empty
 	{
@@ -251,7 +257,7 @@ void AsyncSerial::Interrupt1() noexcept
 }
 
 // Interrupt 2 means receive character available
-void AsyncSerial::Interrupt2() noexcept
+inline void AsyncSerial::Interrupt2() noexcept
 {
 	const char c = sercom->USART.DATA.reg;
 	if (c == interruptSeq[numInterruptBytesMatched])
@@ -287,7 +293,7 @@ void AsyncSerial::Interrupt2() noexcept
 }
 
 // Interrupt 3 means error or break or CTS change or receive start, but we only enable error
-void AsyncSerial::Interrupt3() noexcept
+inline void AsyncSerial::Interrupt3() noexcept
 {
 	const uint16_t stat2 = sercom->USART.STATUS.reg;
 	if (stat2 & SERCOM_USART_STATUS_BUFOVF)
@@ -306,9 +312,30 @@ void AsyncSerial::Interrupt3() noexcept
 	sercom->USART.INTFLAG.reg = SERCOM_USART_INTFLAG_ERROR;			// clear the error
 }
 
+/*static*/ void AsyncSerial::CommonInterrupt0(void *param) noexcept
+{
+	((AsyncSerial*)param)->Interrupt0();
+}
+
+/*static*/ void AsyncSerial::CommonInterrupt1(void *param) noexcept
+{
+	((AsyncSerial*)param)->Interrupt1();
+}
+
+/*static*/ void AsyncSerial::CommonInterrupt2(void *param) noexcept
+{
+	((AsyncSerial*)param)->Interrupt2();
+}
+
+/*static*/ void AsyncSerial::CommonInterrupt3(void *param) noexcept
+{
+	((AsyncSerial*)param)->Interrupt3();
+}
+
+
 #elif SAMC21
 
-void AsyncSerial::Interrupt() noexcept
+inline void AsyncSerial::Interrupt() noexcept
 {
 	const uint8_t status = sercom->USART.INTFLAG.reg;
 
@@ -386,6 +413,11 @@ void AsyncSerial::Interrupt() noexcept
 		sercom->USART.STATUS.reg = stat2;
 		sercom->USART.INTFLAG.reg = SERCOM_USART_INTFLAG_ERROR;			// clear the error
 	}
+}
+
+/*static*/ void AsyncSerial::CommonInterrupt(void *param) noexcept
+{
+	((AsyncSerial*)param)->Interrupt();
 }
 
 #endif

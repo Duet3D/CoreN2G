@@ -13,6 +13,10 @@
 #include "AnalogIn.h"
 #include "AnalogOut.h"
 
+#if SAME5x || SAMC21
+# include <SAME5x_C21/Serial.h>
+#endif
+
 #ifdef RTOS
 # include <FreeRTOS.h>
 # include <task.h>
@@ -599,6 +603,7 @@ void CoreInit() noexcept
 #endif
 #if SAME5x || SAMC21
 	InitialiseExints();
+	Serial::Init();
 #endif
 
 #if SAME5x || SAME70

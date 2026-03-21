@@ -42,8 +42,6 @@ public:
 		errors.Clear();
 	}
 
-	void Interrupt() noexcept;
-
 private:
 	enum class I2cState : uint8_t
 	{
@@ -56,6 +54,9 @@ private:
 	void ProtocolError()  noexcept;
 
 #if SAME5x || SAMC21
+	static void CommonInterrupt(void *param) noexcept;
+	void Interrupt() noexcept;
+
 	Sercom * const hardware;
 #endif
 

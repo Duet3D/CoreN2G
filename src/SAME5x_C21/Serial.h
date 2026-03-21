@@ -44,6 +44,8 @@ namespace Serial
 #endif
 	};
 
+	void Init() noexcept;
+
 	inline Sercom *GetSercom(uint8_t sercomNumber) noexcept { return Sercoms[sercomNumber]; }
 	inline constexpr IRQn GetSercomIRQn(uint8_t sercomNumber) noexcept { return SercomIRQns[sercomNumber]; }
 
@@ -54,6 +56,18 @@ namespace Serial
 #endif
 		) noexcept;
 	void Disable(uint8_t sercomNumber) noexcept;
+
+	// Support for serial interrupt vector reassignment
+
+	// Define indirect interrupt handlers so that we can change the interrupt vectors dynamically
+	typedef void (*IrqFunc)(void*) noexcept;
+
+#if SAMC21
+	void SetSercomVector(uint8_t sercomNumber, IrqFunc f, void *param) noexcept;
+#elif SAME5x
+	void SetSercomVector(uint8_t sercomNumber, IrqFunc f0, IrqFunc f1, IrqFunc f2, IrqFunc f3, void *param) noexcept;
+#endif
+	void ReleaseSercomVector(uint8_t sercomNumber) noexcept;
 }
 
 #endif /* SRC_SERIAL_H_ */
