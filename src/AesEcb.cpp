@@ -117,45 +117,21 @@ extern "C" int aes_ecb_crypt(
 }
 
 // ============================================================
-// SAME5x (SAME54 / SAME51) AES-ECB — peripheral at 0x42002400
+// SAME5x (SAME54 / SAME51) AES-ECB — uses ASF aes.h
+//
+// Mirrors the SAME70 driver: init once, auto-start, cache key.
 // ============================================================
 #elif defined(__SAME54P20A__) || defined(__SAME51N19A__) || defined(__SAME51P20A__) || defined(__SAME54N20A__)
 
-#define AES_BASE			0x42002400U
-
-#define AES_CTRLA			(*(volatile uint32_t *)(AES_BASE + 0x00U))
-#define AES_CTRLB			(*(volatile uint8_t  *)(AES_BASE + 0x04U))
-#define AES_INTFLAG			(*(volatile uint8_t  *)(AES_BASE + 0x07U))
-#define AES_KEYWORD			((volatile uint32_t *)(AES_BASE + 0x0CU))
-#define AES_INDATA			(*(volatile uint32_t *)(AES_BASE + 0x38U))
-
-// CTRLA bits
-#define AES_CTRLA_SWRST			(1U << 0)
-#define AES_CTRLA_ENABLE		(1U << 1)
-// AESMODE [4:2] = 0 for ECB (no bits to set)
-#define AES_CTRLA_KEYSIZE_128	(0U << 8)
-#define AES_CTRLA_KEYSIZE_192	(1U << 8)
-#define AES_CTRLA_KEYSIZE_256	(2U << 8)
-#define AES_CTRLA_CIPHER_ENC	(1U << 10)
-
-// CTRLB bits
-#define AES_CTRLB_START			(1U << 0)
-
-// INTFLAG bits
-#define AES_INTFLAG_ENCCMP		(1U << 0)
-
-// MCLK for clock gating
-#define MCLK_BASE				0x40000800U
-#define MCLK_APBCMASK			(*(volatile uint32_t *)(MCLK_BASE + 0x20U))
-#define MCLK_APBCMASK_AES		(1U << 9)
+#include <aes/aes.h>
 
 static bool ecb_initialised = false;
 
 /* Cached key state — key is written once per key/direction change, not per block */
-static uint8_t  cached_key[32];
-static size_t   cached_key_len = 0;
-static bool     cached_encrypt = false;
-static bool     hw_configured  = false;
+static uint8_t cached_key[32];
+static size_t  cached_key_len = 0;
+static bool    cached_encrypt = false;
+static bool    hw_configured  = false;
 
 extern "C" void aes_ecb_invalidate_cache() noexcept
 {
@@ -166,20 +142,15 @@ extern "C" void aes_ecb_invalidate_cache() noexcept
 
 static void ecb_hw_init() noexcept
 {
-	MCLK_APBCMASK |= MCLK_APBCMASK_AES;
-	AES_CTRLA = AES_CTRLA_SWRST;
-	while (AES_CTRLA & AES_CTRLA_SWRST) {}
+	struct aes_config init_cfg;
+	aes_get_config_defaults(&init_cfg);
+	aes_init(AES, &init_cfg);
+	aes_enable();
 }
 
-static uint32_t ecb_keysize_ctrla(size_t key_len) noexcept
+static inline void ecb_wait_datrdy() noexcept
 {
-	switch (key_len)
-	{
-	case 16: return AES_CTRLA_KEYSIZE_128;
-	case 24: return AES_CTRLA_KEYSIZE_192;
-	case 32: return AES_CTRLA_KEYSIZE_256;
-	default: return 0xFFFFFFFFU;
-	}
+	while (!(aes_read_interrupt_status(AES) & AES_ISR_DATRDY)) {}
 }
 
 extern "C" int aes_ecb_crypt(
@@ -187,9 +158,14 @@ extern "C" int aes_ecb_crypt(
 	const uint8_t *key, size_t key_len,
 	const uint8_t input[16], uint8_t output[16]) noexcept
 {
-	const uint32_t ks = ecb_keysize_ctrla(key_len);
-	if (ks == 0xFFFFFFFFU)
-		return -1;
+	enum aes_key_size ks;
+	switch (key_len)
+	{
+	case 16: ks = AES_KEY_SIZE_128; break;
+	case 24: ks = AES_KEY_SIZE_192; break;
+	case 32: ks = AES_KEY_SIZE_256; break;
+	default: return -1;
+	}
 
 	if (!ecb_initialised)
 	{
@@ -198,9 +174,6 @@ extern "C" int aes_ecb_crypt(
 		hw_configured = false;
 	}
 
-	/* Only reconfigure and reload the key when it has actually changed.
-	 * Keeping the peripheral configured avoids the disable/re-enable cycle
-	 * (which re-triggers key expansion on SAME5x) on every block. */
 	const bool key_changed = !hw_configured
 		|| key_len != cached_key_len
 		|| encrypt != cached_encrypt
@@ -208,21 +181,20 @@ extern "C" int aes_ecb_crypt(
 
 	if (key_changed)
 	{
-		// Configure for ECB mode (AESMODE bits [4:2] = 0 = ECB), manual start
-		AES_CTRLA = 0;		// disable before reconfiguring
-		uint32_t ctrla = AES_CTRLA_ENABLE | ks;
-		if (encrypt)
-			ctrla |= AES_CTRLA_CIPHER_ENC;
-		AES_CTRLA = ctrla;
+		struct aes_config cfg;
+		aes_get_config_defaults(&cfg);
+		cfg.encrypt_mode     = encrypt ? AES_ENCRYPTION : AES_DECRYPTION;
+		cfg.key_size         = ks;
+		cfg.start_mode       = AES_AUTO_START;
+		cfg.opmode           = AES_ECB_MODE;
+		cfg.lod              = false;
+		cfg.gtag_en          = false;
+		cfg.processing_delay = 0;
+		aes_set_config(AES, &cfg);
 
-		// Write key to KEYWORD registers
-		const size_t key_words = key_len / 4u;
-		for (size_t i = 0; i < key_words; i++)
-		{
-			uint32_t w;
-			memcpy(&w, key + i * 4u, 4u);
-			AES_KEYWORD[i] = w;
-		}
+		uint32_t key_words[8] = {};
+		memcpy(key_words, key, key_len);
+		aes_write_key(AES, key_words);
 
 		memcpy(cached_key, key, key_len);
 		cached_key_len = key_len;
@@ -230,25 +202,14 @@ extern "C" int aes_ecb_crypt(
 		hw_configured  = true;
 	}
 
-	// Write the 16-byte input block then trigger processing
-	for (int i = 0; i < 4; i++)
-	{
-		uint32_t w;
-		memcpy(&w, input + i * 4, 4);
-		AES_INDATA = w;
-	}
-	AES_CTRLB = AES_CTRLB_START;
+	uint32_t in_words[4];
+	memcpy(in_words, input, 16);
+	aes_write_input_data(AES, in_words);     // AUTO_START triggers on last word write
+	ecb_wait_datrdy();
 
-	// Wait for completion
-	while ((AES_INTFLAG & AES_INTFLAG_ENCCMP) == 0) {}
-	AES_INTFLAG = AES_INTFLAG_ENCCMP;
-
-	// Read the 16-byte output block
-	for (int i = 0; i < 4; i++)
-	{
-		uint32_t w = AES_INDATA;
-		memcpy(output + i * 4, &w, 4);
-	}
+	uint32_t out_words[4];
+	aes_read_output_data(AES, out_words);
+	memcpy(output, out_words, 16);
 
 	return 0;
 }
