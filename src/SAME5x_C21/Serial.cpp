@@ -127,4 +127,88 @@ void Serial::Disable(uint8_t sercomNumber) noexcept
 	hri_sercomusart_set_CTRLA_SWRST_bit(sercom);
 }
 
+static void DummyHandler(void*) noexcept
+{
+	// Maybe we should record an exception instead of just looping?
+	while (1) { }
+}
+
+#if SAMC21
+
+static Serial::IrqFunc sercomIrq[6];
+static void *sercomParam[6];
+
+void Serial::SetSercomVector(uint8_t sercomNumber, Serial::IrqFunc f, void *param) noexcept
+{
+	sercomParam[sercomNumber] = param;
+	sercomIrq[sercomNumber] = f;
+}
+
+void Serial::ReleaseSercomVector(uint8_t sercomNumber) noexcept
+{
+	sercomIrq[sercomNumber] = DummyHandler;
+}
+
+# define DEFINE_SERCOM_IRQ(_sercom) \
+	void SERCOM ## _sercom ## _Handler() noexcept { sercomIrq[_sercom](sercomParam[_sercom]); }
+
+#elif SAME5x
+
+static Serial::IrqFunc sercomIrq[8][4];
+static void *sercomParam[8];
+
+void Serial::SetSercomVector(uint8_t sercomNumber, Serial::IrqFunc f0, Serial::IrqFunc f1, Serial::IrqFunc f2, Serial::IrqFunc f3, void *param) noexcept
+{
+	sercomParam[sercomNumber] = param;
+	sercomIrq[sercomNumber][0] = (f0 == nullptr) ? DummyHandler : f0;
+	sercomIrq[sercomNumber][1] = (f1 == nullptr) ? DummyHandler : f1;
+	sercomIrq[sercomNumber][2] = (f2 == nullptr) ? DummyHandler : f2;
+	sercomIrq[sercomNumber][3] = (f3 == nullptr) ? DummyHandler : f3;
+}
+
+void Serial::ReleaseSercomVector(uint8_t sercomNumber) noexcept
+{
+	sercomIrq[sercomNumber][0] = sercomIrq[sercomNumber][1] = sercomIrq[sercomNumber][2] = sercomIrq[sercomNumber][3] = DummyHandler;
+}
+
+# define DEFINE_SERCOM_IRQ(_sercom) \
+	void SERCOM ## _sercom ## _0_Handler() noexcept { sercomIrq[_sercom][0](sercomParam[_sercom]); } \
+	void SERCOM ## _sercom ## _1_Handler() noexcept { sercomIrq[_sercom][1](sercomParam[_sercom]); } \
+	void SERCOM ## _sercom ## _2_Handler() noexcept { sercomIrq[_sercom][2](sercomParam[_sercom]); } \
+	void SERCOM ## _sercom ## _3_Handler() noexcept { sercomIrq[_sercom][3](sercomParam[_sercom]); }
+
+#endif
+
+DEFINE_SERCOM_IRQ(0)
+DEFINE_SERCOM_IRQ(1)
+DEFINE_SERCOM_IRQ(2)
+DEFINE_SERCOM_IRQ(3)
+DEFINE_SERCOM_IRQ(4)
+DEFINE_SERCOM_IRQ(5)
+
+#if SAME5x
+
+DEFINE_SERCOM_IRQ(6)
+DEFINE_SERCOM_IRQ(7)
+
+#endif
+
+void Serial::Init() noexcept
+{
+#if SAMC21
+	for (Serial::IrqFunc& f : sercomIrq)
+	{
+		f = DummyHandler;
+	}
+#elif SAME5x
+	for (size_t i = 0; i < 8; ++i)
+	{
+		for (size_t j = 0; j < 4; ++j)
+		{
+			sercomIrq[i][j] = DummyHandler;
+		}
+	}
+#endif
+}
+
 // End
