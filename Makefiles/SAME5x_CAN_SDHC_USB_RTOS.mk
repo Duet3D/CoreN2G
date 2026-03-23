@@ -26,6 +26,7 @@ SAME5X_C_SRCS := $(shell find $(SAME5X_SRC_DIR) -name '*.c' \
 SAME5X_INCLUDES := \
 	-I$(SAME5X_SRC_DIR) \
 	-I$(SAME5X_SRC_DIR)/SAME5x_C21/SAME5x \
+	-I$(SAME5X_SRC_DIR)/SAME5x_C21/SAME5x/pukcc \
 	-I$(SAME5X_SRC_DIR)/SAME5x_C21/SAME5x/hal/include \
 	-I$(SAME5X_SRC_DIR)/SAME5x_C21/SAME5x/hal/utils/include \
 	-I$(SAME5X_SRC_DIR)/SAME5x_C21/SAME5x/hri \
