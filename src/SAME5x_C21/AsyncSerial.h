@@ -12,13 +12,12 @@
 #include <Stream.h>
 #include <General/RingBuffer.h>
 #include "Serial.h"
+#include <UART/UartParameters.h>
 
 class AsyncSerial : public Stream
 {
 public:
 	typedef void (*InterruptCallbackFn)(AsyncSerial*) noexcept;
-	typedef void (*OnBeginFn)(AsyncSerial*) noexcept;
-	typedef void (*OnEndFn)(AsyncSerial*) noexcept;
 #if SAME5x
 	typedef void (*OnTransmissionEndedFn)(CallbackParameter) noexcept;
 #endif
@@ -35,7 +34,7 @@ public:
 		Errors() noexcept { all = 0; }
 	};
 
-	AsyncSerial(uint8_t sercomNum, uint8_t rxp, size_t numTxSlots, size_t numRxSlots, OnBeginFn p_onBegin, OnEndFn p_onEnd) noexcept;
+	AsyncSerial(const UartParameters& params) noexcept;
 
 	// Overridden virtual functions
 	int available() noexcept override;
@@ -80,8 +79,6 @@ private:
 	volatile TaskHandle txWaitingTask;
 #endif
     InterruptCallbackFn interruptCallback;
-    OnBeginFn onBegin;
-    OnEndFn onEnd;
 
 #if SAME5x
 	void Interrupt0() noexcept;
@@ -104,7 +101,11 @@ private:
 
 	Errors errors;
 	const uint8_t sercomNumber;
+	const Pin rxPin;
+	const Pin txPin;
+	const GpioPinFunction pinFunction;
 	const uint8_t rxPad;
+	const uint8_t txPad;
 
 	uint8_t numInterruptBytesMatched;
     bool bufferOverrunPending;

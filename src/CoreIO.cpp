@@ -15,6 +15,8 @@
 
 #if SAME5x || SAMC21
 # include <SAME5x_C21/Serial.h>
+#elif SAME70 || SAM4E || SAM4S
+# include <SAM4S_4E_E70/Serial.h>
 #endif
 
 #ifdef RTOS
@@ -67,54 +69,57 @@ uint32_t DelayCycles(uint32_t start, uint32_t cycles) noexcept
  */
 void SetPinFunction(Pin p, GpioPinFunction f) noexcept
 {
+	if (p < NumTotalPins)
+	{
 #if SAME5x || SAMC21
-	const uint8_t port = GpioPortNumber(p);
-	const uint8_t pin  = GpioPinNumber(p);
-	uint8_t tmp = PORT->Group[port].PMUX[pin >> 1].reg;
-	if (pin & 1)
-	{
-		// Odd numbered pin
-		tmp &= ~PORT_PMUX_PMUXO_Msk;
-		tmp |= PORT_PMUX_PMUXO((uint8_t)f);
-	}
-	else
-	{
-		// Even numbered pin
-		tmp &= ~PORT_PMUX_PMUXE_Msk;
-		tmp |= PORT_PMUX_PMUXE((uint8_t)f);
-	}
-	PORT->Group[port].PMUX[pin >> 1].reg = tmp;
-	PORT->Group[port].PINCFG[pin].bit.PMUXEN = 1;
+		const uint8_t port = GpioPortNumber(p);
+		const uint8_t pin  = GpioPinNumber(p);
+		uint8_t tmp = PORT->Group[port].PMUX[pin >> 1].reg;
+		if (pin & 1)
+		{
+			// Odd numbered pin
+			tmp &= ~PORT_PMUX_PMUXO_Msk;
+			tmp |= PORT_PMUX_PMUXO((uint8_t)f);
+		}
+		else
+		{
+			// Even numbered pin
+			tmp &= ~PORT_PMUX_PMUXE_Msk;
+			tmp |= PORT_PMUX_PMUXE((uint8_t)f);
+		}
+		PORT->Group[port].PMUX[pin >> 1].reg = tmp;
+		PORT->Group[port].PINCFG[pin].bit.PMUXEN = 1;
 #elif SAME70 || SAM4E || SAM4S
-	Pio * const p_pio = GpioPort(p);
-	const uint32_t mask = (uint32_t)1 << (p & 0x1F);
-	p_pio->PIO_IDR = mask;									// disable interrupts on the pin
-	uint32_t sr0 = p_pio->PIO_ABCDSR[0];
-	uint32_t sr1 = p_pio->PIO_ABCDSR[1];
-	if ((uint8_t)f & 0x01)
-	{
-		sr0 |= mask;
-	}
-	else
-	{
-		sr0 &= ~mask;
-	}
-	if ((uint8_t)f & 0x02)
-	{
-		sr1 |= mask;
-	}
-	else
-	{
-		sr1 &= ~mask;
-	}
-	p_pio->PIO_ABCDSR[0] = sr0;
-	p_pio->PIO_ABCDSR[1] = sr1;
-	p_pio->PIO_PDR = mask;									// remove the pins from under the control of PIO
+		Pio * const p_pio = GpioPort(p);
+		const uint32_t mask = (uint32_t)1 << (p & 0x1F);
+		p_pio->PIO_IDR = mask;									// disable interrupts on the pin
+		uint32_t sr0 = p_pio->PIO_ABCDSR[0];
+		uint32_t sr1 = p_pio->PIO_ABCDSR[1];
+		if ((uint8_t)f & 0x01)
+		{
+			sr0 |= mask;
+		}
+		else
+		{
+			sr0 &= ~mask;
+		}
+		if ((uint8_t)f & 0x02)
+		{
+			sr1 |= mask;
+		}
+		else
+		{
+			sr1 &= ~mask;
+		}
+		p_pio->PIO_ABCDSR[0] = sr0;
+		p_pio->PIO_ABCDSR[1] = sr1;
+		p_pio->PIO_PDR = mask;									// remove the pins from under the control of PIO
 #elif RP2040
-	gpio_set_function(p, (gpio_function)f);
+		gpio_set_function(p, (gpio_function)f);
 #else
 # error Unsupported processor
 #endif
+	}
 }
 
 /**
@@ -124,63 +129,79 @@ void SetPinFunction(Pin p, GpioPinFunction f) noexcept
  */
 void ClearPinFunction(Pin p) noexcept
 {
+	if (p < NumTotalPins)
+	{
 #if SAME5x || SAMC21
-	PORT->Group[GpioPortNumber(p)].PINCFG[GpioPinNumber(p)].bit.PMUXEN = 0;
+		PORT->Group[GpioPortNumber(p)].PINCFG[GpioPinNumber(p)].bit.PMUXEN = 0;
 #elif SAME70 || SAM4E || SAM4S
-	Pio * const p_pio = GpioPort(p);
-	const uint32_t mask = GpioMask(p);
-	p_pio->PIO_PER = mask;									// put the pins under the control of PIO
+		Pio * const p_pio = GpioPort(p);
+		const uint32_t mask = GpioMask(p);
+		p_pio->PIO_PER = mask;									// put the pins under the control of PIO
 #elif RP2040
-	gpio_init(p);
+		gpio_init(p);
 #else
 # error Unsupported processor
 #endif
+	}
 }
 
 // Enable the pullup resistor
 void EnablePullup(Pin pin) noexcept
 {
-#if SAM4E || SAM4S || SAME70
-	GpioPort(pin)->PIO_PPDDR = GpioMask(pin);						// turn off pulldown
-	GpioPort(pin)->PIO_PUER = GpioMask(pin);						// turn on pullup
+	if (pin < NumTotalPins)
+	{
+#if SAME5x || SAMC21
+		PORT->Group[GpioPortNumber(pin)].OUTSET.reg = GpioMask(pin);
+		PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].bit.PULLEN = 1;
+#elif SAM4E || SAM4S || SAME70
+		GpioPort(pin)->PIO_PPDDR = GpioMask(pin);						// turn off pulldown
+		GpioPort(pin)->PIO_PUER = GpioMask(pin);						// turn on pullup
 #elif RP2040
-	gpio_pull_up(pin);
+		gpio_pull_up(pin);
 #else
-	PORT->Group[GpioPortNumber(pin)].OUTSET.reg = GpioMask(pin);
-	PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].bit.PULLEN = 1;
+# error Unsupported processor
 #endif
+	}
 }
 
 // Disable the pullup resistor
 void DisablePullup(Pin pin) noexcept
 {
-#if SAM4E || SAM4S || SAME70
-	GpioPort(pin)->PIO_PUDR = GpioMask(pin);						// turn off pullup
-	GpioPort(pin)->PIO_PPDDR = GpioMask(pin);						// turn off pulldown
+	if (pin < NumTotalPins)
+	{
+#if SAME5x || SAMC21
+		PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].bit.PULLEN = 0;
+#elif SAM4E || SAM4S || SAME70
+		GpioPort(pin)->PIO_PUDR = GpioMask(pin);						// turn off pullup
+		GpioPort(pin)->PIO_PPDDR = GpioMask(pin);						// turn off pulldown
 #elif RP2040
-	gpio_disable_pulls(pin);
+		gpio_disable_pulls(pin);
 #else
-	PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].bit.PULLEN = 0;
+# error Unsupported processor
 #endif
+	}
 }
 
 // Set high driver strength on an output pin
 void SetDriveStrength(Pin p, unsigned int strength) noexcept
 {
+	if (p < NumTotalPins)
+	{
 #if SAME5x || SAMC21
-	if (strength != 0)
-	{
-		PORT->Group[GpioPortNumber(p)].PINCFG[GpioPinNumber(p)].reg |= PORT_PINCFG_DRVSTR;
-	}
-	else
-	{
-		PORT->Group[GpioPortNumber(p)].PINCFG[GpioPinNumber(p)].reg &= ~PORT_PINCFG_DRVSTR;
-	}
+		if (strength != 0)
+		{
+			PORT->Group[GpioPortNumber(p)].PINCFG[GpioPinNumber(p)].reg |= PORT_PINCFG_DRVSTR;
+		}
+		else
+		{
+			PORT->Group[GpioPortNumber(p)].PINCFG[GpioPinNumber(p)].reg &= ~PORT_PINCFG_DRVSTR;
+		}
 #elif RP2040
-	gpio_set_drive_strength(p, gpio_drive_strength((gpio_drive_strength)min<unsigned int>(strength, 3)));	// 2, 4, 8 and 12mA can be selected
+		gpio_set_drive_strength(p, gpio_drive_strength((gpio_drive_strength)min<unsigned int>(strength, 3)));	// 2, 4, 8 and 12mA can be selected
 #else
-	// This is a NOP on other processors
+		// This is a NOP on other processors
 #endif
+	}
 }
 
 // IoPort::SetPinMode calls this
@@ -603,6 +624,8 @@ void CoreInit() noexcept
 #endif
 #if SAME5x || SAMC21
 	InitialiseExints();
+#endif
+#if !RP2040
 	Serial::Init();
 #endif
 

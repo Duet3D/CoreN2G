@@ -50,7 +50,7 @@ namespace Serial
 	inline constexpr IRQn GetSercomIRQn(uint8_t sercomNumber) noexcept { return SercomIRQns[sercomNumber]; }
 
 	void EnableSercomClock(uint8_t sercomNumber) noexcept;
-	void InitUart(uint8_t sercomNumber, uint32_t baudRate, uint8_t rxPad
+	void InitUart(uint8_t sercomNumber, uint32_t baudRate, uint8_t rxPad, uint8_t txPad
 #if SAME5x
 		, bool use32bitMode = false
 #endif
