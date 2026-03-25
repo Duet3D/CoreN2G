@@ -449,9 +449,14 @@ AsyncSerial::OnTransmissionEndedFn _ecv_null AsyncSerial::SetOnTxEndedCallback(O
 void AsyncSerial::setInterruptPriority(uint32_t rxPrio, uint32_t txAndErrorPrio) const noexcept
 {
 	const IRQn irqNumber = Serial::GetSercomIRQn(sercomNumber);
+#if SAME5x
 	NVIC_SetPriority(irqNumber, txAndErrorPrio);
+	NVIC_SetPriority((IRQn)(irqNumber + 1), txAndErrorPrio);
 	NVIC_SetPriority((IRQn)(irqNumber + 2), rxPrio);
 	NVIC_SetPriority((IRQn)(irqNumber + 3), txAndErrorPrio);
+#elif SAMC21
+	NVIC_SetPriority(irqNumber, rxPrio);
+#endif
 }
 
 // End
