@@ -67,7 +67,9 @@ SAME5X_CFLAGS := -c -std=gnu99 \
 	-Wundef \
 	-Wdouble-promotion \
 	-Werror=return-type \
+	-Werror=implicit \
 	-fsingle-precision-constant \
+	-fstack-usage \
 	$(SAME5X_INCLUDES) \
 	$(SAME5X_C_DEFINES)
 
@@ -90,6 +92,7 @@ SAME5X_CXXFLAGS := -c -std=gnu++17 \
 	-Werror=return-type \
 	-Wsuggest-override \
 	-fsingle-precision-constant \
+	-fstack-usage \
 	$(SAME5X_INCLUDES) \
 	$(SAME5X_DEFINES)
 
@@ -98,8 +101,8 @@ ifeq ($(DEBUG),1)
 SAME5X_CFLAGS += -O0 -g3
 SAME5X_CXXFLAGS += -O0 -g3
 else
-SAME5X_CFLAGS += -Os
-SAME5X_CXXFLAGS += -Os
+SAME5X_CFLAGS += -O3
+SAME5X_CXXFLAGS += -O3
 endif
 
 # Object files
