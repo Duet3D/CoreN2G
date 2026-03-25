@@ -22,9 +22,6 @@
 constexpr uint32_t DiagBaudRate = 57600;		// the baud rate we default to
 
 // Enable the clocks for the SERCOM.
-// Set the "useSdhcClock" parameter true to use GCLK5 as the main SERCOM clock instead of the 60MHz clock.
-// This will only be useful if GCLK5 has been set up at a suitable frequency, for example on Duet 3 Mini main boards it is set to 96MHz to use as the SDHC clock.
-// Setting this will of course mess up the baud rate calculation, so it's most likely to be useful in SPI slave mode.
 void Serial::EnableSercomClock(uint8_t sercomNumber) noexcept
 {
 	struct SercomClockParams
@@ -68,7 +65,7 @@ void Serial::EnableSercomClock(uint8_t sercomNumber) noexcept
 }
 
 // Initialise the serial port. This does not set up the I/O pins. It assumes that we always transmit on pad 0.
-void Serial::InitUart(uint8_t sercomNumber, uint32_t baudRate, uint8_t rxPad
+void Serial::InitUart(uint8_t sercomNumber, uint32_t baudRate, uint8_t rxPad, uint8_t txPad
 #if SAME5x
 						, bool use32bitMode
 #endif
@@ -83,7 +80,7 @@ void Serial::InitUart(uint8_t sercomNumber, uint32_t baudRate, uint8_t rxPad
 						 | (0u << SERCOM_USART_CTRLA_FORM_Pos)				// usart frame, no parity
 						 | (0u << SERCOM_USART_CTRLA_SAMPA_Pos)				// sample on clocks 7-8-9
 						 | ((uint32_t)rxPad << SERCOM_USART_CTRLA_RXPO_Pos)	// receive data pad
-						 | (0u << SERCOM_USART_CTRLA_TXPO_Pos)				// transmit on pad 0
+						 | ((uint32_t)txPad << SERCOM_USART_CTRLA_TXPO_Pos)	// transmit data pad
 						 | (0u << SERCOM_USART_CTRLA_SAMPR_Pos)				// 16x over sampling, normal baud rate generation
 #if SAME5x
 						 | (0u << SERCOM_USART_CTRLA_RXINV_Pos)				// don't invert receive data
@@ -196,7 +193,7 @@ DEFINE_SERCOM_IRQ(7)
 void Serial::Init() noexcept
 {
 #if SAMC21
-	for (Serial::IrqFunc& f : sercomIrq)
+	for (IrqFunc& f : sercomIrq)
 	{
 		f = DummyHandler;
 	}

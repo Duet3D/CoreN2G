@@ -9,19 +9,20 @@
 #include <CoreNotifyIndices.h>
 #include <algorithm>		// for std::swap
 
-AsyncSerial::AsyncSerial(uint8_t sercomNum, uint8_t rxp, size_t numTxSlots, size_t numRxSlots, OnBeginFn p_onBegin, OnEndFn p_onEnd) noexcept
-	: sercom(Serial::GetSercom(sercomNum)),
+AsyncSerial::AsyncSerial(const UartParameters& params) noexcept
+	: sercom(Serial::GetSercom(params.sercomNumber)),
 #ifdef RTOS
 	  txWaitingTask(nullptr),
 #endif
-	  interruptCallback(nullptr), onBegin(p_onBegin), onEnd(p_onEnd),
+	  interruptCallback(nullptr),
 #if SAME5x
 	  onTransmissionEndedFn(nullptr),
 #endif
-	  sercomNumber(sercomNum), rxPad(rxp), txEnabled(false)
+	  sercomNumber(params.sercomNumber), rxPin(params.rxPin), txPin(params.txPin), pinFunction(params.pinFunction), rxPad(params.dataInPad), txPad(params.dataOutPad),
+	  txEnabled(false)
 {
-	txBuffer.Init(numTxSlots);
-	rxBuffer.Init(numRxSlots);
+	txBuffer.Init(params.numTxSlots);
+	rxBuffer.Init(params.numRxSlots);
 }
 
 // Initialise the UART. numRxSlots may be zero if we don't wish to receive.
@@ -30,8 +31,10 @@ void AsyncSerial::begin(uint32_t baudRate) noexcept
 	txBuffer.Clear();
 	rxBuffer.Clear();
 	bufferOverrunPending = false;
-	onBegin(this);
-	Serial::InitUart(sercomNumber, baudRate, rxPad);
+
+	SetPinFunction(txPin, pinFunction);
+	SetPinFunction(rxPin, pinFunction);
+	Serial::InitUart(sercomNumber, baudRate, rxPad, txPad);
 	errors.all = 0;
 	numInterruptBytesMatched = 0;
 	sercom->USART.INTENSET.reg = SERCOM_USART_INTENSET_RXC | SERCOM_USART_INTENSET_ERROR;
@@ -69,7 +72,8 @@ void AsyncSerial::end() noexcept
 	NVIC_DisableIRQ((IRQn)(irqNumber + 3));
 #endif
 	Serial::ReleaseSercomVector(sercomNumber);
-	onEnd(this);
+	ClearPinFunction(txPin);
+	ClearPinFunction(rxPin);
 }
 
 // Non-blocking read, return 0 if no character available
@@ -445,9 +449,14 @@ AsyncSerial::OnTransmissionEndedFn _ecv_null AsyncSerial::SetOnTxEndedCallback(O
 void AsyncSerial::setInterruptPriority(uint32_t rxPrio, uint32_t txAndErrorPrio) const noexcept
 {
 	const IRQn irqNumber = Serial::GetSercomIRQn(sercomNumber);
+#if SAME5x
 	NVIC_SetPriority(irqNumber, txAndErrorPrio);
+	NVIC_SetPriority((IRQn)(irqNumber + 1), txAndErrorPrio);
 	NVIC_SetPriority((IRQn)(irqNumber + 2), rxPrio);
 	NVIC_SetPriority((IRQn)(irqNumber + 3), txAndErrorPrio);
+#elif SAMC21
+	NVIC_SetPriority(irqNumber, rxPrio);
+#endif
 }
 
 // End
