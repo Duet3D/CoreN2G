@@ -147,7 +147,7 @@ protected:
 	Uart* const _pUart;
 	const int8_t id;
 #ifdef RTOS
-	volatile TaskHandle _ecv_null txWaitingTask;
+	volatile TaskHandle _ecv_null txWaitingTask = nullptr;
 #endif
 	InterruptCallbackFn _ecv_null interruptCallback = nullptr;
 	OnTransmissionEndedFn _ecv_null onTransmissionEndedFn = nullptr;
