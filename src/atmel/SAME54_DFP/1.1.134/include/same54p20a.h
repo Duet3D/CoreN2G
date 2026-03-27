@@ -518,7 +518,7 @@ void TCC3_2_Handler              ( void );
 void TCC4_0_Handler              ( void );
 void TCC4_1_Handler              ( void );
 void TCC4_2_Handler              ( void );
-void TC0_Handler                 ( void );
+void TC0_Handler                 ( void ) noexcept;
 void TC1_Handler                 ( void );
 void TC2_Handler                 ( void ) noexcept;
 void TC3_Handler                 ( void );

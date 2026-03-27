@@ -14,9 +14,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License.
  * You may obtain a copy of the Licence at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an AS IS BASIS, WITHOUT
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -392,10 +392,10 @@ typedef struct _DeviceVectors
 /* Cortex-M4 processor handlers */
 void Reset_Handler               ( void );
 void NonMaskableInt_Handler      ( void );
-void HardFault_Handler           ( void );
+void HardFault_Handler           ( void ) noexcept;
 void MemManagement_Handler       ( void );
 void BusFault_Handler            ( void );
-void UsageFault_Handler          ( void );
+void UsageFault_Handler          ( void ) noexcept;
 void SVCall_Handler              ( void );
 void DebugMonitor_Handler        ( void );
 void PendSV_Handler              ( void );
@@ -412,7 +412,7 @@ void OSCCTRL_4_Handler           ( void );
 void OSC32KCTRL_Handler          ( void );
 void SUPC_0_Handler              ( void );
 void SUPC_1_Handler              ( void );
-void WDT_Handler                 ( void );
+void WDT_Handler                 ( void ) noexcept;
 void RTC_Handler                 ( void );
 void EIC_0_Handler               ( void );
 void EIC_1_Handler               ( void );
@@ -497,7 +497,7 @@ void TCC3_2_Handler              ( void );
 void TCC4_0_Handler              ( void );
 void TCC4_1_Handler              ( void );
 void TCC4_2_Handler              ( void );
-void TC0_Handler                 ( void );
+void TC0_Handler                 ( void ) noexcept;
 void TC1_Handler                 ( void );
 void TC2_Handler                 ( void );
 void TC3_Handler                 ( void );
