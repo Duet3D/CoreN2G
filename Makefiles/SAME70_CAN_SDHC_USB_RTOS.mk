@@ -101,10 +101,10 @@ SAME70_CFLAGS := -c -std=gnu99 \
 	-Werror=return-type \
 	-Werror=implicit \
 	-fsingle-precision-constant \
-	-Os \
+	-fstack-usage \
+	-fdump-rtl-expand \
+	-O3 \
 	-Wall \
-	-Werror \
-	-Wwrite-strings \
 	$(SAME70_INCLUDES) \
 	$(SAME70_DEFINES) \
 	-Dnoexcept=
@@ -126,17 +126,13 @@ SAME70_CXXFLAGS := -c -std=gnu++17 \
 	-nostdlib \
 	-Wundef \
 	-Wdouble-promotion \
-	-Wfloat-conversion \
 	-Werror=return-type \
 	-Wsuggest-override \
 	-fsingle-precision-constant \
 	-fstack-usage \
-	-Os \
+	-fdump-rtl-expand \
+	-O3 \
 	-Wall \
-	-Werror \
-	-Wnoexcept \
-	-Wshadow \
-	-Wsign-promo \
 	$(SAME70_INCLUDES) \
 	$(SAME70_DEFINES)
 

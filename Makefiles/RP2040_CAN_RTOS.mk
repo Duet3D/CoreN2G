@@ -12,7 +12,7 @@ RP2040_CAN_RTOS_CFLAGS := -c -std=gnu99 \
 	-ffunction-sections -fdata-sections -nostdlib \
 	-Wall -Wundef -Wdouble-promotion -Wno-error=return-type \
 	-fsingle-precision-constant \
-	-Os
+	-O3
 
 # Compiler flags - C++
 RP2040_CAN_RTOS_CXXFLAGS := -c -std=gnu++17 \
@@ -22,7 +22,7 @@ RP2040_CAN_RTOS_CXXFLAGS := -c -std=gnu++17 \
 	-fno-threadsafe-statics -fno-rtti -fno-exceptions -nostdlib \
 	-Wall -Wundef -Wdouble-promotion -Werror=return-type -Wsuggest-override \
 	-fsingle-precision-constant \
-	-Os
+	-O3
 
 # Defines - C only
 RP2040_CAN_RTOS_C_DEFS := -D__RP2040__ -Dnoexcept= -DSUPPORT_CAN=1 -DSUPPORT_USB=1 -DRTOS

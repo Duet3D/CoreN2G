@@ -70,6 +70,8 @@ SAME5X_CFLAGS := -c -std=gnu99 \
 	-Werror=implicit \
 	-fsingle-precision-constant \
 	-fstack-usage \
+	-fdump-rtl-expand \
+	-Wall \
 	$(SAME5X_INCLUDES) \
 	$(SAME5X_C_DEFINES)
 
@@ -93,6 +95,8 @@ SAME5X_CXXFLAGS := -c -std=gnu++17 \
 	-Wsuggest-override \
 	-fsingle-precision-constant \
 	-fstack-usage \
+	-fdump-rtl-expand \
+	-Wall \
 	$(SAME5X_INCLUDES) \
 	$(SAME5X_DEFINES)
 

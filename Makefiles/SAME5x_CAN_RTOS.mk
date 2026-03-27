@@ -12,7 +12,7 @@ SAME5x_CAN_RTOS_CFLAGS := -c -std=gnu99 \
 	-ffunction-sections -fdata-sections -nostdlib \
 	-Wall -Wundef -Wdouble-promotion -Werror=return-type -Werror=implicit \
 	-fsingle-precision-constant \
-	-Os
+	-O3
 
 # Compiler flags - C++
 SAME5x_CAN_RTOS_CXXFLAGS := -c -std=gnu++17 \
@@ -22,7 +22,8 @@ SAME5x_CAN_RTOS_CXXFLAGS := -c -std=gnu++17 \
 	-fno-threadsafe-statics -fno-rtti -fno-exceptions -nostdlib \
 	-Wall -Wundef -Wdouble-promotion -Werror=return-type -Wsuggest-override \
 	-fsingle-precision-constant \
-	-Os
+	-fstack-usage \
+	-O3
 
 # Defines - C only
 SAME5x_CAN_RTOS_C_DEFS := -D__SAME54P20A__ -Dnoexcept= -DSUPPORT_CAN=1 -DSUPPORT_SDHC=0 -DSUPPORT_USB=0 -DRTOS
