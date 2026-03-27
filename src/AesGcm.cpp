@@ -11,7 +11,9 @@
  * task, so no locking is needed. Do not call from multiple tasks.
  */
 
+#include <cstdint>
 #include <cstring>
+
 /* AesGcm and AesEcb share the same AES peripheral. Any AesGcm use invalidates
  * AesEcb's cached peripheral configuration so subsequent ECB calls reconfigure
  * safely. */
