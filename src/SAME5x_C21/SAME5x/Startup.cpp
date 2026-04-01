@@ -91,6 +91,7 @@ extern "C" [[noreturn]] void Reset_Handler() noexcept
 	__DSB();
 	__ISB();
 
+
 	// Initialize the C library and C++ constructors for static objects
 	__libc_init_array();
 
