@@ -24,7 +24,7 @@ public:
 	explicit SerialCDC(size_t interface_index = 0) noexcept;
 
 	void Start(Pin p_vBusPin) noexcept;
-	void end(void) noexcept;
+	void end() noexcept;
 
 	int available() noexcept override;
 	int read() noexcept override;
@@ -37,9 +37,9 @@ public:
 	bool IsConnected() const noexcept;
 
 private:
-	volatile TaskHandle txWaitingTask;
+	volatile TaskHandle txWaitingTask = nullptr;
     bool running = false;
-	Pin vBusPin;
+	Pin vBusPin = NoPin;
 	size_t interfaceIndex;
 };
 
