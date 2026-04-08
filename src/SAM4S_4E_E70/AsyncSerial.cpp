@@ -44,8 +44,11 @@ void AsyncSerial::begin(uint32_t dwBaudRate) noexcept
 
 void AsyncSerial::begin(uint32_t dwBaudRate, UARTModes config) noexcept
 {
-	uint32_t modeReg = static_cast<uint32_t>(config) & 0x00000E00;
-	init(dwBaudRate, modeReg | UART_MR_CHMODE_NORMAL);
+	const uint32_t configReg = static_cast<uint32_t>(config);
+	const uint32_t modeReg = (uartOrUsartInstance & 0x80) != 0
+		? ((configReg & (US_MR_CHRL_Msk | US_MR_PAR_Msk | US_MR_NBSTOP_Msk)) | US_MR_USART_MODE_NORMAL | US_MR_USCLKS_MCK | US_MR_CHMODE_NORMAL)
+		: ((configReg & UART_MR_PAR_Msk) | UART_MR_CHMODE_NORMAL);
+	init(dwBaudRate, modeReg);
 }
 
 void AsyncSerial::init(const uint32_t dwBaudRate, const uint32_t modeReg) noexcept
