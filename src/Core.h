@@ -109,7 +109,7 @@ extern "C" {
 # error unsupported processor
 #endif
 
-#if SAME70 || RP2040 || SAME5x
+#if defined(RTOS) && (SAME70 || RP2040 || SAME5x)
 # define CORE_USES_TINYUSB		1
 #else
 # define CORE_USES_TINYUSB		0

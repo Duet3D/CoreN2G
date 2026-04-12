@@ -49,8 +49,12 @@
 #endif
 
 #if SAME70
-# define  USB_DEVICE_VENDOR_ID			0x1D50			// pid.codes VID from which PIDs are allocated to open source projects
-# define  USB_DEVICE_PRODUCT_ID			0x60EE			// PID allocated to us for Duet 3
+# ifndef USB_DEVICE_VENDOR_ID
+#  define  USB_DEVICE_VENDOR_ID			0x1D50			// pid.codes VID from which PIDs are allocated to open source projects
+# endif
+# ifndef USB_DEVICE_PRODUCT_ID
+#  define  USB_DEVICE_PRODUCT_ID		0x60EE			// PID allocated to us for Duet 3
+# endif
 # define  USB_DEVICE_POWER				200				// Consumption on Vbus line (mA)
 #endif
 
@@ -64,7 +68,9 @@
 # define  USB_DEVICE_PRODUCT_NAME          "Alligator"
 #else
 # define  USB_DEVICE_MANUFACTURE_NAME      "Duet3D"
-# define  USB_DEVICE_PRODUCT_NAME          "Duet"
+# ifndef USB_DEVICE_PRODUCT_NAME
+#  define  USB_DEVICE_PRODUCT_NAME          "Duet"
+# endif
 #endif
 
 /**

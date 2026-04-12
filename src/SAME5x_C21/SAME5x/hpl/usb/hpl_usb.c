@@ -955,7 +955,9 @@ static inline void _usb_d_dev_wakeup(void)
 {
 	hri_usbdevice_clear_INTFLAG_reg(USB, USB_D_WAKEUP_INT_FLAGS);
 	hri_usbdevice_clear_INTEN_reg(USB, USB_D_WAKEUP_INT_FLAGS);
+#ifdef RTOS
 	hri_usbdevice_set_INTEN_reg(USB, USB_D_SUSPEND_INT_FLAGS);
+#endif
 
 	_usb_d_dev_wait_clk_rdy(CONF_USB_D_CLK_SRC);
 	dev_inst.callbacks.event(USB_EV_WAKEUP, 0);
@@ -971,7 +973,12 @@ static inline void _usb_d_dev_reset(void)
 
 	hri_usbdevice_clear_INTFLAG_reg(USB, USB_DEVICE_INTFLAG_EORST);
 	hri_usbdevice_clear_INTEN_reg(USB, USB_D_WAKEUP_INT_FLAGS);
+#ifdef RTOS
+	// Only enable suspend/wakeup tracking when an RTOS is present; without RTOS
+	// the suspend/wakeup ISRs ping-pong infinitely and starve the main loop
+	// (NVIC tail-chains the interrupts)
 	hri_usbdevice_set_INTEN_reg(USB, USB_D_SUSPEND_INT_FLAGS);
+#endif
 
 	_usb_d_dev_reset_epts();
 	dev_inst.callbacks.event(USB_EV_RESET, 0);
@@ -981,7 +988,9 @@ static inline void _usb_d_dev_suspend(void)
 {
 	hri_usbdevice_clear_INTFLAG_reg(USB, USB_D_SUSPEND_INT_FLAGS);
 	hri_usbdevice_clear_INTEN_reg(USB, USB_D_SUSPEND_INT_FLAGS);
+#ifdef RTOS
 	hri_usbdevice_set_INTEN_reg(USB, USB_D_WAKEUP_INT_FLAGS);
+#endif
 
 	dev_inst.callbacks.event(USB_EV_SUSPEND, 0);
 }
@@ -1516,8 +1525,11 @@ int32_t _usb_d_dev_enable(void)
 	NVIC_EnableIRQ(USB_3_IRQn);
 
 	hri_usbdevice_set_INTEN_reg(hw,
-	                            USB_DEVICE_INTENSET_SOF | USB_DEVICE_INTENSET_EORST | USB_DEVICE_INTENSET_RAMACER
-	                                | USB_D_SUSPEND_INT_FLAGS);
+	                            USB_DEVICE_INTENSET_EORST | USB_DEVICE_INTENSET_RAMACER
+#ifdef RTOS
+	                                | USB_DEVICE_INTENSET_SOF | USB_D_SUSPEND_INT_FLAGS
+#endif
+	                                );
 
 	return ERR_NONE;
 }

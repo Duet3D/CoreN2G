@@ -33,10 +33,12 @@ CONFIGS := \
 	SAME5x_CAN_RTOS \
 	SAME5x_CAN_SDHC_USB_RTOS \
 	SAME5x_SDHC \
+	SAME5x_SDHC_USB \
 	SAME5x_SDHC_USB_RTOS \
 	SAME70_CAN \
 	SAME70_CAN_SDHC_USB_RTOS \
 	SAME70_SDHC \
+	SAME70_SDHC_USB \
 	RP2040_CAN_RTOS \
 	RP2040_RTOS
 
@@ -81,10 +83,12 @@ all: $(CONFIGS)
 -include Makefiles/SAME5x_CAN_RTOS.mk
 -include Makefiles/SAME5x_CAN_SDHC_USB_RTOS.mk
 -include Makefiles/SAME5x_SDHC.mk
+-include Makefiles/SAME5x_SDHC_USB.mk
 -include Makefiles/SAME5x_SDHC_USB_RTOS.mk
 -include Makefiles/SAME70_CAN.mk
 -include Makefiles/SAME70_CAN_SDHC_USB_RTOS.mk
 -include Makefiles/SAME70_SDHC.mk
+-include Makefiles/SAME70_SDHC_USB.mk
 -include Makefiles/RP2040_CAN_RTOS.mk
 -include Makefiles/RP2040_RTOS.mk
 
