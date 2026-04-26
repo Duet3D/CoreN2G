@@ -661,10 +661,10 @@ void CanDevice::CopyReceivedMessage(CanMessageBuffer *null buffer, const volatil
 		buffer->extId = f->R0.bit.XTD;
 		buffer->id.SetReceivedId((buffer->extId) ? f->R0.bit.ID : f->R0.bit.ID >> 18);			// a standard identifier is stored into ID[28:18]
 		buffer->remote = f->R0.bit.RTR;
-
-		const volatile uint32_t *data = f->GetDataPointer();
+		buffer->useBrs = f->R1.bit.BRS;
 		buffer->timeStamp = f->R1.bit.RXTS;
 		const uint8_t dlc = f->R1.bit.DLC;
+		const volatile uint32_t *data = f->GetDataPointer();
 		static constexpr uint8_t dlc2len[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 24, 32, 48, 64};
 
 		switch (dlc)
