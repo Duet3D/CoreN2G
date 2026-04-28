@@ -982,7 +982,7 @@ void CanDevice::GetLocalCanTiming(CanTiming &timing) const noexcept
 	const uint32_t dJw = ((localDbtp & CAN_(DBTP_DSJW_Msk)) >> CAN_(DBTP_DSJW_Pos)) + 1;
 	const uint32_t dBrp = ((localDbtp & CAN_(DBTP_DBRP_Msk)) >> CAN_(DBTP_DBRP_Pos)) + 1;
 	const uint32_t dPeriod = (dTseg1 + dTseg2 + 1) * dBrp;
-	timing.dataRateMultiplier = timing.period/dPeriod;
+	timing.dataRateMultiplier = timing.period/dPeriod - 1;
 	timing.dTseg1 = dTseg1 * dBrp - 1;
 	timing.dJumpWidth = dJw * dBrp;
 	timing.spare1 = 0x0F;
@@ -1039,7 +1039,7 @@ void CanDevice::UpdateLocalCanTiming(const CanTiming &timing) noexcept
 
 	if (useFDMode && timing.IsUsingBrs())
 	{
-		uint32_t dPeriod = (timing.IsUsingBrs()) ? nPeriod/timing.dataRateMultiplier : nPeriod;
+		uint32_t dPeriod = timing.period/(timing.dataRateMultiplier + 1);
 		uint32_t dTseg1 = timing.dTseg1 + 1;
 		uint32_t dJumpWidth = timing.dJumpWidth;
 		uint32_t dPrescaler = 1;							// 48MHz main clock
@@ -1048,7 +1048,7 @@ void CanDevice::UpdateLocalCanTiming(const CanTiming &timing) noexcept
 		// Use the highest prescaled clock frequency we can in order to get the most accurate timing
 		for (;;)
 		{
-			dTseg2 = dPeriod - dTseg1;
+			dTseg2 = dPeriod - dTseg1 - 1;
 			if (dTseg1 <= 32 && dTseg2 <= 16)
 			{
 				break;
@@ -1062,6 +1062,9 @@ void CanDevice::UpdateLocalCanTiming(const CanTiming &timing) noexcept
 		}
 
 		if (dJumpWidth > dTseg2) { dJumpWidth = dTseg2; }	// jump width cannot exceed tseg2
+#if SAME70
+		if (dJumpWidth > 8) { dJumpWidth = 8; }				// jump width cannot exceed 8 on the SAME70 (on the SAME5x it can be as large as tseg2)
+#endif
 
 		dbtp =  ((dTseg1 - 1) << CAN_(DBTP_DTSEG1_Pos))
 				| ((dTseg2 - 1) << CAN_(DBTP_DTSEG2_Pos))
