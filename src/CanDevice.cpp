@@ -9,6 +9,8 @@
 
 #if SUPPORT_CAN && !RP2040
 
+#define USE_TRANSCEIVER_COMPENSATION	(1)
+
 #include <Cache.h>
 #include <CanSettings.h>
 #include <CanMessageBuffer.h>
@@ -298,9 +300,14 @@ void CanDevice::DoHardwareInit() noexcept
 #if SAME5x || SAMC21
 	hw->MRCFG.reg = CAN_MRCFG_QOS_MEDIUM;
 #endif
-	hw->REG(TDCR) = 0;														// use just the measured transceiver delay
 	hw->REG(NBTP) = nbtp;
 	hw->REG(DBTP) = dbtp;
+#if USE_TRANSCEIVER_COMPENSATION
+	const uint32_t dTseg1 = ((dbtp & CAN_(DBTP_DTSEG1_Msk)) >> CAN_(DBTP_DTSEG1_Pos)) + 1;
+	hw->REG(TDCR) = CAN_(TDCR_TDCO)(dTseg1) | CAN_(TDCR_TDCF)(dTseg1);
+#else
+	hw->REG(TDCR) = 0;														// use just the measured transceiver delay
+#endif
 	hw->REG(RXF0C) = 														// configure receive FIFO 0
 		  (0 << CAN_(RXF0C_F0OM_Pos))										// blocking mode not overwrite mode
 		| CAN_(RXF0C_F0WM)(0)												// no watermark interrupt
@@ -996,6 +1003,12 @@ void CanDevice::ChangeLocalCanTiming(const CanTiming &timing) noexcept
 	UpdateLocalCanTiming(timing);						// set up nbtp and dbtp variables
 	hw->REG(NBTP) = nbtp;
 	hw->REG(DBTP) = dbtp;
+#if USE_TRANSCEIVER_COMPENSATION
+	const uint32_t dTseg1 = ((dbtp & CAN_(DBTP_DTSEG1_Msk)) >> CAN_(DBTP_DTSEG1_Pos)) + 1;
+	hw->REG(TDCR) = CAN_(TDCR_TDCO)(dTseg1) | CAN_(TDCR_TDCF)(dTseg1);
+#else
+	hw->REG(TDCR) = 0;														// use just the measured transceiver delay
+#endif
 	Enable();
 }
 
@@ -1066,11 +1079,13 @@ void CanDevice::UpdateLocalCanTiming(const CanTiming &timing) noexcept
 		if (dJumpWidth > 8) { dJumpWidth = 8; }				// jump width cannot exceed 8 on the SAME70 (on the SAME5x it can be as large as tseg2)
 #endif
 
-		dbtp =  ((dTseg1 - 1) << CAN_(DBTP_DTSEG1_Pos))
-				| ((dTseg2 - 1) << CAN_(DBTP_DTSEG2_Pos))
-				| ((dJumpWidth - 1) << CAN_(DBTP_DSJW_Pos))
-				| ((dPrescaler - 1) << CAN_(DBTP_DBRP_Pos))
-//				| CAN_(DBTP_TDC)
+		dbtp = ((dTseg1 - 1) << CAN_(DBTP_DTSEG1_Pos))
+			 | ((dTseg2 - 1) << CAN_(DBTP_DTSEG2_Pos))
+			 | ((dJumpWidth - 1) << CAN_(DBTP_DSJW_Pos))
+			 | ((dPrescaler - 1) << CAN_(DBTP_DBRP_Pos))
+#if USE_TRANSCEIVER_COMPENSATION
+			 | CAN_(DBTP_TDC)
+#endif
 				;
 		usingBrs = true;
 	}
