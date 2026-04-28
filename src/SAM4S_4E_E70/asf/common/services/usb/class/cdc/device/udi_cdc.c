@@ -48,20 +48,23 @@
 # define __nocache
 #endif
 
-#ifdef UDI_CDC_LOW_RATE
+// Allow build-system override of buffer sizes; defaults preserve the original ASF matrix
+#ifndef UDI_CDC_TX_BUFFERS
 #  ifdef USB_DEVICE_HS_SUPPORT
 #    define UDI_CDC_TX_BUFFERS     (UDI_CDC_DATA_EPS_HS_SIZE)
-#    define UDI_CDC_RX_BUFFERS     (UDI_CDC_DATA_EPS_HS_SIZE)
-#  else
+#  elif defined(UDI_CDC_LOW_RATE)
 #    define UDI_CDC_TX_BUFFERS     (UDI_CDC_DATA_EPS_FS_SIZE)
-#    define UDI_CDC_RX_BUFFERS     (UDI_CDC_DATA_EPS_FS_SIZE)
-#  endif
-#else
-#  ifdef USB_DEVICE_HS_SUPPORT
-#    define UDI_CDC_TX_BUFFERS     (UDI_CDC_DATA_EPS_HS_SIZE)
-#    define UDI_CDC_RX_BUFFERS     (UDI_CDC_DATA_EPS_HS_SIZE)
 #  else
 #    define UDI_CDC_TX_BUFFERS     (5*UDI_CDC_DATA_EPS_FS_SIZE)
+#  endif
+#endif
+
+#ifndef UDI_CDC_RX_BUFFERS
+#  ifdef USB_DEVICE_HS_SUPPORT
+#    define UDI_CDC_RX_BUFFERS     (UDI_CDC_DATA_EPS_HS_SIZE)
+#  elif defined(UDI_CDC_LOW_RATE)
+#    define UDI_CDC_RX_BUFFERS     (UDI_CDC_DATA_EPS_FS_SIZE)
+#  else
 #    define UDI_CDC_RX_BUFFERS     (5*UDI_CDC_DATA_EPS_FS_SIZE)
 #  endif
 #endif

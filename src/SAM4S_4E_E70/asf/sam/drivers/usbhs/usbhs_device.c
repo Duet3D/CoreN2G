@@ -721,8 +721,13 @@ ISR(UDD_USB_INT_FUN)
 		otg_unfreeze_clock();
 		// The suspend interrupt is automatic acked when a wakeup occur
 		udd_disable_suspend_interrupt();
+#ifdef RTOS
+		// Only enable wakeup/suspend cycling when an RTOS is present; without RTOS
+		// the suspend/wakeup handlers ping-pong infinitely and starve the main loop
+		// (NVIC tail-chains the interrupts)
 		udd_enable_wake_up_interrupt();
-		otg_freeze_clock(); // Mandatory to exit of sleep mode after a wakeup event
+		otg_freeze_clock();		// Mandatory to exit of sleep mode after a wakeup event
+#endif
 		udd_sleep_mode(false);  // Enter in SUSPEND mode
 #ifdef UDC_SUSPEND_EVENT
 		UDC_SUSPEND_EVENT();
@@ -741,7 +746,9 @@ ISR(UDD_USB_INT_FUN)
 		};
 		// The wakeup interrupt is automatic acked when a suspend occur
 		udd_disable_wake_up_interrupt();
+#ifdef RTOS
 		udd_enable_suspend_interrupt();
+#endif
 		udd_sleep_mode(true); // Enter in IDLE mode
 #ifdef UDC_RESUME_EVENT
 		UDC_RESUME_EVENT();

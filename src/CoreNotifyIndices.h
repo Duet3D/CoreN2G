@@ -21,6 +21,7 @@ namespace NotifyIndices
 	constexpr uint32_t Spi = UartTx;
 	constexpr uint32_t I2C = UartTx;
 	constexpr uint32_t AnalogIn = UartTx + 1;				// analog in best have its own because it calls a hook function that may call device drivers
+	constexpr uint32_t UsbDirect = AnalogIn;				// used by SerialCDC::writeDirect/readDirect for zero-copy USB transfers (shares with AnalogIn - different tasks)
 	constexpr uint32_t NextAvailableAfterCore = NextAvailableAfterRTOS + 2;
 }
 

@@ -73,8 +73,9 @@ size_t SerialCDC::write(uint8_t c) noexcept
 	if (isConnected)
 	{
 		udi_cdc_multi_putc(0, c);
+		return 1;
 	}
-	return 1;
+	return 0;
 }
 
 // Non-blocking write to USB. Returns number of bytes written. If we are not connected, pretend that all bytes have been written.

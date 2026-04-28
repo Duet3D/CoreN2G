@@ -474,7 +474,7 @@ bool Flash::Unlock(uint32_t start, uint32_t length) noexcept
  */
 bool Flash::ReadUniqueId(uint32_t *_ecv_array pul_data) noexcept
 {
-	// dc42 bBug fix: must disable interrupts while executing the EFC read command
+	// dc42 bug fix: must disable interrupts while executing the EFC read command
 	const irqflags_t flags = IrqSave();
 	const uint32_t rc = efc_perform_read_sequence(EFC, EFC_FCMD_STUI, EFC_FCMD_SPUI, pul_data, 4);
 	IrqRestore(flags);
