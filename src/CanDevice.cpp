@@ -1070,7 +1070,8 @@ void CanDevice::UpdateLocalCanTiming(const CanTiming &timing) noexcept
 				| ((dTseg2 - 1) << CAN_(DBTP_DTSEG2_Pos))
 				| ((dJumpWidth - 1) << CAN_(DBTP_DSJW_Pos))
 				| ((dPrescaler - 1) << CAN_(DBTP_DBRP_Pos))
-				| CAN_(DBTP_TDC);
+//				| CAN_(DBTP_TDC)
+				;
 		usingBrs = true;
 	}
 	else
