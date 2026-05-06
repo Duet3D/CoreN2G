@@ -9,6 +9,8 @@
 
 #if SUPPORT_CAN && !RP2040
 
+#define USE_TRANSCEIVER_COMPENSATION	(1)
+
 #include <Cache.h>
 #include <CanSettings.h>
 #include <CanMessageBuffer.h>
@@ -240,7 +242,7 @@ void CanDevice::CanStats::Clear() noexcept
 	dev.rxBuffersWaiting = 0;
 #endif
 
-	dev.UpdateLocalCanTiming(timing);									// sets NBTP and DBTP
+	dev.UpdateLocalCanTiming(timing);									// sets NBTP, DBTP and usingBrs
 
 	// Enable the clock
 #if SAME5x || SAMC21
@@ -298,9 +300,14 @@ void CanDevice::DoHardwareInit() noexcept
 #if SAME5x || SAMC21
 	hw->MRCFG.reg = CAN_MRCFG_QOS_MEDIUM;
 #endif
-	hw->REG(TDCR) = 0;														// use just the measured transceiver delay
 	hw->REG(NBTP) = nbtp;
 	hw->REG(DBTP) = dbtp;
+#if USE_TRANSCEIVER_COMPENSATION
+	const uint32_t dTseg1 = ((dbtp & CAN_(DBTP_DTSEG1_Msk)) >> CAN_(DBTP_DTSEG1_Pos)) + 1;
+	hw->REG(TDCR) = CAN_(TDCR_TDCO)(dTseg1) | CAN_(TDCR_TDCF)(dTseg1);
+#else
+	hw->REG(TDCR) = 0;														// use just the measured transceiver delay
+#endif
 	hw->REG(RXF0C) = 														// configure receive FIFO 0
 		  (0 << CAN_(RXF0C_F0OM_Pos))										// blocking mode not overwrite mode
 		| CAN_(RXF0C_F0WM)(0)												// no watermark interrupt
@@ -613,7 +620,7 @@ void CanDevice::CopyMessageForTransmit(CanMessageBuffer *buffer, volatile CanTxB
 	}
 
 	f->T1.bit.FDF = buffer->fdMode;
-	f->T1.bit.BRS = buffer->useBrs;
+	f->T1.bit.BRS = usingBrs && buffer->useBrs;
 
 	++stats.messagesQueuedForSending;
 }
@@ -882,28 +889,28 @@ void CanDevice::SetShortFilterElement(unsigned int index, RxBufferNumber whichBu
 	if (index < config->numShortFilterElements)
 	{
 		CanStandardMessageFilterElement::S0Type s0;
-		s0.val = 0;									// disable filter, clear reserved fields
+		s0.val = 0;										// disable filter, clear reserved fields
 		s0.bit.SFID1 = id;
-		s0.bit.SFT = 0x02;							// classic filter
+		s0.bit.SFT = 0x02;								// classic filter
 		switch (whichBuffer)
 		{
 		case RxBufferNumber::fifo0:
-			s0.bit.SFEC = 0x01;						// store in FIFO 0
+			s0.bit.SFEC = 0x01;							// store in FIFO 0
 			s0.bit.SFID2 = mask;
 			break;
 		case RxBufferNumber::fifo1:
-			s0.bit.SFEC = 0x02;						// store in FIFO 1
+			s0.bit.SFEC = 0x02;							// store in FIFO 1
 			s0.bit.SFID2 = mask;
 			break;
 		default:
 			if ((uint32_t)whichBuffer - (uint32_t)RxBufferNumber::buffer0 < config->numRxBuffers)
 			{
-				s0.bit.SFEC = 0x07;					// store in buffer
+				s0.bit.SFEC = 0x07;						// store in buffer
 				s0.bit.SFID2 = (uint32_t)whichBuffer - (uint32_t)RxBufferNumber::buffer0;
 			}
 			else
 			{
-				s0.bit.SFEC = 0x00;					// discard message
+				s0.bit.SFEC = 0x00;						// discard message
 				s0.bit.SFID2 = mask;
 			}
 			break;
@@ -917,7 +924,7 @@ void CanDevice::DisableExtendedFilterElement(unsigned int index) noexcept
 {
 	if (index < config->numExtendedFilterElements)
 	{
-		rxExtFilter[index].F0.val = 0;									// disable filter
+		rxExtFilter[index].F0.val = 0;					// disable filter
 	}
 }
 
@@ -932,18 +939,18 @@ void CanDevice::SetExtendedFilterElement(unsigned int index, RxBufferNumber whic
 
 		CanExtendedMessageFilterElement::F0Type f0;
 		CanExtendedMessageFilterElement::F1Type f1;
-		f0.val = 0;									// clear all fields
-		f1.val = 0;									// clear all fields
-		f1.bit.EFT  = 0x02;							// classic filter
+		f0.val = 0;										// clear all fields
+		f1.val = 0;										// clear all fields
+		f1.bit.EFT  = 0x02;								// classic filter
 		f0.bit.EFID1 = id;
 		switch (whichBuffer)
 		{
 		case RxBufferNumber::fifo0:
-			f0.bit.EFEC = 0x01;						// store in FIFO 0
+			f0.bit.EFEC = 0x01;							// store in FIFO 0
 			f1.bit.EFID2 = mask;
 			break;
 		case RxBufferNumber::fifo1:
-			f0.bit.EFEC = 0x02;						// store in FIFO 1
+			f0.bit.EFEC = 0x02;							// store in FIFO 1
 			f1.bit.EFID2 = mask;
 			break;
 		default:
@@ -954,84 +961,148 @@ void CanDevice::SetExtendedFilterElement(unsigned int index, RxBufferNumber whic
 			}
 			else
 			{
-				f0.bit.EFEC = 0x00;					// discard message
+				f0.bit.EFEC = 0x00;						// discard message
 				f1.bit.EFID2 = mask;
 			}
 			break;
 		}
 
-		efp.F1.val = f1.val;						// update second word first while the filter is disabled
-		efp.F0.val = f0.val;						// update first word and enable filter
+		efp.F1.val = f1.val;							// update second word first while the filter is disabled
+		efp.F0.val = f0.val;							// update first word and enable filter
 	}
 }
 
 void CanDevice::GetLocalCanTiming(CanTiming &timing) const noexcept
 {
 	const uint32_t localNbtp = hw->REG(NBTP);
-	const uint32_t tseg1 = (localNbtp & CAN_(NBTP_NTSEG1_Msk)) >> CAN_(NBTP_NTSEG1_Pos);
-	const uint32_t tseg2 = (localNbtp & CAN_(NBTP_NTSEG2_Msk)) >> CAN_(NBTP_NTSEG2_Pos);
-	const uint32_t jw = (localNbtp & CAN_(NBTP_NSJW_Msk)) >> CAN_(NBTP_NSJW_Pos);
-	const uint32_t brp = (localNbtp & CAN_(NBTP_NBRP_Msk)) >> CAN_(NBTP_NBRP_Pos);
-	timing.period = (tseg1 + tseg2 + 3) * (brp + 1);
-	timing.tseg1 = (tseg1 + 1) * (brp + 1);
-	timing.jumpWidth = (jw + 1) * (brp + 1);
+	const uint32_t nTseg1 = ((localNbtp & CAN_(NBTP_NTSEG1_Msk)) >> CAN_(NBTP_NTSEG1_Pos)) + 1;
+	const uint32_t nTseg2 = ((localNbtp & CAN_(NBTP_NTSEG2_Msk)) >> CAN_(NBTP_NTSEG2_Pos)) + 1;
+	const uint32_t nJw = ((localNbtp & CAN_(NBTP_NSJW_Msk)) >> CAN_(NBTP_NSJW_Pos)) + 1;
+	const uint32_t nBrp = ((localNbtp & CAN_(NBTP_NBRP_Msk)) >> CAN_(NBTP_NBRP_Pos)) + 1;
+	timing.period = (nTseg1 + nTseg2 + 1) * nBrp;
+	timing.nTseg1 = nTseg1 * nBrp - 1;
+	timing.nJumpWidth = nJw * nBrp;
+
+	const uint32_t localDbtp = hw->REG(DBTP);
+	const uint32_t dTseg1 = ((localDbtp & CAN_(DBTP_DTSEG1_Msk)) >> CAN_(DBTP_DTSEG1_Pos)) + 1;
+	const uint32_t dTseg2 = ((localDbtp & CAN_(DBTP_DTSEG2_Msk)) >> CAN_(DBTP_DTSEG2_Pos)) + 1;
+	const uint32_t dJw = ((localDbtp & CAN_(DBTP_DSJW_Msk)) >> CAN_(DBTP_DSJW_Pos)) + 1;
+	const uint32_t dBrp = ((localDbtp & CAN_(DBTP_DBRP_Msk)) >> CAN_(DBTP_DBRP_Pos)) + 1;
+	const uint32_t dPeriod = (dTseg1 + dTseg2 + 1) * dBrp;
+	timing.dataRateMultiplier = timing.period/dPeriod - 1;
+	timing.dTseg1 = dTseg1 * dBrp - 1;
+	timing.dJumpWidth = dJw * dBrp;
+	timing.spare1 = 0x0F;
+	timing.spare2 = 0xFF;
 }
 
-void CanDevice::SetLocalCanTiming(const CanTiming &timing) noexcept
+// Calculate and store the nbtp and dbtp values needed to achieve the requested timing, and write them to the hardware
+void CanDevice::ChangeLocalCanTiming(const CanTiming &timing) noexcept
 {
-	UpdateLocalCanTiming(timing);					// set up nbtp and dbtp variables
 	Disable();
+	UpdateLocalCanTiming(timing);						// set up nbtp and dbtp variables
 	hw->REG(NBTP) = nbtp;
 	hw->REG(DBTP) = dbtp;
+#if USE_TRANSCEIVER_COMPENSATION
+	const uint32_t dTseg1 = ((dbtp & CAN_(DBTP_DTSEG1_Msk)) >> CAN_(DBTP_DTSEG1_Pos)) + 1;
+	hw->REG(TDCR) = CAN_(TDCR_TDCO)(dTseg1) | CAN_(TDCR_TDCF)(dTseg1);
+#else
+	hw->REG(TDCR) = 0;														// use just the measured transceiver delay
+#endif
 	Enable();
 }
 
+// Calculate and store the nbtp and dbtp values needed to achieve the requested timing, but don't write them to the hardware
+// Call with the CAN subsystem disabled
 void CanDevice::UpdateLocalCanTiming(const CanTiming &timing) noexcept
 {
-	// Sort out the bit timing
-	uint32_t period = timing.period;
-	uint32_t tseg1 = timing.tseg1;
-	uint32_t jumpWidth = timing.jumpWidth;
-	uint32_t prescaler = 1;							// 48MHz main clock
-	uint32_t tseg2;
+	// Sort out the bit timing for the arbitration phase
+	uint32_t nPeriod = timing.period;
+	uint32_t nTseg1 = timing.nTseg1 + 1;
+	uint32_t nJumpWidth = timing.nJumpWidth;
+	uint32_t nPrescaler = 1;							// 48MHz main clock
+	uint32_t nTseg2;
 
 	// Use the highest prescaled clock frequency we can in order to get the most accurate timing
 	for (;;)
 	{
-		tseg2 = period - tseg1 - 1;
-		if (tseg1 <= 256 && tseg2 <= 128)
+		nTseg2 = nPeriod - nTseg1 - 1;
+		if (nTseg1 <= 256 && nTseg2 <= 128)
 		{
 			break;
 		}
 
 		// Currently we always use a prescaler that is a power of 2, but we could be more general
-		prescaler <<= 1;
-		period >>= 1;
-		tseg1 >>= 1;
-		jumpWidth >>= 1;
+		nPrescaler <<= 1;
+		nPeriod >>= 1;
+		nTseg1 >>= 1;
+		nJumpWidth >>= 1;
 	}
 
-	if (jumpWidth > tseg2) { jumpWidth = tseg2; }	// jump width cannot exceed tseg2
+	if (nJumpWidth > nTseg2) { nJumpWidth = nTseg2; }	// jump width cannot exceed tseg2
 
 #if !SAME70
-	bitPeriod = period * prescaler;					// the actual CAN normal bit period in 48MHz clocks (may be different from timing.period)
+	bitPeriod = nPeriod * nPrescaler;					// the actual CAN normal bit period in 48MHz clocks (may be different from timing.period)
 #endif
 
-	nbtp = ((tseg1 - 1) << CAN_(NBTP_NTSEG1_Pos))
-		| ((tseg2 - 1) << CAN_(NBTP_NTSEG2_Pos))
-		| ((jumpWidth - 1) << CAN_(NBTP_NSJW_Pos))
-		| ((prescaler - 1) << CAN_(NBTP_NBRP_Pos));
+	nbtp = ((nTseg1 - 1) << CAN_(NBTP_NTSEG1_Pos))
+		| ((nTseg2 - 1) << CAN_(NBTP_NTSEG2_Pos))
+		| ((nJumpWidth - 1) << CAN_(NBTP_NSJW_Pos))
+		| ((nPrescaler - 1) << CAN_(NBTP_NBRP_Pos));
 
-	// We don't currently use BRS. For now we default the fast data rate to 2Mbps (or lower if the prescaler is greater than 1) with fixed timing,
-	// just to have some sensible values to write to the register.
-	constexpr uint32_t fast_period = CanTiming::ClockFrequency/2'000'000;	// 2Mbps divided by the prescaler
-	constexpr uint32_t fast_tseg1 = fast_period/2 - 1;						// set sample point to 50%
-	constexpr uint32_t fast_tseg2 = fast_period - fast_tseg1 - 1;			// make up the correct period
-	constexpr uint32_t fast_jumpWidth = fast_tseg2;							// set jump width to maximum
-	dbtp = ((fast_tseg1 - 1) << CAN_(DBTP_DTSEG1_Pos))
-		| ((fast_tseg2 - 1) << CAN_(DBTP_DTSEG2_Pos))
-		| ((fast_jumpWidth - 1) << CAN_(DBTP_DSJW_Pos))
-		| ((prescaler - 1) << CAN_(DBTP_DBRP_Pos));
+	if (useFDMode && timing.IsUsingBrs())
+	{
+		uint32_t dPeriod = timing.period/(timing.dataRateMultiplier + 1);
+		uint32_t dTseg1 = timing.dTseg1 + 1;
+		uint32_t dJumpWidth = timing.dJumpWidth;
+		uint32_t dPrescaler = 1;							// 48MHz main clock
+		uint32_t dTseg2;
+
+		// Use the highest prescaled clock frequency we can in order to get the most accurate timing
+		for (;;)
+		{
+			dTseg2 = dPeriod - dTseg1 - 1;
+			if (dTseg1 <= 32 && dTseg2 <= 16)
+			{
+				break;
+			}
+
+			// Currently we always use a prescaler that is a power of 2, but we could be more general
+			dPrescaler <<= 1;
+			dPeriod >>= 1;
+			dTseg1 >>= 1;
+			dJumpWidth >>= 1;
+		}
+
+		if (dJumpWidth > dTseg2) { dJumpWidth = dTseg2; }	// jump width cannot exceed tseg2
+#if SAME70
+		if (dJumpWidth > 8) { dJumpWidth = 8; }				// jump width cannot exceed 8 on the SAME70 (on the SAME5x it can be as large as tseg2)
+#endif
+
+		dbtp = ((dTseg1 - 1) << CAN_(DBTP_DTSEG1_Pos))
+			 | ((dTseg2 - 1) << CAN_(DBTP_DTSEG2_Pos))
+			 | ((dJumpWidth - 1) << CAN_(DBTP_DSJW_Pos))
+			 | ((dPrescaler - 1) << CAN_(DBTP_DBRP_Pos))
+#if USE_TRANSCEIVER_COMPENSATION
+			 | CAN_(DBTP_TDC)
+#endif
+				;
+		usingBrs = true;
+	}
+	else
+	{
+		// We are not using BRS. We default the fast data rate to 2Mbps (or lower if the prescaler is greater than 1) with fixed timing,
+		// just to have some sensible values to write to the register.
+		constexpr uint32_t fast_period = CanTiming::ClockFrequency/2'000'000;	// 2Mbps divided by the prescaler
+		constexpr uint32_t fast_tseg1 = fast_period/2 - 1;						// set sample point to 50%
+		constexpr uint32_t fast_tseg2 = fast_period - fast_tseg1 - 1;			// make up the correct period
+		constexpr uint32_t fast_jumpWidth = fast_tseg2;							// set jump width to maximum
+		dbtp = ((fast_tseg1 - 1) << CAN_(DBTP_DTSEG1_Pos))
+			| ((fast_tseg2 - 1) << CAN_(DBTP_DTSEG2_Pos))
+			| ((fast_jumpWidth - 1) << CAN_(DBTP_DSJW_Pos))
+			| ((nPrescaler - 1) << CAN_(DBTP_DBRP_Pos));
+		usingBrs = false;
+	}
 }
 
 void CanDevice::GetAndClearStats(CanDevice::CanStats& dst) noexcept
