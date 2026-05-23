@@ -536,7 +536,7 @@ void CanDevice::GetLocalCanTiming(CanTiming &timing) const noexcept
 #endif
 }
 
-void CanDevice::SetLocalCanTiming(const CanTiming &timing) noexcept
+void CanDevice::ChangeLocalCanTiming(const CanTiming &timing) noexcept
 {
 #if 0
 	UpdateLocalCanTiming(timing);				// set up nbtp and dbtp variables

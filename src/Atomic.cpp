@@ -14,6 +14,15 @@
 
 #if SAMC21 || RP2040
 
+extern "C" uint8_t __atomic_fetch_add_1(volatile void *ptr, uint8_t val, int memorder) noexcept
+{
+	const auto flags = IrqSave();
+	const uint8_t ret = *(volatile uint8_t*)ptr;
+	*(volatile uint8_t*)ptr = ret + val;
+	IrqRestore(flags);
+	return ret;
+}
+
 extern "C" uint8_t __atomic_sub_fetch_1(volatile void *ptr, uint8_t val, int memorder) noexcept
 {
 	const auto flags = IrqSave();
@@ -93,6 +102,15 @@ extern "C" unsigned int __atomic_fetch_add_4(volatile void *ptr, unsigned int va
 	const auto flags = IrqSave();
 	const unsigned int ret = *(volatile unsigned int*)ptr;
 	*(volatile unsigned int*)ptr = ret + val;
+	IrqRestore(flags);
+	return ret;
+}
+
+extern "C" unsigned int __atomic_fetch_sub_4(volatile void *ptr, unsigned int val, int memorder) noexcept
+{
+	const auto flags = IrqSave();
+	const unsigned int ret = *(volatile unsigned int*)ptr;
+	*(volatile unsigned int*)ptr = ret - val;
 	IrqRestore(flags);
 	return ret;
 }
