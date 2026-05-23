@@ -386,7 +386,7 @@ extern "C" void digitalWrite(Pin pin, bool high) noexcept
 	}
 }
 
-// Tick handler
+// Tick handler. Ideally we would declare this as atomic but that adds a lot of overhead when fetching or incrementing it.
 static volatile uint64_t g_ms_ticks = 0;		// Count of 1ms time ticks
 
 uint32_t millis() noexcept
@@ -394,6 +394,7 @@ uint32_t millis() noexcept
     return (uint32_t)g_ms_ticks;
 }
 
+// Do not call millis64 from an ISR because CoreSysTick() assumes that we don't
 uint64_t millis64() noexcept
 {
 	const auto flags = IrqSave();
@@ -412,9 +413,11 @@ void delay(uint32_t ms) noexcept
 #endif
 }
 
+// CoreSysTick assumes that ISRs don't use the 64-bit tick counter, so incrementing g_ms_ticks non-atomiclly from the tick ISR is OK
 void CoreSysTick() noexcept
 {
-	g_ms_ticks++;
+	// This is called by the tick ISR. We don't call millis64() from any higher priority ISR
+	++*const_cast<uint64_t*>(&g_ms_ticks);
 }
 
 // Members of class MicrosecondsTimer
@@ -852,6 +855,7 @@ extern "C" uint32_t random32() noexcept
 		isInitialised = true;
 	}
 
+	extern int rand_r (unsigned *__seed) noexcept;
 	return rand_r(&seed);
 
 #endif

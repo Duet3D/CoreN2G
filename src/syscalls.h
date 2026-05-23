@@ -115,7 +115,7 @@ extern "C" int _lseek(int file, int ptr, int dir) noexcept
 /**
  * \brief Replacement of C library of _exit and related functions
  */
-extern "C" void _exit(int status) noexcept
+extern "C" [[noreturn]] void _exit(int status) noexcept
 {
 	for (;;) { }
 }
