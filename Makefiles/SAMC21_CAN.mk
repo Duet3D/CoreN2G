@@ -15,12 +15,13 @@ SAMC21_CAN_CFLAGS := -c -std=gnu99 \
 	-Os
 
 # Compiler flags - C++
-SAMC21_CAN_CXXFLAGS := -c -std=gnu++17 \
+SAMC21_CAN_CXXFLAGS := -c -std=c++20 \
 	-mcpu=cortex-m0plus -mthumb \
 	-fno-math-errno -mfp16-format=ieee \
 	-ffunction-sections -fdata-sections \
 	-fno-threadsafe-statics -fno-rtti -fno-exceptions -nostdlib \
 	-Wall -Wundef -Wdouble-promotion -Werror=return-type -Wsuggest-override \
+	-Werror -Wnoexcept -Wshadow -Wsign-promo \
 	-fsingle-precision-constant \
 	-Os
 
