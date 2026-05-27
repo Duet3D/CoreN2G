@@ -59,5 +59,6 @@
 /SAME5x_SDHC_USB/
 /RP2040_CAN_RTOS/
 /RP2040_RTOS/
+/STM32H5/
 /.clangd
 /.clang-format

@@ -46,7 +46,8 @@
 # define SAME5x				1
 # define SAME70				0
 # define RP2040				0
-# define STM32				0
+# define STM32H5			0
+# define STM32H7			0
 #elif defined(__SAMD51N19A__)
 # include <samd51.h>
 # define SAMC21				0
@@ -56,7 +57,8 @@
 # define SAME5x				1
 # define SAME70				0
 # define RP2040				0
-# define STM32				0
+# define STM32H5			0
+# define STM32H7			0
 #elif defined(__SAMC21G18A__)
 # include <samc21.h>
 # define SAMC21				1
@@ -66,7 +68,8 @@
 # define SAME5x				0
 # define SAME70				0
 # define RP2040				0
-# define STM32				0
+# define STM32H5			0
+# define STM32H7			0
 # define SUPPORT_SDHC		0			// SAMC21 doesn't support SDHC
 # define SUPPORT_USB		0			// SAMC21 doesn't support USB
 #elif defined(__SAM4E8E__)
@@ -74,21 +77,24 @@
 # include <sam4e8e.h>
 # define SAME5x				0
 # define RP2040				0
-# define STM32				0
+# define STM32H5			0
+# define STM32H7			0
 # define SUPPORT_CAN		0			// SAM4E doesn't support CAN-FD
 #elif defined(__SAM4S8C__)
 # include <parts.h>
 # include <sam4s8c.h>
 # define SAME5x				0
 # define RP2040				0
-# define STM32				0
+# define STM32H5			0
+# define STM32H7			0
 # define SUPPORT_CAN		0			// SAM4S doesn't support CAN-FD
 #elif defined(__SAME70Q20B__)
 # include <parts.h>
 # include <same70q20b.h>
 # define SAME5x				0
 # define RP2040				0
-# define STM32				0
+# define STM32H5			0
+# define STM32H7			0
 #elif defined __RP2040__
 extern "C" {
 # include <hardware/gpio.h>
@@ -103,8 +109,29 @@ extern "C" {
 # define SAM4S				0
 # define SAME5x				0
 # define SAME70				0
-# define STM32				0
+# define STM32H5			0
+# define STM32H7			0
 # define SUPPORT_SDHC		0			// SAMC21 doesn't support SDHC
+#elif defined(STM32H523xx)
+# define RP2040				0
+# define SAMC21				0
+# define SAM3XA				0
+# define SAM4E				0
+# define SAM4S				0
+# define SAME5x				0
+# define SAME70				0
+# define STM32H5			1
+# define STM32H7			0
+#elif defined(STM32H743xx)
+# define RP2040				0
+# define SAMC21				0
+# define SAM3XA				0
+# define SAM4E				0
+# define SAM4S				0
+# define SAME5x				0
+# define SAME70				0
+# define STM32H5			0
+# define STM32H7			1
 #else
 # error unsupported processor
 #endif
@@ -172,6 +199,10 @@ static const uint32_t SystemCoreClockFreq = 300000000;	///< The processor clock 
 
 static const uint32_t SystemCoreClockFreq = 125000000;	///< The processor clock frequency after initialisation
 
+#elif STM32H5
+// TODO
+#elif STM32H7
+// TODO
 #else
 # error unsupported processor
 #endif
