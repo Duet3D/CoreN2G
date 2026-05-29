@@ -8,7 +8,7 @@
 #ifndef SRC_UART_UARTPARAMETERS_H_
 #define SRC_UART_UARTPARAMETERS_H_
 
-#include <CoreIO.h>
+#include <McuType.h>
 #include <CoreTypes.h>
 
 // Structure to pass async serial device parameters. The details depend on the MCU.

@@ -240,16 +240,20 @@ void SetPinMode(Pin pin, enum PinMode mode, bool debounce) noexcept
 			pio->PIO_SCDR = DebounceDivisorReg;
 			pio->PIO_PPDDR = mask;									// turn off pulldown
 			pio_set_input(pio, mask, (debounce) ? PIO_DEBOUNCE : PIO_DEGLITCH);
+#elif STM32
+            pin_function(pin, STM_PIN_DATA(STM_PIN_INPUT, GPIO_NOPULL, 0));
 #elif RP2040
 			ClearPinFunction(pin);
 			gpio_disable_pulls(pin);
 			gpio_set_input_enabled(pin, true);
 			gpio_set_dir(pin, false);
-#else
+#elif SAME5x || SAMC21
 			ClearPinFunction(pin);
 			// The direction must be set before the pullup, otherwise setting the pullup doesn't work
 			PORT->Group[GpioPortNumber(pin)].DIRCLR.reg = mask;
 			PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].reg = PORT_PINCFG_INEN;
+#else
+# error Unsupported processor
 #endif
 			break;
 
@@ -259,17 +263,21 @@ void SetPinMode(Pin pin, enum PinMode mode, bool debounce) noexcept
 			pio->PIO_SCDR = DebounceDivisorReg;
 			pio->PIO_PPDDR = mask;									// turn off pulldown
 			pio_set_input(pio, mask, PIO_PULLUP | ((debounce) ? PIO_DEBOUNCE : PIO_DEGLITCH));
+#elif STM32
+            pin_function(pin, STM_PIN_DATA(STM_MODE_INPUT, GPIO_PULLUP, 0));
 #elif RP2040
 			ClearPinFunction(pin);
 			gpio_pull_up(pin);
 			gpio_set_input_enabled(pin, true);
 			gpio_set_dir(pin, false);
-#else
+#elif SAME5x || SAMC21
 			ClearPinFunction(pin);
 			// The direction must be set before the pullup, otherwise setting the pullup doesn't work
 			PORT->Group[GpioPortNumber(pin)].DIRCLR.reg = mask;
 			PORT->Group[GpioPortNumber(pin)].OUTSET.reg = mask;
 			PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].reg = PORT_PINCFG_PULLEN | PORT_PINCFG_INEN;
+#else
+# error Unsupported processor
 #endif
 			break;
 
@@ -285,12 +293,16 @@ void SetPinMode(Pin pin, enum PinMode mode, bool debounce) noexcept
 			gpio_pull_down(pin);
 			gpio_set_input_enabled(pin, true);
 			gpio_set_dir(pin, false);
-#else
+#elif STM32
+            pin_function(pin, STM_PIN_DATA(STM_MODE_INPUT, GPIO_PULLDOWN, 0));
+#elif SAME5x || SAMC21
 			ClearPinFunction(pin);
 			// The direction must be set before the pulldown, otherwise setting the pulldown doesn't work
 			PORT->Group[GpioPortNumber(pin)].DIRCLR.reg = mask;
 			PORT->Group[GpioPortNumber(pin)].OUTCLR.reg = mask;
 			PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].reg = PORT_PINCFG_PULLEN | PORT_PINCFG_INEN;
+#else
+# error Unsupported processor
 #endif
 			break;
 
@@ -302,16 +314,21 @@ void SetPinMode(Pin pin, enum PinMode mode, bool debounce) noexcept
 			{
 				pmc_disable_periph_clk(PioIds[GpioPortNumber(pin)]);
 			}
+#elif STM32
+            pin_function(pin, STM_PIN_DATA(STM_MODE_OUTPUT_PP, GPIO_NOPULL, 0));
+            fastDigitalWriteLow(pin);
 #elif RP2040
 			ClearPinFunction(pin);
 			gpio_disable_pulls(pin);
 			gpio_put(pin, false);
 			gpio_set_dir(pin, true);
-#else
+#elif SAME5x || SAMC21
 			ClearPinFunction(pin);
 			PORT->Group[GpioPortNumber(pin)].OUTCLR.reg = mask;
 			PORT->Group[GpioPortNumber(pin)].DIRSET.reg = mask;
 			PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].reg = PORT_PINCFG_INEN;
+#else
+# error Unsupported processor
 #endif
 			break;
 
@@ -323,16 +340,21 @@ void SetPinMode(Pin pin, enum PinMode mode, bool debounce) noexcept
 			{
 				pmc_disable_periph_clk(PioIds[GpioPortNumber(pin)]);
 			}
+#elif STM32
+            pin_function(pin, STM_PIN_DATA(STM_MODE_OUTPUT_PP, GPIO_NOPULL, 0));
+            fastDigitalWriteHigh(pin);
 #elif RP2040
 			ClearPinFunction(pin);
 			gpio_disable_pulls(pin);
 			gpio_put(pin, true);
 			gpio_set_dir(pin, true);
-#else
+#elif SAME5x || SAMC21
 			ClearPinFunction(pin);
 			PORT->Group[GpioPortNumber(pin)].OUTSET.reg = mask;
 			PORT->Group[GpioPortNumber(pin)].DIRSET.reg = mask;
 			PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].reg = PORT_PINCFG_INEN;
+#else
+# error Unsupported processor
 #endif
 			break;
 
@@ -345,10 +367,12 @@ void SetPinMode(Pin pin, enum PinMode mode, bool debounce) noexcept
 			// on any PIO that is being used solely for outputs and ADC inputs. But for now we don't do that.
 #elif RP2040
 			adc_gpio_init(pin);
-#else
+#elif SAME5x || SAMC21
 			PORT->Group[GpioPortNumber(pin)].DIRCLR.reg = mask;
 			PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].reg = 0;
 			SetPinFunction(pin, GpioPinFunction::B);						// ADC is always on peripheral B for the SAMC21 and SAME5x
+#else
+# error Unsupported processor
 #endif
 			break;
 

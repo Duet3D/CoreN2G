@@ -35,6 +35,10 @@ constexpr unsigned int NumTotalPins = (4 * 32) + 6;		// SAM4E8E goes up to PE5
 constexpr unsigned int NumTotalPins = 3 * 32;			// SAM4S8C goes up to PC31
 #elif SAME70
 constexpr unsigned int NumTotalPins = (4 * 32) + 6;		// SAME70 goes up to PE5
+#elif STM32H5
+constexpr unsigned int NumTotalPins = (6 * 32) + 16;	// STM32H523 does up to PG15
+#elif STM32H7
+constexpr unsigned int NumTotalPins = (8 * 32) + 16;	// STM32H743 goes up to PI15
 #elif RP2040
 constexpr unsigned int NumTotalPins = 30;				// RP2040 goes up to GPIO29
 #else

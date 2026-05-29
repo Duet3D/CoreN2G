@@ -2837,22 +2837,22 @@
 							</tool>
 						</toolChain>
 					</folderInfo>
-					<folderInfo id="cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.1226901380.1292314584.1266638365" name="/" resourcePath="src/STM32Hx/STM/CMSIS/RTOS2/Source">
-						<toolChain id="cdt.managedbuild.toolchain.gnu.cross.lib.release.167037548" name="Cross GCC" superClass="cdt.managedbuild.toolchain.gnu.cross.lib.release" unusedChildren="">
-							<option id="cdt.managedbuild.option.gnu.cross.prefix.1517719037.1540112387" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix.1517719037"/>
-							<option id="cdt.managedbuild.option.gnu.cross.path.1082841333.1702142570" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path.1082841333"/>
-							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.1655142628" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler.1912121249"/>
-							<tool id="cdt.managedbuild.tool.gnu.cross.cpp.compiler.335764386" name="Cross G++ Compiler" superClass="cdt.managedbuild.tool.gnu.cross.cpp.compiler.1523276084"/>
-							<tool id="cdt.managedbuild.tool.gnu.cross.c.linker.701439233" name="Cross GCC Linker" superClass="cdt.managedbuild.tool.gnu.cross.c.linker.1548344167"/>
-							<tool id="cdt.managedbuild.tool.gnu.cross.cpp.linker.1346272768" name="Cross G++ Linker" superClass="cdt.managedbuild.tool.gnu.cross.cpp.linker.633505006"/>
-							<tool id="cdt.managedbuild.tool.gnu.cross.archiver.74518362" name="Cross GCC Archiver" superClass="cdt.managedbuild.tool.gnu.cross.archiver.354213849"/>
-							<tool id="cdt.managedbuild.tool.gnu.cross.assembler.1712271037" name="Cross GCC Assembler" superClass="cdt.managedbuild.tool.gnu.cross.assembler.751984137">
-								<option defaultValue="gnu.asm.debugging.level.none" id="gnu.asm.option.debugging.level.1131434517" superClass="gnu.asm.option.debugging.level" valueType="enumerated"/>
+					<folderInfo id="cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.1226901380.1292314584.713107486" name="/" resourcePath="src/STM32Hx/STM/CMSIS/Driver/vStream">
+						<toolChain id="cdt.managedbuild.toolchain.gnu.cross.lib.release.1219782286" name="Cross GCC" superClass="cdt.managedbuild.toolchain.gnu.cross.lib.release" unusedChildren="">
+							<option id="cdt.managedbuild.option.gnu.cross.prefix.1517719037.351947625" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix.1517719037"/>
+							<option id="cdt.managedbuild.option.gnu.cross.path.1082841333.1816727206" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path.1082841333"/>
+							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.245722814" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler.1912121249"/>
+							<tool id="cdt.managedbuild.tool.gnu.cross.cpp.compiler.662450726" name="Cross G++ Compiler" superClass="cdt.managedbuild.tool.gnu.cross.cpp.compiler.1523276084"/>
+							<tool id="cdt.managedbuild.tool.gnu.cross.c.linker.637904431" name="Cross GCC Linker" superClass="cdt.managedbuild.tool.gnu.cross.c.linker.1548344167"/>
+							<tool id="cdt.managedbuild.tool.gnu.cross.cpp.linker.1732655407" name="Cross G++ Linker" superClass="cdt.managedbuild.tool.gnu.cross.cpp.linker.633505006"/>
+							<tool id="cdt.managedbuild.tool.gnu.cross.archiver.1852757946" name="Cross GCC Archiver" superClass="cdt.managedbuild.tool.gnu.cross.archiver.354213849"/>
+							<tool id="cdt.managedbuild.tool.gnu.cross.assembler.1837567500" name="Cross GCC Assembler" superClass="cdt.managedbuild.tool.gnu.cross.assembler.751984137">
+								<option defaultValue="gnu.asm.debugging.level.none" id="gnu.asm.option.debugging.level.1267683257" superClass="gnu.asm.option.debugging.level" valueType="enumerated"/>
 							</tool>
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STM32Hx/STM/CMSIS/RTOS2/Source|src/STM32Hx/STM/CMSIS/Device/ST/STM32H7xx|src/SAME5x_C21|src/SPI|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STM32Hx/STM/CMSIS/Driver/vStream|src/STM32Hx/STM/CMSIS/RTOS2/Source|src/STM32Hx/STM/CMSIS/Device/ST/STM32H7xx|src/SAME5x_C21|src/SPI|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
