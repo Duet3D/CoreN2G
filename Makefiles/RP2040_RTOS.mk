@@ -15,12 +15,13 @@ RP2040_RTOS_CFLAGS := -c -std=gnu99 \
 	-O3
 
 # Compiler flags - C++
-RP2040_RTOS_CXXFLAGS := -c -std=gnu++17 \
+RP2040_RTOS_CXXFLAGS := -c -std=c++20 \
 	-mcpu=cortex-m0plus -mthumb \
 	-fno-math-errno -mfp16-format=ieee \
 	-ffunction-sections -fdata-sections \
 	-fno-threadsafe-statics -fno-rtti -fno-exceptions -nostdlib \
 	-Wall -Wundef -Wdouble-promotion -Werror=return-type -Wsuggest-override \
+	-Werror -Wnoexcept -Wshadow -Wsign-promo \
 	-fsingle-precision-constant \
 	-O3
 

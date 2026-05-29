@@ -15,12 +15,13 @@ SAME5x_SDHC_CFLAGS := -c -std=gnu99 \
 	-Os
 
 # Compiler flags - C++
-SAME5x_SDHC_CXXFLAGS := -c -std=gnu++17 \
+SAME5x_SDHC_CXXFLAGS := -c -std=c++20 \
 	-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard \
 	-fno-math-errno -mfp16-format=ieee \
 	-ffunction-sections -fdata-sections \
 	-fno-threadsafe-statics -fno-rtti -fno-exceptions -nostdlib \
 	-Wall -Wundef -Wdouble-promotion -Werror=return-type -Wsuggest-override \
+	-Werror -Wnoexcept -Wshadow -Wsign-promo \
 	-fsingle-precision-constant \
 	-Os
 

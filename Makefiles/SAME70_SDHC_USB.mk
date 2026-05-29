@@ -105,7 +105,7 @@ SAME70SU_CFLAGS := -c -std=gnu99 \
 	$(SAME70SU_DEFINES) \
 	-Dnoexcept=
 # Compiler flags - C++
-SAME70SU_CXXFLAGS := -c -std=gnu++17 \
+SAME70SU_CXXFLAGS := -c -std=c++20 \
 	-mcpu=cortex-m7 \
 	-mthumb \
 	-fno-math-errno \
@@ -123,6 +123,7 @@ SAME70SU_CXXFLAGS := -c -std=gnu++17 \
 	-Wdouble-promotion \
 	-Werror=return-type \
 	-Wsuggest-override \
+	-Werror -Wnoexcept -Wshadow -Wsign-promo \
 	-fsingle-precision-constant \
 	-fstack-usage \
 	-fdump-rtl-expand \

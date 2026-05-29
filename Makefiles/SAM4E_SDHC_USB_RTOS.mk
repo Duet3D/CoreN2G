@@ -98,7 +98,7 @@ SAM4E_CFLAGS := -c -std=gnu99 \
 	$(SAM4E_C_DEFINES)
 
 # Compiler flags - C++
-SAM4E_CXXFLAGS := -c -std=gnu++17 \
+SAM4E_CXXFLAGS := -c -std=c++20 \
 	-mcpu=cortex-m4 \
 	-mthumb \
 	-fno-math-errno \
@@ -114,6 +114,7 @@ SAM4E_CXXFLAGS := -c -std=gnu++17 \
 	-Wundef \
 	-Wdouble-promotion \
 	-fsingle-precision-constant \
+	-Werror -Wnoexcept -Wshadow -Wsign-promo \
 	$(SAM4E_INCLUDES) \
 	$(SAM4E_DEFINES)
 
