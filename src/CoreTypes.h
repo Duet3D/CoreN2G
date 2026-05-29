@@ -9,6 +9,7 @@
 #define SRC_CORETYPES_H_
 
 #include <stdint.h>
+#include <McuType.h>
 
 // Core types used in interfaces and associated constants
 

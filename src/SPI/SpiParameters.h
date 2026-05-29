@@ -9,7 +9,6 @@
 #define SRC_HARDWARE_SPI_SPIPARAMETERS_H_
 
 #include <CoreIO.h>
-#include <CoreTypes.h>
 
 // Structure to pass SPI device parameters. The details depend on the MCU.
 struct SpiParameters
