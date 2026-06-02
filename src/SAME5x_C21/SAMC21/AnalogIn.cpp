@@ -86,7 +86,7 @@ protected:
 	const DmaChannel dmaChan;
 	const DmaPriority dmaPrio;
 	const DmaTrigSource trigSrc;
-	volatile uint8_t numChannelsEnabled;
+	std::atomic<uint8_t> numChannelsEnabled;
 	volatile State state;
 	volatile DmaCallbackReason dmaFinishedReason;
 

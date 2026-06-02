@@ -19,7 +19,7 @@
 
 #include <hri_adc_e54.h>
 
-constexpr unsigned int AdcGclkNum = GclkNum60MHz;
+constexpr unsigned int AdcGclkNum = GclkNum60MHz;	// max is 100MHz so we could use GclkNum96MHz instead
 constexpr uint32_t AdcConversionTimeout = 5;		// milliseconds
 
 static uint32_t conversionsStarted = 0;
@@ -186,7 +186,7 @@ void AdcClass::ReInit() noexcept
 	//  does not produce the expected channel sequence.
 	// Workaround
 	//  Add the AVGCTRL register in the register update list (DSEQCTRL.AVGCTRL=1) and set the desired value in this list.
-	hri_adc_write_CTRLA_reg(device, ADC_CTRLA_PRESCALER_DIV8);			// GCLK1 is 60MHz, divided by 8 is 7.5MHz
+	hri_adc_write_CTRLA_reg(device, ADC_CTRLA_PRESCALER_DIV8);			// GCLK1 is 60MHz, divided by 8 is 7.5MHz (max allowed is 16MHz)
 	hri_adc_write_CTRLB_reg(device, CtrlB);
 	hri_adc_write_REFCTRL_reg(device,  RefCtrl);
 	hri_adc_write_EVCTRL_reg(device, 0);
@@ -337,7 +337,7 @@ void AdcClass::ResultReadyInterrupt() noexcept
 #if 0	// for timing the ISR speed
 	fastDigitalWriteHigh(PortDPin(10));
 #endif
-	const uint16_t result = device->RESULT.reg;;
+	const uint16_t result = device->RESULT.reg;
 	if (state == State::converting)
 	{
 		results[currentChannel] = result;

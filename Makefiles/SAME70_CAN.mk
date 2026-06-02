@@ -15,12 +15,13 @@ SAME70_CAN_CFLAGS := -c -std=gnu99 \
 	-O3
 
 # Compiler flags - C++
-SAME70_CAN_CXXFLAGS := -c -std=gnu++17 \
+SAME70_CAN_CXXFLAGS := -c -std=c++20 \
 	-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard \
 	-fno-math-errno -mfp16-format=ieee -mno-unaligned-access \
 	-ffunction-sections -fdata-sections \
 	-fno-threadsafe-statics -fno-rtti -fno-exceptions -nostdlib \
 	-Wall -Wundef -Wdouble-promotion -Werror=return-type -Wsuggest-override \
+	-Werror -Wnoexcept -Wshadow -Wsign-promo \
 	-fsingle-precision-constant \
 	-O3
 

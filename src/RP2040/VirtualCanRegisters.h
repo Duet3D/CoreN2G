@@ -182,7 +182,8 @@ struct VirtualCanRegisters
 	void Init() noexcept
 	{
 		canEnabled = false;
-		cancelTransmission = clearErrorCounts = false;
+		cancelTransmission = false;
+		clearErrorCounts = false;
 		for (RxFifo& fifo : rxFifos)
 		{
 			fifo.Clear();

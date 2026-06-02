@@ -916,7 +916,7 @@ void CanFD2040::pio_match_setup() noexcept
     sm->shiftctrl = 0;
     sm->instr = 0xe040; // set y, 0
     sm->instr = 0xa0e2; // mov osr, y
-    sm->instr = 0xa02a, // mov x, !y
+    sm->instr = 0xa02a; // mov x, !y
     sm->instr = can2040_offset_match_load_next; // jmp match_load_next
 }
 
