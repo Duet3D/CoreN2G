@@ -103,7 +103,8 @@ SAME70SU_CFLAGS := -c -std=gnu99 \
 	-Wall \
 	$(SAME70SU_INCLUDES) \
 	$(SAME70SU_DEFINES) \
-	-Dnoexcept=
+	-Dnoexcept= \
+	$(DEBUG_FLAGS)
 # Compiler flags - C++
 SAME70SU_CXXFLAGS := -c -std=c++20 \
 	-mcpu=cortex-m7 \
@@ -130,7 +131,8 @@ SAME70SU_CXXFLAGS := -c -std=c++20 \
 	-Os \
 	-Wall \
 	$(SAME70SU_INCLUDES) \
-	$(SAME70SU_DEFINES)
+	$(SAME70SU_DEFINES) \
+	$(DEBUG_FLAGS)
 # Assembler flags
 SAME70SU_ASFLAGS := -c \
 	-mcpu=cortex-m7 \

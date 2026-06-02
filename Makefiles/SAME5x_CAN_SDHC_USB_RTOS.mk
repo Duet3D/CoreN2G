@@ -73,7 +73,9 @@ SAME5X_CFLAGS := -c -std=gnu99 \
 	-fdump-rtl-expand \
 	-Wall \
 	$(SAME5X_INCLUDES) \
-	$(SAME5X_C_DEFINES)
+	$(SAME5X_C_DEFINES) \
+	-O3 \
+	$(DEBUG_FLAGS)
 
 # Compiler flags - C++
 SAME5X_CXXFLAGS := -c -std=c++20 \
@@ -99,16 +101,9 @@ SAME5X_CXXFLAGS := -c -std=c++20 \
 	-fdump-rtl-expand \
 	-Wall \
 	$(SAME5X_INCLUDES) \
-	$(SAME5X_DEFINES)
-
-# Add debug flags if DEBUG=1
-ifeq ($(DEBUG),1)
-SAME5X_CFLAGS += -O0 -g3
-SAME5X_CXXFLAGS += -O0 -g3
-else
-SAME5X_CFLAGS += -O3
-SAME5X_CXXFLAGS += -O3
-endif
+	-O3 \
+	$(SAME5X_DEFINES) \
+	$(DEBUG_FLAGS)
 
 # Object files
 SAME5X_CPP_OBJS := $(SAME5X_CPP_SRCS:%.cpp=$(SAME5X_BUILD_DIR)/%.o)
