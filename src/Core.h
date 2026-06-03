@@ -49,13 +49,24 @@
 extern "C" {
 # include <hardware/gpio.h>
 # include <cmsis_compiler.h>
-# include <RP2040.h>
+# include <pico/rp2040mcu.h>
+# include <system_RP2040.h>
 # include <core_cm0plus.h>
 }
+#elif defined __RP2350__
+extern "C" {
+# include <hardware/gpio.h>
+# include <cmsis_compiler.h>
+# include <pico/rp2350mcu.h>
+# include <system_RP2040.h>
+# include <core_cm33.h>
+}
 #elif defined(STM32H523xx)
-// TODO
+# include <stm32h5.h>
+# include <dwt.h>
 #elif defined(STM32H743xx)
-// TODO
+# include <stm32h7.h>
+# include <dwt.h>
 #else
 # error unsupported processor
 #endif
@@ -122,17 +133,21 @@ static const uint32_t SystemCoreClockFreq = 120000000;	///< The processor clock 
 
 static const uint32_t SystemCoreClockFreq = 300000000;	///< The processor clock frequency after initialisation
 
-#elif RP2040
-
-static const uint32_t SystemCoreClockFreq = 125000000;	///< The processor clock frequency after initialisation
-
 #elif STM32H5
 
 static const uint32_t SystemCoreClockFreq = 240000000;	///< The processor clock frequency after initialisation (VOS0 mode, max junction temperature 105C)
 
 #elif STM32H7
 
-static const uint32_t SystemCoreClockFreq = 240000000;	///< The processor clock frequency after initialisation
+static const uint32_t SystemCoreClockFreq = 480000000;	///< The processor clock frequency after initialisation
+
+#elif RP2040
+
+static const uint32_t SystemCoreClockFreq = 125000000;	///< The processor clock frequency after initialisation
+
+#elif RP2350
+
+static const uint32_t SystemCoreClockFreq = 150000000;	///< The processor clock frequency after initialisation
 
 #else
 # error unsupported processor
