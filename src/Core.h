@@ -64,7 +64,7 @@ extern "C" {
 #elif defined(STM32H523xx)
 # include <stm32h5xx.h>
 #elif defined(STM32H743xx)
-# include <stm32h7.h>
+# include <stm32h7xx.h>
 #else
 # error unsupported processor
 #endif
