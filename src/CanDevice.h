@@ -39,6 +39,9 @@ static_assert(MaxRxBuffers <= 30);					// the hardware allows up to 64 but our c
 # if SAME70
 constexpr unsigned int NumCanDevices = 2;			// this driver supports both CAN devices on the SAME70
 typedef Mcan Can;
+# elif STM32
+typedef FDCAN_GlobalTypeDef Can;
+constexpr unsigned int NumCanDevices = 2;			// this driver supports all three CAN devices on the STM32H7
 #else
 constexpr unsigned int NumCanDevices = 1;			// on other MCUs we only support one CAN device
 # endif
@@ -262,6 +265,8 @@ public:
 		return timer_hw->timerawl;									// read lower 32 bits of the hardware timer, which we also use for CAN time stamping
 #elif SAME70
 		return hw->MCAN_TSCV;
+#elif STM32
+		return hw->TSCV & 0xFFFF;
 #else
 		return hw->TSCV.bit.TSC;
 #endif

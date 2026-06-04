@@ -71,6 +71,10 @@ extern "C" {
 
 #define STM32		(STM32H5 || STM32H7)
 
+#if STM32
+typedef IRQn_Type IRQn;
+#endif
+
 #if defined(RTOS) && (SAME70 || RP2040 || SAME5x || STM32)
 # define CORE_USES_TINYUSB		1
 #else
