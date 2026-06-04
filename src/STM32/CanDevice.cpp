@@ -379,7 +379,7 @@ uint32_t CanDevice::SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, Ca
 		hdr.TxFrameType = (buffer->remote ? FDCAN_REMOTE_FRAME : FDCAN_DATA_FRAME);
 		uint32_t dataLen = buffer->dataLength;
 		uint32_t dlcLen = BytesToDLC[dataLen];
-		hdr.DataLength = dlcLen << 16;
+		hdr.DataLength = dlcLen;
 		dlcLen = DLCtoBytes[dlcLen];
 		while (dataLen < dlcLen)
 		{
@@ -420,8 +420,26 @@ void CanDevice::CopyHeader(CanMessageBuffer *buffer, FDCAN_RxHeaderTypeDef *hdr)
 	buffer->id.SetReceivedId(hdr->Identifier);
 	buffer->remote = (hdr->RxFrameType == FDCAN_REMOTE_FRAME ? 1 : 0);
 	buffer->timeStamp = hdr->RxTimestamp;
-	buffer->dataLength = DLCtoBytes[hdr->DataLength >> 16];
+	buffer->dataLength = DLCtoBytes[hdr->DataLength];
 	++stats.messagesReceived;
+}
+
+// Following function is a replacement for HAL_FDCAN_IsRxBufferMessageAvailable we do not want
+// to clear the data present flags after we have read them.
+static uint32_t FDCAN_IsRxBufferMessageAvailable(FDCAN_HandleTypeDef *hfdcan, uint32_t RxBufferIndex)
+{
+  /* Check function parameters */
+  assert_param(IS_FDCAN_MAX_VALUE(RxBufferIndex, 63U));
+  uint32_t NewData1 = hfdcan->Instance->NDAT1;
+  uint32_t NewData2 = hfdcan->Instance->NDAT2;
+
+  /* Check new message reception on the selected buffer */
+  if (((RxBufferIndex < 32U) && ((NewData1 & (uint32_t)((uint32_t)1 << RxBufferIndex)) == 0U)) ||
+      ((RxBufferIndex >= 32U) && ((NewData2 & (uint32_t)((uint32_t)1 << (RxBufferIndex & 0x1FU))) == 0U)))
+  {
+    return 0;
+  }
+  return 1;
 }
 
 
@@ -522,7 +540,7 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 			const uint32_t bufferNumber = (unsigned int)whichBuffer - (unsigned int)RxBufferNumber::buffer0;
 #ifdef RTOS
 			const uint32_t ndatMask = (uint32_t)1 << bufferNumber;
-			if (HAL_FDCAN_IsRxBufferMessageAvailable(&hw, bufferNumber) == 0)
+			if (FDCAN_IsRxBufferMessageAvailable(&hw, bufferNumber) == 0)
 			{
 				if (timeout == 0)
 				{
@@ -533,7 +551,7 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 				const unsigned int waitingIndex = (unsigned int)whichBuffer;
 				rxTaskWaiting[waitingIndex] = TaskBase::GetCallerTaskHandle();
 				rxBuffersWaiting |= ndatMask;
-				const bool success = (HAL_FDCAN_IsRxBufferMessageAvailable(&hw, bufferNumber) != 0 || (TaskBase::TakeIndexed(NotifyIndices::CanDevice, timeout), HAL_FDCAN_IsRxBufferMessageAvailable(&hw, bufferNumber) != 0));
+				const bool success = (FDCAN_IsRxBufferMessageAvailable(&hw, bufferNumber) != 0 || (TaskBase::TakeIndexed(NotifyIndices::CanDevice, timeout), FDCAN_IsRxBufferMessageAvailable(&hw, bufferNumber) != 0));
 				rxBuffersWaiting &= ~ndatMask;
 				rxTaskWaiting[waitingIndex] = nullptr;
 				if (!success)
@@ -542,7 +560,7 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 				}
 			}
 #else
-			while (HAL_FDCAN_IsRxBufferMessageAvailable(&hw, bufferNumber) == 0)
+			while (FDCAN_IsRxBufferMessageAvailable(&hw, bufferNumber) == 0)
 			{
 				if (millis() - start >= timeout)
 				{
@@ -577,7 +595,7 @@ bool CanDevice::IsMessageAvailable(RxBufferNumber whichBuffer) noexcept
 
 	default:
 		// We assume that not more than 32 dedicated receive buffers have been configured, so we only need to look at the NDAT1 register
-		return HAL_FDCAN_IsRxBufferMessageAvailable(&hw, (uint32_t)whichBuffer - (uint32_t)RxBufferNumber::buffer0) != 0;
+		return FDCAN_IsRxBufferMessageAvailable(&hw, (uint32_t)whichBuffer - (uint32_t)RxBufferNumber::buffer0) != 0;
 	}
 	return false;
 }

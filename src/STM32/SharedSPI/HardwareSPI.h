@@ -1,7 +1,8 @@
 #ifndef HARDWARESPI_H
 #define HARDWARESPI_H
 
-#include "CoreImp.h"
+//#include "CoreImp.h"
+#include "Core.h"
 #include "SPI.h"
 
 #ifdef RTOS
@@ -20,6 +21,8 @@ extern "C" void DMA1_Stream1_IRQHandler() noexcept;
 extern "C" void DMA1_Stream2_IRQHandler() noexcept;
 extern "C" void DMA1_Stream6_IRQHandler() noexcept;
 extern "C" void DMA1_Stream7_IRQHandler() noexcept;
+extern "C" void DMA2_Stream1_IRQHandler() noexcept;
+extern "C" void DMA2_Stream2_IRQHandler() noexcept;
 extern "C" void SPI4_IRQHandler() noexcept;
 extern "C" void SPI5_IRQHandler() noexcept;
 extern "C" void SPI6_IRQHandler() noexcept;
@@ -37,7 +40,6 @@ typedef void (*SPICallbackFunction)(HardwareSPI *spiDevice) noexcept;
 class HardwareSPI: public SPI
 {
 public:
-    HardwareSPI(SPI_TypeDef *spi) noexcept;
     HardwareSPI(SPI_TypeDef *spi, IRQn_Type spiIrqNo) noexcept;
     HardwareSPI(SPI_TypeDef *spi, IRQn_Type spiIrqNo, DMA_Stream_TypeDef* rxStream, uint32_t rxChan, IRQn_Type rxIrqNo,
                             DMA_Stream_TypeDef* txStream, uint32_t txChan, IRQn_Type txIrqNo) noexcept;
@@ -81,15 +83,15 @@ private:
     void configureDmaStream(DMA_HandleTypeDef& hdma, DMA_Stream_TypeDef *inst, uint32_t chan, uint32_t dir, uint32_t minc) noexcept;
     void initDma(NvicPriority priority) noexcept;
     static const size_t minDMAThreshold = 6;
-
+    static void SPI_IRQHandler(SPI_HandleTypeDef *hspi) noexcept;
+    static void SPI_DMATransmitReceiveCplt(DMA_HandleTypeDef *hdma) noexcept;
+    HAL_StatusTypeDef startTransferDMA(SPI_HandleTypeDef *hspi, const uint8_t *pTxData, uint8_t *pRxData, uint16_t Size) noexcept;
+    HAL_StatusTypeDef startTransferIT(SPI_HandleTypeDef *hspi, const uint8_t *pTxData, uint8_t *pRxData, uint16_t Size) noexcept;
     friend void DMA1_Stream3_IRQHandler() noexcept;
     friend void DMA1_Stream4_IRQHandler() noexcept;
     friend void DMA1_Stream0_IRQHandler() noexcept;
     friend void DMA1_Stream5_IRQHandler() noexcept;
     friend void transferComplete(HardwareSPI *spiDevice) noexcept;
-    friend void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi);
-    friend void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi);
-    friend void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi);
     friend void SPI1_IRQHandler() noexcept __attribute__((optimize("O2")));
     friend void SPI2_IRQHandler() noexcept;
     friend void SPI3_IRQHandler() noexcept;
@@ -98,11 +100,13 @@ private:
     friend void DMA1_Stream2_IRQHandler() noexcept;
     friend void DMA1_Stream6_IRQHandler() noexcept;
     friend void DMA1_Stream7_IRQHandler() noexcept;
+    friend void DMA2_Stream1_IRQHandler() noexcept;
+    friend void DMA2_Stream2_IRQHandler() noexcept;
     friend void SPI4_IRQHandler() noexcept;
     friend void SPI5_IRQHandler() noexcept;
     friend void SPI6_IRQHandler() noexcept;
 #endif
-    
+
 };
 
 #endif

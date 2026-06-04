@@ -3,10 +3,13 @@
 #include "Core.h"
 #include "SPI.h"
 
-#include "SoftwareSPI.h"
 #include "HardwareSPI.h"
 
-SPI *SPI::getSSPDevice(SSPChannel channel)
+#if SUPPORT_SWSPI
+# include "SoftwareSPI.h"
+#endif
+
+SPI *SPI::getSPIDevice(SSPChannel channel)
 {
     switch(channel)
     {
@@ -19,7 +22,7 @@ SPI *SPI::getSSPDevice(SSPChannel channel)
 #if USE_SSP3
         case SSP3: return &HardwareSPI::SSP3; break;
 #endif
-#ifdef USE_SWSPI
+#if SUPPORT_SWSPI
         case SWSPI0: return &SoftwareSPI::SWSSP0; break;
         case SWSPI1: return &SoftwareSPI::SWSSP1; break;
         case SWSPI2: return &SoftwareSPI::SWSSP2; break;

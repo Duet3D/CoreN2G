@@ -5,20 +5,9 @@
 #include "AsyncSerial.h"
 extern "C" void debugPrintf(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
 
-#if USE_UART0
-TASKMEM AsyncSerial UART_Slot0;
-#endif
-#if USE_UART1
-TASKMEM AsyncSerial UART_Slot1;
-#endif
-#if USE_UART2
-TASKMEM AsyncSerial UART_Slot2;
-#endif
-
-
-
-AsyncSerial::AsyncSerial() noexcept
+AsyncSerial::AsyncSerial(const UartParameters& params) noexcept
 {
+    memset(&this->handle, 0, sizeof(this->handle));
     uart = nullptr;
     prio = 0;
     txWaitingTask = nullptr;

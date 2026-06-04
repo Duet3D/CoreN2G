@@ -2,7 +2,7 @@
  * Povide PWM based output using either Hardware or Software PWM.
  * GA 14/8/2020
  */
-#include <CoreImp.h> 
+//#include <CoreImp.h>
 #include "HybridPWM.h"
 #define PWM_MAX_DUTY_CYCLE          4095
 extern "C" void debugPrintf(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
@@ -37,12 +37,12 @@ static HardwareTimer* PWMTimers[] = {
 
 HardwarePWM::HardwarePWM() noexcept : timer(nullptr), channel(0)
 {
-} 
+}
 
 void HardwarePWM::free() noexcept
 {
     //debugPrintf("Free timer chan %d\n", channel);
-    if (timer) 
+    if (timer)
     {
         timer->pause();
         timer->setMode(channel, TIMER_DISABLED);

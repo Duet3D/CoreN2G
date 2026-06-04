@@ -23,42 +23,83 @@ extern char *_ecv_array heapTop;
 extern const char *_ecv_array heapLimit;
 extern const char *_ecv_array sysStackLimit;
 
+#if STM32
+constexpr unsigned int PinBits = 4;			// STM MCUs have 16-bit ports
+#else
+constexpr unsigned int PinBits = 5;			// other MCUs have 32-bit ports
+#endif
+
+constexpr unsigned int PinsPerPort = 1u << PinBits;
+
 // Define NumTotalPins as the pin number at and beyond which it is not safe to access the corresponding port registers on this processor family.
 // This may be greater than the number of I/O pins actually on the particular device we are running on.
 #if SAME5x
-constexpr unsigned int NumTotalPins = (3 * 32) + 22;	// SAME54P20A goes up to PD21
+constexpr unsigned int NumTotalPins = (3 * PinsPerPort) + 22;	// SAME54P20A goes up to PD21
 #elif SAMC21
-constexpr unsigned int NumTotalPins = 2 * 32;			// SAMC21J goes up to PB31. We don't support the SAMC21N.
+constexpr unsigned int NumTotalPins = 2 * PinsPerPort;			// SAMC21J goes up to PB31. We don't support the SAMC21N.
 #elif SAM4E
-constexpr unsigned int NumTotalPins = (4 * 32) + 6;		// SAM4E8E goes up to PE5
+constexpr unsigned int NumTotalPins = (4 * PinsPerPort) + 6;	// SAM4E8E goes up to PE5
 #elif SAM4S
-constexpr unsigned int NumTotalPins = 3 * 32;			// SAM4S8C goes up to PC31
+constexpr unsigned int NumTotalPins = 3 * PinsPerPort;			// SAM4S8C goes up to PC31
 #elif SAME70
-constexpr unsigned int NumTotalPins = (4 * 32) + 6;		// SAME70 goes up to PE5
+constexpr unsigned int NumTotalPins = (4 * PinsPerPort) + 6;	// SAME70 goes up to PE5
 #elif STM32H5
-constexpr unsigned int NumTotalPins = (6 * 32) + 16;	// STM32H523 does up to PG15
+constexpr unsigned int NumTotalPins = (7 * PinsPerPort);		// STM32H523 does up to PG15
 #elif STM32H7
-constexpr unsigned int NumTotalPins = (8 * 32) + 16;	// STM32H743 goes up to PI15
+constexpr unsigned int NumTotalPins = (9 * PinsPerPort);		// STM32H743 goes up to PI15
 #elif RP2040
-constexpr unsigned int NumTotalPins = 30;				// RP2040 goes up to GPIO29
+constexpr unsigned int NumTotalPins = 30;						// RP2040 goes up to GPIO29
+#elif RP2350
+constexpr unsigned int NumTotalPins = 48;						// RP2350B goes up to GPIO47
 #else
 # error Unsupported processor
 #endif
 
-#if RP2040
-
-inline constexpr Pin GpioPin(unsigned int n) noexcept { return n; }
-inline constexpr uint32_t GpioMask(Pin p) noexcept { return (uint32_t)1 << p; }
-
-#else
-
-inline uint32_t GpioPortNumber(Pin p) noexcept { return p >> 5; }
-inline constexpr uint32_t GpioPinNumber(Pin p) noexcept { return p & 0x1F; }
+inline uint32_t GpioPortNumber(Pin p) noexcept { return p >> PinBits; }
+inline constexpr uint32_t GpioPinNumber(Pin p) noexcept { return p & (PinsPerPort - 1); }
 inline constexpr uint32_t GpioMask(Pin p) noexcept { return (uint32_t)1 << GpioPinNumber(p); }
 
 #if SAME70 || SAM4E || SAM4S
+
 inline Pio *GpioPort(Pin p) noexcept { return (Pio*)((uint32_t)PIOA + GpioPortNumber(p) * 0x200); }
+
+#elif STM32
+
+constexpr GPIO_TypeDef *GPIOPort[] = {
+  (GPIO_TypeDef *)GPIOA_BASE,
+  (GPIO_TypeDef *)GPIOB_BASE
+#if defined GPIOC_BASE
+  , (GPIO_TypeDef *)GPIOC_BASE
 #endif
+#if defined GPIOD_BASE
+  , (GPIO_TypeDef *)GPIOD_BASE
+#endif
+#if defined GPIOE_BASE
+  , (GPIO_TypeDef *)GPIOE_BASE
+#endif
+#if defined GPIOF_BASE
+  , (GPIO_TypeDef *)GPIOF_BASE
+#endif
+#if defined GPIOG_BASE
+  , (GPIO_TypeDef *)GPIOG_BASE
+#endif
+#if defined GPIOH_BASE
+  , (GPIO_TypeDef *)GPIOH_BASE
+#endif
+#if defined GPIOI_BASE
+  , (GPIO_TypeDef *)GPIOI_BASE
+#endif
+#if defined GPIOJ_BASE
+  , (GPIO_TypeDef *)GPIOJ_BASE
+#endif
+#if defined GPIOK_BASE
+  , (GPIO_TypeDef *)GPIOK_BASE
+#endif
+};
+
+inline GPIO_TypeDef *GpioPort(Pin p) noexcept { return GPIOPort[GpioPortNumber(p)]; }
+
+# endif
 
 /**
  * @brief Return the global pin number for a Port A pin
@@ -74,9 +115,9 @@ inline constexpr Pin PortAPin(unsigned int n) noexcept { return (Pin)n; }
  * @param n The bit number of the pin on Port B
  * @return The global pin number
  */
-inline constexpr Pin PortBPin(unsigned int n) noexcept { return (Pin)(32+n); }
+inline constexpr Pin PortBPin(unsigned int n) noexcept { return (Pin)(PinsPerPort + n); }
 
-#if SAME5x || SAM4E || SAM4S || SAME70
+#if SAME5x || SAM4E || SAM4S || SAME70 || STM32H5 || STM32H7
 
 /**
  * @brief Return the global pin number for a Port C pin
@@ -84,11 +125,11 @@ inline constexpr Pin PortBPin(unsigned int n) noexcept { return (Pin)(32+n); }
  * @param n The bit number of the pin on Port C
  * @return The global pin number
  */
-inline constexpr Pin PortCPin(unsigned int n) noexcept { return (Pin)(64+n); }
+inline constexpr Pin PortCPin(unsigned int n) noexcept { return (Pin)(2 * PinsPerPort + n); }
 
 #endif
 
-#if SAME5x || SAM4E || SAME70
+#if SAME5x || SAM4E || SAME70 || STM32H5 || STM32H7
 
 /**
  * @brief Return the global pin number for a Port D pin
@@ -96,11 +137,11 @@ inline constexpr Pin PortCPin(unsigned int n) noexcept { return (Pin)(64+n); }
  * @param n The bit number of the pin on Port D
  * @return The global pin number
  */
-inline constexpr Pin PortDPin(unsigned int n) noexcept { return (Pin)(96+n); }
+inline constexpr Pin PortDPin(unsigned int n) noexcept { return (Pin)(3 * PinsPerPort + n); }
 
 #endif
 
-#if SAM4E || SAME70
+#if SAM4E || SAME70 || STM32H5 || STM32H7
 
 /**
  * @brief Return the global pin number for a Port E pin
@@ -108,11 +149,49 @@ inline constexpr Pin PortDPin(unsigned int n) noexcept { return (Pin)(96+n); }
  * @param n The bit number of the pin on Port E
  * @return The global pin number
  */
-inline constexpr Pin PortEPin(unsigned int n) noexcept { return (Pin)(128+n); }
+inline constexpr Pin PortEPin(unsigned int n) noexcept { return (Pin)(4 * PinsPerPort + n); }
 
 #endif
 
-#endif	// !RP2040
+#if STM32H5 || STM32H7
+
+/**
+ * @brief Return the global pin number for a Port F pin
+ *
+ * @param n The bit number of the pin on Port F
+ * @return The global pin number
+ */
+inline constexpr Pin PortFPin(unsigned int n) noexcept { return (Pin)(5 * PinsPerPort + n); }
+
+/**
+ * @brief Return the global pin number for a Port G pin
+ *
+ * @param n The bit number of the pin on Port G
+ * @return The global pin number
+ */
+inline constexpr Pin PortGPin(unsigned int n) noexcept { return (Pin)(6 * PinsPerPort + n); }
+
+#endif
+
+#if STM32H7
+
+/**
+ * @brief Return the global pin number for a Port H pin
+ *
+ * @param n The bit number of the pin on Port H
+ * @return The global pin number
+ */
+inline constexpr Pin PortHPin(unsigned int n) noexcept { return (Pin)(7 * PinsPerPort + n); }
+
+/**
+ * @brief Return the global pin number for a Port I pin
+ *
+ * @param n The bit number of the pin on Port I
+ * @return The global pin number
+ */
+inline constexpr Pin PortIPin(unsigned int n) noexcept { return (Pin)(8 * PinsPerPort + n); }
+
+#endif
 
 /**
  * @brief Pin function numbers for calls to SetPinFunction
@@ -313,7 +392,7 @@ private:
 	coreIrqflags_t flags;
 };
 
-#if SAME5x || SAM4E || SAM4S || SAME70		// SAMC21 doesn't support these
+#if SAME5x || SAM4E || SAM4S || SAME70 || STM32		// SAMC21 doesn't support these
 
 // Functions to change the base priority, to shut out interrupts up to a priority level
 
@@ -454,6 +533,8 @@ inline void fastDigitalWriteHigh(uint32_t pin) noexcept
 	GpioPort(pin)->PIO_SODR = GpioMask(pin);
 #elif RP2040
 	gpio_set_mask(GpioMask(pin));
+#elif STM32
+	GpioPort(pin)->BSRR = GpioPinNumber(pin);
 #else
 # error Unsupported processor
 #endif
@@ -472,6 +553,8 @@ inline void fastDigitalWriteLow(uint32_t pin) noexcept
 	GpioPort(pin)->PIO_CODR = GpioMask(pin);
 #elif RP2040
 	gpio_clr_mask(GpioMask(pin));
+#elif STM32
+	GpioPort(pin)->BSRR = GpioPinNumber(pin) << 16;
 #else
 # error Unsupported processor
 #endif
@@ -490,6 +573,8 @@ inline bool fastDigitalRead(uint32_t pin) noexcept
 	return GpioPort(pin)->PIO_PDSR & GpioMask(pin);
 #elif RP2040
 	return gpio_get(pin);			//TODO can we optimise this?
+#elif STM32
+	return (GPIOPort[GpioPortNumber(pin)]->IDR & GpioPinNumber(pin)) != 0;
 #else
 # error Unsupported processor
 #endif
@@ -501,7 +586,7 @@ inline bool fastDigitalRead(uint32_t pin) noexcept
  */
 [[noreturn]] void ResetProcessor() noexcept;
 
-#if !RP2040
+#if SAME70 || SAM4E || SAM4S || SAME5x || SAMC21
 
 /**
  * @brief TC output identifiers used in pin tables
@@ -933,6 +1018,8 @@ struct PinDescriptionBase
 	PwmOutput pwm;					///< The PWM output that is connected to this pin and available for PWM generation, or PwmOutput::none
 	AdcInput adc;					///< The ADC input that is connected to this pin and available, or AdcInput::none
 
+#elif STM32
+	//TODO
 #else
 # error Unsupported processor
 #endif

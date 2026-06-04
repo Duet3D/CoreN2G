@@ -2,14 +2,15 @@
 
 //SoftwareSPI
 
-#if USE_SWSPI
 #include "SoftwareSPI.h"
+
+#if SUPPORT_SWSPI
 
 // On some processors we need to ensure that memory mapped I/O operations are synced to the hardware
 # if STM32H7
 # define SYNC_GPIO() __DSB()
 #else
-# define SYNC_GPIO() 
+# define SYNC_GPIO()
 # endif
 
 // The following three constatnts provide a rough estimate of how many clock cycles are required for one
@@ -101,9 +102,9 @@ spi_status_t SoftwareSPI::transceivePacket(const uint8_t *tx_data, uint8_t *rx_d
  * Supports mode 0 and mode 1.
  *
  * Returns the received byte.
- 
+
  //WikiPedia: https://en.wikipedia.org/wiki/Serial_Peripheral_Interface#Example_of_bit-banging_the_master_protocol
- 
+
  */
 uint8_t SoftwareSPI::mode01TransferByte(uint8_t byte_out) noexcept
 {
@@ -222,9 +223,9 @@ uint8_t SoftwareSPI::mode01TransferByte(uint8_t byte_out) noexcept
  * Supports mode 2 and mode 3.
  *
  * Returns the received byte.
- 
+
  //WikiPedia: https://en.wikipedia.org/wiki/Serial_Peripheral_Interface#Example_of_bit-banging_the_master_protocol
- 
+
  */
 uint8_t SoftwareSPI::mode23TransferByte(uint8_t byte_out) noexcept
 {
@@ -287,7 +288,7 @@ uint8_t SoftwareSPI::mode23TransferByte(uint8_t byte_out) noexcept
     else
     {
         if (delay == 0)
-        {       
+        {
             for (bit = 0x80; bit; bit >>= 1) {
                 /* Shift-out a bit to the MOSI line */
                 if (mosi != NoPin)
@@ -337,4 +338,5 @@ uint8_t SoftwareSPI::mode23TransferByte(uint8_t byte_out) noexcept
     }
     return byte_in;
 }
+
 #endif

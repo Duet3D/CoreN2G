@@ -1,7 +1,8 @@
 
 
-#include <CoreImp.h>
+#include <Core.h>
 #include "HybridPWM.h"
+
 extern "C" void debugPrintf(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
 // NOTE: The debug error calculations assume a Step Timer running at 1MHz
 //#define PWM_DEBUG
@@ -178,7 +179,7 @@ static void adjustOnOffTime(int chan, uint32_t onTime, uint32_t offTime)
 {
     PWMState& s = States[chan];
 #ifdef PWM_DEBUG
-    if (s.newTimes) 
+    if (s.newTimes)
     {
         pwmPending++;
         uint32_t count = __HAL_TIM_GET_COUNTER(timerHandle);
@@ -289,7 +290,7 @@ void TIM7_IRQHandler(void) noexcept
     __HAL_TIM_SET_AUTORELOAD(timerHandle, 0);
     // Clear any pending interrupt
     __HAL_TIM_CLEAR_IT(timerHandle, TIM_IT_UPDATE);
-    // time expires when it ticks past reload value, so add 1 to adjust 
+    // time expires when it ticks past reload value, so add 1 to adjust
     uint16_t curTick = __HAL_TIM_GET_COUNTER(timerHandle) + 1;
 #ifdef PWM_DEBUG
     if (curTick == 0)
@@ -304,7 +305,7 @@ void TIM7_IRQHandler(void) noexcept
     }
     baseDelta = next;
     __HAL_TIM_SET_COUNTER(timerHandle, curTick);
-    // set new target and re-enable counter 
+    // set new target and re-enable counter
     __HAL_TIM_SET_AUTORELOAD(timerHandle, next);
 #ifdef PWM_DEBUG
     const uint32_t dt = SPWMTimer.getCount() - startTime;
@@ -362,7 +363,7 @@ void SPWMDiagnostics()
 
 SoftwarePWM::SoftwarePWM() noexcept : channel(-1), period(0xffffffff)
 {
-} 
+}
 
 void SoftwarePWM::free() noexcept
 {
@@ -465,5 +466,5 @@ void SoftwarePWM::appendStatus(const StringRef& reply) noexcept
 #endif
     }
     else
-        reply.catf(" period %d", static_cast<int>(period));   
+        reply.catf(" period %d", static_cast<int>(period));
 }

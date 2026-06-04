@@ -25,7 +25,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.358874141" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.349345236" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value="${ArmGccPath}" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.551567810" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.1696264728" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.1696264728" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" stopOnErr="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.1582350876" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.955946166" name="Optimization level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" value="gnu.c.optimization.level.size" valueType="enumerated"/>
 								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.1905276048" name="Debug level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" valueType="enumerated"/>
@@ -89,7 +89,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STM32Hx|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STM32|src/STMCubeMX|src/STM32Hx|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -119,7 +119,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.1759593669" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.457259607" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value="${ArmGccPath}" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.580944296" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.1176154574" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.1176154574" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" stopOnErr="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.1782282169" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.1843496451" name="Optimization level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" value="gnu.c.optimization.level.size" valueType="enumerated"/>
 								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.1495847199" name="Debug level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" valueType="enumerated"/>
@@ -188,7 +188,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STM32Hx|src/RP2040|src/SAME70|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STM32|src/STMCubeMX|src/STM32Hx|src/RP2040|src/SAME70|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -218,7 +218,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.480408599" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.2047236637" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value="${ArmGccPath}" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.2093790073" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.1580026325" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.1580026325" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" stopOnErr="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.1235249504" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.1599482728" name="Optimization level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" valueType="enumerated"/>
 								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.384478711" name="Debug level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" valueType="enumerated"/>
@@ -296,7 +296,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STM32Hx|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STM32|src/STMCubeMX|src/STM32Hx|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -326,7 +326,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.2109024671" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.1362131390" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value="${ArmGccPath}" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.59916761" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.65040129" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.65040129" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" stopOnErr="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.1712736452" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.721865803" name="Optimization level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" valueType="enumerated"/>
 								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.752623023" name="Debug level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" valueType="enumerated"/>
@@ -401,7 +401,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STM32Hx|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STM32|src/STMCubeMX|src/STM32Hx|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -431,7 +431,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.1384508370" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.1189628600" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value="${ArmGccPath}" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.1797475004" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.692037864" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.692037864" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" stopOnErr="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.1778938766" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.69272209" name="Optimization level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" valueType="enumerated"/>
 								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.829325888" name="Debug level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" valueType="enumerated"/>
@@ -499,7 +499,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STM32Hx|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STM32|src/STMCubeMX|src/STM32Hx|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -529,7 +529,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.1680916692" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.1673484599" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value="${ArmGccPath}" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.325709713" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.974446957" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.974446957" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" stopOnErr="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.1576374198" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.87638984" name="Optimization level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" value="gnu.c.optimization.level.size" valueType="enumerated"/>
 								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.179121459" name="Debug level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" value="gnu.c.debugging.level.none" valueType="enumerated"/>
@@ -604,7 +604,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STM32Hx|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STM32|src/STMCubeMX|src/STM32Hx|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -634,7 +634,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.933836987" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.672005055" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value="${ArmGccPath}" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.517501482" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.1878742265" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.1878742265" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" stopOnErr="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.1740255159" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.196949159" name="Optimization level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" value="gnu.c.optimization.level.size" valueType="enumerated"/>
 								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.1527873376" name="Debug level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" value="gnu.c.debugging.level.max" valueType="enumerated"/>
@@ -710,7 +710,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STM32Hx|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STM32|src/STMCubeMX|src/STM32Hx|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -740,7 +740,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.990256183" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.1828455283" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value="${ArmGccPath}" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.1974550409" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.206977767" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.206977767" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" stopOnErr="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.504836092" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.1733043288" name="Optimization level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" value="gnu.c.optimization.level.size" valueType="enumerated"/>
 								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.40578430" name="Debug level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" value="gnu.c.debugging.level.max" valueType="enumerated"/>
@@ -810,7 +810,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STM32Hx|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STM32|src/STMCubeMX|src/STM32Hx|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -840,7 +840,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.1974721063" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.510025933" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value="${ArmGccPath}" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.2066970351" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.2044758775" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.2044758775" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" stopOnErr="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.2058824385" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.860300626" name="Optimization level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" value="gnu.c.optimization.level.size" valueType="enumerated"/>
 								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.170376683" name="Debug level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" value="gnu.c.debugging.level.max" valueType="enumerated"/>
@@ -917,7 +917,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STM32Hx|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STM32|src/STMCubeMX|src/STM32Hx|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -947,7 +947,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.1503955993" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.894725487" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value="${ArmGccPath}" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.1263779022" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.1128988832" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.1128988832" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" stopOnErr="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.915416016" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.266361300" name="Optimization level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" value="gnu.c.optimization.level.size" valueType="enumerated"/>
 								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.501914448" name="Debug level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" value="gnu.c.debugging.level.max" valueType="enumerated"/>
@@ -1013,7 +1013,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STM32Hx|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STM32|src/STMCubeMX|src/STM32Hx|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -1043,7 +1043,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.1930735705" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.118184527" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value="${ArmGccPath}" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.1135932055" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.2032536495" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.2032536495" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" stopOnErr="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.56762643" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.1366920125" name="Optimization level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" value="gnu.c.optimization.level.size" valueType="enumerated"/>
 								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.32170692" name="Debug level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" value="gnu.c.debugging.level.max" valueType="enumerated"/>
@@ -1123,7 +1123,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STM32Hx|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STM32|src/STMCubeMX|src/STM32Hx|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -1153,7 +1153,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.1593638196" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.1575726829" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value="${ArmGccPath}" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.2031896693" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.436781318" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.436781318" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" stopOnErr="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.738091457" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.885559309" name="Optimization level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" valueType="enumerated"/>
 								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.1790166655" name="Debug level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" valueType="enumerated"/>
@@ -1233,7 +1233,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STM32Hx|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STM32|src/STMCubeMX|src/STM32Hx|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -1263,7 +1263,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.1556864438" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.1272026032" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value="${ArmGccPath}" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.1807620258" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.2132602518" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.2132602518" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" stopOnErr="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.173003622" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.1758468653" name="Optimization level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" valueType="enumerated"/>
 								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.1688345123" name="Debug level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" value="gnu.c.debugging.level.none" valueType="enumerated"/>
@@ -1359,7 +1359,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STM32Hx|src/RP2040|src/SAM4S_4E_E70/SAM4S|src/SAM4S_4E_E70/SAM4E|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/drivers/pdc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/udp|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twi|src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4e|src/SAME5x_C21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STM32|src/STMCubeMX|src/STM32Hx|src/RP2040|src/SAM4S_4E_E70/SAM4S|src/SAM4S_4E_E70/SAM4E|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/drivers/pdc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/udp|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twi|src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4e|src/SAME5x_C21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -1389,7 +1389,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.1967857644" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.2123957915" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value="${ArmGccPath}" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.2028879680" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.532045019" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.532045019" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" stopOnErr="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.321064111" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.369552899" name="Optimization level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" value="gnu.c.optimization.level.optimize" valueType="enumerated"/>
 								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.469996789" name="Debug level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" value="gnu.c.debugging.level.max" valueType="enumerated"/>
@@ -1470,7 +1470,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STM32Hx|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STM32|src/STMCubeMX|src/STM32Hx|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -1500,7 +1500,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.467198474" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.1294372583" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value="${ArmGccPath}" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.1742701975" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.1832228933" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.1832228933" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" stopOnErr="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.1522241615" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.596961103" name="Optimization level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" value="gnu.c.optimization.level.optimize" valueType="enumerated"/>
 								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.275170380" name="Debug level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" value="gnu.c.debugging.level.max" valueType="enumerated"/>
@@ -1598,7 +1598,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STM32Hx|src/RP2040|src/SAM4S_4E_E70/SAM4S|src/SAM4S_4E_E70/SAM4E|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/drivers/pdc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/udp|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twi|src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAME5x_C21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STM32|src/STMCubeMX|src/STM32Hx|src/RP2040|src/SAM4S_4E_E70/SAM4S|src/SAM4S_4E_E70/SAM4E|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/drivers/pdc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/udp|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twi|src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAME5x_C21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -1628,7 +1628,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.652748483" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.1327126929" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value="${ArmGccPath}" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.715203023" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.5472570" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.5472570" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" stopOnErr="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.956351997" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.1871394594" name="Optimization level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" value="gnu.c.optimization.level.size" valueType="enumerated"/>
 								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.1211971213" name="Debug level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" valueType="enumerated"/>
@@ -1706,7 +1706,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STM32Hx|src/RP2040|src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/same70|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAM4S_4E_E70/asf/sam/utils/cmsis/same70|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/aes|src/SAM4S_4E_E70/asf/sam/drivers/trng|src/SAM4S_4E_E70/asf/sam/drivers/usbhs|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twihs|src/SAM4S_4E_E70/asf/sam/drivers/mcan|src/SAM4S_4E_E70/asf/sam/drivers/xdmac|src/SAM4S_4E_E70/SAM4S|SAM4E|src/SAM4S_4E_E70/SAME70|src/SAME5x_C21|src/SAME70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STM32|src/STMCubeMX|src/STM32Hx|src/RP2040|src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/same70|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAM4S_4E_E70/asf/sam/utils/cmsis/same70|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/aes|src/SAM4S_4E_E70/asf/sam/drivers/trng|src/SAM4S_4E_E70/asf/sam/drivers/usbhs|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twihs|src/SAM4S_4E_E70/asf/sam/drivers/mcan|src/SAM4S_4E_E70/asf/sam/drivers/xdmac|src/SAM4S_4E_E70/SAM4S|SAM4E|src/SAM4S_4E_E70/SAME70|src/SAME5x_C21|src/SAME70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -1736,7 +1736,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.1222162232" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.1972473630" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value="${ArmGccPath}" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.105006454" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.728329496" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.728329496" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" stopOnErr="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.1585773072" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.1795975024" name="Optimization level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" value="gnu.c.optimization.level.size" valueType="enumerated"/>
 								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.797667128" name="Debug level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" valueType="enumerated"/>
@@ -1814,7 +1814,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STM32Hx|src/RP2040|src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/common/services/clock/same70|src/SAM4S_4E_E70/asf/sam/drivers/aes|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/afec|src/SAM4S_4E_E70/asf/sam/drivers/emac|src/SAM4S_4E_E70/asf/sam/drivers/gmac|src/SAM4S_4E_E70/asf/sam/drivers/rswdt|src/SAM4S_4E_E70/asf/sam/drivers/trng|src/SAM4S_4E_E70/asf/sam/drivers/usbhs|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twihs|src/SAM4S_4E_E70/asf/sam/drivers/mcan|src/SAM4S_4E_E70/asf/sam/drivers/xdmac|src/SAM4S_4E_E70/SAM4E|SAM4E|src/SAM4S_4E_E70/SAME70|src/SAME5x_C21|src/SAME70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STM32|src/STMCubeMX|src/STM32Hx|src/RP2040|src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/common/services/clock/same70|src/SAM4S_4E_E70/asf/sam/drivers/aes|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/afec|src/SAM4S_4E_E70/asf/sam/drivers/emac|src/SAM4S_4E_E70/asf/sam/drivers/gmac|src/SAM4S_4E_E70/asf/sam/drivers/rswdt|src/SAM4S_4E_E70/asf/sam/drivers/trng|src/SAM4S_4E_E70/asf/sam/drivers/usbhs|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twihs|src/SAM4S_4E_E70/asf/sam/drivers/mcan|src/SAM4S_4E_E70/asf/sam/drivers/xdmac|src/SAM4S_4E_E70/SAM4E|SAM4E|src/SAM4S_4E_E70/SAME70|src/SAME5x_C21|src/SAME70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -1844,7 +1844,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.90475784" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.1904231888" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value="${ArmGccPath}" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.1021155481" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.1698601798" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.1698601798" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" stopOnErr="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.898164302" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.1913440249" name="Optimization level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" value="gnu.c.optimization.level.size" valueType="enumerated"/>
 								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.1182255676" name="Debug level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" valueType="enumerated"/>
@@ -1923,7 +1923,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STM32Hx|src/RP2040|src/SAM4S_4E_E70/asf/common/services/usb|src/SAM4S_4E_E70/asf/sam/drivers/usbhs|src/SAM4S_4E_E70/SAM4S|src/SAM4S_4E_E70/SAM4E|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/drivers/pdc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/udp|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twi|src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4e|src/SAME5x_C21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STM32|src/STMCubeMX|src/STM32Hx|src/RP2040|src/SAM4S_4E_E70/asf/common/services/usb|src/SAM4S_4E_E70/asf/sam/drivers/usbhs|src/SAM4S_4E_E70/SAM4S|src/SAM4S_4E_E70/SAM4E|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/drivers/pdc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/udp|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twi|src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4e|src/SAME5x_C21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -1953,7 +1953,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.1814943439" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.1687784753" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value="${ArmGccPath}" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.642801066" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.597159456" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.597159456" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" stopOnErr="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.1268939064" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.1535884695" name="Optimization level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" value="gnu.c.optimization.level.size" valueType="enumerated"/>
 								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.745212427" name="Debug level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" valueType="enumerated"/>
@@ -2039,7 +2039,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STM32Hx|src/RP2040|src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/same70|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAM4S_4E_E70/asf/sam/utils/cmsis/same70|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/aes|src/SAM4S_4E_E70/asf/sam/drivers/trng|src/SAM4S_4E_E70/asf/sam/drivers/usbhs|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twihs|src/SAM4S_4E_E70/asf/sam/drivers/mcan|src/SAM4S_4E_E70/asf/sam/drivers/xdmac|src/SAM4S_4E_E70/SAM4S|SAM4E|src/SAM4S_4E_E70/SAME70|src/SAME5x_C21|src/SAME70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STM32|src/STMCubeMX|src/STM32Hx|src/RP2040|src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/same70|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAM4S_4E_E70/asf/sam/utils/cmsis/same70|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/aes|src/SAM4S_4E_E70/asf/sam/drivers/trng|src/SAM4S_4E_E70/asf/sam/drivers/usbhs|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twihs|src/SAM4S_4E_E70/asf/sam/drivers/mcan|src/SAM4S_4E_E70/asf/sam/drivers/xdmac|src/SAM4S_4E_E70/SAM4S|SAM4E|src/SAM4S_4E_E70/SAME70|src/SAME5x_C21|src/SAME70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -2069,7 +2069,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.255079998" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.1152713525" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value="${ArmGccPath}" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.1524399087" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.779414640" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.779414640" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" stopOnErr="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.193956897" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.1873480540" name="Optimization level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" value="gnu.c.optimization.level.size" valueType="enumerated"/>
 								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.1975958941" name="Debug level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" valueType="enumerated"/>
@@ -2155,7 +2155,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STM32Hx|src/RP2040|src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/common/services/clock/same70|src/SAM4S_4E_E70/asf/sam/drivers/aes|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/afec|src/SAM4S_4E_E70/asf/sam/drivers/emac|src/SAM4S_4E_E70/asf/sam/drivers/gmac|src/SAM4S_4E_E70/asf/sam/drivers/rswdt|src/SAM4S_4E_E70/asf/sam/drivers/trng|src/SAM4S_4E_E70/asf/sam/drivers/usbhs|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twihs|src/SAM4S_4E_E70/asf/sam/drivers/mcan|src/SAM4S_4E_E70/asf/sam/drivers/xdmac|src/SAM4S_4E_E70/SAM4E|SAM4E|src/SAM4S_4E_E70/SAME70|src/SAME5x_C21|src/SAME70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STM32|src/STMCubeMX|src/STM32Hx|src/RP2040|src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/common/services/clock/same70|src/SAM4S_4E_E70/asf/sam/drivers/aes|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/afec|src/SAM4S_4E_E70/asf/sam/drivers/emac|src/SAM4S_4E_E70/asf/sam/drivers/gmac|src/SAM4S_4E_E70/asf/sam/drivers/rswdt|src/SAM4S_4E_E70/asf/sam/drivers/trng|src/SAM4S_4E_E70/asf/sam/drivers/usbhs|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twihs|src/SAM4S_4E_E70/asf/sam/drivers/mcan|src/SAM4S_4E_E70/asf/sam/drivers/xdmac|src/SAM4S_4E_E70/SAM4E|SAM4E|src/SAM4S_4E_E70/SAME70|src/SAME5x_C21|src/SAME70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -2185,7 +2185,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.1441615100" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.1200213787" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value="${ArmGccPath}" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.945136071" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.713895462" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.713895462" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" stopOnErr="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.622900323" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.1127990106" name="Optimization level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" valueType="enumerated"/>
 								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.803468222" name="Debug level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" value="gnu.c.debugging.level.none" valueType="enumerated"/>
@@ -2275,7 +2275,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STM32Hx|src/RP2040|src/SAM4S_4E_E70/SAM4S|src/SAM4S_4E_E70/SAM4E|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/drivers/pdc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/udp|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twi|src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4e|src/SAME5x_C21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STM32|src/STMCubeMX|src/STM32Hx|src/RP2040|src/SAM4S_4E_E70/SAM4S|src/SAM4S_4E_E70/SAM4E|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/drivers/pdc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/udp|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twi|src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4e|src/SAME5x_C21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -2305,7 +2305,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.1603699408" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.628606911" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value="${ArmGccPath}" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.842171337" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.1681346415" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.1681346415" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" stopOnErr="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.1036578983" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.275434513" name="Optimization level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" valueType="enumerated"/>
 								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.1021149299" name="Debug level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" valueType="enumerated"/>
@@ -2398,7 +2398,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STM32Hx|src/RP2040/pico-sdk|src/SAME5x_C21|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STM32|src/STMCubeMX|src/STM32Hx|src/RP2040/pico-sdk|src/SAME5x_C21|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -2428,7 +2428,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.414378566" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.1821766651" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value="${ArmGccPath}" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.1612536227" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.357600728" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.357600728" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" stopOnErr="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.51187710" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.1745524126" name="Optimization level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" valueType="enumerated"/>
 								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.592856179" name="Debug level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" valueType="enumerated"/>
@@ -2521,7 +2521,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STM32Hx|src/RP2040/pico-sdk|src/SAME5x_C21|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STM32|src/STMCubeMX|src/STM32Hx|src/RP2040/pico-sdk|src/SAME5x_C21|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -2551,7 +2551,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.92937076" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.1372988742" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value="${ArmGccPath}" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.806772440" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.1693754863" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.1693754863" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" stopOnErr="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.1709221920" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.1370363110" name="Optimization level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" value="gnu.c.optimization.level.size" valueType="enumerated"/>
 								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.461740689" name="Debug level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" valueType="enumerated"/>
@@ -2644,7 +2644,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STM32Hx|src/RP2040|src/SAM4S_4E_E70/asf/common/services/usb|src/SAM4S_4E_E70/asf/sam/drivers/usbhs|src/SAM4S_4E_E70/SAM4S|src/SAM4S_4E_E70/SAM4E|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/drivers/pdc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/udp|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twi|src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4e|src/SAME5x_C21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STM32|src/STMCubeMX|src/STM32Hx|src/RP2040|src/SAM4S_4E_E70/asf/common/services/usb|src/SAM4S_4E_E70/asf/sam/drivers/usbhs|src/SAM4S_4E_E70/SAM4S|src/SAM4S_4E_E70/SAM4E|src/SAM4S_4E_E70/asf/sam/drivers/adc|src/SAM4S_4E_E70/asf/sam/drivers/cmcc|src/SAM4S_4E_E70/asf/sam/drivers/crccu|src/SAM4S_4E_E70/asf/sam/drivers/pdc|src/SAM4S_4E_E70/asf/sam/drivers/dmac|src/SAM4S_4E_E70/asf/sam/drivers/udp|src/SAM4S_4E_E70/asf/sam/drivers/uotghs|src/SAM4S_4E_E70/asf/sam/drivers/twi|src/SAM4S_4E_E70/asf/common/services/clock/sam4s|src/SAM4S_4E_E70/asf/common/services/clock/sam4e|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s|src/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4e|src/SAME5x_C21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -2674,7 +2674,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.292057033" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.1605267856" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value="${ArmGccPath}" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.737718591" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.1741859448" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.1741859448" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" stopOnErr="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.626355468" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.1008620272" name="Optimization level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" value="gnu.c.optimization.level.size" valueType="enumerated"/>
 								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.1600580016" name="Debug level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" valueType="enumerated"/>
@@ -2743,14 +2743,14 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STM32Hx|src/RP2040|src/SAME70|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STM32|src/STMCubeMX|src/STM32Hx|src/RP2040|src/SAME70|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
 		</cconfiguration>
 		<cconfiguration id="cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.1226901380.1292314584">
-			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.1226901380.1292314584" moduleId="org.eclipse.cdt.core.settings" name="STM32H5">
+			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.1226901380.1292314584" moduleId="org.eclipse.cdt.core.settings" name="STM32H5_CAN_RTOS">
 				<externalSettings>
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/CoreN2G"/>
@@ -2767,13 +2767,13 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactExtension="a" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.staticLib" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.staticLib,org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.1226901380.1292314584" name="STM32H5" optionalBuildProperties="org.eclipse.cdt.docker.launcher.containerbuild.property.selectedvolumes=,org.eclipse.cdt.docker.launcher.containerbuild.property.volumes=" parent="cdt.managedbuild.config.gnu.cross.lib.release">
+				<configuration artifactExtension="a" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.staticLib" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.staticLib,org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.1226901380.1292314584" name="STM32H5_CAN_RTOS" optionalBuildProperties="org.eclipse.cdt.docker.launcher.containerbuild.property.selectedvolumes=,org.eclipse.cdt.docker.launcher.containerbuild.property.volumes=" parent="cdt.managedbuild.config.gnu.cross.lib.release">
 					<folderInfo id="cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.1226901380.1292314584." name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.cross.lib.release.1657489259" name="Cross GCC" superClass="cdt.managedbuild.toolchain.gnu.cross.lib.release">
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.1517719037" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.1082841333" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value="${ArmGccPath}" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.1595254256" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.1109376061" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.1109376061" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" stopOnErr="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.1912121249" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.1982860266" name="Optimization level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" valueType="enumerated"/>
 								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.1053742859" name="Debug level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" valueType="enumerated"/>
@@ -2787,13 +2787,14 @@
 								</option>
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="gnu.c.compiler.option.include.paths.1889064662" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/STM32Hx/STM/CMSIS/Core/Include}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/STM32Hx/STM/CMSIS/Core/Include/m-profile}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/STM32Hx/STM/CMSIS/Device/ST/STM32H5xx/Include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/STMCubeMX/Drivers/STM32H5xx_HAL_Driver/Inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/STMCubeMX/Core/Inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/STMCubeMX/Drivers/CMSIS/Device/ST/STM32H5xx/Include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/STMCubeMX/Drivers/CMSIS/Include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/RRFLibraries/src}&quot;"/>
 								</option>
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="true" id="gnu.c.compiler.option.include.files.76201964" name="Include files (-include)" superClass="gnu.c.compiler.option.include.files" useByScannerDiscovery="false" valueType="includeFiles"/>
-								<option id="gnu.c.compiler.option.misc.other.1145503738" name="Other flags" superClass="gnu.c.compiler.option.misc.other" useByScannerDiscovery="true" value="-c -mcpu=cortex-m4 -mthumb -fno-math-errno -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mfp16-format=ieee -ffunction-sections -fdata-sections -nostdlib -Wundef -Wdouble-promotion -Werror=return-type -Werror=implicit -fsingle-precision-constant &quot;-Wa,-ahl=$*.s&quot;" valueType="string"/>
+								<option id="gnu.c.compiler.option.misc.other.1145503738" name="Other flags" superClass="gnu.c.compiler.option.misc.other" useByScannerDiscovery="true" value="-c -mcpu=cortex-m33 -mthumb -fno-math-errno -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mfp16-format=ieee -ffunction-sections -fdata-sections -nostdlib -Wundef -Wdouble-promotion -Werror=return-type -Werror=implicit -fsingle-precision-constant &quot;-Wa,-ahl=$*.s&quot;" valueType="string"/>
 								<option id="gnu.c.compiler.option.dialect.std.294547549" name="Language standard" superClass="gnu.c.compiler.option.dialect.std" useByScannerDiscovery="true" value="gnu.c.compiler.dialect.default" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.dialect.flags.1565129541" name="Other dialect flags" superClass="gnu.c.compiler.option.dialect.flags" useByScannerDiscovery="true" value="-std=gnu99" valueType="string"/>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.217390632" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
@@ -2810,15 +2811,16 @@
 								</option>
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="gnu.cpp.compiler.option.include.paths.1707600620" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/STM32Hx/STM/CMSIS/Core/Include}&quot;&#13;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/STM32Hx/STM/CMSIS/Core/Include/m-profile}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/STM32Hx/STM/CMSIS/Device/ST/STM32H5xx/Include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/STMCubeMX/Drivers/STM32H5xx_HAL_Driver/Inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/STMCubeMX/Core/Inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/STMCubeMX/Drivers/CMSIS/Device/ST/STM32H5xx/Include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/STMCubeMX/Drivers/CMSIS/Include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/RRFLibraries/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/CANlib/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/FreeRTOS/src/include}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/FreeRTOS/src/portable/GCC/ARM_CM4F}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/FreeRTOS/src/portable/GCC/ARM_CM33_NTZ/non_secure}&quot;"/>
 								</option>
-								<option id="gnu.cpp.compiler.option.other.other.777519368" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" useByScannerDiscovery="true" value="-c -mcpu=cortex-m4 -mthumb -fno-math-errno -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mfp16-format=ieee -ffunction-sections -fdata-sections -fno-threadsafe-statics -fno-rtti -fno-exceptions -nostdlib -Wundef -Wdouble-promotion -Werror=return-type -Wsuggest-override -fsingle-precision-constant &quot;-Wa,-ahl=$*.s&quot; -fstack-usage" valueType="string"/>
+								<option id="gnu.cpp.compiler.option.other.other.777519368" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" useByScannerDiscovery="true" value="-c -mcpu=cortex-m33 -mthumb -fno-math-errno -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mfp16-format=ieee -ffunction-sections -fdata-sections -fno-threadsafe-statics -fno-rtti -fno-exceptions -nostdlib -Wundef -Wdouble-promotion -Werror=return-type -Wsuggest-override -fsingle-precision-constant &quot;-Wa,-ahl=$*.s&quot; -fstack-usage" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.dialect.std.90710850" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" useByScannerDiscovery="true" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.dialect.flags.1216104101" name="Other dialect flags" superClass="gnu.cpp.compiler.option.dialect.flags" useByScannerDiscovery="true" value="-std=c++20" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.warnings.toerrors.2006109997" name="Warnings as errors (-Werror)" superClass="gnu.cpp.compiler.option.warnings.toerrors" useByScannerDiscovery="false" value="true" valueType="boolean"/>
@@ -2838,7 +2840,104 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STM32Hx/STM/CMSIS/Driver/vStream|src/STM32Hx/STM/CMSIS/RTOS2/Source|src/STM32Hx/STM/CMSIS/Device/ST/STM32H7xx|src/SAME5x_C21|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STMCubeMX/Drivers/STM32H7xx_HAL_Driver|src/STM32Hx/STM/CMSIS/Driver/vStream|src/STM32Hx/STM/CMSIS/RTOS2/Source|src/STM32Hx/STM/CMSIS/Device/ST/STM32H7xx|src/SAME5x_C21|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+					</sourceEntries>
+				</configuration>
+			</storageModule>
+			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
+		</cconfiguration>
+		<cconfiguration id="cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.1226901380.1292314584.1335104486">
+			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.1226901380.1292314584.1335104486" moduleId="org.eclipse.cdt.core.settings" name="STM32H7_CAN_RTOS">
+				<externalSettings>
+					<externalSetting>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/CoreN2G"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/CoreN2G/STM32H7_CAN_RTOS"/>
+						<entry flags="RESOLVED" kind="libraryFile" name="CoreN2G" srcPrefixMapping="" srcRootPath=""/>
+					</externalSetting>
+				</externalSettings>
+				<extensions>
+					<extension id="org.eclipse.cdt.core.ELF" point="org.eclipse.cdt.core.BinaryParser"/>
+					<extension id="org.eclipse.cdt.core.GASErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+					<extension id="org.eclipse.cdt.core.GmakeErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+					<extension id="org.eclipse.cdt.core.CWDLocator" point="org.eclipse.cdt.core.ErrorParser"/>
+					<extension id="org.eclipse.cdt.core.GCCErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+				</extensions>
+			</storageModule>
+			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
+				<configuration artifactExtension="a" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.staticLib" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.staticLib,org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.1226901380.1292314584.1335104486" name="STM32H7_CAN_RTOS" optionalBuildProperties="org.eclipse.cdt.docker.launcher.containerbuild.property.selectedvolumes=,org.eclipse.cdt.docker.launcher.containerbuild.property.volumes=" parent="cdt.managedbuild.config.gnu.cross.lib.release">
+					<folderInfo id="cdt.managedbuild.config.gnu.cross.lib.release.675522878.1031364120.1670975982.1226901380.1292314584.1335104486." name="/" resourcePath="">
+						<toolChain id="cdt.managedbuild.toolchain.gnu.cross.lib.release.1120861496" name="Cross GCC" superClass="cdt.managedbuild.toolchain.gnu.cross.lib.release">
+							<option id="cdt.managedbuild.option.gnu.cross.prefix.1378853422" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="arm-none-eabi-" valueType="string"/>
+							<option id="cdt.managedbuild.option.gnu.cross.path.230194824" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value="${ArmGccPath}" valueType="string"/>
+							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.1536429110" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/CoreN2G}/Release" id="cdt.managedbuild.builder.gnu.cross.1297081780" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" stopOnErr="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.878119062" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
+								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.1034833139" name="Optimization level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" valueType="enumerated"/>
+								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.739868653" name="Debug level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" valueType="enumerated"/>
+								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="gnu.c.compiler.option.preprocessor.def.symbols.1848859137" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" useByScannerDiscovery="false" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="STM32H743xx"/>
+									<listOptionValue builtIn="false" value="noexcept="/>
+									<listOptionValue builtIn="false" value="SUPPORT_CAN=1"/>
+									<listOptionValue builtIn="false" value="SUPPORT_SDHC=0"/>
+									<listOptionValue builtIn="false" value="SUPPORT_USB=0"/>
+									<listOptionValue builtIn="false" value="RTOS"/>
+								</option>
+								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="gnu.c.compiler.option.include.paths.772175318" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/STMCubeMX/Drivers/STM32H7xx_HAL_Driver/Inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/STMCubeMX/Core/Inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/STMCubeMX/Drivers/CMSIS/Device/ST/STM32H5xx/Include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/STMCubeMX/Drivers/CMSIS/Include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/RRFLibraries/src}&quot;"/>
+								</option>
+								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="true" id="gnu.c.compiler.option.include.files.421255539" name="Include files (-include)" superClass="gnu.c.compiler.option.include.files" useByScannerDiscovery="false" valueType="includeFiles"/>
+								<option id="gnu.c.compiler.option.misc.other.691598129" name="Other flags" superClass="gnu.c.compiler.option.misc.other" useByScannerDiscovery="true" value="-c -mcpu=cortex-m7 -mthumb -fno-math-errno -mfpu=fpv5-d16 -mfloat-abi=hard -mfp16-format=ieee -ffunction-sections -fdata-sections -nostdlib -Wundef -Wdouble-promotion -Werror=return-type -Werror=implicit -fsingle-precision-constant &quot;-Wa,-ahl=$*.s&quot;" valueType="string"/>
+								<option id="gnu.c.compiler.option.dialect.std.1251327253" name="Language standard" superClass="gnu.c.compiler.option.dialect.std" useByScannerDiscovery="true" value="gnu.c.compiler.dialect.default" valueType="enumerated"/>
+								<option id="gnu.c.compiler.option.dialect.flags.1243511425" name="Other dialect flags" superClass="gnu.c.compiler.option.dialect.flags" useByScannerDiscovery="true" value="-std=gnu99" valueType="string"/>
+								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.2028879339" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
+							</tool>
+							<tool id="cdt.managedbuild.tool.gnu.cross.cpp.compiler.1722618766" name="Cross G++ Compiler" superClass="cdt.managedbuild.tool.gnu.cross.cpp.compiler">
+								<option id="gnu.cpp.compiler.option.optimization.level.1121766037" name="Optimization level" superClass="gnu.cpp.compiler.option.optimization.level" useByScannerDiscovery="false" value="gnu.cpp.compiler.optimization.level.most" valueType="enumerated"/>
+								<option defaultValue="gnu.cpp.compiler.debugging.level.none" id="gnu.cpp.compiler.option.debugging.level.569241312" name="Debug level" superClass="gnu.cpp.compiler.option.debugging.level" useByScannerDiscovery="false" valueType="enumerated"/>
+								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="gnu.cpp.compiler.option.preprocessor.def.308646296" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" useByScannerDiscovery="false" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="STM32H743xx"/>
+									<listOptionValue builtIn="false" value="SUPPORT_CAN=1"/>
+									<listOptionValue builtIn="false" value="SUPPORT_SDHC=0"/>
+									<listOptionValue builtIn="false" value="SUPPORT_USB=0"/>
+									<listOptionValue builtIn="false" value="RTOS"/>
+								</option>
+								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="gnu.cpp.compiler.option.include.paths.653706682" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/STMCubeMX/Drivers/STM32H7xx_HAL_Driver/Inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/STMCubeMX/Core/Inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/STMCubeMX/Drivers/CMSIS/Device/ST/STM32H7xx/Include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/STMCubeMX/Drivers/CMSIS/Include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/RRFLibraries/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/CANlib/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/FreeRTOS/src/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/FreeRTOS/src/portable/GCC/ARM_CM7/r0p1}&quot;"/>
+								</option>
+								<option id="gnu.cpp.compiler.option.other.other.1866864856" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" useByScannerDiscovery="true" value="-c -mcpu=cortex-m7 -mthumb -fno-math-errno -mfpu=fpv5-d16 -mfloat-abi=hard -mfp16-format=ieee -ffunction-sections -fdata-sections -fno-threadsafe-statics -fno-rtti -fno-exceptions -nostdlib -Wundef -Wdouble-promotion -Werror=return-type -Wsuggest-override -fsingle-precision-constant &quot;-Wa,-ahl=$*.s&quot; -fstack-usage" valueType="string"/>
+								<option id="gnu.cpp.compiler.option.dialect.std.1839136360" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" useByScannerDiscovery="true" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
+								<option id="gnu.cpp.compiler.option.dialect.flags.1949570870" name="Other dialect flags" superClass="gnu.cpp.compiler.option.dialect.flags" useByScannerDiscovery="true" value="-std=c++20" valueType="string"/>
+								<option id="gnu.cpp.compiler.option.warnings.toerrors.1289995091" name="Warnings as errors (-Werror)" superClass="gnu.cpp.compiler.option.warnings.toerrors" useByScannerDiscovery="false" value="true" valueType="boolean"/>
+								<option id="gnu.cpp.compiler.option.warnings.wconversion.1777303604" name="Implicit conversion warnings (-Wconversion)" superClass="gnu.cpp.compiler.option.warnings.wconversion" useByScannerDiscovery="false" value="false" valueType="boolean"/>
+								<option id="gnu.cpp.compiler.option.warnings.wshadow.357597010" name="Local symbol shadows upper scope symbol (-Wshadow)" superClass="gnu.cpp.compiler.option.warnings.wshadow" useByScannerDiscovery="false" value="true" valueType="boolean"/>
+								<option id="gnu.cpp.compiler.option.warnings.wsignpromo.1095628993" name="Overload resolution promotes unsigned to signed type (-Wsign-promo)" superClass="gnu.cpp.compiler.option.warnings.wsignpromo" useByScannerDiscovery="false" value="true" valueType="boolean"/>
+								<option id="gnu.cpp.compiler.option.warnings.wundef.1660619743" name="An undefined identifier is evaluated in an #if directive (-Wundef)" superClass="gnu.cpp.compiler.option.warnings.wundef" useByScannerDiscovery="false" value="true" valueType="boolean"/>
+								<option id="gnu.cpp.compiler.option.warnings.wnoexccept.1031585289" name="Noexcept false but never throw exception (-Wnoexcept)" superClass="gnu.cpp.compiler.option.warnings.wnoexccept" useByScannerDiscovery="false" value="true" valueType="boolean"/>
+								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.949812582" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
+							</tool>
+							<tool id="cdt.managedbuild.tool.gnu.cross.c.linker.1674457370" name="Cross GCC Linker" superClass="cdt.managedbuild.tool.gnu.cross.c.linker"/>
+							<tool id="cdt.managedbuild.tool.gnu.cross.cpp.linker.1915756613" name="Cross G++ Linker" superClass="cdt.managedbuild.tool.gnu.cross.cpp.linker"/>
+							<tool id="cdt.managedbuild.tool.gnu.cross.archiver.1930545732" name="Cross GCC Archiver" superClass="cdt.managedbuild.tool.gnu.cross.archiver"/>
+							<tool id="cdt.managedbuild.tool.gnu.cross.assembler.974994149" name="Cross GCC Assembler" superClass="cdt.managedbuild.tool.gnu.cross.assembler">
+								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1206680396" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
+							</tool>
+						</toolChain>
+					</folderInfo>
+					<sourceEntries>
+						<entry excluding="src/STMCubeMX/Drivers/STM32H7xx_HAL_Driver|src/STM32Hx/STM/CMSIS/Driver/vStream|src/STM32Hx/STM/CMSIS/RTOS2/Source|src/STM32Hx/STM/CMSIS/Device/ST/STM32H7xx|src/SAME5x_C21|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -2850,27 +2949,31 @@
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
 	<storageModule moduleId="refreshScope" versionNumber="2">
-		<configuration configurationName="SAME5x_SDHC"/>
-		<configuration configurationName="SAME70_CAN_SDHC_USB_RTOS_Debug"/>
 		<configuration configurationName="SAME5x_CAN_RTOS"/>
-		<configuration configurationName="SAM4S_SDHC_USB_RTOS"/>
-		<configuration configurationName="SAME5x_CAN_Debug"/>
 		<configuration configurationName="RP2040_CAN_RTOS"/>
 		<configuration configurationName="SAMC21_CAN"/>
 		<configuration configurationName="SAMC21_CAN_Debug"/>
-		<configuration configurationName="SAMC21_CAN_RTOS"/>
+		<configuration configurationName="STM32H5_CAN_RTOS"/>
 		<configuration configurationName="SAME5x_CAN"/>
 		<configuration configurationName="SAME5x_CAN_RTOS_Debug"/>
-		<configuration configurationName="SAMC21_CAN_RTOS_Debug"/>
-		<configuration configurationName="SAM4E_SDHC_USB_RTOS"/>
 		<configuration configurationName="SAME70_CAN"/>
 		<configuration configurationName="SAME5x_CAN_SDHC_USB_RTOS"/>
 		<configuration configurationName="SAM4E_SDHC"/>
+		<configuration configurationName="RP2040_RTOS"/>
+		<configuration configurationName="SAME70_SDHC_USB"/>
+		<configuration configurationName="SAME70_SDHC"/>
+		<configuration configurationName="SAME5x_SDHC"/>
+		<configuration configurationName="SAME70_CAN_SDHC_USB_RTOS_Debug"/>
+		<configuration configurationName="SAM4S_SDHC_USB_RTOS"/>
+		<configuration configurationName="SAME5x_CAN_Debug"/>
+		<configuration configurationName="SAMC21_CAN_RTOS"/>
+		<configuration configurationName="SAME5x_SDHC_USB"/>
+		<configuration configurationName="SAMC21_CAN_RTOS_Debug"/>
+		<configuration configurationName="SAM4E_SDHC_USB_RTOS"/>
 		<configuration configurationName="SAME70_CAN_SDHC_USB_RTOS"/>
 		<configuration configurationName="SAME5x_CAN_SDHC_USB_RTOS_Debug"/>
 		<configuration configurationName="SAME5x_SDHC_USB_RTOS"/>
 		<configuration configurationName="SAME5x_SDHC_USB_RTOS_Debug"/>
-		<configuration configurationName="SAME70_SDHC"/>
 		<configuration configurationName="SAM4S_SDHC"/>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>

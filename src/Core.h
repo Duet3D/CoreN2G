@@ -62,11 +62,9 @@ extern "C" {
 # include <core_cm33.h>
 }
 #elif defined(STM32H523xx)
-# include <stm32h5.h>
-# include <dwt.h>
+# include <stm32h5xx.h>
 #elif defined(STM32H743xx)
 # include <stm32h7.h>
-# include <dwt.h>
 #else
 # error unsupported processor
 #endif
@@ -78,6 +76,8 @@ extern "C" {
 #else
 # define CORE_USES_TINYUSB		0
 #endif
+
+#define SUPPORT_SWSPI		(0)			// Duet boards do not use software SPI
 
 #include <inttypes.h>					// for PRIu32 etc.
 #include <ctype.h>
@@ -251,6 +251,47 @@ void digitalWrite(Pin pin, bool high) noexcept;
  */
 uint32_t random32(void) noexcept;		// needed by lwip
 
+//********************** Mechanism for measuring and delaying for short amounts of time **************************
+
+#if STM32
+
+# include <STM32/dwt.h>
+
+// On STM processors we have a cycle counter. This is easier to use than the systick counter because it wraps around at a full 32 bits.
+
+// Delay in cycles
+static inline uint32_t DelayCycles(const uint32_t start, const uint32_t cycles) noexcept __attribute__((always_inline, unused));
+#ifdef __cplusplus
+[[gnu::always_inline, gnu::optimize("03")]]
+#endif
+static inline uint32_t DelayCycles(const uint32_t start, const uint32_t cycles) noexcept
+{
+	uint32_t val;
+	while ((val = DWT->CYCCNT) - start < cycles) { }
+	return val;
+}
+
+static inline uint32_t GetCurrentCycles() noexcept
+{
+	return (DWT->CYCCNT);
+}
+
+static inline uint32_t GetElapsedCyclesBetween(uint32_t startCycles, uint32_t endCycles) noexcept
+{
+	return endCycles - startCycles;
+}
+
+#ifdef __cplusplus
+static inline constexpr uint32_t NanosecondsToCycles(uint32_t ns) noexcept
+#else
+static inline uint32_t NanosecondsToCycles(uint32_t ns) noexcept
+#endif
+{
+	return (ns * (uint64_t)SystemCoreClockFreq)/1000000000u;
+}
+
+#else
+
 /**
  * @brief Delay for a specified number of CPU clock cycles from the starting time
  *
@@ -294,6 +335,8 @@ static inline uint32_t GetElapsedCycles(uint32_t startCycles) noexcept
 {
 	return GetElapsedCyclesBetween(startCycles, GetCurrentCycles());
 }
+
+#endif
 
 /**
  * @brief Delay for at least the specified number of microseconds

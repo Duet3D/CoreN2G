@@ -7,15 +7,16 @@
 #include "Core.h"
 #include "Stream.h"
 #include "Print.h"
+#include <UART/UartParameters.h>
 
 #ifdef RTOS
 # include <RTOSIface/RTOSIface.h>
 #endif
 #if !defined(SERIAL_TX_BUFFER_SIZE)
-#define SERIAL_TX_BUFFER_SIZE 128
+#define SERIAL_TX_BUFFER_SIZE 512
 #endif
 #if !defined(SERIAL_RX_BUFFER_SIZE)
-#define SERIAL_RX_BUFFER_SIZE 128
+#define SERIAL_RX_BUFFER_SIZE 512
 #endif
 
 
@@ -55,7 +56,7 @@ public:
 
 
 
-    AsyncSerial() noexcept;
+    AsyncSerial(const UartParameters& params) noexcept;
 
     bool Configure(Pin rx, Pin tx) noexcept;
     
