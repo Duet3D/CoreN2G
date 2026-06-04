@@ -63,6 +63,7 @@ extern "C" {
 }
 #elif defined(STM32H523xx)
 # include <stm32h5xx.h>
+# include <stm32h5xx_ll_rcc.h>
 #elif defined(STM32H743xx)
 # include <stm32h7xx.h>
 #else

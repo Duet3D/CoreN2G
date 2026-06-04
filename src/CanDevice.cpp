@@ -37,6 +37,8 @@
 # define GFC					RXGFC
 # define FDCAN_GFC_ANFS_REJECT	(0x02u << FDCAN_RXGFC_ANFS_Pos)
 # define FDCAN_GFC_ANFE_REJECT	(0x02u << FDCAN_RXGFC_ANFE_Pos)
+# define FDCAN_GFC_RRFS			FDCAN_RXGFC_RRFS
+# define FDCAN_GFC_RRFE			FDCAN_RXGFC_RRFE
 #elif STM32H7
 # define FDCAN_GFC_ANFS_REJECT	(0x02u << FDCAN_GFC_ANFS_Pos)
 # define FDCAN_GFC_ANFE_REJECT	(0x02u << FDCAN_GFC_ANFE_Pos)
@@ -240,6 +242,17 @@ void CanDevice::CanStats::Clear() noexcept
 		return nullptr;
 	}
 
+#if STM32H5
+	// STM32H5 supports exactly 3 buffers in each FIFO and no dedicated transmit or receive buffers
+	if (   p_config.numRxBuffers != 0 || p_config.numTxBuffers != 0 || p_config.rxFifo0Size != 3
+		|| p_config.rxFifo1Size != 3 || p_config.txFifoSize != 3 || p_config.txEventFifoSize != 3
+		|| p_config.numShortFilterElements != 28 || p_config.numExtendedFilterElements != 8
+	   )
+	{
+		return nullptr;
+	}
+#endif
+
 	// Set up device number, peripheral number, hardware address etc.
 	dev.whichCan = p_whichCan;
 	dev.whichPort = p_whichPort;
@@ -312,6 +325,18 @@ void CanDevice::CanStats::Clear() noexcept
 	{
 		pmc_enable_periph_clk(ID_MCAN1);
 	}
+#elif STM32
+	// Enable APB clock
+	RCC->APB1HENR |= RCC_APB1HENR_FDCANEN;
+	(void)RCC->APB1HENR;												// delay after an RCC peripheral clock enabling
+	// Enable 48MHz CAN clock
+# if STM32H5
+	MODIFY_REG(RCC->CCIPR5, RCC_CCIPR5_FDCANSEL, LL_RCC_FDCAN_CLKSOURCE_PLL1Q);
+# elif STM32H7
+	//TODO
+# else
+#  error Unsupported MCU
+# endif
 #endif
 
 	dev.DoHardwareInit();
@@ -351,6 +376,10 @@ void CanDevice::DoHardwareInit() noexcept
 #else
 	hw->REG(TDCR) = 0;														// use just the measured transceiver delay
 #endif
+
+#if STM32H5
+	hw->REG(TXBC) = (0 << CAN_(TXBC_TFQM_Pos));								// configure transmit buffers: FIFO not queue
+#else
 	hw->REG(RXF0C) = 														// configure receive FIFO 0
 		  (0 << CAN_(RXF0C_F0OM_Pos))										// blocking mode not overwrite mode
 		| CAN_Val(RXF0C_F0WM, 0)											// no watermark interrupt
@@ -377,15 +406,18 @@ void CanDevice::DoHardwareInit() noexcept
 		  CAN_Val(TXEFC_EFWM, 0)											// no watermark interrupt
 		| CAN_Val(TXEFC_EFS, config->txEventFifoSize)						// event FIFO size
 		| Bits2to15(txEventFifo);											// address - don't use CAN_(TXEFC_EFSA) here, it is defined strangely on the SAME70
+#endif
 	hw->REG(GFC) =
 		  CAN_(GFC_ANFS_REJECT)
 		| CAN_(GFC_ANFE_REJECT)
 		| CAN_(GFC_RRFS)
 		| CAN_(GFC_RRFE);
+#if !STM32H5
 	hw->REG(SIDFC) = CAN_Val(SIDFC_LSS, config->numShortFilterElements)		// number of short filter elements
 					| Bits2to15(rxStdFilter);								// short filter start address - don't use CAN_(SIDFC_FLSSA) here, it is defined strangely on the SAME70
 	hw->REG(XIDFC) = CAN_Val(XIDFC_LSE, config->numExtendedFilterElements)		// number of extended filter elements
 					| Bits2to15(rxExtFilter);								// extended filter start address - don't use CAN_(SIDFC_FLESA) here, it is defined strangely on the SAME70
+#endif
 	hw->REG(XIDAM) = 0x1FFFFFFF;
 
 	hw->REG(IR) = 0xFFFFFFFF;												// clear all interrupt sources
@@ -407,8 +439,16 @@ void CanDevice::DoHardwareInit() noexcept
 	NVIC_ClearPendingIRQ(irqn);
 
 	hw->REG(ILS) = 0;														// all interrupt sources assigned to interrupt line 0 for now
-	statusMask =         CAN_(IR_RF0N)  | CAN_(IR_RF1N)  | CAN_(IR_DRX)  | CAN_(IR_TC)  | CAN_(IR_BO)  | CAN_(IR_RF0L)  | CAN_(IR_RF1L)  | CAN_(IR_PED)  | CAN_(IR_PEA);
-	uint32_t intEnable = CAN_(IE_RF0NE) | CAN_(IE_RF1NE) | CAN_(IE_DRXE) | CAN_(IE_TCE) | CAN_(IE_BOE) | CAN_(IE_RF0LE) | CAN_(IE_RF1LE) | CAN_(IE_PEDE) | CAN_(IE_PEAE);
+	statusMask =          CAN_(IR_RF0N)  | CAN_(IR_RF1N)
+#if !STM32H5
+						| CAN_(IR_DRX)
+#endif
+						| CAN_(IR_TC)  | CAN_(IR_BO)  | CAN_(IR_RF0L)  | CAN_(IR_RF1L)  | CAN_(IR_PED)  | CAN_(IR_PEA);
+	uint32_t intEnable =  CAN_(IE_RF0NE) | CAN_(IE_RF1NE)
+#if !STM32H5
+						| CAN_(IE_DRXE)
+#endif
+						| CAN_(IE_TCE) | CAN_(IE_BOE) | CAN_(IE_RF0LE) | CAN_(IE_RF1LE) | CAN_(IE_PEDE) | CAN_(IE_PEAE);
 	if (txCallback != nullptr)
 	{
 		intEnable |= CAN_(IE_TEFNE);
@@ -855,13 +895,14 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 		return true;
 
 	default:
+#if !STM32H5
 		if ((uint32_t)whichBuffer < (uint32_t)RxBufferNumber::buffer0 + config->numRxBuffers)
 		{
 			// Check for a received message and wait if necessary
 			// We assume that not more than 32 dedicated receive buffers have been configured, so we only need to look at the NDAT1 register
 			const uint32_t bufferNumber = (unsigned int)whichBuffer - (unsigned int)RxBufferNumber::buffer0;
 			const uint32_t ndatMask = (uint32_t)1 << bufferNumber;
-#ifdef RTOS
+# ifdef RTOS
 			if ((hw->REG(NDAT1) & ndatMask) == 0)
 			{
 				if (timeout == 0)
@@ -880,7 +921,7 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 					return false;
 				}
 			}
-#else
+# else
 			while ((hw->REG(NDAT1) & ndatMask) == 0)
 			{
 				if (millis() - start >= timeout)
@@ -888,7 +929,7 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 					return false;
 				}
 			}
-#endif
+# endif
 			// Process the received message into the buffer
 			CopyReceivedMessage(buffer, GetRxBuffer(bufferNumber));
 
@@ -896,6 +937,7 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 			hw->REG(NDAT1) = ndatMask;
 			return true;
 		}
+#endif
 		return false;
 	}
 }
@@ -909,8 +951,12 @@ bool CanDevice::IsMessageAvailable(RxBufferNumber whichBuffer) noexcept
 	case RxBufferNumber::fifo1:
 		return READBITS(hw, RXF1S, F1FL) != 0;
 	default:
+#if STM32H5
+		return false;
+#else
 		// We assume that not more than 32 dedicated receive buffers have been configured, so we only need to look at the NDAT1 register
 		return (hw->REG(NDAT1) & ((uint32_t)1 << ((uint32_t)whichBuffer - (uint32_t)RxBufferNumber::buffer0))) != 0;
+#endif
 	}
 }
 
@@ -1176,6 +1222,7 @@ void CanDevice::Interrupt() noexcept
 			TaskBase::GiveFromISR(rxTaskWaiting[rxFifo1WaitingIndex], NotifyIndices::CanDevice);
 		}
 
+#if !STM32H5
 		// Test whether messages have been received into receive buffers
 		if (ir & CAN_(IR_DRX))
 		{
@@ -1192,6 +1239,7 @@ void CanDevice::Interrupt() noexcept
 				}
 			}
 		}
+#endif
 
 		// Test whether any messages have been transmitted
 		if (ir & CAN_(IR_TC))
@@ -1202,6 +1250,7 @@ void CanDevice::Interrupt() noexcept
 			{
 				const unsigned int bufferNumber = LowestSetBit(transmitDone);
 				hw->REG(TXBTIE) &= ~((uint32_t)1 << bufferNumber);
+#if !STM32H5
 				if (bufferNumber < READBITS(hw, TXBC, NDTB))
 				{
 					// Completed transmission from a dedicated transmit buffer
@@ -1212,6 +1261,7 @@ void CanDevice::Interrupt() noexcept
 					}
 				}
 				else
+#endif
 				{
 					// Completed transmission from a transmit FIFO buffer
 					TaskBase::GiveFromISR(txTaskWaiting[(unsigned int)TxBufferNumber::fifo], NotifyIndices::CanDevice);

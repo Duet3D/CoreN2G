@@ -102,7 +102,7 @@ public:
 		// Test whether the data size is supported by the CAN hardware
 		constexpr bool ValidDataSize() const noexcept
 		{
-#if RP2040
+#if RP2040 || STM32H5
 			return dataSize == 64;
 #else
 			return dataSize >= 8
@@ -116,7 +116,13 @@ public:
 		constexpr bool IsValid() const noexcept
 		{
 			return ValidDataSize()
-#if RP2040
+#if STM32H5
+				// STM32H5 has fixed numbers of everything
+				&& numRxBuffers == 0 && numTxBuffers == 0
+				&& rxFifo0Size == 3 && rxFifo1Size == 3
+				&& txFifoSize == 3 && txEventFifoSize == 3
+				&& numShortFilterElements == 28 && numExtendedFilterElements == 8;
+#elif RP2040
 				&& numTxBuffers == 0										// our RP2040 code doesn't support dedicated Tx buffers
 				&& txEventFifoSize == 0										// our RP2040 code doesn't support the transmit event FIFO
 				&& numRxBuffers == 0;										// our RP2040 code doesn't support dedicates receive buffers
