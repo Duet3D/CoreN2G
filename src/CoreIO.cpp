@@ -37,9 +37,11 @@
 #elif STM32H5
 # include <stm32h5xx_hal_iwdg.h>
 # include <stm32h5xx_ll_iwdg.h>
+# include <stm32h5xx_ll_rng.h>
 #elif STM32H7
 # include <stm32h7xx_hal_iwdg.h>
 # include <stm32h7xx_ll_iwdg.h>
+# include <stm32h7xx_ll_rng.h>
 #elif RPXXXX
 # include <hardware/watchdog.h>
 # include <hardware/adc.h>
@@ -704,8 +706,12 @@ static void RandomInit()
 	pmc_enable_periph_clk(ID_TRNG);
 	TRNG->TRNG_IDR = TRNG_IDR_DATRDY;							// Disable all interrupts
 	TRNG->TRNG_CR = TRNG_CR_KEY(0x524e47) | TRNG_CR_ENABLE;		// Enable TRNG with security key (required)
-#elif STM32
-	qq;
+#elif STM32H5
+	RNG->CR |= RNG_CR_CONDRST;
+	RNG->CR &= ~RNG_CR_CONDRST;
+	RNG->CR |= RNG_CR_RNGEN;
+#elif STM32H7
+	RNG->CR |= RNG_CR_RNGEN;
 #endif
 }
 
