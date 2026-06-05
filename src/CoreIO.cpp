@@ -39,6 +39,8 @@
 # include <hardware/adc.h>
 #endif
 
+#if !STM32				// for STM32 MCUs this function is implemented differently and inline in Core.h
+
 // Delay for a specified number of CPU clock cycles from the starting time. Return the time at which we actually stopped waiting.
 extern "C"
 #if SAMC21 || RP2040
@@ -60,6 +62,21 @@ uint32_t DelayCycles(uint32_t start, uint32_t cycles) noexcept
 		last = now;
 	}
 }
+
+#endif
+
+#if STM32
+
+enum class StmPinMode : uint32_t { input, output, alternate, analog };
+
+// Set the mode of a pin. pinNumber must be in range 0..15.
+inline void StmSetPinMode(GPIO_TypeDef *port, unsigned int pinNumber, StmPinMode mode) noexcept
+{
+	const uint32_t shift2 = pinNumber << 1;
+	port->MODER = (port->MODER & ~(0x03 << shift2)) | ((uint32_t)mode << shift2);
+}
+
+#endif
 
 /**
  * @brief Set the function of an I/O pin
@@ -91,7 +108,7 @@ void SetPinFunction(Pin p, GpioPinFunction f) noexcept
 		PORT->Group[port].PINCFG[pin].bit.PMUXEN = 1;
 #elif SAME70 || SAM4E || SAM4S
 		Pio * const p_pio = GpioPort(p);
-		const uint32_t mask = (uint32_t)1 << (p & 0x1F);
+		const uint32_t mask = GpioMask(p);
 		p_pio->PIO_IDR = mask;									// disable interrupts on the pin
 		uint32_t sr0 = p_pio->PIO_ABCDSR[0];
 		uint32_t sr1 = p_pio->PIO_ABCDSR[1];
@@ -116,6 +133,14 @@ void SetPinFunction(Pin p, GpioPinFunction f) noexcept
 		p_pio->PIO_PDR = mask;									// remove the pins from under the control of PIO
 #elif RP2040
 		gpio_set_function(p, (gpio_function)f);
+#elif STM32
+		GPIO_TypeDef * const p_pio = GpioPort(p);
+		const uint8_t pin  = GpioPinNumber(p);
+		// Set the alternate function number
+		const uint32_t shift4 = (pin & 7u) << 2;
+		p_pio->AFR[pin >> 3] = (p_pio->AFR[pin >> 3] & ~(0x0f << shift4)) | ((uint32_t)f << shift4);
+		// Set the pin to use the alternate function
+		StmSetPinMode(p_pio, pin, StmPinMode::alternate);
 #else
 # error Unsupported processor
 #endif
@@ -139,6 +164,8 @@ void ClearPinFunction(Pin p) noexcept
 		p_pio->PIO_PER = mask;									// put the pins under the control of PIO
 #elif RP2040
 		gpio_init(p);
+#elif STM32
+		StmSetPinMode(GpioPort(p), GpioPinNumber(p), StmPinMode::input);
 #else
 # error Unsupported processor
 #endif
@@ -146,18 +173,22 @@ void ClearPinFunction(Pin p) noexcept
 }
 
 // Enable the pullup resistor
-void EnablePullup(Pin pin) noexcept
+void EnablePullup(Pin p) noexcept
 {
-	if (pin < NumTotalPins)
+	if (p < NumTotalPins)
 	{
 #if SAME5x || SAMC21
-		PORT->Group[GpioPortNumber(pin)].OUTSET.reg = GpioMask(pin);
-		PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].bit.PULLEN = 1;
+		PORT->Group[GpioPortNumber(p)].OUTSET.reg = GpioMask(p);
+		PORT->Group[GpioPortNumber(p)].PINCFG[GpioPinNumber(p)].bit.PULLEN = 1;
 #elif SAM4E || SAM4S || SAME70
-		GpioPort(pin)->PIO_PPDDR = GpioMask(pin);						// turn off pulldown
-		GpioPort(pin)->PIO_PUER = GpioMask(pin);						// turn on pullup
+		GpioPort(p)->PIO_PPDDR = GpioMask(p);						// turn off pulldown
+		GpioPort(p)->PIO_PUER = GpioMask(p);						// turn on pullup
 #elif RP2040
-		gpio_pull_up(pin);
+		gpio_pull_up(p);
+#elif STM32
+		GPIO_TypeDef * const p_pio = GpioPort(p);
+		const unsigned int shift2 = GpioPinNumber(p) << 1;
+		p_pio->PUPDR = (p_pio->PUPDR & ~(0x03 << shift2)) | (0x01 << shift2);
 #else
 # error Unsupported processor
 #endif
@@ -165,17 +196,21 @@ void EnablePullup(Pin pin) noexcept
 }
 
 // Disable the pullup resistor
-void DisablePullup(Pin pin) noexcept
+void DisablePullup(Pin p) noexcept
 {
-	if (pin < NumTotalPins)
+	if (p < NumTotalPins)
 	{
 #if SAME5x || SAMC21
-		PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].bit.PULLEN = 0;
+		PORT->Group[GpioPortNumber(p)].PINCFG[GpioPinNumber(p)].bit.PULLEN = 0;
 #elif SAM4E || SAM4S || SAME70
-		GpioPort(pin)->PIO_PUDR = GpioMask(pin);						// turn off pullup
-		GpioPort(pin)->PIO_PPDDR = GpioMask(pin);						// turn off pulldown
+		GpioPort(p)->PIO_PUDR = GpioMask(p);						// turn off pullup
+		GpioPort(p)->PIO_PPDDR = GpioMask(p);						// turn off pulldown
 #elif RP2040
-		gpio_disable_pulls(pin);
+		gpio_disable_pulls(p);
+#elif STM32
+		GPIO_TypeDef * const p_pio = GpioPort(p);
+		const unsigned int shift2 = GpioPinNumber(p) << 1;
+		p_pio->PUPDR = (p_pio->PUPDR & ~(0x03 << shift2));
 #else
 # error Unsupported processor
 #endif
@@ -196,8 +231,21 @@ void SetDriveStrength(Pin p, unsigned int strength) noexcept
 		{
 			PORT->Group[GpioPortNumber(p)].PINCFG[GpioPinNumber(p)].reg &= ~PORT_PINCFG_DRVSTR;
 		}
+#elif SAME70
+		if (strength != 0)
+		{
+			GpioPort(p)->PIO_DRIVER |= GpioMask(p);
+		}
+		else
+		{
+			GpioPort(p)->PIO_DRIVER &= ~GpioMask(p);
+		}
 #elif RP2040
 		gpio_set_drive_strength(p, gpio_drive_strength((gpio_drive_strength)min<unsigned int>(strength, 3)));	// 2, 4, 8 and 12mA can be selected
+#elif STM32
+		GPIO_TypeDef * const p_pio = GpioPort(p);
+		const unsigned int shift2 = GpioPinNumber(p) << 1;
+		p_pio->OSPEEDR = (p_pio->OSPEEDR & ~((strength & 0x03) << shift2));
 #else
 		// This is a NOP on other processors
 #endif
@@ -229,8 +277,11 @@ void SetPinMode(Pin pin, enum PinMode mode, bool debounce) noexcept
 #if SAM4E || SAM4S || SAME70
 		Pio *pio = GpioPort(pin);
 #endif
-#if !RP2040
+#if SAM4E || SAM4S || SAME70 || SAME5x || SAMC21
 		const uint32_t mask = GpioMask(pin);
+#endif
+#if STM32
+		GPIO_TypeDef * const p_pio = GpioPort(pin);
 #endif
 		switch (mode)
 		{
@@ -241,7 +292,8 @@ void SetPinMode(Pin pin, enum PinMode mode, bool debounce) noexcept
 			pio->PIO_PPDDR = mask;									// turn off pulldown
 			pio_set_input(pio, mask, (debounce) ? PIO_DEBOUNCE : PIO_DEGLITCH);
 #elif STM32
-            pin_function(pin, STM_PIN_DATA(STM_PIN_INPUT, GPIO_NOPULL, 0));
+			DisablePullup(pin);
+			StmSetPinMode(p_pio, GpioPinNumber(pin), StmPinMode::input);
 #elif RP2040
 			ClearPinFunction(pin);
 			gpio_disable_pulls(pin);
@@ -264,7 +316,8 @@ void SetPinMode(Pin pin, enum PinMode mode, bool debounce) noexcept
 			pio->PIO_PPDDR = mask;									// turn off pulldown
 			pio_set_input(pio, mask, PIO_PULLUP | ((debounce) ? PIO_DEBOUNCE : PIO_DEGLITCH));
 #elif STM32
-            pin_function(pin, STM_PIN_DATA(STM_MODE_INPUT, GPIO_PULLUP, 0));
+			EnablePullup(pin);
+			StmSetPinMode(p_pio, GpioPinNumber(pin), StmPinMode::input);
 #elif RP2040
 			ClearPinFunction(pin);
 			gpio_pull_up(pin);
@@ -294,7 +347,11 @@ void SetPinMode(Pin pin, enum PinMode mode, bool debounce) noexcept
 			gpio_set_input_enabled(pin, true);
 			gpio_set_dir(pin, false);
 #elif STM32
-            pin_function(pin, STM_PIN_DATA(STM_MODE_INPUT, GPIO_PULLDOWN, 0));
+			{
+				const unsigned int shift2 = GpioPinNumber(pin) << 1;
+				p_pio->PUPDR = (p_pio->PUPDR & ~(0x03 << shift2)) | (0x02 << shift2);	// enable pulldown
+				StmSetPinMode(p_pio, GpioPinNumber(pin), StmPinMode::input);
+			}
 #elif SAME5x || SAMC21
 			ClearPinFunction(pin);
 			// The direction must be set before the pulldown, otherwise setting the pulldown doesn't work
@@ -315,8 +372,8 @@ void SetPinMode(Pin pin, enum PinMode mode, bool debounce) noexcept
 				pmc_disable_periph_clk(PioIds[GpioPortNumber(pin)]);
 			}
 #elif STM32
-            pin_function(pin, STM_PIN_DATA(STM_MODE_OUTPUT_PP, GPIO_NOPULL, 0));
             fastDigitalWriteLow(pin);
+            StmSetPinMode(p_pio, GpioPinNumber(pin), StmPinMode::output);
 #elif RP2040
 			ClearPinFunction(pin);
 			gpio_disable_pulls(pin);
@@ -341,8 +398,8 @@ void SetPinMode(Pin pin, enum PinMode mode, bool debounce) noexcept
 				pmc_disable_periph_clk(PioIds[GpioPortNumber(pin)]);
 			}
 #elif STM32
-            pin_function(pin, STM_PIN_DATA(STM_MODE_OUTPUT_PP, GPIO_NOPULL, 0));
             fastDigitalWriteHigh(pin);
+            StmSetPinMode(p_pio, GpioPinNumber(pin), StmPinMode::output);
 #elif RP2040
 			ClearPinFunction(pin);
 			gpio_disable_pulls(pin);
@@ -371,6 +428,8 @@ void SetPinMode(Pin pin, enum PinMode mode, bool debounce) noexcept
 			PORT->Group[GpioPortNumber(pin)].DIRCLR.reg = mask;
 			PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].reg = 0;
 			SetPinFunction(pin, GpioPinFunction::B);						// ADC is always on peripheral B for the SAMC21 and SAME5x
+#elif STM32
+            StmSetPinMode(p_pio, GpioPinNumber(pin), StmPinMode::analog);
 #else
 # error Unsupported processor
 #endif
@@ -655,8 +714,7 @@ void CoreInit() noexcept
 #if !RP2040
 	Serial::Init();
 #endif
-
-#if SAME5x || SAME70
+#if SAME5x || SAME70 || STM32
 	RandomInit();
 #endif
 }
@@ -677,6 +735,8 @@ void WatchdogInit() noexcept
 	WDT->WDT_MR = WDT_MR_WDRSTEN | WDT_MR_WDV(watchdogTicks) | WDT_MR_WDD(watchdogTicks);
 #elif RP2040
 	watchdog_enable(750, true);									// we reset the timer to run at 750kHz instead of 1MHz, so 1 second is 750 "milliseconds"
+#elif STM32
+	qq;
 #else
 # error Unsupported processor
 #endif

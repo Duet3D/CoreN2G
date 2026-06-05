@@ -60,45 +60,9 @@ inline constexpr uint32_t GpioPinNumber(Pin p) noexcept { return p & (PinsPerPor
 inline constexpr uint32_t GpioMask(Pin p) noexcept { return (uint32_t)1 << GpioPinNumber(p); }
 
 #if SAME70 || SAM4E || SAM4S
-
 inline Pio *GpioPort(Pin p) noexcept { return (Pio*)((uint32_t)PIOA + GpioPortNumber(p) * 0x200); }
-
 #elif STM32
-
-constexpr GPIO_TypeDef *GPIOPort[] = {
-  (GPIO_TypeDef *)GPIOA_BASE,
-  (GPIO_TypeDef *)GPIOB_BASE
-#if defined GPIOC_BASE
-  , (GPIO_TypeDef *)GPIOC_BASE
-#endif
-#if defined GPIOD_BASE
-  , (GPIO_TypeDef *)GPIOD_BASE
-#endif
-#if defined GPIOE_BASE
-  , (GPIO_TypeDef *)GPIOE_BASE
-#endif
-#if defined GPIOF_BASE
-  , (GPIO_TypeDef *)GPIOF_BASE
-#endif
-#if defined GPIOG_BASE
-  , (GPIO_TypeDef *)GPIOG_BASE
-#endif
-#if defined GPIOH_BASE
-  , (GPIO_TypeDef *)GPIOH_BASE
-#endif
-#if defined GPIOI_BASE
-  , (GPIO_TypeDef *)GPIOI_BASE
-#endif
-#if defined GPIOJ_BASE
-  , (GPIO_TypeDef *)GPIOJ_BASE
-#endif
-#if defined GPIOK_BASE
-  , (GPIO_TypeDef *)GPIOK_BASE
-#endif
-};
-
-inline GPIO_TypeDef *GpioPort(Pin p) noexcept { return GPIOPort[GpioPortNumber(p)]; }
-
+inline GPIO_TypeDef *GpioPort(Pin p) noexcept { return (GPIO_TypeDef *)(GPIOA_BASE + GpioPortNumber(p) * 0x0400); }
 # endif
 
 /**
@@ -203,6 +167,8 @@ enum class GpioPinFunction : uint8_t
     Xip = 0, Spi = 1, Uart = 2, I2c = 3, Pwm = 4,
     Sio = 5, Pio0 = 6, Pio1 = 7, Gpck = 8, Usb = 9,
     None = 0x1f
+#elif STM32
+	AF0 = 0, AF1, AF2, AF3, AF4, AF5, AF6, AF7, AF8, AF9, AF10, AF11, AF12, AF13, AF14, AF15
 #else
 	A = 0, B, C, D,
 # if SAME5x || SAMC21
@@ -223,7 +189,7 @@ void SetPinFunction(Pin p, GpioPinFunction f) noexcept;
  * @brief Set the drive strength of a pin
  * @param p The pin number
  * @param strength the strength, where 0 = minimum
- * The maximum is limited to 3 for the RP2040, and 1 for SAME5x and SAMC21.
+ * The maximum is limited to 3 for the RP2040 and STM32, and 1 for SAME5x and SAMC21.
  */
 void SetDriveStrength(Pin p, unsigned int strength) noexcept;
 
@@ -574,7 +540,7 @@ inline bool fastDigitalRead(uint32_t pin) noexcept
 #elif RP2040
 	return gpio_get(pin);			//TODO can we optimise this?
 #elif STM32
-	return (GPIOPort[GpioPortNumber(pin)]->IDR & GpioPinNumber(pin)) != 0;
+	return (GpioPort(pin)->IDR & GpioPinNumber(pin)) != 0;
 #else
 # error Unsupported processor
 #endif

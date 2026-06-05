@@ -49,7 +49,6 @@
 extern "C" {
 # include <hardware/gpio.h>
 # include <cmsis_compiler.h>
-# include <pico/rp2040mcu.h>
 # include <system_RP2040.h>
 # include <core_cm0plus.h>
 }
