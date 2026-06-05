@@ -98,6 +98,7 @@
 # define SUPPORT_SDHC		0			// we don't support SD cards on any RP2350-based boards
 #elif defined(STM32H523xx)
 # define RP2040				0
+# define RP2350				0
 # define SAMC21				0
 # define SAM3XA				0
 # define SAM4E				0
@@ -108,6 +109,7 @@
 # define STM32H7			0
 #elif defined(STM32H743xx)
 # define RP2040				0
+# define RP2350				0
 # define SAMC21				0
 # define SAM3XA				0
 # define SAM4E				0

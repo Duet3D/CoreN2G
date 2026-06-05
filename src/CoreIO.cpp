@@ -34,7 +34,13 @@
 # include <pmc/pmc.h>
 # include <pio/pio.h>
 # include <rstc/rstc.h>
-#elif RP2040
+#elif STM32H5
+# include <stm32h5xx_hal_iwdg.h>
+# include <stm32h5xx_ll_iwdg.h>
+#elif STM32H7
+# include <stm32h7xx_hal_iwdg.h>
+# include <stm32h7xx_ll_iwdg.h>
+#elif RPXXXX
 # include <hardware/watchdog.h>
 # include <hardware/adc.h>
 #endif
@@ -686,9 +692,9 @@ void memseti32(int32_t *_ecv_array dst, int32_t val, size_t numWords) noexcept
 	}
 }
 
-#if SAME5x || SAME70
+#if SAME5x || SAME70 || STM32
 
-// Random number generator
+//True random number generator
 static void RandomInit()
 {
 #if SAME5x
@@ -698,6 +704,8 @@ static void RandomInit()
 	pmc_enable_periph_clk(ID_TRNG);
 	TRNG->TRNG_IDR = TRNG_IDR_DATRDY;							// Disable all interrupts
 	TRNG->TRNG_CR = TRNG_CR_KEY(0x524e47) | TRNG_CR_ENABLE;		// Enable TRNG with security key (required)
+#elif STM32
+	qq;
 #endif
 }
 
@@ -711,7 +719,7 @@ void CoreInit() noexcept
 #if SAME5x || SAMC21
 	InitialiseExints();
 #endif
-#if !RP2040
+#if !RPXXXX
 	Serial::Init();
 #endif
 #if SAME5x || SAME70 || STM32
@@ -733,10 +741,19 @@ void WatchdogInit() noexcept
 	// This assumes the slow clock is running at 32.768 kHz, watchdog frequency is therefore 32768 / 128 = 256 Hz
 	constexpr uint16_t watchdogTicks = 256;						// about 1 second
 	WDT->WDT_MR = WDT_MR_WDRSTEN | WDT_MR_WDV(watchdogTicks) | WDT_MR_WDD(watchdogTicks);
-#elif RP2040
+#elif RPXXXX
 	watchdog_enable(750, true);									// we reset the timer to run at 750kHz instead of 1MHz, so 1 second is 750 "milliseconds"
 #elif STM32
-	qq;
+	IWDG_HandleTypeDef wdHandle;
+#if STM32H7
+    wdHandle.Instance = IWDG1;
+#else
+    wdHandle.Instance = IWDG;
+#endif
+	wdHandle.Init.Window = IWDG_WINDOW_DISABLE;
+	wdHandle.Init.Reload = IWDG_RLR_RL;
+    wdHandle.Init.Prescaler = IWDG_PRESCALER_16;
+    HAL_IWDG_Init(&wdHandle);
 #else
 # error Unsupported processor
 #endif
@@ -752,7 +769,11 @@ void WatchdogReset() noexcept
 	}
 #elif SAME70 || SAM4E || SAM4S
 	WDT->WDT_CR = WDT_CR_KEY_PASSWD | WDT_CR_WDRSTT;
-#elif RP2040
+#elif STM32H5
+	IWDG->KR = LL_IWDG_KEY_RELOAD;
+#elif STM32H7
+	IWDG1->KR = LL_IWDG_KEY_RELOAD;
+#elif RPXXXX
 	watchdog_update();
 #else
 # error Unsupported processor
