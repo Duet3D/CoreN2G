@@ -828,7 +828,7 @@ void ConfigureGclk(unsigned int index, GclkSource source, uint16_t divisor, bool
 
 #endif
 
-#if !RP2040
+#if !RPXXXX && !STM32
 
 void EnableTcClock(unsigned int tcNumber, unsigned int gclkNum) noexcept
 {

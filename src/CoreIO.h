@@ -789,33 +789,60 @@ static inline constexpr GpioPinFunction GetPeriNumber(PwmOutput pwm) noexcept
  */
 enum class AdcInput : uint8_t
 {
-	adc0_0 = 0x00, adc0_1, adc0_2, adc0_3,
-#if RP2040
-	adc0_tempSense,
+#if STM32H5
+	// 0x00 to 0x1F are inputs to ADC1 only
+	adc1_2 = 0x02, adc1_6 = 0x06,
+	// 0x20 to 0x3f are inputs to ADC2 only
+	adc2_2 = 0x22, adc2_6 = 0x26,
+	// 0x60 to 0x7F are inputs to ADC1 and ADC2
+	adc12_0 = 0x60, adc12_1,
+	adc12_3 = 0x63, adc12_4, adc12_5,
+	adc12_7 = 0x67, adc12_8, adc12_9, ac12_10, adc12_11, adc12_12, adc12_13, adc12_14, adc12_15, adc12_16, adc12_17, adc12_18, adc12_19,
+#elif STM32H7
+	// 0x00 to 0x1F are inputs to ADC1 only
+	adc1_2 = 0x02, adc1_6 = 0x06, adc1_16 = 0x10, adc1_17,
+	// 0x20 to 0x3f are inputs to ADC2 only
+	adc2_2 = 0x22, acd2_6 = 0x26,
+	// 0x40 to 0x5F are inputs to ADC3 only
+	adc3_0 = 0x40, adc3_1, adc3_2, adc3_3, adc3_4, adc3_5, adc3_6, adc3_7, adc3_8, adc3_9,
+	adc3_13 = 0x4D, adc3_14, adc3_15, adc3_16,
+	// 0x60 to 0x7F are inputs to ADC1 and ADC2
+	adc12_0 = 0x60, adc12_1,
+	adc12_3 = 0x63, adc12_4, adc12_5,
+	adc12_7 = 0x67, adc12_8, adc12_9,
+	adc12_13 = 0x6D, adc12_14,
+	adc12_18 = 0x72, adc12_19,
+	// 0x80 to 0x9F are inputs to ADC1, ADC2 and ADC3
+	adc123_10 = 0x8A, adc123_11, adc123_12,
 #else
+	adc0_0 = 0x00, adc0_1, adc0_2, adc0_3,
+# if RP2040
+	adc0_tempSense,
+# else
 	adc0_4, adc0_5, adc0_6, adc0_7, adc0_8, adc0_9,
-#endif
-#if SAMC21
+# endif
+# if SAMC21
 	adc0_10, adc0_11,
 	sdadc_0 = 0x10, sdadc_1,
 	ldc1612 = 0x20,
-#endif
-#if SAM4E || SAM4S
-	adc0_10, adc0_11, adc0_12, adc0_13, adc0_14,
-# if SAM4E
-	adc1_0 = 0x10, adc1_1, adc1_2, adc1_3, adc1_4, adc1_5, adc1_6, adc1_7,
 # endif
+# if SAM4E || SAM4S
+	adc0_10, adc0_11, adc0_12, adc0_13, adc0_14,
+#  if SAM4E
+	adc1_0 = 0x10, adc1_1, adc1_2, adc1_3, adc1_4, adc1_5, adc1_6, adc1_7,
+#  endif
 	dac0 = 0x20, dac1,
-#endif
-#if SAME5x
+# endif
+# if SAME5x
 	adc0_10, adc0_11, adc0_12, adc0_13, adc0_14, adc0_15,
 	adc1_0 = 0x10, adc1_1, adc1_2, adc1_3, adc1_4, adc1_5, adc1_6, adc1_7,
 					adc1_8, adc1_9, adc1_10, adc1_11, adc1_12, adc1_13, adc1_14, adc1_15,
 	ldc1612 = 0x20, ads131m02,
-#endif
-#if SAME70
+# endif
+# if SAME70
 	adc1_0 = 0x10, adc1_1, adc1_2, adc1_3, adc1_4, adc1_5, adc1_6, adc1_7,
 	adc1_8, adc1_9, adc1_10, adc1_11,
+# endif
 #endif
 
 	none = 0xFF			// this must give an out-of-range device number when passed to GetDeviceNumber
@@ -985,7 +1012,10 @@ struct PinDescriptionBase
 	AdcInput adc;					///< The ADC input that is connected to this pin and available, or AdcInput::none
 
 #elif STM32
-	//TODO
+
+	TimerOutput to;
+	AdcInput adc;
+
 #else
 # error Unsupported processor
 #endif
