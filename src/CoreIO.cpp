@@ -955,6 +955,12 @@ extern "C" uint32_t random32() noexcept
 	while (!(TRNG->TRNG_ISR & TRNG_ISR_DATRDY)) {}
 	return TRNG->TRNG_ODATA;
 
+#elif STM32
+
+	uint32_t val;
+	while (!(RNG->SR & RNG_SR_DRDY) && (val = RNG->DR) != 0) { }
+	return val;
+
 #else		// processor doesn't have a true random number generator
 
 	static bool isInitialised = false;
