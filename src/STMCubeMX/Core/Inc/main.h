@@ -81,8 +81,8 @@ void Error_Handler(void);
 #define ADC_DRDY_GPIO_Port GPIOA
 #define NP_OUT_Pin GPIO_PIN_2
 #define NP_OUT_GPIO_Port GPIOA
-#define DRIVER_DIR_Pin GPIO_PIN_3
-#define DRIVER_DIR_GPIO_Port GPIOA
+#define OUT2_Pin GPIO_PIN_3
+#define OUT2_GPIO_Port GPIOA
 #define BOARD_TYPE_Pin GPIO_PIN_4
 #define BOARD_TYPE_GPIO_Port GPIOC
 #define HEATER_CURRENT_Pin GPIO_PIN_5
@@ -93,8 +93,8 @@ void Error_Handler(void);
 #define IO0_OUT_GPIO_Port GPIOB
 #define OUT1_Pin GPIO_PIN_6
 #define OUT1_GPIO_Port GPIOC
-#define OUT2_Pin GPIO_PIN_7
-#define OUT2_GPIO_Port GPIOC
+#define DRIVER_DIR_Pin GPIO_PIN_7
+#define DRIVER_DIR_GPIO_Port GPIOC
 #define IO0_Pin GPIO_PIN_8
 #define IO0_GPIO_Port GPIOC
 #define LDC_CLK_Pin GPIO_PIN_9
