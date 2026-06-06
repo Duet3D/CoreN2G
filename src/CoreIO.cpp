@@ -17,6 +17,8 @@
 # include <SAME5x_C21/Serial.h>
 #elif SAME70 || SAM4E || SAM4S
 # include <SAM4S_4E_E70/Serial.h>
+#elif STM32
+# include <STM32/Serial.h>
 #endif
 
 #ifdef RTOS
@@ -924,7 +926,7 @@ void EnableTccClock(unsigned int tccNumber, unsigned int gclkNum) noexcept
 #endif
 
 // Get the analog input channel that a pin uses
-AnalogChannelNumber PinToAdcChannel(Pin p) noexcept
+AdcInput PinToAdcChannel(Pin p) noexcept
 {
 	const PinDescriptionBase * const pinDesc = AppGetPinDescription(p);
 	return (pinDesc == nullptr) ? AdcInput::none : pinDesc->adc;

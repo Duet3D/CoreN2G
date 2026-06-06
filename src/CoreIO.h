@@ -781,6 +781,17 @@ static inline constexpr GpioPinFunction GetPeriNumber(PwmOutput pwm) noexcept
 
 #endif
 
+#if STM32
+
+enum class TimerOutput : uint8_t
+{
+
+//TODO
+
+};
+
+#endif
+
 /**
  * @brief ADC input identifiers, encoding both the ADC device and the ADC input number within the device.
  * On the SAMC21 we only support the first ADC and the SDADC. On the SAME5x, SAM4S and SAmE70 we support both ADCs.
@@ -849,7 +860,7 @@ enum class AdcInput : uint8_t
 };
 
 typedef AdcInput AnalogChannelNumber;						///< for backwards compatibility
-constexpr AnalogChannelNumber NO_ADC = AdcInput::none;		///< for backwards compatibility
+constexpr AdcInput NO_ADC = AdcInput::none;		///< for backwards compatibility
 
 #if !RP2040
 
@@ -894,7 +905,7 @@ AdcInput PinToAdcChannel(Pin p) noexcept;
  * @param p The pin number
  * @return The AdcInput, or AdcInput::none
  */
-AnalogChannelNumber PinToSdAdcChannel(Pin p) noexcept;
+AdcInput PinToSdAdcChannel(Pin p) noexcept;
 
 #endif
 
