@@ -31,7 +31,7 @@ struct UartParameters
 	size_t numTxSlots;
 #elif STM32
 	uint8_t instanceNumber;						// the STM32 UART/USART number starting at 1
-	Pin txPin;
+	Pin rxPin;
 	Pin txPin;
 	GpioPinFunction pinFunction;
 	size_t numRxSlots;
