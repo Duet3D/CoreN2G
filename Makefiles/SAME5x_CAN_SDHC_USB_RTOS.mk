@@ -76,7 +76,7 @@ SAME5X_CFLAGS := -c -std=gnu99 \
 	$(SAME5X_C_DEFINES)
 
 # Compiler flags - C++
-SAME5X_CXXFLAGS := -c -std=gnu++17 \
+SAME5X_CXXFLAGS := -c -std=c++20 \
 	-mcpu=cortex-m4 \
 	-mthumb \
 	-fno-math-errno \
@@ -93,6 +93,7 @@ SAME5X_CXXFLAGS := -c -std=gnu++17 \
 	-Wdouble-promotion \
 	-Werror=return-type \
 	-Wsuggest-override \
+	-Werror -Wnoexcept -Wshadow -Wsign-promo \
 	-fsingle-precision-constant \
 	-fstack-usage \
 	-fdump-rtl-expand \
