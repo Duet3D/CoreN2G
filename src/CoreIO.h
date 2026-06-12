@@ -44,7 +44,7 @@ constexpr unsigned int NumTotalPins = 3 * PinsPerPort;			// SAM4S8C goes up to P
 #elif SAME70
 constexpr unsigned int NumTotalPins = (4 * PinsPerPort) + 6;	// SAME70 goes up to PE5
 #elif STM32H5
-constexpr unsigned int NumTotalPins = (7 * PinsPerPort);		// STM32H523 does up to PG15
+constexpr unsigned int NumTotalPins = (3 * PinsPerPort) + 3;	// STM32H523RET goes up to PD02 (some STM32H5 variants go up to PG15)
 #elif STM32H7
 constexpr unsigned int NumTotalPins = (9 * PinsPerPort);		// STM32H743 goes up to PI15
 #elif RP2040
@@ -785,9 +785,22 @@ static inline constexpr GpioPinFunction GetPeriNumber(PwmOutput pwm) noexcept
 
 enum class TimerOutput : uint8_t
 {
+	tim1_ch1 = 0x00, tim1_ch2, tim1_ch3, tim1_ch4, tim1_ch1n = 0x04, tim1_ch2n, tim1_ch3n, tim1_ch4n,
+	tim2_ch1 = 0x10, tim2_ch2, tim2_ch3, tim2_ch4,
+	tim3_ch1 = 0x20, tim3_ch2, tim3_ch3, tim3_ch4,
+	tim4_ch1 = 0x30, tim4_ch2, tim4_ch3, tim4_ch4,
+	tim5_ch1 = 0x40, tim5_ch2, tim5_ch3, tim5_ch4,
+	// Timers 6 and 7 have no outputs
+	tim8_ch1 = 0x50, tim8_ch2, tim8_ch3, tim8_ch4, tim8_ch1n = 0x54, tim8_ch2n, tim8_ch3n, tim8_ch4n,
+	tim12_ch1 = 0x60, tim12_ch2,
+	tim13_ch1 = 0x70, tim13_ch2,
+	tim14_ch1 = 0x80, tim14_ch2,
+	tim15_ch1 = 0x90, tim15_ch2, tim15_ch2n = 0x84,
+	tim16_ch1 = 0xA0, tim16_ch2, tim16_ch2n = 0xA4,
+	tim17_ch1 = 0xB0, tim17_ch2, tim17_ch2n = 0xB4,
+	lptim_ch1 = 0xC0, lptim_ch2,
 
-//TODO
-
+	none = 0xFF
 };
 
 #endif
@@ -808,7 +821,8 @@ enum class AdcInput : uint8_t
 	// 0x60 to 0x7F are inputs to ADC1 and ADC2
 	adc12_0 = 0x60, adc12_1,
 	adc12_3 = 0x63, adc12_4, adc12_5,
-	adc12_7 = 0x67, adc12_8, adc12_9, ac12_10, adc12_11, adc12_12, adc12_13, adc12_14, adc12_15, adc12_16, adc12_17, adc12_18, adc12_19,
+	adc12_7 = 0x67, adc12_8, adc12_9, adc12_10, adc12_11, adc12_12, adc12_13, adc12_14, adc12_15, adc12_16, adc12_17, adc12_18, adc12_19,
+	ldc1612 = 0x80, ads131m02,
 #elif STM32H7
 	// 0x00 to 0x1F are inputs to ADC1 only
 	adc1_2 = 0x02, adc1_6 = 0x06, adc1_16 = 0x10, adc1_17,
@@ -1026,6 +1040,7 @@ struct PinDescriptionBase
 
 	TimerOutput to;
 	AdcInput adc;
+	ExintNumber exintNumber;		///< The EXINT number that is allocated exclusively for use by this pin, or Nx if none available
 
 #else
 # error Unsupported processor

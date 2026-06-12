@@ -72,6 +72,14 @@ private:
 	Usart * const hardware;
 #elif RP2040
 	spi_inst_t *hardware;
+#elif STM32
+	SPI_TypeDef * const hardware;
+//	const uint8_t sercomNumber;
+# ifdef RTOS
+	TaskBase *null waitingTask = nullptr;
+# endif
+	DmaChannel dmaChanTx;
+	DmaPriority dmaPrioTx;
 #else
 # error Unsupported configuration
 #endif

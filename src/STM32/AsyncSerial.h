@@ -54,10 +54,10 @@ public:
     AsyncSerial(const UartParameters& params) noexcept;
 
 	// Overridden virtual functions
-	int available(void) noexcept;
-	int read(void) noexcept;
-	void flush(void) noexcept;
-	size_t canWrite() noexcept;
+	int available(void) noexcept override;
+	int read(void) noexcept override;
+	void flush(void) noexcept override;
+	size_t canWrite() noexcept override;
 
 	size_t write(uint8_t c) noexcept override;
 	size_t write(const uint8_t *buffer, size_t size) noexcept override;

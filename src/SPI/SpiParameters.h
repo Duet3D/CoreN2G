@@ -31,7 +31,19 @@ struct SpiParameters
 	Pin misoPin;
 	Pin sclkPin;
 	GpioPinFunction pinFunction;
-#elif RP2040
+#elif STM32
+	uint8_t instanceNumber;
+	Pin mosiPin;
+	Pin misoPin;
+	Pin sclkPin;
+	GpioPinFunction pinFunction;
+	uint8_t dataInPad;
+	uint8_t dataOutPad;
+	DmaChannel dmaChanTx;
+	DmaChannel dmaChanRx;
+	DmaPriority dmaPrioTx;
+	DmaPriority dmaPrioRx;
+#elif RPXXXX
 	uint8_t instanceNumber;
 	Pin mosiPin;
 	Pin misoPin;
