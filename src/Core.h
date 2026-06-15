@@ -36,7 +36,6 @@
 # define SAME5x				1
 # define SAME70				0
 # define RP2040				0
-# define STM32				0
 #elif defined(__SAME51N19A__) || defined(__SAME51G19A__) || defined(__SAME51J19A__)
 # include <same51.h>
 # define SAMC21				0
@@ -46,7 +45,6 @@
 # define SAME5x				1
 # define SAME70				0
 # define RP2040				0
-# define STM32				0
 #elif defined(__SAMD51N19A__)
 # include <samd51.h>
 # define SAMC21				0
@@ -56,7 +54,6 @@
 # define SAME5x				1
 # define SAME70				0
 # define RP2040				0
-# define STM32				0
 #elif defined(__SAMC21G18A__)
 # include <samc21.h>
 # define SAMC21				1
@@ -66,7 +63,6 @@
 # define SAME5x				0
 # define SAME70				0
 # define RP2040				0
-# define STM32				0
 # define SUPPORT_SDHC		0			// SAMC21 doesn't support SDHC
 # define SUPPORT_USB		0			// SAMC21 doesn't support USB
 #elif defined(__SAM4E8E__)
@@ -74,21 +70,18 @@
 # include <sam4e8e.h>
 # define SAME5x				0
 # define RP2040				0
-# define STM32				0
 # define SUPPORT_CAN		0			// SAM4E doesn't support CAN-FD
 #elif defined(__SAM4S8C__)
 # include <parts.h>
 # include <sam4s8c.h>
 # define SAME5x				0
 # define RP2040				0
-# define STM32				0
 # define SUPPORT_CAN		0			// SAM4S doesn't support CAN-FD
 #elif defined(__SAME70Q20B__)
 # include <parts.h>
 # include <same70q20b.h>
 # define SAME5x				0
 # define RP2040				0
-# define STM32				0
 #elif defined __RP2040__
 extern "C" {
 # include <hardware/gpio.h>
@@ -103,11 +96,13 @@ extern "C" {
 # define SAM4S				0
 # define SAME5x				0
 # define SAME70				0
-# define STM32				0
 # define SUPPORT_SDHC		0			// SAMC21 doesn't support SDHC
 #else
 # error unsupported processor
 #endif
+
+#define STM32				0			// this core doesn't support STM32 yet
+#define STM32H5				0
 
 #if defined(RTOS) && (SAME70 || RP2040 || SAME5x)
 # define CORE_USES_TINYUSB		1
