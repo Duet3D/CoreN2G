@@ -164,7 +164,9 @@ void SerialCDC::Start() noexcept
 
 void SerialCDC::end() noexcept
 {
-	isConnected = sending = receiving = false;
+	isConnected = false;
+	sending = false;
+	receiving = false;
 	usbdc_detach();
 	usbdc_stop();
 
@@ -316,7 +318,8 @@ void SerialCDC::StartSending() noexcept
 					cdcdf_acm_register_callback(CDCDF_ACM_CB_WRITE, nullptr);
 
 					/* Stop communication */
-					isConnected = receiving = false;
+					isConnected = false;
+					receiving = false;
 				}
 			}
 #endif
@@ -359,7 +362,8 @@ void SerialCDC::StartReceiving() noexcept
 					cdcdf_acm_register_callback(CDCDF_ACM_CB_WRITE, nullptr);
 
 					/* Stop communication */
-					isConnected = sending = false;
+					isConnected = false;
+					sending = false;
 				}
 			}
 #endif

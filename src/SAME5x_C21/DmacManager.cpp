@@ -126,6 +126,7 @@ void DmacManager::SetTriggerSource(uint8_t channel, DmaTrigSource source) noexce
 #elif SAMC21
 	AtomicCriticalSectionLocker lock;
 	DMAC->CHID.reg = channel;
+	__DSB();
 	DMAC->CHCTRLB.reg = DMAC_CHCTRLB_TRIGSRC((uint8_t)source) | DMAC_CHCTRLB_TRIGACT_BEAT;
 #else
 # error Unsupported processor
@@ -141,6 +142,7 @@ void DmacManager::SetTriggerSourceSercomRx(uint8_t channel, uint8_t sercomNumber
 #elif SAMC21
 	AtomicCriticalSectionLocker lock;
 	DMAC->CHID.reg = channel;
+	__DSB();
 	DMAC->CHCTRLB.reg = DMAC_CHCTRLB_TRIGSRC((uint8_t)source) | DMAC_CHCTRLB_TRIGACT_BEAT;
 #else
 # error Unsupported processor
@@ -157,6 +159,7 @@ void DmacManager::SetTriggerSourceSercomTx(uint8_t channel, uint8_t sercomNumber
 #elif SAMC21
 	AtomicCriticalSectionLocker lock;
 	DMAC->CHID.reg = channel;
+	__DSB();
 	DMAC->CHCTRLB.reg = DMAC_CHCTRLB_TRIGSRC((uint8_t)source) | DMAC_CHCTRLB_TRIGACT_BEAT;
 #else
 # error Unsupported processor
@@ -170,6 +173,7 @@ void DmacManager::SetArbitrationLevel(uint8_t channel, uint8_t level) noexcept
 #elif SAMC21
 	AtomicCriticalSectionLocker lock;
 	DMAC->CHID.reg = channel;
+	__DSB();
 	DMAC->CHCTRLB.reg = (DMAC->CHCTRLB.reg & ~DMAC_CHCTRLB_LVL_Msk) | (level << DMAC_CHCTRLB_LVL_Pos);
 #else
 # error Unsupported processor
@@ -188,6 +192,7 @@ void DmacManager::EnableChannel(const uint8_t channel, DmaPriority priority) noe
 #elif SAMC21
 	AtomicCriticalSectionLocker lock;
 	DMAC->CHID.reg = channel;
+	__DSB();
 	DMAC->CHCTRLB.bit.LVL = priority;
 	DMAC->CHCTRLA.bit.ENABLE = 1;
 #else
@@ -219,6 +224,7 @@ bool DmacManager::DisableChannel(const uint8_t channel) noexcept
 #elif SAMC21
 	AtomicCriticalSectionLocker lock;
 	DMAC->CHID.reg = channel;
+	__DSB();
 	DMAC->CHINTENCLR.reg = DMAC_CHINTENCLR_TCMPL | DMAC_CHINTENCLR_TERR | DMAC_CHINTENCLR_SUSP;
 	DMAC->CHCTRLA.bit.ENABLE = 0;
 	unsigned int count = 0;
@@ -256,6 +262,7 @@ bool DmacManager::SuspendChannel(DmaChannel channel) noexcept
 #elif SAMC21
 	AtomicCriticalSectionLocker lock;
 	DMAC->CHID.reg = channel;
+	__DSB();
 	DMAC->CHCTRLB.bit.CMD = DMAC_CHCTRLB_CMD_SUSPEND_Val;
 	unsigned int count = 0;
 	bool suspended;
@@ -279,6 +286,7 @@ void DmacManager::ResumeChannel(DmaChannel channel) noexcept
 #elif SAMC21
 	AtomicCriticalSectionLocker lock;
 	DMAC->CHID.reg = channel;
+	__DSB();
 	DMAC->CHCTRLB.bit.CMD = DMAC_CHCTRLB_CMD_RESUME_Val;
 #endif
 }
@@ -298,6 +306,7 @@ void DmacManager::EnableCompletedInterrupt(const uint8_t channel) noexcept
 #elif SAMC21
 	AtomicCriticalSectionLocker lock;
 	DMAC->CHID.reg = channel;
+	__DSB();
 	DMAC->CHINTENCLR.reg = DMAC_CHINTENCLR_TCMPL | DMAC_CHINTENCLR_TERR | DMAC_CHINTENCLR_SUSP;
 	DMAC->CHINTENSET.reg = DMAC_CHINTENSET_TCMPL | DMAC_CHINTENSET_TERR;
 #else
@@ -312,6 +321,7 @@ void DmacManager::DisableCompletedInterrupt(const uint8_t channel) noexcept
 #elif SAMC21
 	AtomicCriticalSectionLocker lock;
 	DMAC->CHID.reg = channel;
+	__DSB();
 	DMAC->CHINTENCLR.reg = DMAC_CHINTENSET_TCMPL | DMAC_CHINTENSET_TERR;
 #else
 # error Unsupported processor
@@ -327,6 +337,7 @@ uint8_t DmacManager::GetAndClearChannelStatus(uint8_t channel) noexcept
 #elif SAMC21
 	AtomicCriticalSectionLocker lock;
 	DMAC->CHID.reg = channel;
+	__DSB();
 	const uint8_t ret = DMAC->CHINTFLAG.reg;
 	DMAC->CHINTFLAG.reg = ret;
 	return ret;
@@ -396,6 +407,7 @@ extern "C" void DMAC_Handler() noexcept
 	{
 		const size_t channel = intPend & DMAC_INTPEND_ID_Msk;
 		DMAC->CHID.reg = channel;
+		__DSB();
 		const uint8_t intflag = DMAC->CHINTFLAG.reg & DMAC->CHINTENSET.reg & (DMAC_CHINTFLAG_SUSP | DMAC_CHINTFLAG_TCMPL | DMAC_CHINTFLAG_TERR);
 		if (intflag != 0)					// should always be true
 		{

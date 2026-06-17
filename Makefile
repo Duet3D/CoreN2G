@@ -28,8 +28,6 @@ CONFIGS := \
 	SAMC21_CAN_RTOS \
 	SAM4E_SDHC \
 	SAM4E_SDHC_USB_RTOS \
-	SAM4S_SDHC \
-	SAM4S_SDHC_USB_RTOS \
 	SAME5x_CAN \
 	SAME5x_CAN_RTOS \
 	SAME5x_CAN_SDHC_USB_RTOS \
@@ -70,16 +68,15 @@ help:
 	@echo "  CROSS_COMPILE=$(CROSS_COMPILE)"
 
 # Build all configurations
+# RP2040 configs are excluded from 'all' (they require the pico-sdk build); still buildable as explicit targets
 .PHONY: all
-all: $(CONFIGS)
+all: $(filter-out RP2040_CAN_RTOS RP2040_RTOS,$(CONFIGS))
 
 # Include configuration-specific makefiles
 -include Makefiles/SAMC21_CAN.mk
 -include Makefiles/SAMC21_CAN_RTOS.mk
 -include Makefiles/SAM4E_SDHC.mk
 -include Makefiles/SAM4E_SDHC_USB_RTOS.mk
--include Makefiles/SAM4S_SDHC.mk
--include Makefiles/SAM4S_SDHC_USB_RTOS.mk
 -include Makefiles/SAME5x_CAN.mk
 -include Makefiles/SAME5x_CAN_RTOS.mk
 -include Makefiles/SAME5x_CAN_SDHC_USB_RTOS.mk

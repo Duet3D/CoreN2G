@@ -48,7 +48,7 @@ void Dummy_Handler(void);
 /* Cortex-M0+ core handlers */
 void NonMaskableInt_Handler  ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
 void HardFault_Handler       ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
-void SVCall_Handler          ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
+void SVC_Handler          ( void ) __attribute__ ((weak, alias("Dummy_Handler")));				// DC renamed from SVCall_Handler to match FreeRTOS
 void PendSV_Handler          ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
 void SysTick_Handler         ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
 
@@ -134,7 +134,7 @@ const DeviceVectors exception_table = {
         .pvReservedM7           = (void*) (0UL), /* Reserved */
 #endif
         .pvReservedM6           = (void*) (0UL), /* Reserved */
-        .pfnSVCall_Handler      = (void*) SVCall_Handler,
+        .pfnSVCall_Handler      = (void*) SVC_Handler,				// DC renamed from SVCall_Handler to match FreeRTOS
         .pvReservedM4           = (void*) (0UL), /* Reserved */
         .pvReservedM3           = (void*) (0UL), /* Reserved */
         .pfnPendSV_Handler      = (void*) PendSV_Handler,
