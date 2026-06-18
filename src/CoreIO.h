@@ -11,8 +11,8 @@
  *      Author: David
  */
 
-#ifndef SRC_HARDWARE_SAME5X_COREIO_H_
-#define SRC_HARDWARE_SAME5X_COREIO_H_
+#ifndef SRC_COREIO_H_
+#define SRC_COREIO_H_
 
 #include "Core.h"
 
@@ -332,7 +332,6 @@ static inline const uint32_t *_ecv_array GetStackPointer() noexcept
 
 #endif
 
-// Atomic section locker, alternative to InterruptCriticalSectionLocker (is safe to call from within an ISR, and may be faster)
 /**
  * @brief This class is an alternative to InterruptCriticalSectionLocker. It is safe to call from within an ISR, and may be faster.
  *
@@ -358,7 +357,7 @@ private:
 	coreIrqflags_t flags;
 };
 
-#if SAME5x || SAM4E || SAM4S || SAME70 || STM32		// SAMC21 doesn't support these
+#if SAME5x || SAM4E || SAM4S || SAME70 || STM32 || RP2350		// SAMC21 and RP2040 don't support these
 
 // Functions to change the base priority, to shut out interrupts up to a priority level
 
@@ -803,6 +802,14 @@ enum class TimerOutput : uint8_t
 	none = 0xFF
 };
 
+/**
+ * @brief Initialise a timer clock
+ *
+ * @param timerNumber The timer number that needs a clock
+ * @param gclkNumThe GCLK number to use
+ */
+void EnableTimerClock(unsigned int tccNumber, unsigned int gclkNum) noexcept;
+
 #endif
 
 /**
@@ -1137,4 +1144,4 @@ extern void DisableCore1Processing() noexcept;
 extern void EnableCore1Processing() noexcept;
 #endif
 
-#endif /* SRC_HARDWARE_SAME5X_COREIO_H_ */
+#endif /* SRC_COREIO_H_ */
