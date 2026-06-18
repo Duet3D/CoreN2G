@@ -103,6 +103,7 @@ extern "C" {
 
 #define STM32				0			// this core doesn't support STM32 yet
 #define STM32H5				0
+#define STM32H7				0
 
 #if defined(RTOS) && (SAME70 || RP2040 || SAME5x)
 # define CORE_USES_TINYUSB		1
