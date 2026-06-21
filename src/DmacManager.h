@@ -254,6 +254,8 @@ enum class DmaTrigSource : uint8_t
 	pwmwrap0, pwmwrap1, pwmwrap2, pwmwrap3, pwmwrap4, pwmwrap5, pwmwrap6, pwmwrap7,
 	i2c0tx, i2c0rx, i2c1tx, i2c1rx,
 	adc, xipstream, xipssitx, xipssirx
+#elif STM32
+	//TODO
 #else
 # error Unsupported processor
 #endif

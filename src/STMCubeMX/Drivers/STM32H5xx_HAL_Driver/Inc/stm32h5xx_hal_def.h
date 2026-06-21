@@ -92,7 +92,7 @@ typedef enum
   */
 #define __HAL_RESET_HANDLE_STATE(__HANDLE__) ((__HANDLE__)->State = 0)
 
-#if (USE_RTOS == 1)
+#if 0	// DC was #if (USE_RTOS == 1)
 /* Reserved for future use */
 #error " USE_RTOS should be 0 in the current HAL release "
 #else

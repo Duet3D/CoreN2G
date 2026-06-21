@@ -784,23 +784,27 @@ static inline constexpr GpioPinFunction GetPeriNumber(PwmOutput pwm) noexcept
 
 enum class TimerOutput : uint8_t
 {
-	tim1_ch1 = 0x00, tim1_ch2, tim1_ch3, tim1_ch4, tim1_ch1n = 0x04, tim1_ch2n, tim1_ch3n, tim1_ch4n,
+	// Bits 0..2 are the output identifier, bits 3..7 are the timer number
+	tim1_ch1 = 0x08, tim1_ch2, tim1_ch3, tim1_ch4, tim1_ch1n = 0x0C, tim1_ch2n, tim1_ch3n, tim1_ch4n,
 	tim2_ch1 = 0x10, tim2_ch2, tim2_ch3, tim2_ch4,
-	tim3_ch1 = 0x20, tim3_ch2, tim3_ch3, tim3_ch4,
-	tim4_ch1 = 0x30, tim4_ch2, tim4_ch3, tim4_ch4,
-	tim5_ch1 = 0x40, tim5_ch2, tim5_ch3, tim5_ch4,
-	// Timers 6 and 7 have no outputs
-	tim8_ch1 = 0x50, tim8_ch2, tim8_ch3, tim8_ch4, tim8_ch1n = 0x54, tim8_ch2n, tim8_ch3n, tim8_ch4n,
+	tim3_ch1 = 0x18, tim3_ch2, tim3_ch3, tim3_ch4,
+	tim4_ch1 = 0x20, tim4_ch2, tim4_ch3, tim4_ch4,
+	tim5_ch1 = 0x28, tim5_ch2, tim5_ch3, tim5_ch4,
+	tim8_ch1 = 0x40, tim8_ch2, tim8_ch3, tim8_ch4, tim8_ch1n = 0x44, tim8_ch2n, tim8_ch3n, tim8_ch4n,
 	tim12_ch1 = 0x60, tim12_ch2,
-	tim13_ch1 = 0x70, tim13_ch2,
-	tim14_ch1 = 0x80, tim14_ch2,
-	tim15_ch1 = 0x90, tim15_ch2, tim15_ch2n = 0x84,
-	tim16_ch1 = 0xA0, tim16_ch2, tim16_ch2n = 0xA4,
-	tim17_ch1 = 0xB0, tim17_ch2, tim17_ch2n = 0xB4,
-	lptim_ch1 = 0xC0, lptim_ch2,
+	tim13_ch1 = 0x68, tim13_ch2,
+	tim14_ch1 = 0x70, tim14_ch2,
+	tim15_ch1 = 0x78, tim15_ch2, tim15_ch2n = 0x7C,
+	tim16_ch1 = 0x80, tim16_ch2, tim16_ch2n = 0x84,
+	tim17_ch1 = 0x88, tim17_ch2, tim17_ch2n = 0x8C,
+
+	// We number the low power timers 28 and 29
+	lptim1_ch1 = 0xE0, lptim1_ch2,
 
 	none = 0xFF
 };
+
+inline unsigned int GetTimerNumber(TimerOutput timOut) noexcept { return ((unsigned int)timOut) >> 3; }
 
 /**
  * @brief Initialise a timer clock
@@ -808,7 +812,7 @@ enum class TimerOutput : uint8_t
  * @param timerNumber The timer number that needs a clock
  * @param gclkNumThe GCLK number to use
  */
-void EnableTimerClock(unsigned int tccNumber, unsigned int gclkNum) noexcept;
+void EnableTimerClock(unsigned int timerNumber, unsigned int gclkNum) noexcept;
 
 #endif
 

@@ -19,6 +19,7 @@
 # include <SAM4S_4E_E70/Serial.h>
 #elif STM32
 # include <STM32/Serial.h>
+# include <stm32h5xx_hal_rcc.h>
 #endif
 
 #ifdef RTOS
@@ -887,6 +888,88 @@ void EnableTcClock(unsigned int tcNumber, unsigned int gclkNum) noexcept
 #else
 # error Unsupported processor
 #endif
+}
+
+#elif STM32
+
+// Initialise a timer clock
+void EnableTimerClock(unsigned int timerNumber, unsigned int gclkNum) noexcept
+{
+	switch (timerNumber)
+	{
+#if defined(TIM1_BASE)
+	case 1:		__HAL_RCC_TIM1_CLK_ENABLE(); break;
+#endif
+#if defined(TIM2_BASE)
+	case 2:		__HAL_RCC_TIM2_CLK_ENABLE(); break;
+#endif
+#if defined(TIM3_BASE)
+	case 3:		__HAL_RCC_TIM3_CLK_ENABLE(); break;
+#endif
+#if defined(TIM4_BASE)
+	case 4:		__HAL_RCC_TIM4_CLK_ENABLE(); break;
+#endif
+#if defined(TIM5_BASE)
+	case 5:		__HAL_RCC_TIM5_CLK_ENABLE(); break;
+#endif
+#if defined(TIM6_BASE)
+	case 6:		__HAL_RCC_TIM6_CLK_ENABLE(); break;
+#endif
+#if defined(TIM7_BASE)
+	case 7:		__HAL_RCC_TIM7_CLK_ENABLE(); break;
+#endif
+#if defined(TIM8_BASE)
+	case 8:		__HAL_RCC_TIM8_CLK_ENABLE(); break;
+#endif
+#if defined(TIM9_BASE)
+	case 9:		__HAL_RCC_TIM9_CLK_ENABLE(); break;
+#endif
+#if defined(TIM10_BASE)
+	case 10:	 __HAL_RCC_TIM10_CLK_ENABLE(); break;
+#endif
+#if defined(TIM11_BASE)
+	case 11:	__HAL_RCC_TIM11_CLK_ENABLE(); break;
+#endif
+#if defined(TIM12_BASE)
+	case 12:	__HAL_RCC_TIM12_CLK_ENABLE(); break;
+#endif
+#if defined(TIM13_BASE)
+	case 13:	__HAL_RCC_TIM13_CLK_ENABLE(); break;
+#endif
+#if defined(TIM14_BASE)
+	case 14:	__HAL_RCC_TIM14_CLK_ENABLE(); break;
+#endif
+#if defined(TIM15_BASE)
+	case 15:	__HAL_RCC_TIM15_CLK_ENABLE(); break;
+#endif
+#if defined(TIM16_BASE)
+	case 16:	__HAL_RCC_TIM16_CLK_ENABLE(); break;
+#endif
+#if defined(TIM17_BASE)
+	case 17:	__HAL_RCC_TIM17_CLK_ENABLE(); break;
+#endif
+#if defined(TIM18_BASE)
+	case 18:	__HAL_RCC_TIM18_CLK_ENABLE(); break;
+#endif
+#if defined(TIM19_BASE)
+	case 19:	__HAL_RCC_TIM19_CLK_ENABLE(); break;
+#endif
+#if defined(TIM20_BASE)
+	case 20:	__HAL_RCC_TIM20_CLK_ENABLE(); break;
+#endif
+#if defined(TIM21_BASE)
+	case 21:	__HAL_RCC_TIM21_CLK_ENABLE(); break;
+#endif
+#if defined(TIM22_BASE)
+	case 22:	 __HAL_RCC_TIM22_CLK_ENABLE(); break;
+#endif
+#if defined(LPTIM1_BASE)
+	case 28:	__HAL_RCC_LPTIM1_CLK_ENABLE(); break;				// low power timer 1
+#endif
+#if defined(LPTIM2_BASE)
+	case 29:	__HAL_RCC_LPTIM2_CLK_ENABLE(); break;				// low power timer 2
+#endif
+	}
 }
 
 #endif
