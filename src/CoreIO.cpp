@@ -13,35 +13,34 @@
 #include "AnalogIn.h"
 #include "AnalogOut.h"
 
-#if SAME5x || SAMC21
-# include <SAME5x_C21/Serial.h>
-#elif SAME70 || SAM4E || SAM4S
-# include <SAM4S_4E_E70/Serial.h>
-#elif STM32
-# include <STM32/Serial.h>
-# include <stm32h5xx_hal_rcc.h>
-#endif
-
 #ifdef RTOS
 # include <FreeRTOS.h>
 # include <task.h>
 #endif
 
 #if SAME5x
+# include <SAME5x_C21/Serial.h>
 # include <hri_wdt_e54.h>
 # include <hal_gpio.h>
 #elif SAMC21
+# include <SAME5x_C21/Serial.h>
 # include <hri_wdt_c21.h>
 # include <hal_gpio.h>
 #elif SAM4E || SAM4S || SAME70
+# include <SAM4S_4E_E70/Serial.h>
 # include <pmc/pmc.h>
 # include <pio/pio.h>
 # include <rstc/rstc.h>
 #elif STM32H5
+# include <STM32/Serial.h>
+# include <stm32h5xx_hal_conf.h>
 # include <stm32h5xx_hal_iwdg.h>
 # include <stm32h5xx_ll_iwdg.h>
 # include <stm32h5xx_ll_rng.h>
+# include <stm32h5xx_hal_rcc.h>
 #elif STM32H7
+# include <STM32/Serial.h>
+# include <stm32h7xx_hal_conf.h>
 # include <stm32h7xx_hal_iwdg.h>
 # include <stm32h7xx_ll_iwdg.h>
 # include <stm32h7xx_ll_rng.h>
@@ -754,11 +753,11 @@ void WatchdogInit() noexcept
 	watchdog_enable(750, true);									// we reset the timer to run at 750kHz instead of 1MHz, so 1 second is 750 "milliseconds"
 #elif STM32
 	IWDG_HandleTypeDef wdHandle;
-#if STM32H7
+# if STM32H7
     wdHandle.Instance = IWDG1;
-#else
+# else
     wdHandle.Instance = IWDG;
-#endif
+# endif
 	wdHandle.Init.Window = IWDG_WINDOW_DISABLE;
 	wdHandle.Init.Reload = IWDG_RLR_RL;
     wdHandle.Init.Prescaler = IWDG_PRESCALER_16;
@@ -1043,7 +1042,7 @@ extern "C" uint32_t random32() noexcept
 #elif STM32
 
 	uint32_t val;
-	while (!(RNG->SR & RNG_SR_DRDY) && (val = RNG->DR) != 0) { }
+	while (!(RNG->SR & RNG_SR_DRDY) || (val = RNG->DR) == 0) { }
 	return val;
 
 #else		// processor doesn't have a true random number generator

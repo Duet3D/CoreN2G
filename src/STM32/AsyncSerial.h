@@ -14,24 +14,14 @@
 # include <RTOSIface/RTOSIface.h>
 #endif
 
+enum class UARTModes : uint8_t {
 #ifdef UART_WORDLENGTH_7B
-# define SERIAL_7N1 0x04
-# define SERIAL_7N2 0x0C
-# define SERIAL_6E1 0x22
-# define SERIAL_6E2 0x2A
-# define SERIAL_6O1 0x32
-# define SERIAL_6O2 0x3A
+			SERIAL_7N1 = 0x04, SERIAL_7N2 = 0x0C, SERIAL_6E1 = 0x22, SERIAL_6E2 = 0x2A, SERIAL_6O1 = 0x32, SERIAL_6O2 = 0x3A,
 #endif
-#define SERIAL_8N1 0x06
-#define SERIAL_8N2 0x0E
-#define SERIAL_7E1 0x24
-#define SERIAL_8E1 0x26
-#define SERIAL_7E2 0x2C
-#define SERIAL_8E2 0x2E
-#define SERIAL_7O1 0x34
-#define SERIAL_8O1 0x36
-#define SERIAL_7O2 0x3C
-#define SERIAL_8O2 0x3E
+			SERIAL_8N1 = 0x06, SERIAL_8N2 = 0x0E, SERIAL_7E1 = 0x24, SERIAL_8E1 = 0x26,
+			SERIAL_7E2 = 0x2C, SERIAL_8E2 = 0x2E, SERIAL_7O1 = 0x34, SERIAL_8O1 = 0x36,
+			SERIAL_7O2 = 0x3C, SERIAL_8O2 = 0x3E,
+};
 
 class AsyncSerial : public Stream
 {
@@ -68,6 +58,7 @@ public:
 	void EnableTransmit() noexcept;
 
 	// Compatibility functions
+	void begin(uint32_t dwBaudRate, UARTModes config) noexcept;
     void begin(uint32_t baud) noexcept;
     void end() noexcept;
 	void setInterruptPriority(uint32_t priority) noexcept;

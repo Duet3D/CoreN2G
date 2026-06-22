@@ -4,6 +4,14 @@
 #include <CoreNotifyIndices.h>
 #include "AsyncSerial.h"
 
+#if STM32H5
+# include <stm32h5xx_hal_conf.h>
+# include <stm32h5xx_hal_uart.h>
+#elif STM32H7
+# include <stm32h7xx_hal_conf.h>
+# include <stm32h7xx_hal_uart.h>
+#endif
+
 extern "C" void debugPrintf(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
 
 AsyncSerial::AsyncSerial(const UartParameters& params) noexcept
@@ -20,14 +28,14 @@ AsyncSerial::AsyncSerial(const UartParameters& params) noexcept
 	rxBuffer.Init(params.numRxSlots);
 }
 
-void AsyncSerial::begin(uint32_t baud, uint8_t config) noexcept
+void AsyncSerial::begin(uint32_t baud, UARTModes config) noexcept
 {
     uint32_t databits = 0;
     uint32_t stopbits = 0;
     uint32_t parity = 0;
 
     // Manage databits
-    switch (config & 0x07)
+    switch ((uint8_t)config & 0x07)
     {
     case 0x02:
         databits = 6;
@@ -43,12 +51,12 @@ void AsyncSerial::begin(uint32_t baud, uint8_t config) noexcept
         break;
     }
 
-    if ((config & 0x30) == 0x30)
+    if (((uint8_t)config & 0x30) == 0x30)
     {
         parity = UART_PARITY_ODD;
         databits++;
     }
-    else if ((config & 0x20) == 0x20)
+    else if (((uint8_t)config & 0x20) == 0x20)
     {
         parity = UART_PARITY_EVEN;
         databits++;
@@ -58,7 +66,7 @@ void AsyncSerial::begin(uint32_t baud, uint8_t config) noexcept
         parity = UART_PARITY_NONE;
     }
 
-    if ((config & 0x08) == 0x08)
+    if (((uint8_t)config & 0x08) == 0x08)
     {
         stopbits = UART_STOPBITS_2;
     }
@@ -69,30 +77,25 @@ void AsyncSerial::begin(uint32_t baud, uint8_t config) noexcept
 
     switch (databits)
     {
-    #ifdef UART_WORDLENGTH_7B
-        case 7:
+#ifdef UART_WORDLENGTH_7B
+    case 7:
         databits = UART_WORDLENGTH_7B;
         break;
-    #endif
-        case 8:
+#endif
+    case 8:
         databits = UART_WORDLENGTH_8B;
         break;
-        case 9:
+    case 9:
         databits = UART_WORDLENGTH_9B;
         break;
-        default:
-        case 0:
-        Error_Handler();
-        break;
+    default:
+    case 0:
+        return;				// can't do much here
     }
 
     init( (uint32_t)baud, databits, parity, stopbits);
     if (uart != nullptr)
     {
-        rx_head = 0;
-        rx_tail = 0;
-        tx_head = 0;
-        tx_tail = 0;
         txEnabled = true;
         start_rx();
     }
@@ -100,7 +103,7 @@ void AsyncSerial::begin(uint32_t baud, uint8_t config) noexcept
 
 void AsyncSerial::begin(uint32_t baud) noexcept
 {
-    begin(baud, SERIAL_8N1);
+    begin(baud, UARTModes::SERIAL_8N1);
 }
 
 void AsyncSerial::end(void) noexcept
@@ -132,7 +135,7 @@ size_t AsyncSerial::canWrite() noexcept
 
 size_t AsyncSerial::write(const uint8_t c) noexcept
 {
-	if (txEnabled && txBuffer.IsEmpty() && (usart->ISR & USART_ISR_TXFNF) != 0)
+	if (txEnabled && txBuffer.IsEmpty() && (usart->ISR & USART_ISR_TXE_TXFNF) != 0)
 	{
 		usart->TDR = c;
 	}
