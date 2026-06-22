@@ -605,6 +605,16 @@ PCD_StateTypeDef HAL_PCD_GetState(PCD_HandleTypeDef const *hpcd);
 __STATIC_INLINE uint16_t PCD_GET_EP_RX_CNT(const PCD_TypeDef *Instance, uint16_t bEpNum)
 {
   UNUSED(Instance);
+#if 1	// DC avoid deprecated use of volatile
+  uint32_t count = PCD_RX_PMA_CNT;
+
+  /* WA: few cycles for RX PMA descriptor to update */
+  while (count > 0U)
+  {
+	  asm volatile ("nop");
+	  count--;
+  }
+#else
   __IO uint32_t count = PCD_RX_PMA_CNT;
 
   /* WA: few cycles for RX PMA descriptor to update */
@@ -612,6 +622,7 @@ __STATIC_INLINE uint16_t PCD_GET_EP_RX_CNT(const PCD_TypeDef *Instance, uint16_t
   {
     count--;
   }
+#endif
 
   return (uint16_t)USB_DRD_GET_CHEP_RX_CNT((Instance), (bEpNum));
 }
@@ -648,6 +659,16 @@ __STATIC_INLINE uint16_t PCD_GET_EP_RX_CNT(const PCD_TypeDef *Instance, uint16_t
 __STATIC_INLINE uint16_t PCD_GET_EP_DBUF0_CNT(const PCD_TypeDef *Instance, uint16_t bEpNum)
 {
   UNUSED(Instance);
+#if 1	// DC avoid deprecated use of volatile
+  uint32_t count = PCD_RX_PMA_CNT;
+
+  /* WA: few cycles for RX PMA descriptor to update */
+  while (count > 0U)
+  {
+	  asm volatile ("nop");
+	  count--;
+  }
+#else
   __IO uint32_t count = PCD_RX_PMA_CNT;
 
   /* WA: few cycles for RX PMA descriptor to update */
@@ -655,6 +676,7 @@ __STATIC_INLINE uint16_t PCD_GET_EP_DBUF0_CNT(const PCD_TypeDef *Instance, uint1
   {
     count--;
   }
+#endif
 
   return (uint16_t)USB_DRD_GET_CHEP_DBUF0_CNT((Instance), (bEpNum));
 }
@@ -668,6 +690,16 @@ __STATIC_INLINE uint16_t PCD_GET_EP_DBUF0_CNT(const PCD_TypeDef *Instance, uint1
 __STATIC_INLINE uint16_t PCD_GET_EP_DBUF1_CNT(const PCD_TypeDef *Instance, uint16_t bEpNum)
 {
   UNUSED(Instance);
+#if 1	// DC avoid deprecated use of volatile
+  uint32_t count = PCD_RX_PMA_CNT;
+
+  /* WA: few cycles for RX PMA descriptor to update */
+  while (count > 0U)
+  {
+	  asm volatile ("nop");
+	  count--;
+  }
+#else
   __IO uint32_t count = PCD_RX_PMA_CNT;
 
   /* WA: few cycles for RX PMA descriptor to update */
@@ -675,6 +707,7 @@ __STATIC_INLINE uint16_t PCD_GET_EP_DBUF1_CNT(const PCD_TypeDef *Instance, uint1
   {
     count--;
   }
+#endif
 
   return (uint16_t)USB_DRD_GET_CHEP_DBUF1_CNT((Instance), (bEpNum));
 }

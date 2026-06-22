@@ -2816,6 +2816,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/STMCubeMX/Core/Inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/STMCubeMX/Drivers/CMSIS/Device/ST/STM32H5xx/Include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/STMCubeMX/Drivers/CMSIS/Include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/STM32}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/RRFLibraries/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/CANlib/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/FreeRTOS/src/include}&quot;"/>

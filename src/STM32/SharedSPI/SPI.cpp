@@ -1,5 +1,7 @@
 //Implement the SharedSpi as in RRF
 
+#if 0	// DC temporarily disable incomplete SPI code
+
 #include "Core.h"
 #include "SPI.h"
 
@@ -40,3 +42,4 @@ SPI *SPI::getSPIDevice(SSPChannel channel)
     }
 }
 
+#endif

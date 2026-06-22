@@ -35,6 +35,9 @@
   *
   ******************************************************************************
   */
+
+#if 0	// DC temporarily disable incomplete SPI code
+
  // NOTE: This file has been extensively modified for use in the STM32 port of RRF
  // by Andy.
 //#include "stm32_def.h"
@@ -394,6 +397,8 @@ void spi_deinit(spi_t *obj)
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

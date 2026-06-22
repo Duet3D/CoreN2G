@@ -1,5 +1,7 @@
 //author: Andy
 
+#if 0		// DC: temporarily disable the unfinished STM32 async serial support - we don't need it for the initial STM32 tool board
+
 #include <Core.h>
 #include <CoreNotifyIndices.h>
 #include "AsyncSerial.h"
@@ -425,5 +427,7 @@ void AsyncSerial::Interrupt() noexcept
 		}
     }
 }
+
+#endif
 
 // End

@@ -57,15 +57,19 @@ void Serial::EnableUsartClock(uint8_t usartNumber) noexcept
 void Serial::InitUart(uint8_t usartNumber, uint32_t baudRate) noexcept
 {
 	EnableUsartClock(usartNumber);
+#if 0	//TODO
 	USART_TypeDef * const usart = GetUsart(usartNumber);
 	qq;	//TODO
+#endif
 }
 
 // Undo the initialisation, so that when we jump into the main firmware the USART can be initialised again
 void Serial::Disable(uint8_t usartNumber) noexcept
 {
+#if 0	//TODO
 	USART_TypeDef * const usart = GetUsart(usartNumber);
 	qq;	//TODO
+#endif
 }
 
 static void DummyHandler(void*) noexcept

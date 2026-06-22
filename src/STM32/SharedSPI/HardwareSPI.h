@@ -1,6 +1,8 @@
 #ifndef HARDWARESPI_H
 #define HARDWARESPI_H
 
+#if 0	// DC temporarily disable incomplete SPI code
+
 //#include "CoreImp.h"
 #include "Core.h"
 #include "SPI.h"
@@ -108,5 +110,7 @@ private:
 #endif
 
 };
+
+#endif
 
 #endif

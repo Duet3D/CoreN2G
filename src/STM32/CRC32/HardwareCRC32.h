@@ -1,6 +1,13 @@
 #ifndef HARDWARECRC32_H
 #define HARDWARECRC32_H
-#include "stm32_def.h"
+
+#include <Core.h>
+
+#if STM32H5
+# include "stm32h5xx.h"
+#elif STM32H7
+# include "stm32h7xx.h"
+#endif
 
 class HardwareCRC32
 {

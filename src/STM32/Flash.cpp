@@ -29,10 +29,10 @@ static void FlashClearError()
 	__HAL_FLASH_CLEAR_FLAG_BANK1(FLASH_FLAG_WRPERR_BANK1 | FLASH_FLAG_PGSERR_BANK1 | FLASH_FLAG_STRBERR_BANK1 | \
 									FLASH_FLAG_INCERR_BANK1 | FLASH_FLAG_OPERR_BANK1 | FLASH_FLAG_SNECCERR_BANK1 | \
 									FLASH_IT_DBECCERR_BANK1);
-#if STM32H743xx
+# if STM32H743xx
 	__HAL_FLASH_CLEAR_FLAG_BANK2((FLASH_FLAG_WRPERR_BANK2 | FLASH_FLAG_PGSERR_BANK2 | FLASH_FLAG_STRBERR_BANK2 | \
 									FLASH_FLAG_INCERR_BANK2 | FLASH_FLAG_SNECCERR_BANK2 | FLASH_IT_DBECCERR_BANK2) & 0x7FFFFFFFU);
-#endif
+# endif
 #else
 	__HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR |\
 							FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR| FLASH_FLAG_PGSERR);
@@ -44,7 +44,7 @@ bool Flash::FlashIsErased(const uint32_t addr, const size_t len) noexcept
 {
 #if STM32H7
 	// On the STM32H7 if the flash has not been correctly erased then simply reading
-	// it can cause a bus fault (due to multiple ECC errors). We avoid this by disaabling
+	// it can cause a bus fault (due to multiple ECC errors). We avoid this by disabling
 	// the fault mechanism while checking the flash memory.
 	const coreIrqflags_t flags = IrqSave();
 
@@ -202,7 +202,7 @@ bool Flash::FlashWrite(const uint32_t addr, const uint8_t *data, const size_t le
 	if (!ret)
 		debugPrintf("Flash write failed cnt %d\n", (int)((int)dst - addr));
 
-	return ret; 
+	return ret;
 }
 
 bool Flash::FlashRead(const uint32_t addr, uint8_t *data, const size_t len) noexcept

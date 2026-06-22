@@ -1,4 +1,7 @@
 //Hardware SPI
+
+#if 0	// DC temporarily disable incomplete SPI code
+
 #include "HardwareSPI.h"
 
 #ifdef RTOS
@@ -282,7 +285,7 @@ The reason for this is that testing has shown that when writing a short packet (
 case the 5 bytes used with TMC5160 drivers) then there is a delay between starting the transfer and the first
 clocks appearing on the clock line. This delay seems to vary in length depending upon the SPI clock speed,
 but it can be as high as 3uS per transaction. I suspect it may be caused by the device skipping over empty fifo
-elements, but that is just speculation. Running in continuous mode and avoiding enable/disable seems to avoid 
+elements, but that is just speculation. Running in continuous mode and avoiding enable/disable seems to avoid
 this issue.
 */
 void HardwareSPI::SPI_IRQHandler(SPI_HandleTypeDef *hspi) noexcept
@@ -597,7 +600,7 @@ void HardwareSPI::initPins(Pin clk, Pin miso, Pin mosi, NvicPriority priority) n
     csPin = NoPin;
     if (ioType == SpiIoType::dma)
     {
-        initDma(priority);   
+        initDma(priority);
     }
     if (ioType != SpiIoType::polled)
     {
@@ -612,7 +615,7 @@ void HardwareSPI::configureDmaStream(DMA_HandleTypeDef& hdma, DMA_Stream_TypeDef
     hdma.Instance                 = inst;
 #if STM32H7
     hdma.Init.Request             = chan;
-#else    
+#else
     hdma.Init.Channel             = chan;
 #endif
     hdma.Init.Direction           = dir;
@@ -622,23 +625,23 @@ void HardwareSPI::configureDmaStream(DMA_HandleTypeDef& hdma, DMA_Stream_TypeDef
     hdma.Init.MemDataAlignment    = DMA_MDATAALIGN_BYTE;
     hdma.Init.Mode                = DMA_NORMAL;
     hdma.Init.Priority            = DMA_PRIORITY_LOW;
-    hdma.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;         
+    hdma.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
     hdma.Init.FIFOThreshold       = DMA_FIFO_THRESHOLD_FULL;
     hdma.Init.MemBurst            = DMA_MBURST_SINGLE;
     hdma.Init.PeriphBurst         = DMA_PBURST_SINGLE;
 }
 
 void HardwareSPI::initDma(NvicPriority priority) noexcept
-{    
+{
     __HAL_RCC_DMA2_CLK_ENABLE();
     __HAL_RCC_DMA1_CLK_ENABLE();
     HAL_DMA_Init(&dmaRx);
     NVIC_SetPriority(rxIrq, priority);
-    NVIC_EnableIRQ(rxIrq);      
+    NVIC_EnableIRQ(rxIrq);
     __HAL_LINKDMA(&(spi.handle), hdmarx, dmaRx);
-    HAL_DMA_Init(&dmaTx); 
+    HAL_DMA_Init(&dmaTx);
     NVIC_SetPriority(txIrq, priority);
-    NVIC_EnableIRQ(txIrq);      
+    NVIC_EnableIRQ(txIrq);
     __HAL_LINKDMA(&(spi.handle), hdmatx, dmaTx);
 }
 
@@ -721,7 +724,7 @@ void HardwareSPI::stopTransfer() noexcept
 {
     // Stop a DMA transfer.
     // Note on the STM32F4 HAL_SPI_Abort does not
-    // work because it leaves data in the TX fifo (which will not be clocked out 
+    // work because it leaves data in the TX fifo (which will not be clocked out
     // because cs is not set). It seems that the only way to flush this fifo is
     // re-init the device, so we just do that.
     if (initComplete)
@@ -778,4 +781,6 @@ spi_status_t HardwareSPI::transceivePacket(const uint8_t *tx_data, uint8_t *rx_d
     if (cs != NoPin) fastDigitalWriteHigh(cs);
     return ret;
 }
+#endif
+
 #endif

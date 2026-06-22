@@ -1,7 +1,7 @@
 /*
  * Encapsulate the STM32F4 hardware CRC32 unit
  * Author: GA
- * 
+ *
  * The unit does not have a simple way to establish the initial seed value (other than resetting it)
  * so to allow use with multiple buffers we need to adjust things.
  * Based on this post: https://community.st.com/s/question/0D50X00009XkZjC/stm32f4-crc-preload-crcdr
@@ -10,15 +10,21 @@
 
 #include "HardwareCRC32.h"
 
+#if STM32H5
+# include <stm32h5xx_hal_rcc.h>
+#elif STM32H7
+# include <stm32h7xx_hal_rcc.h>
+#endif
+
 // Original code
 #if 0
 void
-reset() 
+reset()
 { cr = 1; }
 
 
 void
-write( u32 data ) 
+write( u32 data )
 { dr = rbit( data ); }
 
 
