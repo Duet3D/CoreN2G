@@ -27,6 +27,7 @@
 # define SAME5x				1
 # define SAME70				0
 # define RP2040				0
+# define RP2350				0
 # define STM32H5			0
 # define STM32H7			0
 #elif defined(__SAMD51N19A__)

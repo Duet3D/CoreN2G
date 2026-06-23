@@ -63,7 +63,13 @@ inline constexpr uint32_t GpioMask(Pin p) noexcept { return (uint32_t)1 << GpioP
 inline Pio *GpioPort(Pin p) noexcept { return (Pio*)((uint32_t)PIOA + GpioPortNumber(p) * 0x200); }
 #elif STM32
 inline GPIO_TypeDef *GpioPort(Pin p) noexcept { return (GPIO_TypeDef *)(GPIOA_BASE + GpioPortNumber(p) * 0x0400); }
-# endif
+#endif
+
+#if RPXXXX
+
+inline constexpr Pin GpioPin(unsigned int n) noexcept { return n; }
+
+#else
 
 /**
  * @brief Return the global pin number for a Port A pin
@@ -81,7 +87,7 @@ inline constexpr Pin PortAPin(unsigned int n) noexcept { return (Pin)n; }
  */
 inline constexpr Pin PortBPin(unsigned int n) noexcept { return (Pin)(PinsPerPort + n); }
 
-#if SAME5x || SAM4E || SAM4S || SAME70 || STM32H5 || STM32H7
+# if SAME5x || SAM4E || SAM4S || SAME70 || STM32H5 || STM32H7
 
 /**
  * @brief Return the global pin number for a Port C pin
@@ -91,9 +97,9 @@ inline constexpr Pin PortBPin(unsigned int n) noexcept { return (Pin)(PinsPerPor
  */
 inline constexpr Pin PortCPin(unsigned int n) noexcept { return (Pin)(2 * PinsPerPort + n); }
 
-#endif
+# endif
 
-#if SAME5x || SAM4E || SAME70 || STM32H5 || STM32H7
+# if SAME5x || SAM4E || SAME70 || STM32H5 || STM32H7
 
 /**
  * @brief Return the global pin number for a Port D pin
@@ -103,9 +109,9 @@ inline constexpr Pin PortCPin(unsigned int n) noexcept { return (Pin)(2 * PinsPe
  */
 inline constexpr Pin PortDPin(unsigned int n) noexcept { return (Pin)(3 * PinsPerPort + n); }
 
-#endif
+# endif
 
-#if SAM4E || SAME70 || STM32H5 || STM32H7
+# if SAM4E || SAME70 || STM32H5 || STM32H7
 
 /**
  * @brief Return the global pin number for a Port E pin
@@ -115,9 +121,9 @@ inline constexpr Pin PortDPin(unsigned int n) noexcept { return (Pin)(3 * PinsPe
  */
 inline constexpr Pin PortEPin(unsigned int n) noexcept { return (Pin)(4 * PinsPerPort + n); }
 
-#endif
+# endif
 
-#if STM32H5 || STM32H7
+# if STM32H5 || STM32H7
 
 /**
  * @brief Return the global pin number for a Port F pin
@@ -135,9 +141,9 @@ inline constexpr Pin PortFPin(unsigned int n) noexcept { return (Pin)(5 * PinsPe
  */
 inline constexpr Pin PortGPin(unsigned int n) noexcept { return (Pin)(6 * PinsPerPort + n); }
 
-#endif
+# endif
 
-#if STM32H7
+# if STM32H7
 
 /**
  * @brief Return the global pin number for a Port H pin
@@ -154,6 +160,8 @@ inline constexpr Pin PortHPin(unsigned int n) noexcept { return (Pin)(7 * PinsPe
  * @return The global pin number
  */
 inline constexpr Pin PortIPin(unsigned int n) noexcept { return (Pin)(8 * PinsPerPort + n); }
+
+# endif
 
 #endif
 
