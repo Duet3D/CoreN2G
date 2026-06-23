@@ -37,8 +37,6 @@ struct SpiParameters
 	Pin misoPin;
 	Pin sclkPin;
 	GpioPinFunction pinFunction;
-	uint8_t dataInPad;
-	uint8_t dataOutPad;
 	DmaChannel dmaChanTx;
 	DmaChannel dmaChanRx;
 	DmaPriority dmaPrioTx;

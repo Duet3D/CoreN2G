@@ -49,6 +49,7 @@
 extern "C" {
 # include <hardware/gpio.h>
 # include <cmsis_compiler.h>
+# include <RP2040.h>
 # include <system_RP2040.h>
 # include <core_cm0plus.h>
 }
@@ -257,6 +258,15 @@ uint32_t random32(void) noexcept;		// needed by lwip
 
 //********************** Mechanism for measuring and delaying for short amounts of time **************************
 
+#ifdef __cplusplus
+static inline constexpr uint32_t NanosecondsToCycles(uint32_t ns) noexcept
+#else
+static inline uint32_t NanosecondsToCycles(uint32_t ns) noexcept
+#endif
+{
+	return (ns * (uint64_t)SystemCoreClockFreq)/1000000000u;
+}
+
 #if STM32
 
 # include <STM32/dwt.h>
@@ -283,15 +293,6 @@ static inline uint32_t GetCurrentCycles() noexcept
 static inline uint32_t GetElapsedCyclesBetween(uint32_t startCycles, uint32_t endCycles) noexcept
 {
 	return endCycles - startCycles;
-}
-
-#ifdef __cplusplus
-static inline constexpr uint32_t NanosecondsToCycles(uint32_t ns) noexcept
-#else
-static inline uint32_t NanosecondsToCycles(uint32_t ns) noexcept
-#endif
-{
-	return (ns * (uint64_t)SystemCoreClockFreq)/1000000000u;
 }
 
 #else
