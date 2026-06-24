@@ -21,12 +21,12 @@
 extern "C" void debugPrintf(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
 
 #if STM32H7
-// We write in 256 bit alignment!
+// We write in 256 bit (32 byte) alignment!
 # define IS_FLASH_ALIGNED(addr) (((uint32_t)(addr) & (32-1)) == 0)
 #elif STM32H5
-// we write with 32bit alignment
+// We write with 128 bit (16 byte) alignment
 # define IS_FLASH_PROGRAM_ADDRESS(addr) (((addr) >= FLASH_BASE) && ((addr) <= FLASH_BASE+FLASH_SIZE))
-# define IS_FLASH_ALIGNED(addr) (((uint32_t)(addr) & (sizeof(uint32_t)-1)) == 0)
+# define IS_FLASH_ALIGNED(addr) (((uint32_t)(addr) & (16-1)) == 0)
 #else
 # error Unsupported processor
 #endif
@@ -100,6 +100,7 @@ uint32_t Flash::FlashGetSector(const uint32_t addr) noexcept
 		debugPrintf("Bad flash address %x\n", (unsigned)addr);
 		return IAP_BAD_SECTOR;
 	}
+
 	// Flash memory sector size on STM3H5 is 8kb
 	// On the H7 all sectors are 128Kb
 	uint32_t offset = addr - FLASH_BASE;
@@ -127,7 +128,6 @@ size_t Flash::FlashGetSectorLength(const uint32_t addr) noexcept
 # error Unsupported processor
 #endif
 }
-
 
 bool Flash::FlashEraseSector(const uint32_t sector) noexcept
 {
@@ -248,4 +248,3 @@ bool Flash::FlashRead(const uint32_t addr, uint8_t *data, const size_t len) noex
 }
 
 // End
-
