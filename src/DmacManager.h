@@ -16,6 +16,8 @@ constexpr unsigned int NumDmaChannelsSupported = 15;	// max is 32
 constexpr unsigned int NumDmaChannelsSupported = 8;		// max is 12
 #elif SAME70
 constexpr unsigned int NumDmaChannelsSupported = 10;	// max for SAME70 is 24
+#elif STM32H5 || STM32H7
+constexpr unsigned int NumDmaChannelsSupported = 8;		// each DMAC has 8 channels, there are usually 2 but we use only the first one
 #elif RP2040
 constexpr unsigned int NumDmaChannelsSupported = 8;		// max is 12
 #endif
@@ -27,13 +29,15 @@ enum class DmaCallbackReason : uint8_t
 #if SAME5x || SAMC21
 	error = DMAC_CHINTFLAG_TERR,
 	complete = DMAC_CHINTFLAG_TCMPL,
-	completeAndError = DMAC_CHINTFLAG_TERR | DMAC_CHINTFLAG_TCMPL
+	completeAndError = DMAC_CHINTFLAG_TERR | DMAC_CHINTFLAG_TCMPL,
 #elif SAME70
-	complete = 1
+	complete = 1,
+#elif STM32
+	complete = 1,
 #elif RP2040
 	complete = 1,
 	error = 2,
-	completeAndError = 3
+	completeAndError = 3,
 #endif
 };
 
