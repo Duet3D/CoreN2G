@@ -54,18 +54,35 @@ SerialCDC::SerialCDC(size_t interface_index) noexcept
 #endif
 }
 
+// All CDC interfaces share one TinyUSB device and tud_disconnect() acts on the whole device, so count
+// the running interfaces and only detach once the last one ends. That gives the host a clean disconnect
+// on reboot without one interface tearing the bus out from under the other. The initial attach is left
+// to tusb_init(); calling tud_connect() here as well races the USB task mid-enumeration and breaks it.
+static unsigned int numRunningCdcInterfaces = 0;
+
 void SerialCDC::Start(Pin p) noexcept
 {
 	while (!tud_inited()) { delay(10); }
 #ifdef RTOS
 	maxPacketSize = (tud_speed_get() == TUSB_SPEED_HIGH) ? 512 : 64;
 #endif
-	running = true;
+	if (!running)
+	{
+		running = true;
+		++numRunningCdcInterfaces;
+	}
 }
 
 void SerialCDC::end() noexcept
 {
-	running = false;
+	if (running)
+	{
+		running = false;
+		if (--numRunningCdcInterfaces == 0)
+		{
+			tud_disconnect();				// detach the device now that the last interface has ended
+		}
+	}
 }
 
 bool SerialCDC::IsConnected() const noexcept

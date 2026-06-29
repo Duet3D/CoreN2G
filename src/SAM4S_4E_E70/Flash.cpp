@@ -369,9 +369,20 @@ bool Flash::Write(uint32_t start, uint32_t length, const uint32_t *_ecv_array da
 	while (length != 0)
 	{
 		uint32_t ul_page_addr = compute_address(p_efc, us_page);
-		memcpyu32(reinterpret_cast<uint32_t *_ecv_array>(ul_page_addr), data, IFLASH_PAGE_SIZE/4);
 
-		if ((lastFlashError = efc_perform_command(p_efc, EFC_FCMD_WP, us_page)) != (uint32_t)EFC_RC_OK)
+		// chrishamm - suspend interrupts across the whole page write, not just the EFC command. The
+		// memcpyu32 below fills the flash page latch by writing to the flash address space; efc_perform_command
+		// only masks IRQs for the WP command itself, leaving the latch fill exposed. An interrupt landing in
+		// that window corrupts the latched page (flash readback != buffered data). This bites over USB but not
+		// SPI because the USB stack and its DMA stay live throughout an IAP update, whereas SPI is quiescent
+		// between transactions, so only the USB path fires interrupts during the latch fill
+		const irqflags_t flags = IrqSave();
+		memcpyu32(reinterpret_cast<uint32_t *_ecv_array>(ul_page_addr), data, IFLASH_PAGE_SIZE/4);
+		__DSB();						// make sure every latch write has committed before issuing the write command
+		lastFlashError = efc_perform_command(p_efc, EFC_FCMD_WP, us_page);
+		IrqRestore(flags);
+
+		if (lastFlashError != (uint32_t)EFC_RC_OK)
 		{
 			return false;
 		}
