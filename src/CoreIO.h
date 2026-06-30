@@ -812,7 +812,11 @@ enum class TimerOutput : uint8_t
 	none = 0xFF
 };
 
+// Extract the timer number from a TimerOutput
 inline unsigned int GetTimerNumber(TimerOutput timOut) noexcept { return ((unsigned int)timOut) >> 3; }
+
+// Return the clock frequency used by a give timer number
+inline uint32_t GetTimerClockFrequency(unsigned int timerNumber) noexcept { return 240'000'000; }		// all timers currently use a 240MHz clock
 
 /**
  * @brief Initialise a timer clock
@@ -828,7 +832,6 @@ void EnableTimerClock(unsigned int timerNumber, unsigned int gclkNum) noexcept;
  * @brief ADC input identifiers, encoding both the ADC device and the ADC input number within the device.
  * On the SAMC21 we only support the first ADC and the SDADC. On the SAME5x, SAM4S and SAmE70 we support both ADCs.
  * SAM4S only has one ADC.
- *
  */
 enum class AdcInput : uint8_t
 {
