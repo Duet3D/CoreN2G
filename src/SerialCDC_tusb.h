@@ -24,7 +24,7 @@ public:
 	explicit SerialCDC(size_t interface_index = 0) noexcept;
 
 	void Start(Pin p_vBusPin) noexcept;
-	void end() noexcept;
+	void end() noexcept;					// Tear down this CDC interface; detaches the whole device once the last interface ends
 
 	int available() noexcept override;
 	int read() noexcept override;

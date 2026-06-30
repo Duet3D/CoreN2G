@@ -106,6 +106,7 @@ uint32_t Flash::GetEraseRegionSize() noexcept
 #endif
 }
 
+// Return the flash memory size in bytes
 uint32_t Flash::GetFlashSize() noexcept
 {
 #if SAMC21
@@ -115,26 +116,39 @@ uint32_t Flash::GetFlashSize() noexcept
 
 #if SAME5x
 	const uint32_t deviceId = DSU->DID.reg;
-	const uint32_t family = deviceId >> 16;
+	const uint32_t family = (deviceId >> 16) & 0xFFBF;				// mask off the unused bit
 	const uint32_t member = deviceId & 0x000000FF;
+
+	constexpr uint16_t sizeTable_d51_e53_e54[] = { 1024, 512, 1024, 512, 1024, 512, 256, 512, 256 };
+	constexpr uint16_t sizeTable_e51[] = { 1024, 512, 512, 256, 1024, 0, 256 };
 
 	switch (family)
 	{
 	case 0x6006:	// SAMD51
-	case 0x6183:	// SAME53
-	case 0x6184:	// SAME54
 		if (member <= 8)
 		{
-			const uint32_t sizeTable[] = { 1024, 512, 1024, 512, 1024, 512, 256, 512, 256 };
-			return sizeTable[member] * 1024;
+			return (uint32_t)sizeTable_d51_e53_e54[member] * 1024;
 		}
 		break;
 
 	case 0x6181:	// SAME51
-		if (member <= 6)
+		if (member <= 4 || member == 6)
 		{
-			const uint32_t sizeTable[] = { 1024, 512, 512, 256, 1024, 512, 256 };
-			return sizeTable[member] * 1024;
+			return  (uint32_t)sizeTable_e51[member] * 1024;
+		}
+		break;
+
+	case 0x6183:	// SAME53
+		if (member >= 2 && member <= 6)
+		{
+			return  (uint32_t)sizeTable_d51_e53_e54[member] * 1024;
+		}
+		break;
+
+	case 0x6184:	// SAME54
+		if (member <= 4)
+		{
+			return  (uint32_t)sizeTable_d51_e53_e54[member] * 1024;
 		}
 		break;
 

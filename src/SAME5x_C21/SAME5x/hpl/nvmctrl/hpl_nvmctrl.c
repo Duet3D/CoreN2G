@@ -398,6 +398,13 @@ static void RAMFUNC _flash_program(void *const hw, const uint32_t dst_addr, cons
 		/* Wait until this module isn't busy */
 	}
 
+	// chrishamm - suspend interrupts across the page-buffer fill and the write command below. The loop that
+	// fills the NVM page buffer writes to the flash address space; an interrupt landing in it (the USB stack
+	// stays live throughout an IAP update) corrupts a single word of the page. SPI does not trigger it because
+	// it is quiescent between transactions. This mirrors the SAME70 EEFC latch-fill fix
+	const uint32_t primask = __get_PRIMASK();
+	__disable_irq();
+
 	hri_nvmctrl_write_CTRLB_reg(hw, NVMCTRL_CTRLB_CMD_PBC | NVMCTRL_CTRLB_CMDEX_KEY);
 
 	while (!hri_nvmctrl_get_STATUS_READY_bit(hw)) {
@@ -417,6 +424,8 @@ static void RAMFUNC _flash_program(void *const hw, const uint32_t dst_addr, cons
 
 	hri_nvmctrl_write_ADDR_reg(hw, dst_addr);
 	hri_nvmctrl_write_CTRLB_reg(hw, NVMCTRL_CTRLB_CMD_WP | NVMCTRL_CTRLB_CMDEX_KEY);
+
+	__set_PRIMASK(primask);
 }
 
 /**
