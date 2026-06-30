@@ -9,10 +9,6 @@
 #include <cmath>
 #include <cstring>
 
-#include <pmc/pmc.h>
-#include <pio/pio.h>
-#include <tc/tc.h>
-
 // Initialise this module
 extern void AnalogOut::Init() noexcept
 {
@@ -45,16 +41,21 @@ void AnalogOut::Write(Pin pin, float ulValue, PwmFrequency freq) noexcept
 	{
 		// We have a hardware timer output on this pin
 		const unsigned int timerNumber = GetTimerNumber(tout);
+		const unsigned int channel = GetTimerChannel(tout);
+		const bool inverted = GetIsOutputInverted(tout);
+		EnableTimerClock(timerNumber);
 		if (IsLowPowerTimer(timerNumber))
 		{
-			LPTIM_TypeDef *lpTimer = GetLowPowerHardwareTimer(timerNumber);
-			qq;
+			LPTIM_TypeDef *const lpTimer = GetLowPowerHardwareTimer(timerNumber);
+			(void)lpTimer;	//TODO
 		}
 		else
 		{
-			TIM_TypeDef *lpTimer = GetHardwareTimer(timerNumber);
-			qq;
+			TIM_TypeDef *const timer = GetHardwareTimer(timerNumber);
+			(void)timer;	//TODO
 		}
+		(void)channel;		//TODO
+		(void)inverted;		//TODO
 
 		return;
 	}

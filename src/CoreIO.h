@@ -836,7 +836,7 @@ inline bool IsLowPowerTimer(unsigned int timerNumber) noexcept { return timerNum
 inline unsigned int GetTimerChannel(TimerOutput timOut) noexcept { return (unsigned int)timOut & 3u; }
 
 // Return true if the output is negated, else false
-inline bool GetNegatedOutput(TimerOutput timOut) noexcept { return (unsigned int)timOut & 0x04; }
+inline bool GetIsOutputInverted(TimerOutput timOut) noexcept { return (unsigned int)timOut & 0x04; }
 
 // Get the hardware timer device corresponding to a timer number
 TIM_TypeDef *const GetHardwareTimer(unsigned int timerNumber) noexcept;
@@ -851,7 +851,7 @@ inline uint32_t GetTimerClockFrequency(unsigned int timerNumber) noexcept { retu
  * @param timerNumber The timer number that needs a clock
  * @param gclkNumThe GCLK number to use
  */
-void EnableTimerClock(unsigned int timerNumber, unsigned int gclkNum) noexcept;
+void EnableTimerClock(unsigned int timerNumber) noexcept;
 
 #endif
 
