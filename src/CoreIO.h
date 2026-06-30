@@ -792,7 +792,7 @@ static inline constexpr GpioPinFunction GetPeriNumber(PwmOutput pwm) noexcept
 
 enum class TimerOutput : uint8_t
 {
-	// Bits 0..2 are the output identifier, bits 3..7 are the timer number
+	// Bits 0..2 are the output identifier, bits 3..7 are the timer number. Timer numbers start at 1.
 	tim1_ch1 = 0x08, tim1_ch2, tim1_ch3, tim1_ch4, tim1_ch1n = 0x0C, tim1_ch2n, tim1_ch3n, tim1_ch4n,
 	tim2_ch1 = 0x10, tim2_ch2, tim2_ch3, tim2_ch4,
 	tim3_ch1 = 0x18, tim3_ch2, tim3_ch3, tim3_ch4,
@@ -800,20 +800,47 @@ enum class TimerOutput : uint8_t
 	tim5_ch1 = 0x28, tim5_ch2, tim5_ch3, tim5_ch4,
 	tim8_ch1 = 0x40, tim8_ch2, tim8_ch3, tim8_ch4, tim8_ch1n = 0x44, tim8_ch2n, tim8_ch3n, tim8_ch4n,
 	tim12_ch1 = 0x60, tim12_ch2,
+#if STM32H7
 	tim13_ch1 = 0x68, tim13_ch2,
 	tim14_ch1 = 0x70, tim14_ch2,
+#endif
 	tim15_ch1 = 0x78, tim15_ch2, tim15_ch2n = 0x7C,
+#if STM32H7
 	tim16_ch1 = 0x80, tim16_ch2, tim16_ch2n = 0x84,
 	tim17_ch1 = 0x88, tim17_ch2, tim17_ch2n = 0x8C,
+# if defined(STM32H723xx)
+	tim23_ch1 = 0xB8,
+	tim24_ch1 = 0xC0,
+# endif
+#endif
 
-	// We number the low power timers 28 and 29
-	lptim1_ch1 = 0xE0, lptim1_ch2,
+	// We number the low power timers from 26
+	lptim1_ch1 = 0xD0, lptim1_ch2,
+	lptim2_ch1 = 0xD8,
+#if STM32H7
+	lptim3_ch1 = 0xE0,
+	lptim4_ch1 = 0xE8,
+	lptim4_ch1 = 0xF0,
+#endif
 
 	none = 0xFF
 };
 
+
 // Extract the timer number from a TimerOutput
-inline unsigned int GetTimerNumber(TimerOutput timOut) noexcept { return ((unsigned int)timOut) >> 3; }
+inline constexpr unsigned int GetTimerNumber(TimerOutput timOut) noexcept { return ((unsigned int)timOut) >> 3; }
+constexpr unsigned int FirstLowPowerTimerNumber = GetTimerNumber(TimerOutput::lptim1_ch1);
+inline bool IsLowPowerTimer(unsigned int timerNumber) noexcept { return timerNumber >= FirstLowPowerTimerNumber; }
+
+// Extract the output channel number(0-3) from a TimerOutput
+inline unsigned int GetTimerChannel(TimerOutput timOut) noexcept { return (unsigned int)timOut & 3u; }
+
+// Return true if the output is negated, else false
+inline bool GetNegatedOutput(TimerOutput timOut) noexcept { return (unsigned int)timOut & 0x04; }
+
+// Get the hardware timer device corresponding to a timer number
+TIM_TypeDef *const GetHardwareTimer(unsigned int timerNumber) noexcept;
+LPTIM_TypeDef *const GetLowPowerHardwareTimer(unsigned int timerNumber) noexcept;
 
 // Return the clock frequency used by a give timer number
 inline uint32_t GetTimerClockFrequency(unsigned int timerNumber) noexcept { return 240'000'000; }		// all timers currently use a 240MHz clock

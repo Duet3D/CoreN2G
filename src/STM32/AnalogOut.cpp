@@ -1,59 +1,66 @@
 /*
- Copyright (c) 2011 Arduino.  All right reserved.
-
- This library is free software; you can redistribute it and/or
- modify it under the terms of the GNU Lesser General Public
- License as published by the Free Software Foundation; either
- version 2.1 of the License, or (at your option) any later version.
-
- This library is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- See the GNU Lesser General Public License for more details.
-
- You should have received a copy of the GNU Lesser General Public
- License along with this library; if not, write to the Free Software
- Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ * AnalogOutput.cpp
+ *
+ *      Author: David
+ *      License: GPL 3.0
  */
-#ifdef RTOS
-#include <CoreImp.h>
+
 #include <AnalogOut.h>
-#include <HybridPWM.h>
-extern "C" void debugPrintf(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
+#include <cmath>
+#include <cstring>
+
+#include <pmc/pmc.h>
+#include <pio/pio.h>
+#include <tc/tc.h>
+
 // Initialise this module
-extern void AnalogOut::Init()
+extern void AnalogOut::Init() noexcept
 {
 	// Nothing to do yet
 }
 
-// Analog write to DAC, PWM, TC or plain output pin
+// Convert a float in 0..1 to unsigned integer in 0..N
+static inline uint32_t ConvertRange(float f, uint32_t top) noexcept
+pre(0.0 <= f; f <= 1.0)
+post(_ecv_result <= top)
+{
+	return lrintf(f * (float)top);
+}
+
+// Analog write to a timer or plain output pin
 // Setting the frequency of a TC or PWM pin to zero resets it so that the next call to AnalogOut with a non-zero frequency
 // will re-initialise it. The pinMode function relies on this.
 void AnalogOut::Write(Pin pin, float ulValue, PwmFrequency freq) noexcept
 {
-	if (pin == NoPin) return;
-	ulValue = constrain<float>(ulValue, 0.0, 1.0);
-	HybridPWMPin* hp = HybridPWMPin::find(pin);
-	if (hp == nullptr)
+	const PinDescriptionBase *_ecv_from _ecv_null const pinDesc = AppGetPinDescription(pin);
+	if (pinDesc == nullptr || std::isnan(ulValue))
 	{
-		// RRF relies on doing a write to allocate a PWM channel, so we do that here
-		hp = HybridPWMPin::allocate(pin, ulValue);
-		if (hp == nullptr)
-			return;
-	}
-	hp->set(ulValue, freq);
-}
-
-void AnalogOut::ReleasePWMPin(Pin pin)
-{
-	HybridPWMPin* hp = HybridPWMPin::find(pin);
-	if (hp == nullptr)
-	{
-		debugPrintf("Release of unallocated PWM pin %x\n", static_cast<int>(pin));
 		return;
 	}
-	//debugPrintf("Release of allocated PWM pin %x\n", static_cast<int>(pin));
-	hp->free();
+
+	ulValue = constrain<float>(ulValue, 0.0, 1.0);
+	const TimerOutput tout = pinDesc->to;
+
+	if (tout != TimerOutput::none)
+	{
+		// We have a hardware timer output on this pin
+		const unsigned int timerNumber = GetTimerNumber(tout);
+		if (IsLowPowerTimer(timerNumber))
+		{
+			LPTIM_TypeDef *lpTimer = GetLowPowerHardwareTimer(timerNumber);
+			qq;
+		}
+		else
+		{
+			TIM_TypeDef *lpTimer = GetHardwareTimer(timerNumber);
+			qq;
+		}
+
+		return;
+	}
+
+	// Fall back to digital write
+	SetPinMode(pin, (ulValue < 0.5) ? OUTPUT_LOW : OUTPUT_HIGH);
 }
+
 // End
-#endif

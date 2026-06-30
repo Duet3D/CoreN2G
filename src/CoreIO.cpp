@@ -479,6 +479,43 @@ extern "C" void digitalWrite(Pin pin, bool high) noexcept
 	}
 }
 
+#if STM32
+
+// List of hardware timers
+TIM_TypeDef *const _ecv_null Timers[] =
+{
+	TIM1, TIM2, TIM3, TIM4, TIM5, TIM6, TIM7, TIM8,
+	nullptr, nullptr, nullptr,										// there are no timer 9, 10 or 11
+	TIM12,
+#if STM32H7
+	TIM13, TIM14,
+#else
+	nullptr, nullptr,												// no timer 13 or 14 on STM32H523
+#endif
+	TIM15,
+#if STM32H7
+	TIM16, TIM17,
+# if defined(STM32H723xx)
+	nullptr, nullptr, nullptr, nullptr, nullptr,					// no timers 18-22
+	TIM23, TIM24,
+# endif
+#endif
+};
+
+// List of low power hardware timers
+LPTIM_TypeDef *const _ecv_null LpTimers[] =
+{
+	LPTIM1, LPTIM2
+#if STM32H7
+	LPTIM3, LPTIM4, LPTIM5
+#endif
+};
+
+TIM_TypeDef *const GetHardwareTimer(unsigned int timerNumber) noexcept { return Timers[timerNumber - 1]; }
+LPTIM_TypeDef *const GetLowPowerHardwareTimer(unsigned int lpTimerNumber) noexcept { return LpTimers[lpTimerNumber - FirstLowPowerTimerNumber]; }
+
+#endif
+
 // Tick handler. Ideally we would declare this as atomic but that adds a lot of overhead when fetching or incrementing it.
 static volatile uint64_t g_ms_ticks = 0;		// Count of 1ms time ticks
 
@@ -963,10 +1000,19 @@ void EnableTimerClock(unsigned int timerNumber, unsigned int gclkNum) noexcept
 	case 22:	 __HAL_RCC_TIM22_CLK_ENABLE(); break;
 #endif
 #if defined(LPTIM1_BASE)
-	case 28:	__HAL_RCC_LPTIM1_CLK_ENABLE(); break;				// low power timer 1
+	case FirstLowPowerTimerNumber:		__HAL_RCC_LPTIM1_CLK_ENABLE(); break;			// low power timer 1
 #endif
 #if defined(LPTIM2_BASE)
-	case 29:	__HAL_RCC_LPTIM2_CLK_ENABLE(); break;				// low power timer 2
+	case FirstLowPowerTimerNumber + 1:	__HAL_RCC_LPTIM2_CLK_ENABLE(); break;			// low power timer 2
+#endif
+#if defined(LPTIM3_BASE)
+	case FirstLowPowerTimerNumber + 2:	__HAL_RCC_LPTIM3_CLK_ENABLE(); break;			// low power timer 3
+#endif
+#if defined(LPTIM4_BASE)
+	case FirstLowPowerTimerNumber + 3:	__HAL_RCC_LPTIM4_CLK_ENABLE(); break;			// low power timer 4
+#endif
+#if defined(LPTIM5_BASE)
+	case FirstLowPowerTimerNumber + 4:	__HAL_RCC_LPTIM5_CLK_ENABLE(); break;			// low power timer 5
 #endif
 	}
 }
