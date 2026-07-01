@@ -9,8 +9,14 @@
 #include <cmath>
 #include <cstring>
 
+// Current frequency of each timer
+static uint16_t timerFreq[32] = {0};
+
+// Current period of each timer. Only needed for the low-power timers.
+//static uint32_t timerPeriod[32] = {0};
+
 // Initialise this module
-extern void AnalogOut::Init() noexcept
+void AnalogOut::Init() noexcept
 {
 	// Nothing to do yet
 }
@@ -21,6 +27,21 @@ pre(0.0 <= f; f <= 1.0)
 post(_ecv_result <= top)
 {
 	return lrintf(f * (float)top);
+}
+
+static void SetCompareValue(TIM_TypeDef *timer, unsigned int channel, uint32_t val) noexcept
+{
+	switch (channel)
+	{
+	case 0:		timer->CCR1 = val; break;
+	case 1:		timer->CCR2 = val; break;
+	case 2:		timer->CCR3 = val; break;
+	case 3:		timer->CCR4 = val; break;
+#if STM32H7
+	case 4:		timer->CCR5 = val; break;
+	case 5:		timer->CCR6 = val; break;
+#endif
+	}
 }
 
 // Analog write to a timer or plain output pin
@@ -41,23 +62,77 @@ void AnalogOut::Write(Pin pin, float ulValue, PwmFrequency freq) noexcept
 	{
 		// We have a hardware timer output on this pin
 		const unsigned int timerNumber = GetTimerNumber(tout);
-		const unsigned int channel = GetTimerChannel(tout);
-		const bool inverted = GetIsOutputInverted(tout);
-		EnableTimerClock(timerNumber);
-		if (IsLowPowerTimer(timerNumber))
+		if (freq == 0)
 		{
-			LPTIM_TypeDef *const lpTimer = GetLowPowerHardwareTimer(timerNumber);
-			(void)lpTimer;	//TODO
+			timerFreq[timerNumber] = freq;
+			// Fall through to digital output
 		}
 		else
 		{
-			TIM_TypeDef *const timer = GetHardwareTimer(timerNumber);
-			(void)timer;	//TODO
-		}
-		(void)channel;		//TODO
-		(void)inverted;		//TODO
+			const bool reprogram = (freq != timerFreq[timerNumber]);
+			if (reprogram)
+			{
+				EnableTimerClock(timerNumber);
+				timerFreq[timerNumber] = freq;
+			}
 
-		return;
+			const unsigned int channel = GetTimerChannel(tout);
+			if (IsLowPowerTimer(timerNumber))
+			{
+#if 1
+				// The low power timer doesn't allow us to use the full PWM frequency range because of the limited prescaling (min. 28Hz @ 240MHz clock)
+				// Let's avoid using it if we can. For now fall through to digitalWrite.
+#else
+				LPTIM_TypeDef *const lpTimer = GetLowPowerHardwareTimer(timerNumber);
+				if (reprogram)
+				{
+					//TODO
+				}
+				(void)lpTimer;	//TODO
+#endif
+			}
+			else
+			{
+				TIM_TypeDef *const timer = GetHardwareTimer(timerNumber);
+				const uint32_t val = ConvertRange(ulValue, 65536);
+				if (reprogram)
+				{
+					timer->CR1 &= ~(TIM_CR1_CEN | TIM_CR1_UIFREMAP | TIM_CR1_ARPE | TIM_CR1_OPM | TIM_CR1_URS | TIM_CR1_UDIS | TIM_CR1_CKD);
+
+					// All regular timers can take a prescale factor of between 1 and 65535. We run all timers in 16-bit compare mode.
+					const uint16_t prescaler = (uint16_t)((GetTimerClockFrequency(timerNumber)/(uint32_t)freq) >> 16);
+					timer->PSC = prescaler;
+					timer->ARR = 0x0000FFFF;
+
+					// Set the PWM mode
+					const uint32_t pwmMode = (GetIsOutputInverted(tout)) ? 7 : 6;
+					switch (channel)
+					{
+					case 0:		timer->CCMR1 = (timer->CCMR1 & ~(1u << 16 | 7u << 4))  | pwmMode << 4; break;
+					case 1:		timer->CCMR1 = (timer->CCMR1 & ~(1u << 24 | 7u << 12)) | pwmMode << 12; break;
+					case 2:		timer->CCMR2 = (timer->CCMR2 & ~(1u << 16 | 7u << 4))  | pwmMode << 4; break;
+					case 3:		timer->CCMR2 = (timer->CCMR2 & ~(1u << 24 | 7u << 12)) | pwmMode << 12; break;
+#if STM32H7
+					case 4:		timer->CCMR3 = (timer->CCMR3 & ~(1u << 16 | 7u << 4))  | pwmMode << 4; break;
+					case 5:		timer->CCMR3 = (timer->CCMR3 & ~(1u << 24 | 7u << 12)) | pwmMode << 12; break;
+#endif
+					}
+
+					SetCompareValue(timer, channel, val);
+
+					// Set the output pin function
+					SetPinFunction(pin, GetPinFunction(tout));
+
+					// Start the timer
+			        timer->CR1 |= TIM_CR1_CEN;
+				}
+				else
+				{
+					SetCompareValue(timer, channel, val);
+				}
+				return;
+			}
+		}
 	}
 
 	// Fall back to digital write

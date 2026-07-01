@@ -790,53 +790,66 @@ static inline constexpr GpioPinFunction GetPeriNumber(PwmOutput pwm) noexcept
 
 #if STM32
 
-enum class TimerOutput : uint8_t
+enum class TimerOutput : uint16_t
 {
-	// Bits 0..2 are the output identifier, bits 3..7 are the timer number. Timer numbers start at 1.
-	tim1_ch1 = 0x08, tim1_ch2, tim1_ch3, tim1_ch4, tim1_ch1n = 0x0C, tim1_ch2n, tim1_ch3n, tim1_ch4n,
-	tim2_ch1 = 0x10, tim2_ch2, tim2_ch3, tim2_ch4,
-	tim3_ch1 = 0x18, tim3_ch2, tim3_ch3, tim3_ch4,
-	tim4_ch1 = 0x20, tim4_ch2, tim4_ch3, tim4_ch4,
-	tim5_ch1 = 0x28, tim5_ch2, tim5_ch3, tim5_ch4,
-	tim8_ch1 = 0x40, tim8_ch2, tim8_ch3, tim8_ch4, tim8_ch1n = 0x44, tim8_ch2n, tim8_ch3n, tim8_ch4n,
-	tim12_ch1 = 0x60, tim12_ch2,
+	// Bits 0-4 are the timer number
+	// Bits 5-7 are the channel number
+	// Bit 8 is the output inversion flag
+	// Bits 9-12 are the pin function number
+
+	none = 0,									// timer numbers start at 1 so we can use 0 for this
+
+		// Timer numbers
+	tim1 = 1, tim2, tim3, tim4, tim5,
+	tim8 = 8,
+	tim12 = 12,
 #if STM32H7
-	tim13_ch1 = 0x68, tim13_ch2,
-	tim14_ch1 = 0x70, tim14_ch2,
+	tim13 = 13, tim14,
 #endif
-	tim15_ch1 = 0x78, tim15_ch2, tim15_ch2n = 0x7C,
+	tim15 = 15,
 #if STM32H7
-	tim16_ch1 = 0x80, tim16_ch2, tim16_ch2n = 0x84,
-	tim17_ch1 = 0x88, tim17_ch2, tim17_ch2n = 0x8C,
+	tim16 = 16, tim17,
 # if defined(STM32H723xx)
-	tim23_ch1 = 0xB8,
-	tim24_ch1 = 0xC0,
+	tim23 = 23, tim24,
 # endif
 #endif
+	lptim1 = 25, lptim2,						// we number the low power timers from 25
 
-	// We number the low power timers from 26
-	lptim1_ch1 = 0xD0, lptim1_ch2,
-	lptim2_ch1 = 0xD8,
+	// Channel numbers
+	ch1 = 0, ch2 = 0x20, ch3 = 0x40, ch4 = 0x60,
 #if STM32H7
-	lptim3_ch1 = 0xE0,
-	lptim4_ch1 = 0xE8,
-	lptim4_ch1 = 0xF0,
+	ch5 = 0x80, ch6 = 0xA0,
 #endif
 
-	none = 0xFF
+	// Output inversion
+	neg = 0x100,
+
+	// Combinations. Add any extras that additional boards/processors need here.
+	tim1_ch1 = tim1 | ch1,
+	tim1_ch2 = tim1 | ch2,
+	tim2_ch4 = tim2 | ch4,
+	tim4_ch1 = tim4 | ch1,
+	tim8_ch1 = tim8 | ch1,
+	tim15_ch1 = tim15 | ch1,
+	lptim1_ch1 = lptim1 | ch1,
 };
 
+inline constexpr TimerOutput operator |(TimerOutput a, GpioPinFunction f) noexcept { return (TimerOutput)((uint16_t)a | ((uint16_t)f) << 9); }
 
 // Extract the timer number from a TimerOutput
-inline constexpr unsigned int GetTimerNumber(TimerOutput timOut) noexcept { return ((unsigned int)timOut) >> 3; }
-constexpr unsigned int FirstLowPowerTimerNumber = GetTimerNumber(TimerOutput::lptim1_ch1);
-inline bool IsLowPowerTimer(unsigned int timerNumber) noexcept { return timerNumber >= FirstLowPowerTimerNumber; }
+inline constexpr unsigned int GetTimerNumber(TimerOutput timOut) noexcept { return (unsigned int)timOut & 0x1f; }
+constexpr unsigned int FirstLowPowerTimerNumber = GetTimerNumber(TimerOutput::lptim1);
+inline constexpr bool IsLowPowerTimer(unsigned int timerNumber) noexcept { return timerNumber >= FirstLowPowerTimerNumber; }
+inline constexpr bool Is32bitTimer(unsigned int timerNumber) noexcept { return timerNumber == 3 || timerNumber == 5; }
 
 // Extract the output channel number(0-3) from a TimerOutput
-inline unsigned int GetTimerChannel(TimerOutput timOut) noexcept { return (unsigned int)timOut & 3u; }
+inline constexpr unsigned int GetTimerChannel(TimerOutput timOut) noexcept { return ((unsigned int)timOut >> 5) & 3; }
 
 // Return true if the output is negated, else false
-inline bool GetIsOutputInverted(TimerOutput timOut) noexcept { return (unsigned int)timOut & 0x04; }
+inline constexpr bool GetIsOutputInverted(TimerOutput timOut) noexcept { return (unsigned int)timOut & 0x80; }
+
+// Get the pin function
+inline constexpr GpioPinFunction GetPinFunction(TimerOutput timOut) noexcept { return (GpioPinFunction)((uint16_t)timOut >> 9); }
 
 // Get the hardware timer device corresponding to a timer number
 TIM_TypeDef *const GetHardwareTimer(unsigned int timerNumber) noexcept;
