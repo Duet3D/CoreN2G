@@ -278,7 +278,7 @@ public:
 #endif
 	}
 
-#if !SAME70 && !RP2040
+#if !SAME70 && !STM32 && !RP2040
 	uint16_t GetTimeStampPeriod() const noexcept
 	{
 		return bitPeriod;
