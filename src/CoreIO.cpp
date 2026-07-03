@@ -205,10 +205,12 @@ void SetDriveStrength(Pin p, unsigned int strength) noexcept
 		{
 			PORT->Group[GpioPortNumber(p)].PINCFG[GpioPinNumber(p)].reg &= ~PORT_PINCFG_DRVSTR;
 		}
+#elif SAM4E || SAM4S
+		// These processors don't support setting the drive strength
 #elif RP2XXX
 		gpio_set_drive_strength(p, gpio_drive_strength((gpio_drive_strength)min<unsigned int>(strength, 3)));	// 2, 4, 8 and 12mA can be selected
 #else
-		// This is a NOP on other processors
+# error Unsupported processor
 #endif
 	}
 }
