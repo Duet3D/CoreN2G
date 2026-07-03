@@ -254,10 +254,12 @@ void SetDriveStrength(Pin p, unsigned int strength) noexcept
 		GPIO_TypeDef * const p_pio = GpioPort(p);
 		const unsigned int shift2 = GpioPinNumber(p) << 1;
 		p_pio->OSPEEDR = (p_pio->OSPEEDR & ~((strength & 0x03) << shift2));
-#elif RPXXXX
+#elif SAM4E || SAM4S
+		// These processors don't support setting the drive strength
+#elif RP2XXX
 		gpio_set_drive_strength(p, gpio_drive_strength((gpio_drive_strength)min<unsigned int>(strength, 3)));	// 2, 4, 8 and 12mA can be selected
 #else
-		// This is a NOP on other processors
+# error Unsupported processor
 #endif
 	}
 }
