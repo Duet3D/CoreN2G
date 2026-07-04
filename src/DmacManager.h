@@ -18,7 +18,7 @@ constexpr unsigned int NumDmaChannelsSupported = 8;		// max is 12
 constexpr unsigned int NumDmaChannelsSupported = 10;	// max for SAME70 is 24
 #elif STM32H5 || STM32H7
 constexpr unsigned int NumDmaChannelsSupported = 8;		// each DMAC has 8 channels, there are usually 2 but we use only the first one
-#elif RP2040
+#elif RPXXXX
 constexpr unsigned int NumDmaChannelsSupported = 8;		// max is 12
 #endif
 
@@ -34,7 +34,7 @@ enum class DmaCallbackReason : uint8_t
 	complete = 1,
 #elif STM32
 	complete = 1,
-#elif RP2040
+#elif RPXXXX
 	complete = 1,
 	error = 2,
 	completeAndError = 3,
@@ -248,7 +248,7 @@ enum class DmaTrigSource : uint8_t
 	i2sc1txr,
 	i2sc1rxr,
 	numPeripheralIds
-#elif RP2040
+#elif RPXXXX
 	pio0tx0, pio0tx1, pio0tx2, pio0tx3,
 	pio0rx0, pio0rx1, pio0rx2, pio0rx3,
 	pio1tx0, pio1tx1, pio1tx2, pio1tx3,
@@ -258,8 +258,35 @@ enum class DmaTrigSource : uint8_t
 	pwmwrap0, pwmwrap1, pwmwrap2, pwmwrap3, pwmwrap4, pwmwrap5, pwmwrap6, pwmwrap7,
 	i2c0tx, i2c0rx, i2c1tx, i2c1rx,
 	adc, xipstream, xipssitx, xipssirx
-#elif STM32
+#elif STM32H5
+	adc1 = 0, adc2, dac1_ch1, dac1_ch2, tim6_upd, tim7_upd, spi1_rx, spi1_tx,				// 0-7
+	spi2_rx, spi2_tx, spi3_rx, spi3_tx, i2c1_rx, i2c1_tx,									// 8-13
+	i2c2_rx = 15, i2c2_tx,																	// 15-16
+	i2c3_rx = 18, i2c3_tx,																	// 18-19
+	usart1_rx = 21, usart1_tx, usart2_rx, usart2_tx, usart3_rx, usart3_tx,					// 21-26
+	uart4_rx = 27, uart4_tx, uart5_rx, uart5_tx, usart6_rx, usart6_tx, 						// 27-32																	// 32-39
+	lpuart1_rx = 45, lpuart1_tx, spi4_rx, spi4_tx,											// 45-48
+	ospi1 = 57, tim1_cc1, tim1_cc2, tim1_cc3, tim1_cc4, tim1_upd, tim1_trg, tim1_com,		// 57-64
+	tim8_cc1 = 65, tim8_cc2, tim8_cc3, tim8_cc4, tim8_upd, tim8_tig, tim8_com,				// 65-71
+	tim2_cc1 = 72, tim2_cc2, tim2_cc3, tim2_cc4, tim2_upd,									// 72-76
+	tim3_cc1 = 77, tim3_cc2, tim3_cc3, tim3_cc4, tim3_upd, tim3_trg,						// 77-82
+	tim4_cc1 = 83, tim4_cc2, tim4_cc3, tim4_cc4, tim4_upd,									// 83-87
+	tim5_cc1 = 88, tim5_cc2, tim5_cc3, tim5_cc4, tim5_upd, tim5_trg,						// 88-93
+	tim15_cc1 = 94, tim15_upd, tim15_trg, tim15_com,										// 94-97
+	lptim1_ic1 = 102, lptim1_ic2, lptim1_ue, lptim2_ic1, lptim2_ic2, lptim2_ue,				// 102-107
+	dcmi_or_pssi = 108, aes_out, aes_in, hash_in, ucpd1_rx, ucpd1_tx,						// 108-113
+	saes_out = 118, saes_in, i3c1_rx, i3c1_tx, i3c1_tc, i3c1_rs,							// 118-123
+	i3c2_rx = 136, i3c2_tx, i3c2_tc, i3c2_rs,												// 136-139
+#elif STM32H7
+# if defined(STM32H743xx)
+	adc1 = 9, adc2,
+	tim1_ch1 = 11, tim1_ch2, tim1_ch3, tim1_ch4, tim1_up, tim1_trig, tim1_com,
+	tim2_ch1 = 18, tim2_ch2, tim2_ch3, tim2_ch4, tim2_up,
+	tim3_ch1 = 23, tim3_ch2, tim3_ch3, tim3_ch4, tim3_up,
+	//TODO finish this, see table 122 of rm0433
+# elif defined(STM32H723xx)
 	//TODO
+# endif
 #else
 # error Unsupported processor
 #endif
@@ -288,7 +315,7 @@ static inline uint8_t GetSercomRxTrigSource(uint8_t sercomNumber) noexcept
 namespace DmacManager
 {
 	void Init() noexcept;
-#if RP2040
+#if RPXXXX
 	void SetBtctrl(DmaChannel channel, uint32_t val) noexcept;								// warning: call SetBtctrl, SetSourceAddress and SetDestinationAddress BEFORE SetDataLength!
 #else
 	void SetBtctrl(DmaChannel channel, uint16_t val) noexcept;								// warning: call SetBtctrl, SetSourceAddress and SetDestinationAddress BEFORE SetDataLength!
@@ -298,7 +325,7 @@ namespace DmacManager
 	void SetDataLength(DmaChannel channel, uint32_t amount) noexcept;						// warning: call SetBtctrl, SetSourceAddress and SetDestinationAddress BEFORE SetDataLength!
 	void SetTriggerSource(DmaChannel channel, DmaTrigSource source) noexcept;
 
-#if !RP2040
+#if SAME5x || SAMC21
 	void SetTriggerSourceSercomTx(DmaChannel channel, uint8_t sercomNumber) noexcept;
 	void SetTriggerSourceSercomRx(DmaChannel channel, uint8_t sercomNumber) noexcept;
 	void SetArbitrationLevel(DmaChannel channel, uint8_t level) noexcept;
@@ -312,7 +339,7 @@ namespace DmacManager
 	void SetInterruptCallback(DmaChannel channel, DmaCallbackFunction fn, CallbackParameter param) noexcept;
 	void EnableCompletedInterrupt(DmaChannel channel) noexcept;
 	void DisableCompletedInterrupt(DmaChannel channel) noexcept;
-#if RP2040
+#if RPXXXX
 	uint32_t GetAndClearChannelStatus(DmaChannel channel) noexcept;
 #else
 	uint8_t GetAndClearChannelStatus(DmaChannel channel) noexcept;
