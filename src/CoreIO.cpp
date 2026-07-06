@@ -505,7 +505,7 @@ TIM_TypeDef *const _ecv_null Timers[] =
 // List of low power hardware timers
 LPTIM_TypeDef *const _ecv_null LpTimers[] =
 {
-	LPTIM1, LPTIM2
+	LPTIM1, LPTIM2,
 #if STM32H7
 	LPTIM3, LPTIM4, LPTIM5
 #endif
@@ -929,7 +929,7 @@ void EnableTcClock(unsigned int tcNumber, unsigned int gclkNum) noexcept
 #elif STM32
 
 // Initialise a timer clock
-void EnableTimerClock(unsigned int timerNumber, unsigned int gclkNum) noexcept
+void EnableTimerClock(unsigned int timerNumber) noexcept
 {
 	switch (timerNumber)
 	{
@@ -1013,6 +1013,21 @@ void EnableTimerClock(unsigned int timerNumber, unsigned int gclkNum) noexcept
 #endif
 #if defined(LPTIM5_BASE)
 	case FirstLowPowerTimerNumber + 4:	__HAL_RCC_LPTIM5_CLK_ENABLE(); break;			// low power timer 5
+#endif
+	}
+}
+
+// Initialise a SPI clock
+void EnableSpiClock(unsigned int spiInstanceNumber) noexcept
+{
+	switch (spiInstanceNumber)
+	{
+	case 1:		__HAL_RCC_SPI1_CLK_ENABLE(); break;
+	case 2:		__HAL_RCC_SPI2_CLK_ENABLE(); break;
+	case 3:		__HAL_RCC_SPI3_CLK_ENABLE(); break;
+	case 4:		__HAL_RCC_SPI4_CLK_ENABLE(); break;
+#if defined(SPI5_BASE)
+	case 5:		__HAL_RCC_SPI5_CLK_ENABLE(); break;
 #endif
 	}
 }

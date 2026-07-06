@@ -16,8 +16,8 @@ constexpr unsigned int NumDmaChannelsSupported = 15;	// max is 32
 constexpr unsigned int NumDmaChannelsSupported = 8;		// max is 12
 #elif SAME70
 constexpr unsigned int NumDmaChannelsSupported = 10;	// max for SAME70 is 24
-#elif STM32H5 || STM32H7
-constexpr unsigned int NumDmaChannelsSupported = 8;		// each DMAC has 8 channels, there are usually 2 but we use only the first one
+#elif STM32
+constexpr unsigned int NumDmaChannelsSupported = 16;	// each DMAC has 8 channels and there are usually 2 of them
 #elif RPXXXX
 constexpr unsigned int NumDmaChannelsSupported = 8;		// max is 12
 #endif
@@ -49,61 +49,30 @@ enum class DmaTrigSource : uint8_t
 
 	disable = 0,
 	rtc,
-	dsu_dcc0,
-	dsu_dcc1,
+	dsu_dcc0, dsu_dcc1,
 
-	sercom0_rx,
-	sercom0_tx,
-	sercom1_rx,
-	sercom1_tx,
-	sercom2_rx,
-	sercom2_tx,
-	sercom3_rx,
-	sercom3_tx,
-	sercom4_rx,
-	sercom4_tx,
-	sercom5_rx,
-	sercom5_tx,
-	sercom6_rx,
-	sercom6_tx,
-	sercom7_rx,
-	sercom7_tx,
+	sercom0_rx, sercom0_tx, sercom1_rx, sercom1_tx, sercom2_rx, sercom2_tx, sercom3_rx, sercom3_tx,
+	sercom4_rx, sercom4_tx, sercom5_rx, sercom5_tx, sercom6_rx, sercom6_tx, sercom7_rx, sercom7_tx,
 
 	can0_debug,
 	can1_debug,
 
-	tcc0_ovf = 0x16,
-	tcc0_mc = 0x17,
-	tcc1_ovf = 0x1D,
-	tcc1_mc = 0x1E,
-	tcc2_ovf = 0x22,
-	tcc2_mc = 0x23,
-	tcc3_ovf = 0x26,
-	tcc3_mc = 0x27,
-	tcc4_ovf = 0x29,
-	tcc4_mc = 0x2A,
+	tcc0_ovf = 0x16, tcc0_mc,
+	tcc1_ovf = 0x1D, tcc1_mc,
+	tcc2_ovf = 0x22, tcc2_mc,
+	tcc3_ovf = 0x26, tcc3_mc,
+	tcc4_ovf = 0x29, tcc4_mc,
 
-	tc0_ovf = 0x2C,
-	tc0_mc = 0x2D,
-	tc1_ovf = 0x2F,
-	tc1_mc = 0x30,
-	tc2_ovf = 0x32,
-	tc2_mc = 0x33,
-	tc3_ovf = 0x35,
-	tc3_mc = 0x36,
-	tc4_ovf = 0x38,
-	tc4_mc = 0x39,
-	tc5_ovf = 0x3B,
-	tc5_mc = 0x3C,
-	tc6_ovf = 0x3E,
-	tc6_mc = 0x3F,
-	tc7_ovf = 0x40,
-	tc7_mc = 0x41,
+	tc0_ovf = 0x2C, tc0_mc,
+	tc1_ovf = 0x2F, tc1_mc,
+	tc2_ovf = 0x32, tc2_mc,
+	tc3_ovf = 0x35, tc3_mc,
+	tc4_ovf = 0x38, tc4_mc,
+	tc5_ovf = 0x3B, tc5_mc,
+	tc6_ovf = 0x3E, tc6_mc,
+	tc7_ovf = 0x40, tc7_mc,
 
-	adc0_resrdy = 0x44,
-	adc0_seq,
-	adc1_resrdy,
-	adc1_seq,
+	adc0_resrdy = 0x44, adc0_seq, adc1_resrdy, adc1_seq,
 
 	dac_empty = 0x48,
 	dac_resrdy = 0x4A,
@@ -113,141 +82,53 @@ enum class DmaTrigSource : uint8_t
 
 	pcc = 0x50,
 
-	aes_wr = 0x51,
-	aes_rd,
+	aes_wr = 0x51, aes_rd,
 
-	qspi_rx = 0x53,
-	qspi_tx
+	qspi_rx = 0x53, qspi_tx
 
 #elif SAMC21
 
 	disable = 0,
 	tsens,
 
-	sercom0_rx,
-	sercom0_tx,
-	sercom1_rx,
-	sercom1_tx,
-	sercom2_rx,
-	sercom2_tx,
-	sercom3_rx,
-	sercom3_tx,
-	sercom4_rx,
-	sercom4_tx,
-	sercom5_rx,
-	sercom5_tx,
+	sercom0_rx, sercom0_tx, sercom1_rx, sercom1_tx, sercom2_rx, sercom2_tx, sercom3_rx, sercom3_tx,
+	sercom4_rx, sercom4_tx, sercom5_rx, sercom5_tx,
 
-	can0_debug,
-	can1_debug,
+	can0_debug, can1_debug,
 
-	tcc0_ovf,
-	tcc0_mc0,
-	tcc0_mc1,
-	tcc0_mc2,
-	tcc0_mc3,
-	tcc1_ovf,
-	tcc1_mc0,
-	tcc1_mc1,
-	tcc2_ovf,
-	tcc2_mc0,
-	tcc2_mc1,
+	tcc0_ovf, tcc0_mc0, tcc0_mc1, tcc0_mc2, tcc0_mc3,
+	tcc1_ovf, tcc1_mc0, tcc1_mc1,
+	tcc2_ovf, tcc2_mc0, tcc2_mc1,
 
-	tc0_ovf,
-	tc0_mc0,
-	tc0_mc1,
-	tc1_ovf,
-	tc1_mc0,
-	tc1_mc1,
-	tc2_ovf,
-	tc2_mc0,
-	tc2_mc1,
-	tc3_ovf,
-	tc3_mc0,
-	tc3_mc1,
-	tc4_ovf,
-	tc4_mc0,
-	tc4_mc1,
+	tc0_ovf, tc0_mc0, tc0_mc1, tc1_ovf, tc1_mc0, tc1_mc1, tc2_ovf, tc2_mc0, tc2_mc1,
+	tc3_ovf, tc3_mc0, tc3_mc1, tc4_ovf, tc4_mc0, tc4_mc1,
 
-	adc0_resrdy,
-	adc1_resrdy,
-	sdadc_resrdy,
+	adc0_resrdy, adc1_resrdy, sdadc_resrdy,
 
 	dac_empty,
-	ptc_eoc,
-	ptc_wcomp,
-	ptc_seq,
+	ptc_eoc, ptc_wcomp, ptc_seq,
 
 # if 0	// these are only available on the SAMC21N, which we don't support
-	sercom6_rx,
-	sercom6_tx,
-	sercom7_rx,
-	sercom7_tx,
-
-	tc5_ovf,
-	tc5_mc0,
-	tc5_mc1,
-	tc6_ovf,
-	tc6_mc0,
-	tc6_mc1,
-	tc7_ovf,
-	tc7_mc0,
-	tc7_mc1
+	sercom6_rx, sercom6_tx, sercom7_rx, sercom7_tx,
+	tc5_ovf, tc5_mc0, tc5_mc1, tc6_ovf, tc6_mc0, tc6_mc1, tc7_ovf, tc7_mc0, tc7_mc1
 # endif
 
 #elif SAME70 || SAM4E || SAM4S
 	hsmci = 0,	// both transmit and receive
-	spi0tx,
-	spi0rx,
-	spi1tx,
-	spi1rx,
-	qspitx,
-	qspirx,
-	usart0tx,
-	usart0rx,
-	usart1tx,
-	usart1rx,
-	usart2tx,
-	usart2rx,
+	spi0tx, spi0rx, spi1tx, spi1rx, qspitx, qspirx,
+	usart0tx, usart0rx, usart1tx, usart1rx, usart2tx, usart2rx,
 	pwm0tx,
-	twihs0tx,
-	twihs0rx,
-	twihs1tx,
-	twihs1rx,
-	twihs2tx,
-	twihs2rx,
-	uart0tx,
-	uart0rx,
-	uart1tx,
-	uart1rx,
-	uart2tx,
-	uart2rx,
-	uart3tx,
-	uart3rx,
-	uart4tx,
-	uart4rx,
+	twihs0tx, twihs0rx, twihs1tx, twihs1rx, twihs2tx, twihs2rx,
+	uart0tx, uart0rx, uart1tx, uart1rx, uart2tx, uart2rx, uart3tx, uart3rx, uart4tx, uart4rx,
 	dacctx,
-	unused1,	// ID 30 does not appear in the table
-	ssctx,
-	sscrx,
+	// ID 31 does not appear in the table
+	ssctx = 32, sscrx,
 	pioarx,
-	afec0rx,
-	afec1rx,
-	aestx,
-	aesrx,
+	afec0rx, afec1rx,
+	aestx, aesrx,
 	pwm1tx,
-	tc0rx,
-	tc3rx,
-	tc6rx,
-	tc9rx,
-	i2sc0txl,
-	i2sc0rxl,
-	i2sc1txl,
-	i2sc1rxl,
-	i2sc0txr,
-	i2sc0rxr,
-	i2sc1txr,
-	i2sc1rxr,
-	numPeripheralIds
+	tc0rx, tc3rx, tc6rx, tc9rx,
+	i2sc0txl, i2sc0rxl, i2sc1txl, i2sc1rxl, i2sc0txr, i2sc0rxr, i2sc1txr, i2sc1rxr,
 #elif RPXXXX
 	pio0tx0, pio0tx1, pio0tx2, pio0tx3,
 	pio0rx0, pio0rx1, pio0rx2, pio0rx3,
@@ -278,14 +159,37 @@ enum class DmaTrigSource : uint8_t
 	saes_out = 118, saes_in, i3c1_rx, i3c1_tx, i3c1_tc, i3c1_rs,							// 118-123
 	i3c2_rx = 136, i3c2_tx, i3c2_tc, i3c2_rs,												// 136-139
 #elif STM32H7
-# if defined(STM32H743xx)
+	// These are the assignments for DMAMUX1. DMAMUX2 has fewer inputs.
 	adc1 = 9, adc2,
 	tim1_ch1 = 11, tim1_ch2, tim1_ch3, tim1_ch4, tim1_up, tim1_trig, tim1_com,
 	tim2_ch1 = 18, tim2_ch2, tim2_ch3, tim2_ch4, tim2_up,
-	tim3_ch1 = 23, tim3_ch2, tim3_ch3, tim3_ch4, tim3_up,
-	//TODO finish this, see table 122 of rm0433
-# elif defined(STM32H723xx)
-	//TODO
+	tim3_ch1 = 23, tim3_ch2, tim3_ch3, tim3_ch4, tim3_up, tim3_trig,
+	tim4_ch1 = 29, tim4_ch2, tim4_ch3, tim4_up,
+	i2c1_rx = 33, i2c1_tx, i2c2_rx, i2c2_tx,
+	spi1_rx = 37, spi1_tx, spi2_rx, spi2_tx,
+	usart1_rx = 41, usart1_tx, usart2_rx, usart2_tx, usart3_rx, usart3_tx,
+	tim8_ch1 = 47, tim8_ch2, tim8_ch3, tim8_ch4, tim8_up, tim8_trig, tim8_com,
+	// 54 is reserved
+	tim5_ch1 = 55, tim5_ch2, tim5_ch3, tim5_ch4, tim5_up, tim5_trig,
+	spi3_rx = 61, spi3_tx, uart4_rx, uart4_tx, uart5_rx, uart5_tx,
+	dac_ch1 = 67, dac_ch2, tim6_up, tim7_up, usart6_rx, usart6_tx,
+	i2c3_rx = 73, i2c3_tx, dcmi, cryp_in, cryp_out, hash_in,
+	uart7_rx = 79, uart7_tx, uart8_rx, uart8_tx,
+	spi4_rx = 83, spi4_tx, spi5_rx, spi5_tx,
+	sai1a = 87, sai1b, sai2a, sai2b, swpmi_rx, swpmi_tx, spdifrx_dat, spdifrx_ctrl,
+# if defined(STM32H743xx)
+	hr_req_1 = 95, hr_req_2, hr_req_3, hr_req_4, hr_req_5, hr_req_6,
+# endif
+	dfsdm1_0 = 101, dfsdm1_1, dfsdm1_2, dfsdm1_3,
+	tim15_ch1 = 105, tim15_up, tim15_trig, tim15_com, tim16_ch1, tim16_up, tim17_ch1, tim17_up,
+# if defined(STM32H743xx)
+	sai3_a = 113, sai3_b,
+# endif
+	adc3,
+# if defined(STM32H723xx)
+	uart9_rx = 116, uart9_tx, uart10_rx, uart10_tx, fmac_rd, fmac_wr,
+	cordic_rd = 122, cordic_wr, i2c5_rx, i2c5_tx,
+	tim23_ch1 = 126, tim23_ch2, tim23_ch3,
 # endif
 #else
 # error Unsupported processor
@@ -312,14 +216,68 @@ static inline uint8_t GetSercomRxTrigSource(uint8_t sercomNumber) noexcept
 
 #endif
 
+#if STM32
+
+// Get the DMA trigger source for SPI transmit
+static inline DmaTrigSource GetSpiTxTrigSource(uint8_t spiInstanceNumber) noexcept
+{
+	constexpr DmaTrigSource SpiTxTrigSources[] =
+		{ 	DmaTrigSource::spi1_tx, DmaTrigSource::spi2_tx, DmaTrigSource::spi3_tx, DmaTrigSource::spi4_tx,
+# if STM32H7
+			DmaTrigSource::spi5_tx,
+# endif
+		};
+	return SpiTxTrigSources[spiInstanceNumber - 1];
+}
+
+// Get the DMA trigger source for SPI receive
+static inline DmaTrigSource GetSpiRxTrigSource(uint8_t spiInstanceNumber) noexcept
+{
+	constexpr DmaTrigSource SpiRxTrigSources[] =
+		{ 	DmaTrigSource::spi1_rx, DmaTrigSource::spi2_rx, DmaTrigSource::spi3_rx, DmaTrigSource::spi4_rx,
+# if STM32H7
+			DmaTrigSource::spi5_rx,
+# endif
+		};
+	return SpiRxTrigSources[spiInstanceNumber - 1];
+}
+
+// Get the DMA trigger source for USART or UART transmit
+static inline DmaTrigSource GetUartTxTrigSource(uint8_t uartInstanceNumber) noexcept
+{
+	constexpr DmaTrigSource UartTxTrigSources[] =
+		{ 	DmaTrigSource::usart1_tx, DmaTrigSource::usart2_tx, DmaTrigSource::usart3_tx, DmaTrigSource::uart4_tx, DmaTrigSource::uart5_tx, DmaTrigSource::usart6_tx,
+# if STM32H7
+			DmaTrigSource::uart7_tx, DmaTrigSource::uart8_tx,
+#  if defined(STM32H723xx)
+			DmaTrigSource::uart9_tx, DmaTrigSource::uart10_tx,
+#  endif
+# endif
+		};
+	return UartTxTrigSources[uartInstanceNumber - 1];
+}
+
+// Get the DMA trigger source for USART or UART receive
+static inline DmaTrigSource GetUartRxTrigSource(uint8_t uartInstanceNumber) noexcept
+{
+	constexpr DmaTrigSource UartRxTrigSources[] =
+		{ 	DmaTrigSource::usart1_rx, DmaTrigSource::usart2_rx, DmaTrigSource::usart3_rx, DmaTrigSource::uart4_rx, DmaTrigSource::uart5_rx, DmaTrigSource::usart6_rx,
+# if STM32H7
+			DmaTrigSource::uart7_rx, DmaTrigSource::uart8_rx,
+#  if defined(STM32H723xx)
+			DmaTrigSource::uart9_rx, DmaTrigSource::uart10_rx,
+#  endif
+# endif
+		};
+	return UartRxTrigSources[uartInstanceNumber - 1];
+}
+
+#endif
+
 namespace DmacManager
 {
 	void Init() noexcept;
-#if RPXXXX
 	void SetBtctrl(DmaChannel channel, uint32_t val) noexcept;								// warning: call SetBtctrl, SetSourceAddress and SetDestinationAddress BEFORE SetDataLength!
-#else
-	void SetBtctrl(DmaChannel channel, uint16_t val) noexcept;								// warning: call SetBtctrl, SetSourceAddress and SetDestinationAddress BEFORE SetDataLength!
-#endif
 	void SetSourceAddress(DmaChannel channel, const volatile void *const src) noexcept;		// warning: call SetBtctrl, SetSourceAddress and SetDestinationAddress BEFORE SetDataLength!
 	void SetDestinationAddress(DmaChannel channel, volatile void *const dst) noexcept;		// warning: call SetBtctrl, SetSourceAddress and SetDestinationAddress BEFORE SetDataLength!
 	void SetDataLength(DmaChannel channel, uint32_t amount) noexcept;						// warning: call SetBtctrl, SetSourceAddress and SetDestinationAddress BEFORE SetDataLength!
@@ -339,11 +297,7 @@ namespace DmacManager
 	void SetInterruptCallback(DmaChannel channel, DmaCallbackFunction fn, CallbackParameter param) noexcept;
 	void EnableCompletedInterrupt(DmaChannel channel) noexcept;
 	void DisableCompletedInterrupt(DmaChannel channel) noexcept;
-#if RPXXXX
-	uint32_t GetAndClearChannelStatus(DmaChannel channel) noexcept;
-#else
-	uint8_t GetAndClearChannelStatus(DmaChannel channel) noexcept;
-#endif
+	uint32_t GetAndClearChannelStatus(DmaChannel channel) noexcept;							// the meaning of the result depends on the processor
 }
 
 #endif /* SRC_HARDWARE_DMACMANAGER_H_ */

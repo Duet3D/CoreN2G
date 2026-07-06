@@ -862,9 +862,10 @@ inline uint32_t GetTimerClockFrequency(unsigned int timerNumber) noexcept { retu
  * @brief Initialise a timer clock
  *
  * @param timerNumber The timer number that needs a clock
- * @param gclkNumThe GCLK number to use
  */
 void EnableTimerClock(unsigned int timerNumber) noexcept;
+
+void EnableSpiClock(unsigned int spiInstanceNumber) noexcept;
 
 #endif
 

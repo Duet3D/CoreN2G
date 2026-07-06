@@ -27,9 +27,19 @@ on the F4 based devices. We should probably consider using higher sample avlues 
 oversampling.
 */
 #ifdef RTOS
-#include <CoreImp.h>
+#include <Core.h>
 #include <AnalogIn.h>
 #include <Cache.h>
+
+#if STM32H5
+# include <stm32h5xx_hal_conf.h>
+# include <stm32h5xx_hal_adc.h>
+# include <stm32h5xx_hal_dma.h>
+#elif STM32H7
+# include <stm32h7xx_hal_conf.h>
+# include <stm32h7xx_hal_adc.h>
+# include <stm32h7xx_hal_dma.h>
+#endif
 
 extern "C" void debugPrintf(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
 
@@ -40,6 +50,7 @@ constexpr uint32_t MaxActiveChannels = 16;               // Max active ADC chann
 constexpr AnalogChannelNumber ADC_1 = 0x10000;
 constexpr AnalogChannelNumber ADC_2 = 0x20000;
 constexpr AnalogChannelNumber ADC_3 = 0x30000;
+
 #if STM32H7
 # define __nocache		__attribute__((section(".ram_nocache")))
 constexpr uint32_t NumChannelsADC1 = 20;
@@ -148,10 +159,10 @@ static void ConfigureDma(DMA_HandleTypeDef& DmaHandle, DMA_Stream_TypeDef *inst,
     DmaHandle.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
     DmaHandle.Init.Mode = DMA_CIRCULAR;
     DmaHandle.Init.Priority = DMA_PRIORITY_LOW;
-    DmaHandle.Init.FIFOMode = DMA_FIFOMODE_DISABLE;         
+    DmaHandle.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
     DmaHandle.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_HALFFULL;
     DmaHandle.Init.MemBurst = DMA_MBURST_SINGLE;
-    DmaHandle.Init.PeriphBurst = DMA_PBURST_SINGLE; 
+    DmaHandle.Init.PeriphBurst = DMA_PBURST_SINGLE;
 
     HAL_DMA_DeInit(&DmaHandle);
     HAL_DMA_Init(&DmaHandle);
@@ -163,21 +174,21 @@ static void ConfigureAdc(ADC_HandleTypeDef& AdcHandle, ADC_TypeDef *inst, uint32
     // Adc converts channels, continuously and
     // captured to RAM via DMA
     AdcHandle.Instance = inst;
-#if STM32H7xx
+#if STM32 //STM32H7
     AdcHandle.Init.ClockPrescaler           = ADC_CLOCK_SYNC_PCLK_DIV4;
     AdcHandle.Init.LowPowerAutoWait         = DISABLE;                       /* Auto-delayed conversion feature disabled */
     AdcHandle.Init.ConversionDataManagement = ADC_CONVERSIONDATA_DMA_CIRCULAR; /* ADC DMA circular requested */
     AdcHandle.Init.OversamplingMode         = DISABLE;                       /* No oversampling */
     AdcHandle.Init.Overrun                  = ADC_OVR_DATA_OVERWRITTEN;      /* DR register is overwritten with the last conversion result in case of overrun */
     AdcHandle.Init.EOCSelection             = ADC_EOC_SINGLE_CONV;           /* EOC flag picked-up to indicate conversion end */
-#if STM32H723xx
+# ifdef STM32H723xx
     AdcHandle.Init.DMAContinuousRequests    = ENABLE;
-#endif
+# endif
 #else
     AdcHandle.Init.ClockPrescaler           = ADC_CLOCK_SYNC_PCLK_DIV8;
     AdcHandle.Init.DataAlign                = ADC_DATAALIGN_RIGHT;           /* Right-alignment for converted data */
     AdcHandle.Init.EOCSelection             = DISABLE;                       /* EOC flag picked-up to indicate conversion end */
-    AdcHandle.Init.DMAContinuousRequests = ENABLE;                        /* DMA continuous mode enabled */
+    AdcHandle.Init.DMAContinuousRequests 	= ENABLE;                        /* DMA continuous mode enabled */
 #endif
     AdcHandle.Init.Resolution               = ADC_RESOLUTION_12B;            /* 12-bit resolution for converted data */
     AdcHandle.Init.ScanConvMode             = ENABLE;                        /* Sequencer disabled (ADC conversion on only 1 channel: channel set on rank 1) */
@@ -191,7 +202,7 @@ static void ConfigureAdc(ADC_HandleTypeDef& AdcHandle, ADC_TypeDef *inst, uint32
     AdcHandle.State = HAL_ADC_STATE_RESET;
     AdcHandle.Lock = HAL_UNLOCKED;
     /* Some other ADC_HandleTypeDef fields exists but not required */
-    if (HAL_ADC_Init(&AdcHandle) != HAL_OK) 
+    if (HAL_ADC_Init(&AdcHandle) != HAL_OK)
     {
         debugPrintf("ADC Init failed\n");
         return;
@@ -243,7 +254,7 @@ static void ConfigureChannels()
     {
         HAL_ADC_Stop_DMA(&Adc3Handle);
         // Unfortunately we can't just restart the DMA as it seems to restart at the same channel
-        // it stopped at which causes a skew in the memory contents. I'm not sure what will 
+        // it stopped at which causes a skew in the memory contents. I'm not sure what will
         // reset the ADC to match the DMA transfer, but calling Deinit does the job. Unfortuately
         // it also resets ADC1, so we need to restart that as well!
         HAL_ADC_DeInit(&Adc3Handle);
@@ -332,7 +343,7 @@ namespace LegacyAnalogIn
     void AnalogInEnableChannel(AnalogChannelNumber channel, bool enable)
     {
         //#if 0
-        if (channel == NO_ADC) 
+        if (channel == NO_ADC)
         {
             //debugPrintf("Enable bad ADC channel %d\n", static_cast<int>(channel));
             return;
@@ -364,7 +375,7 @@ namespace LegacyAnalogIn
             debugPrintf("Read bad ADC channel %d %d\n", static_cast<int>(AdcNo), static_cast<int>(channel));
             return 0;
         }
-      
+
         pSamples = &ChanValues[ChanMap[AdcNo][channel]];
         step = NumActiveChannels[AdcNo];
         Cache::InvalidateAfterDMAReceive(pSamples, Oversample*step*sizeof(uint32_t));
