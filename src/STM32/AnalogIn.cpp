@@ -26,6 +26,9 @@ for this reason on H7 based devices we only convert to 12bits and use the same o
 on the F4 based devices. We should probably consider using higher sample avlues and/or using the built in
 oversampling.
 */
+
+#if 0	//TODO this disabled for now
+
 #ifdef RTOS
 #include <Core.h>
 #include <AnalogIn.h>
@@ -420,5 +423,6 @@ namespace LegacyAnalogIn
         return CHAN_VREFINT;
     }
 }
+#endif
 #endif
 // End
