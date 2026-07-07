@@ -64,7 +64,7 @@ void Serial::InitUart(uint8_t usartNumber, uint32_t baudRate) noexcept
 }
 
 // Undo the initialisation, so that when we jump into the main firmware the USART can be initialised again
-void Serial::Disable(uint8_t usartNumber) noexcept
+void Serial::DisableUart(uint8_t usartNumber) noexcept
 {
 #if 0	//TODO
 	USART_TypeDef * const usart = GetUsart(usartNumber);
@@ -78,6 +78,7 @@ static void DummyHandler(void*) noexcept
 	while (1) { }
 }
 
+// Interrupt redirection for UARTs and USARTs
 constexpr unsigned int NumUsarts =
 #if STM32H5
 				5;
@@ -114,9 +115,48 @@ DEFINE_USART_IRQ(7)
 
 #endif
 
+// Interrupt redirection for SPI channels
+constexpr unsigned int NumSpi =
+#if STM32H5
+				4;
+#elif STM32H7
+				5;
+#endif
+static Serial::IrqFunc spiIrq[NumSpi];
+static void *spiParam[NumSpi];
+
+void Serial::SetSpiVector(uint8_t spiNumber, Serial::IrqFunc f, void *param) noexcept
+{
+	spiParam[spiNumber] = param;
+	spiIrq[spiNumber] = f;
+}
+
+void Serial::ReleaseSpiVector(uint8_t spiNumber) noexcept
+{
+	spiIrq[spiNumber] = DummyHandler;
+}
+
+#define DEFINE_SPI_IRQ(_spi) \
+	void SPI ## _spi ## _Handler() noexcept { spiIrq[_spi - 1](spiParam[_spi - 1]); }
+
+DEFINE_SPI_IRQ(1)
+DEFINE_SPI_IRQ(2)
+DEFINE_SPI_IRQ(3)
+DEFINE_SPI_IRQ(4)
+
+#if STM32H7
+
+DEFINE_SPI_IRQ(5)
+
+#endif
+
 void Serial::Init() noexcept
 {
 	for (IrqFunc& f : usartIrq)
+	{
+		f = DummyHandler;
+	}
+	for (IrqFunc& f : spiIrq)
 	{
 		f = DummyHandler;
 	}

@@ -13,11 +13,11 @@
 #include <SPI/SpiMode.h>
 #include <SPI/SpiParameters.h>
 
-#if SAME5x || SAMC21
+#if SAME5x || SAMC21 || STM32
 # include <DmacManager.h>
 #endif
 
-#if RP2040
+#if RPXXXX
 # include <hardware/spi.h>
 #endif
 
@@ -26,7 +26,7 @@
 class SpiDevice
 {
 public:
-	explicit SpiDevice(const SpiParameters& params) noexcept;
+	SpiDevice(const SpiParameters& params, uint32_t interruptPriority) noexcept;
 
 	void Disable() const noexcept;
 	void Enable() const noexcept;
@@ -47,8 +47,12 @@ public:
 	bool TransceivePacketNineBit(const uint16_t *_ecv_array null tx_data, uint16_t *_ecv_array null rx_data, size_t len) noexcept;
 #endif
 
-#if SAME5x || SAMC21
+#if SAME5x || SAMC21 || STM32
 	static void DmaComplete(CallbackParameter param, DmaCallbackReason reason) noexcept;
+#endif
+
+#if STM32
+	static void CommonInterrupt(void *param) noexcept;
 #endif
 
 private:
@@ -56,8 +60,12 @@ private:
 	bool waitForTxEmpty() const noexcept;
 	bool waitForRxReady() const noexcept;
 
-#if SAME5x || SAMC21
+#if SAME5x || SAMC21 || STM32
 	void DmaComplete(DmaCallbackReason reason) noexcept;
+#endif
+
+#if STM32
+	void Interrupt() noexcept;
 #endif
 
 #if SAME5x || SAMC21
@@ -70,11 +78,11 @@ private:
 	DmaPriority dmaPrioTx;
 #elif SAME70 || SAM4E || SAM4S
 	Usart * const hardware;
-#elif RP2040
+#elif RPXXXX
 	spi_inst_t *hardware;
 #elif STM32
 	SPI_TypeDef * const hardware;
-//	const uint8_t sercomNumber;
+	const uint8_t instanceNumber;
 # ifdef RTOS
 	TaskBase *null waitingTask = nullptr;
 # endif

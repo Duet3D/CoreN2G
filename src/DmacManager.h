@@ -288,6 +288,9 @@ namespace DmacManager
 	void SetTriggerSourceSercomRx(DmaChannel channel, uint8_t sercomNumber) noexcept;
 	void SetArbitrationLevel(DmaChannel channel, uint8_t level) noexcept;
 	uint16_t GetBytesTransferred(DmaChannel channel) noexcept;
+#elif STM32
+	void SetTriggerSourceSpiTx(DmaChannel channel, uint8_t spiNumber) noexcept;
+	void SetTriggerSourceSpiRx(DmaChannel channel, uint8_t spiNumber) noexcept;
 #endif
 
 	void EnableChannel(DmaChannel channel, DmaPriority priority) noexcept;

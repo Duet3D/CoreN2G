@@ -153,4 +153,3 @@ bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t
 }
 
 // End
-

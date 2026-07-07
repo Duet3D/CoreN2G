@@ -9,7 +9,7 @@
 
 // SharedSpiDevice members
 
-SharedSpiDevice::SharedSpiDevice(const SpiParameters& params) noexcept : SpiDevice(params)
+SharedSpiDevice::SharedSpiDevice(const SpiParameters& params, uint32_t interruptPriority) noexcept : SpiDevice(params, interruptPriority)
 {
 	mutex.Create("SPI");
 }

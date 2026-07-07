@@ -117,7 +117,7 @@ void Serial::InitUart(uint8_t sercomNumber, uint32_t baudRate, uint8_t rxPad, ui
 }
 
 // Undo the initialisation, so that when we jump into the main firmware the USART can be initialised again
-void Serial::Disable(uint8_t sercomNumber) noexcept
+void Serial::DisableSercom(uint8_t sercomNumber) noexcept
 {
 	Sercom * const sercom = GetSercom(sercomNumber);
 	hri_sercomusart_clear_CTRLA_ENABLE_bit(sercom);

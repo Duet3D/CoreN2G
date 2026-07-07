@@ -94,6 +94,28 @@ void DmacManager::SetTriggerSource(uint8_t channel, DmaTrigSource source) noexce
 				 ) | (uint32_t)source;
 }
 
+void DmacManager::SetTriggerSourceSpiTx(DmaChannel channel, uint8_t spiNumber) noexcept
+{
+	static constexpr DmaTrigSource SpiTxTrigSources[] =
+		{ 	DmaTrigSource::spi1_tx, DmaTrigSource::spi2_tx, DmaTrigSource::spi3_tx, DmaTrigSource::spi4_tx,
+#if STM32H7
+			DmaTrigSource::spi5_tx,
+#endif
+		};
+	SetTriggerSource(channel, SpiTxTrigSources[spiNumber]);
+}
+
+void DmacManager::SetTriggerSourceSpiRx(DmaChannel channel, uint8_t spiNumber) noexcept
+{
+	static constexpr DmaTrigSource SpiRxTrigSources[] =
+		{ 	DmaTrigSource::spi1_rx, DmaTrigSource::spi2_rx, DmaTrigSource::spi3_rx, DmaTrigSource::spi4_rx,
+#if STM32H7
+			DmaTrigSource::spi5_rx,
+#endif
+		};
+	SetTriggerSource(channel, SpiRxTrigSources[spiNumber]);
+}
+
 void DmacManager::EnableChannel(const uint8_t channel, DmaPriority priority) noexcept
 {
 	DMA_Channel_TypeDef *const chan = GetChannel(channel);

@@ -7,17 +7,31 @@
 
 #include <SPI/SpiDevice.h>
 #include <CoreNotifyIndices.h>
-
-# include <SAME5x_C21/Serial.h>
-# include <peripheral_clk_config.h>
+#include <Serial.h>
 
 constexpr uint32_t DefaultSharedSpiClockFrequency = 2000000;
 constexpr uint32_t SpiTimeout = 10000;
 
-SpiDevice::SpiDevice(const SpiParameters& params, uint32_t interruptPriority) noexcept
-	: hardware(Serial::GetSercom(params.sercomNumber)), sercomNumber(params.sercomNumber), dmaChanTx(params.dmaChanTx), dmaPrioTx(params.dmaPrioTx)
+static SPI_TypeDef *const SpiDevices[] = {	SPI1, SPI2, SPI3, SPI4,
+#ifdef SPI5
+											SPI5
+#endif
+										 };
+
+static IRQn SpiInterruptNumbers[] = {	SPI1_IRQn, SPI2_IRQn, SPI3_IRQn, SPI4_IRQn,
+#ifdef SPI5
+										SPI5_IRQn
+#endif
+									};
+
+/*static*/ void SpiDevice::CommonInterrupt(void* param) noexcept
 {
-	(void)interruptPriority;											// this driver does not currently use SPI interrupts
+	((SpiDevice*)param)->Interrupt();
+}
+
+SpiDevice::SpiDevice(const SpiParameters& params, uint32_t interruptPriority) noexcept
+	: hardware(SpiDevices[params.instanceNumber - 1]), instanceNumber(params.instanceNumber), dmaChanTx(params.dmaChanTx), dmaPrioTx(params.dmaPrioTx)
+{
 	SetPinMode(params.mosiPin, INPUT_PULLDOWN);
 	SetPinMode(params.misoPin, INPUT_PULLDOWN);
 	SetPinMode(params.sclkPin, INPUT_PULLDOWN);
@@ -27,9 +41,11 @@ SpiDevice::SpiDevice(const SpiParameters& params, uint32_t interruptPriority) no
 	SetDriveStrength(params.mosiPin, 2);
 	SetDriveStrength(params.sclkPin, 2);								// some devices (e.g. TFT LCD font chip) need fast rise and fall times
 
-	Serial::EnableSercomClock(params.sercomNumber);
+	EnableSpiClock(params.instanceNumber);
 
-	// Set up the SERCOM
+	// Set up the SPI instance
+	//TODO
+#if 0
 	const uint32_t regCtrlA = SERCOM_SPI_CTRLA_MODE(3) | SERCOM_SPI_CTRLA_DIPO(params.dataInPad) | SERCOM_SPI_CTRLA_DOPO(params.dataOutPad) | SERCOM_SPI_CTRLA_FORM(0);
 	const uint32_t regCtrlB = 0;											// 8 bits, slave select disabled, receiver disabled for now
 # if SAME5x
@@ -57,6 +73,11 @@ SpiDevice::SpiDevice(const SpiParameters& params, uint32_t interruptPriority) no
 	hardware->SPI.DBGCTRL.reg = SERCOM_SPI_DBGCTRL_DBGSTOP;					// baud rate generator is stopped when CPU halted by debugger
 
 	hardware->SPI.CTRLB.bit.RXEN = 1;
+#endif
+	// Enable the interrupt in the NVIC
+	Serial::SetSpiVector(instanceNumber, CommonInterrupt, this);
+	NVIC_SetPriority(SpiInterruptNumbers[instanceNumber - 1], interruptPriority);
+	NVIC_EnableIRQ(SpiInterruptNumbers[instanceNumber - 1]);
 }
 
 void SpiDevice::Disable() const noexcept
@@ -75,7 +96,7 @@ void SpiDevice::Enable() const noexcept
 inline bool SpiDevice::waitForTxReady() const noexcept
 {
 	uint32_t timeout = SpiTimeout;
-	while (!(hardware->SPI.INTFLAG.bit.DRE))
+	while (!(hardware->SR & SPI_SR_TXP))
 	{
 		if (--timeout == 0)
 		{
@@ -89,7 +110,7 @@ inline bool SpiDevice::waitForTxReady() const noexcept
 inline bool SpiDevice::waitForTxEmpty() const noexcept
 {
 	uint32_t timeout = SpiTimeout;
-	while (!(hardware->SPI.INTFLAG.bit.TXC))
+	while (!(hardware->SR & SPI_SR_TXC))
 	{
 		if (!timeout--)
 		{
@@ -103,7 +124,7 @@ inline bool SpiDevice::waitForTxEmpty() const noexcept
 inline bool SpiDevice::waitForRxReady() const noexcept
 {
 	uint32_t timeout = SpiTimeout;
-	while (!(hardware->SPI.INTFLAG.bit.RXC))
+	while (!(hardware->SR & SPI_SR_RXP))
 	{
 		if (--timeout == 0)
 		{
@@ -113,11 +134,7 @@ inline bool SpiDevice::waitForRxReady() const noexcept
 	return false;
 }
 
-void SpiDevice::SetClockFrequencyAndMode(uint32_t freq, SpiMode mode
-#if SAME5x
-											, bool nineBits
-#endif
-										) const noexcept
+void SpiDevice::SetClockFrequencyAndMode(uint32_t freq, SpiMode mode) const noexcept
 {
 	// We have to disable SPI device in order to change the baud rate, mode and character length
 	Disable();
@@ -127,9 +144,6 @@ void SpiDevice::SetClockFrequencyAndMode(uint32_t freq, SpiMode mode
 	// To get more accurate speeds we could increase the clock frequency to 100MHz
 	hardware->SPI.BAUD.reg = SERCOM_SPI_BAUD_BAUD((Serial::SercomFastGclkFreq + (2 * freq) - 1)/(2 * freq) - 1);
 	hardware->SPI.CTRLB.bit.CHSIZE =
-#if SAME5x
-									(nineBits) ? 1 :
-#endif
 											0;
 	while (hardware->SPI.SYNCBUSY.bit.CTRLB) { }
 
@@ -150,7 +164,7 @@ void SpiDevice::SetClockFrequencyAndMode(uint32_t freq, SpiMode mode
 bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t *_ecv_array null rx_data, size_t len) noexcept
 {
 	// Clear any existing data
-	(void)hardware->SPI.DATA.reg;
+	(void)hardware->RXDR;
 
 # if defined(RTOS)
 	if (len >= 40 && rx_data == nullptr && tx_data != nullptr)
@@ -158,10 +172,10 @@ bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t
 		// Sending a large amount of data to LCD, so use DMA
 		DmacManager::DisableChannel(dmaChanTx);
 		DmacManager::SetSourceAddress(dmaChanTx, tx_data);
-		DmacManager::SetDestinationAddress(dmaChanTx, &(hardware->SPI.DATA));
+		DmacManager::SetDestinationAddress(dmaChanTx, &(hardware->TXDR));
 		DmacManager::SetBtctrl(dmaChanTx, DMAC_BTCTRL_STEPSIZE_X1 | DMAC_BTCTRL_STEPSEL_SRC | DMAC_BTCTRL_SRCINC | DMAC_BTCTRL_BEATSIZE_BYTE | DMAC_BTCTRL_BLOCKACT_NOACT);
 		DmacManager::SetDataLength(dmaChanTx, len);
-		DmacManager::SetTriggerSourceSercomTx(dmaChanTx, sercomNumber);
+		DmacManager::SetTriggerSourceSpiTx(dmaChanTx, instanceNumber);
 		waitingTask = TaskBase::GetCallerTaskHandle();
 		DmacManager::SetInterruptCallback(dmaChanTx, SpiDevice::DmaComplete, CallbackParameter((void *)this));
 		DmacManager::EnableCompletedInterrupt(dmaChanTx);
@@ -180,7 +194,7 @@ bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t
 			}
 
 			// Write to transmit register
-			hardware->SPI.DATA.reg = dOut;
+			hardware->TXDR = dOut;
 
 			// Some devices are transmit-only e.g. 12864 display, so don't wait for received data if we don't need to
 			if (rx_data != nullptr)
@@ -192,8 +206,7 @@ bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t
 				}
 
 				// Get data from receive register
-				const uint8_t dIn =
-					(uint8_t)hardware->SPI.DATA.reg;
+				const uint8_t dIn = (uint8_t)hardware->RXDR;
 				*rx_data++ = dIn;
 			}
 		}
@@ -206,87 +219,14 @@ bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t
 	if (rx_data == nullptr)
 	{
 		// The SAME5x seems to buffer more than one received character
-		while (hardware->SPI.INTFLAG.bit.RXC)
+		while (hardware->SR & SPI_SR_RXP)
 		{
-			(void)hardware->SPI.DATA.reg;
+			(void)hardware->RXDR;
 		}
 	}
 
 	return true;	// success
 }
-
-#if SAME5x
-
-// Send and receive data returning true if successful, using 16-bit data transfers (needed when using 9-bit characters). 'len' is in 16-bit words.
-bool SpiDevice::TransceivePacketNineBit(const uint16_t *_ecv_array null tx_data, uint16_t *_ecv_array null rx_data, size_t len) noexcept
-{
-	// Clear any existing data
-	(void)hardware->SPI.DATA.reg;
-
-#if defined(RTOS)
-	if (len >= 40 && rx_data == nullptr && tx_data != nullptr)
-	{
-		// Sending a large amount of data to LCD, so use DMA. Currently only the TFT LCD uses this device, so we use a fixed DMA channel number.
-		DmacManager::DisableChannel(dmaChanTx);
-		DmacManager::SetSourceAddress(dmaChanTx, tx_data);
-		DmacManager::SetDestinationAddress(dmaChanTx, &(hardware->SPI.DATA));
-		DmacManager::SetBtctrl(dmaChanTx, DMAC_BTCTRL_STEPSIZE_X1 | DMAC_BTCTRL_STEPSEL_SRC | DMAC_BTCTRL_SRCINC | DMAC_BTCTRL_BEATSIZE_HWORD | DMAC_BTCTRL_BLOCKACT_NOACT);
-		DmacManager::SetDataLength(dmaChanTx, len);
-		DmacManager::SetTriggerSourceSercomTx(dmaChanTx, sercomNumber);
-		waitingTask = TaskBase::GetCallerTaskHandle();
-		DmacManager::SetInterruptCallback(dmaChanTx, SpiDevice::DmaComplete, CallbackParameter((void *)this));
-		DmacManager::EnableCompletedInterrupt(dmaChanTx);
-		DmacManager::EnableChannel(dmaChanTx, dmaPrioTx);
-		TaskBase::TakeIndexed(NotifyIndices::Spi, 10);			// maximum 3kb transfer should complete in about 2ms @ 14MHz clock speed
-	}
-	else
-#endif
-	{
-		for (uint32_t i = 0; i < len; ++i)
-		{
-			uint32_t dOut = (tx_data == nullptr) ? 0x000001FF : (uint32_t)*tx_data++;
-			if (waitForTxReady())			// we have to write the first byte after enabling the device without waiting for DRE to be set
-			{
-				return false;
-			}
-
-			// Write to transmit register
-			hardware->SPI.DATA.reg = dOut;
-
-			// Some devices are transmit-only e.g. 12864 display, so don't wait for received data if we don't need to
-			if (rx_data != nullptr)
-			{
-				// Wait for receive register
-				if (waitForRxReady())
-				{
-					return false;
-				}
-
-				// Get data from receive register
-				const uint16_t dIn = (uint16_t)hardware->SPI.DATA.reg;
-				*rx_data++ = dIn;
-			}
-		}
-
-	}
-
-	// Wait for transmitter empty, to make sure that the last clock pulse has finished
-	waitForTxEmpty();
-
-	// If we were not receiving, clear data from the receive buffer
-	if (rx_data == nullptr)
-	{
-		// The SAME5x seems to buffer more than one received character
-		while (hardware->SPI.INTFLAG.bit.RXC)
-		{
-			(void)hardware->SPI.DATA.reg;
-		}
-	}
-
-	return true;	// success
-}
-
-#endif
 
 #if defined(RTOS)
 
@@ -304,4 +244,3 @@ void SpiDevice::DmaComplete(DmaCallbackReason reason) noexcept
 #endif
 
 // End
-

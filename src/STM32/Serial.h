@@ -37,7 +37,7 @@ namespace Serial
 
 	void EnableUsartClock(uint8_t usartNumber) noexcept;
 	void InitUart(uint8_t usartNumber, uint32_t baudRated) noexcept;
-	void Disable(uint8_t usartNumber) noexcept;
+	void DisableUart(uint8_t usartNumber) noexcept;
 
 	// Support for serial interrupt vector reassignment
 
@@ -46,6 +46,9 @@ namespace Serial
 
 	void SetUsartVector(uint8_t usartNumber, IrqFunc f, void *param) noexcept;
 	void ReleaseUsartVector(uint8_t usartNumber) noexcept;
+
+	void SetSpiVector(uint8_t spiNumber, IrqFunc f, void *param) noexcept;
+	void ReleaseSpiVector(uint8_t spiNumber) noexcept;
 }
 
 #endif /* SRC_STM32_SERIAL_H_ */
