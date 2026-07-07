@@ -11,9 +11,9 @@
 # include <RTOSIface/RTOSIface.h>
 #endif
 
-#if SAM4E || SAME70 || SAME5x
+#if SAM4E || SAME70 || SAME5x || STM32
 
-#if SAME70
+#if SAME70 || STM32H7
 # include <core_cm7.h>
 
 #define USE_MPU		1
@@ -47,7 +47,7 @@ extern uint32_t _nocache_ram_end;
 
 # endif
 
-#else
+#elif SAM4E || SAME5x
 
 // SAM4E and SAME5x use fairly similar cache controllers
 
@@ -195,12 +195,45 @@ static inline void cache_invalidate_region(const volatile void *start, size_t le
 
 #endif
 
+#elif STM32H5
+
+// STM32H5 has separate instruction and data caches. The data cache caches only external memory, so we don't have any use for it.
+// Currently we don't use the MPU on the STM32H5 either.
+
+// Check whether the cache is enabled
+static inline bool is_cache_enabled() noexcept
+{
+	return ICACHE->CR & ICACHE_CR_EN;
+}
+
+// Disable the cache
+static inline void cache_disable() noexcept
+{
+	ICACHE->CR &= ~ICACHE_CR_EN;
+}
+
+// Enable the cache. If this is called other than from an invalidate operation, the cache must be invalidated first.
+static inline void cache_enable() noexcept
+{
+	ICACHE->CR |= ICACHE_CR_EN;
+}
+
+// Invalidate the whole cache. Cache must be disabled first.
+static inline void cache_invalidate_all() noexcept
+{
+	ICACHE->CR |= ICACHE_CR_CACHEINV;
+	while (ICACHE->SR & ICACHE_SR_BUSYF) { }
+	__ISB();
+}
+
+#else
+# error Unsupported processor
 #endif
 
 void Cache::Init() noexcept
 {
 
-#if SAME70 && USE_MPU
+#if (SAME70 || STM32H7) && USE_MPU
 
 # if 0
 // For debugging
@@ -214,6 +247,7 @@ void Cache::Init() noexcept
 	// Where regions overlap, the region with the highest region number takes priority
 	constexpr ARM_MPU_Region_t regionTable[] =
 	{
+#if SAME70
 		// Flash memory: read-only, execute allowed, cacheable
 		{
 			ARM_MPU_RBAR(0, IFLASH_ADDR),
@@ -270,6 +304,9 @@ void Cache::Init() noexcept
 			ARM_MPU_RBAR(10, 0xE0000000u),
 			ARM_MPU_RASR_EX(1u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_ORDERED, 0u, ARM_MPU_REGION_SIZE_1MB)
 		}
+#elif STM32H7
+		//TODO STM32H7 memory region table
+#endif
 	};
 
 	static_assert(ARRAY_SIZE(regionTable) <= 16);		// SAME70 supports 16 regions
@@ -300,7 +337,7 @@ void Cache::Init() noexcept
 
 void Cache::Enable() noexcept
 {
-#if SAME70
+#if SAME70 || STM32H7
 	if ((SCB->CCR & SCB_CCR_IC_Msk) == 0)			// if instruction cache is not enabled
 	{
 		SCB_EnableICache();
@@ -324,7 +361,7 @@ void Cache::Enable() noexcept
 // Disable the cache, returning true if it was enabled
 bool Cache::Disable() noexcept
 {
-#if SAME70
+#if SAME70 || STM32H7
 	if ((SCB->CCR & SCB_CCR_IC_Msk) != 0)			// if instruction cache is enabled
 	{
 		SCB_DisableICache();
@@ -345,7 +382,7 @@ bool Cache::Disable() noexcept
 	return wasEnabled;
 }
 
-#if SAME70
+#if SAME70 || STM32H7
 
 extern "C" [[noreturn]] void vAssertCalled(uint32_t line, const char *_ecv_array file) noexcept;
 
@@ -363,7 +400,7 @@ void Cache::Flush(const volatile void *start, size_t length) noexcept
 
 #endif
 
-#if !(SAME5x && CACHE_INSTRUCTIONS_ONLY)
+#if !SAME5x && !STM32H5 && CACHE_INSTRUCTIONS_ONLY
 void Cache::Invalidate(const volatile void *start, size_t length) noexcept
 {
 # if SAME70
