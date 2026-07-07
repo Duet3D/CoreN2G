@@ -26,14 +26,14 @@
 class SpiDevice
 {
 public:
-	SpiDevice(const SpiParameters& params, uint32_t interruptPriority) noexcept;
+	SpiDevice(const SpiParameters& params) noexcept;
 
 	void Disable() const noexcept;
 	void Enable() const noexcept;
 
 	// Set the clock frequency, SPI mode and character length. 9-bit mode is currently only implemented on the SAME5x.
 	void SetClockFrequencyAndMode(uint32_t freq, SpiMode mode
-#if SAME5x
+#if SAME5x || STM32
 									, bool nineBits
 #endif
 								 ) const noexcept;
@@ -43,7 +43,7 @@ public:
 	// Either way, caller must already have asserted CS for the selected SPI slave.
 	bool TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t *_ecv_array null rx_data, size_t len) noexcept;
 
-#if SAME5x
+#if SAME5x || STM32
 	bool TransceivePacketNineBit(const uint16_t *_ecv_array null tx_data, uint16_t *_ecv_array null rx_data, size_t len) noexcept;
 #endif
 

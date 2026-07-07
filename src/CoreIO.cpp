@@ -53,7 +53,7 @@
 
 // Delay for a specified number of CPU clock cycles from the starting time. Return the time at which we actually stopped waiting.
 extern "C"
-#if SAMC21 || RP2040
+#if SAMC21 || RPXXXX
 // When bit-banging Neopixels we can't afford to wait for instructions to be fetched from flash memory
 [[gnu::optimize("03")]] __attribute__((section(".time_critical")))
 #else
@@ -141,7 +141,7 @@ void SetPinFunction(Pin p, GpioPinFunction f) noexcept
 		p_pio->PIO_ABCDSR[0] = sr0;
 		p_pio->PIO_ABCDSR[1] = sr1;
 		p_pio->PIO_PDR = mask;									// remove the pins from under the control of PIO
-#elif RP2040
+#elif RPXXXX
 		gpio_set_function(p, (gpio_function)f);
 #elif STM32
 		GPIO_TypeDef * const p_pio = GpioPort(p);
@@ -172,7 +172,7 @@ void ClearPinFunction(Pin p) noexcept
 		Pio * const p_pio = GpioPort(p);
 		const uint32_t mask = GpioMask(p);
 		p_pio->PIO_PER = mask;									// put the pins under the control of PIO
-#elif RP2040
+#elif RPXXXX
 		gpio_init(p);
 #elif STM32
 		StmSetPinMode(GpioPort(p), GpioPinNumber(p), StmPinMode::input);
@@ -193,7 +193,7 @@ void EnablePullup(Pin p) noexcept
 #elif SAM4E || SAM4S || SAME70
 		GpioPort(p)->PIO_PPDDR = GpioMask(p);						// turn off pulldown
 		GpioPort(p)->PIO_PUER = GpioMask(p);						// turn on pullup
-#elif RP2040
+#elif RPXXXX
 		gpio_pull_up(p);
 #elif STM32
 		GPIO_TypeDef * const p_pio = GpioPort(p);
@@ -215,7 +215,7 @@ void DisablePullup(Pin p) noexcept
 #elif SAM4E || SAM4S || SAME70
 		GpioPort(p)->PIO_PUDR = GpioMask(p);						// turn off pullup
 		GpioPort(p)->PIO_PPDDR = GpioMask(p);						// turn off pulldown
-#elif RP2040
+#elif RPXXXX
 		gpio_disable_pulls(p);
 #elif STM32
 		GPIO_TypeDef * const p_pio = GpioPort(p);
@@ -254,7 +254,7 @@ void SetDriveStrength(Pin p, unsigned int strength) noexcept
 		GPIO_TypeDef * const p_pio = GpioPort(p);
 		const unsigned int shift2 = GpioPinNumber(p) << 1;
 		p_pio->OSPEEDR = (p_pio->OSPEEDR & ~((strength & 0x03) << shift2));
-#elif RP2XXX
+#elif RPXXXX
 		gpio_set_drive_strength(p, gpio_drive_strength((gpio_drive_strength)min<unsigned int>(strength, 3)));	// 2, 4, 8 and 12mA can be selected
 #else
 		// This is a NOP on other processors
@@ -304,7 +304,7 @@ void SetPinMode(Pin pin, enum PinMode mode, bool debounce) noexcept
 #elif STM32
 			DisablePullup(pin);
 			StmSetPinMode(p_pio, GpioPinNumber(pin), StmPinMode::input);
-#elif RP2040
+#elif RPXXXX
 			ClearPinFunction(pin);
 			gpio_disable_pulls(pin);
 			gpio_set_input_enabled(pin, true);
@@ -328,7 +328,7 @@ void SetPinMode(Pin pin, enum PinMode mode, bool debounce) noexcept
 #elif STM32
 			EnablePullup(pin);
 			StmSetPinMode(p_pio, GpioPinNumber(pin), StmPinMode::input);
-#elif RP2040
+#elif RPXXXX
 			ClearPinFunction(pin);
 			gpio_pull_up(pin);
 			gpio_set_input_enabled(pin, true);
@@ -351,7 +351,7 @@ void SetPinMode(Pin pin, enum PinMode mode, bool debounce) noexcept
 			pio->PIO_PUDR = mask;									// turn off pullup
 			pio->PIO_PPDER = mask;									// turn on pulldown
 			pio_set_input(pio, mask, (debounce) ? PIO_DEBOUNCE : PIO_DEGLITCH);
-#elif RP2040
+#elif RPXXXX
 			ClearPinFunction(pin);
 			gpio_pull_down(pin);
 			gpio_set_input_enabled(pin, true);
@@ -384,7 +384,7 @@ void SetPinMode(Pin pin, enum PinMode mode, bool debounce) noexcept
 #elif STM32
             fastDigitalWriteLow(pin);
             StmSetPinMode(p_pio, GpioPinNumber(pin), StmPinMode::output);
-#elif RP2040
+#elif RPXXXX
 			ClearPinFunction(pin);
 			gpio_disable_pulls(pin);
 			gpio_put(pin, false);
@@ -410,7 +410,7 @@ void SetPinMode(Pin pin, enum PinMode mode, bool debounce) noexcept
 #elif STM32
             fastDigitalWriteHigh(pin);
             StmSetPinMode(p_pio, GpioPinNumber(pin), StmPinMode::output);
-#elif RP2040
+#elif RPXXXX
 			ClearPinFunction(pin);
 			gpio_disable_pulls(pin);
 			gpio_put(pin, true);
@@ -432,7 +432,7 @@ void SetPinMode(Pin pin, enum PinMode mode, bool debounce) noexcept
 			pio->PIO_PPDDR = mask;						// turn off pulldown
 			// Ideally we should record which pins are being used as analog inputs, then we can disable the clock
 			// on any PIO that is being used solely for outputs and ADC inputs. But for now we don't do that.
-#elif RP2040
+#elif RPXXXX
 			adc_gpio_init(pin);
 #elif SAME5x || SAMC21
 			PORT->Group[GpioPortNumber(pin)].DIRCLR.reg = mask;
@@ -758,7 +758,7 @@ static void RandomInit()
 
 void CoreInit() noexcept
 {
-#if SAME5x || SAMC21 || SAME70 || RP2040
+#if SAME5x || SAMC21 || SAME70 || RPXXXX
 	DmacManager::Init();
 #endif
 #if SAME5x || SAMC21
@@ -1123,7 +1123,7 @@ extern "C" uint32_t random32() noexcept
 #endif
 }
 
-#if RP2040
+#if RPXXXX
 # if SUPPORT_CAN
 extern void DisableCanCore1Processing() noexcept;
 extern void EnableCanCore1Processing() noexcept;

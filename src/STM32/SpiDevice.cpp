@@ -29,7 +29,7 @@ static IRQn SpiInterruptNumbers[] = {	SPI1_IRQn, SPI2_IRQn, SPI3_IRQn, SPI4_IRQn
 	((SpiDevice*)param)->Interrupt();
 }
 
-SpiDevice::SpiDevice(const SpiParameters& params, uint32_t interruptPriority) noexcept
+SpiDevice::SpiDevice(const SpiParameters& params) noexcept
 	: hardware(SpiDevices[params.instanceNumber - 1]), instanceNumber(params.instanceNumber), dmaChanTx(params.dmaChanTx), dmaPrioTx(params.dmaPrioTx)
 {
 	SetPinMode(params.mosiPin, INPUT_PULLDOWN);
@@ -44,52 +44,28 @@ SpiDevice::SpiDevice(const SpiParameters& params, uint32_t interruptPriority) no
 	EnableSpiClock(params.instanceNumber);
 
 	// Set up the SPI instance
-	//TODO
-#if 0
-	const uint32_t regCtrlA = SERCOM_SPI_CTRLA_MODE(3) | SERCOM_SPI_CTRLA_DIPO(params.dataInPad) | SERCOM_SPI_CTRLA_DOPO(params.dataOutPad) | SERCOM_SPI_CTRLA_FORM(0);
-	const uint32_t regCtrlB = 0;											// 8 bits, slave select disabled, receiver disabled for now
-# if SAME5x
-	const uint32_t regCtrlC = 0;											// not 32-bit mode
-# endif
+	Disable();
 
-	if ((hardware->SPI.SYNCBUSY.reg & SERCOM_SPI_SYNCBUSY_SWRST) == 0)
-	{
-		while (hardware->SPI.SYNCBUSY.reg & (SERCOM_SPI_SYNCBUSY_SWRST | SERCOM_SPI_SYNCBUSY_ENABLE)) { }
-		if (hardware->SPI.CTRLA.reg & SERCOM_SPI_CTRLA_ENABLE)
-		{
-			hardware->SPI.CTRLA.reg &= ~SERCOM_SPI_CTRLA_ENABLE;
-			while (hardware->SPI.SYNCBUSY.reg & SERCOM_SPI_SYNCBUSY_ENABLE) { }
-		}
-		hardware->SPI.CTRLA.reg = SERCOM_SPI_CTRLA_SWRST | (regCtrlA & SERCOM_SPI_CTRLA_MODE_Msk);
-	}
-	while (hardware->USART.SYNCBUSY.reg & SERCOM_USART_SYNCBUSY_SWRST) { }
-
-	hardware->SPI.CTRLA.reg = regCtrlA;
-	hardware->SPI.CTRLB.reg = regCtrlB;
-#if SAME5x
-	hardware->SPI.CTRLC.reg = regCtrlC;
-#endif
-	hardware->SPI.BAUD.reg = SERCOM_SPI_BAUD_BAUD(Serial::SercomFastGclkFreq/(2 * DefaultSharedSpiClockFrequency) - 1);
-	hardware->SPI.DBGCTRL.reg = SERCOM_SPI_DBGCTRL_DBGSTOP;					// baud rate generator is stopped when CPU halted by debugger
-
-	hardware->SPI.CTRLB.bit.RXEN = 1;
-#endif
 	// Enable the interrupt in the NVIC
 	Serial::SetSpiVector(instanceNumber, CommonInterrupt, this);
-	NVIC_SetPriority(SpiInterruptNumbers[instanceNumber - 1], interruptPriority);
+	NVIC_SetPriority(SpiInterruptNumbers[instanceNumber - 1], params.irqPriority);
 	NVIC_EnableIRQ(SpiInterruptNumbers[instanceNumber - 1]);
+
+	// Leave the SPI disabled until after we have set its comms parameters
 }
 
 void SpiDevice::Disable() const noexcept
 {
-	hardware->SPI.CTRLA.bit.ENABLE = 0;
-	while (hardware->SPI.SYNCBUSY.reg & SERCOM_SPI_SYNCBUSY_ENABLE) { }
+	constexpr uint32_t allIenBits = SPI_IER_MODFIE | SPI_IER_TIFREIE | SPI_IER_CRCEIE | SPI_IER_OVRIE | SPI_IER_UDRIE
+									| SPI_IER_TXTFIE | SPI_IER_EOTIE | SPI_IER_DXPIE | SPI_IER_TXPIE | SPI_IER_RXPIE;
+	hardware->IER &= ~allIenBits;															// disable all interrupts
+	hardware->CR1 &= ~SPI_CR1_SPE;															// disable SPI
+	hardware->IFCR |= SPI_IFCR_SUSPC | SPI_IFCR_TIFREC | SPI_IFCR_OVRC | SPI_IFCR_UDRC;		// clear flags
 }
 
 void SpiDevice::Enable() const noexcept
 {
-	hardware->SPI.CTRLA.bit.ENABLE = 1;
-	while (hardware->SPI.SYNCBUSY.reg & SERCOM_SPI_SYNCBUSY_ENABLE) { }
+	hardware->CR1 |= SPI_CR1_SPE;
 }
 
 // Wait for transmitter ready returning true if timed out
@@ -134,29 +110,41 @@ inline bool SpiDevice::waitForRxReady() const noexcept
 	return false;
 }
 
-void SpiDevice::SetClockFrequencyAndMode(uint32_t freq, SpiMode mode) const noexcept
+void SpiDevice::SetClockFrequencyAndMode(uint32_t freq, SpiMode mode, bool nineBits) const noexcept
 {
-	// We have to disable SPI device in order to change the baud rate, mode and character length
+	// We have to disable SPI device in order to change the baud rate, mode or character length
 	Disable();
-	// Round the clock frequency rate down. For example, using 60MHz clock, if we ask for 4MHz:
-	// Without rounding, divisor = 60/(2*4) = 7, actual clock rate = 4.3MHz
-	// With rounding, divisor = 67/8 = 8, actual clock rate = 3.75MHz
-	// To get more accurate speeds we could increase the clock frequency to 100MHz
-	hardware->SPI.BAUD.reg = SERCOM_SPI_BAUD_BAUD((Serial::SercomFastGclkFreq + (2 * freq) - 1)/(2 * freq) - 1);
-	hardware->SPI.CTRLB.bit.CHSIZE =
-											0;
-	while (hardware->SPI.SYNCBUSY.bit.CTRLB) { }
 
-	uint32_t regCtrlA = SERCOM_SPI_CTRLA_MODE(3) | SERCOM_SPI_CTRLA_DIPO(3) | SERCOM_SPI_CTRLA_DOPO(0) | SERCOM_SPI_CTRLA_FORM(0);
+	// Select the highest bit rate we can that does not exceed the requested bit rate.
+	unsigned int prescaleFactor = 0;
+	uint32_t actualFreq = GetSpiClockFrequency(instanceNumber);
+	while (actualFreq > freq && prescaleFactor < 8)
+	{
+		actualFreq >>= 1;
+		++prescaleFactor;
+	}
+	uint32_t cfg1 = ((nineBits) ? 8 : 7) << SPI_CFG1_DSIZE_Pos;
+	if (prescaleFactor == 0)
+	{
+		cfg1 |= SPI_CFG1_BPASS;
+	}
+	else
+	{
+		cfg1 |= (prescaleFactor - 1) << SPI_CFG1_MBR_Pos;
+	}
+	hardware->CFG1 = cfg1;			//TODO need to add DMA bits of using DMA
+
+	uint32_t cfg2 = SPI_CFG2_AFCNTR | SPI_CFG2_MASTER;
+
 	if (((uint8_t)mode & 2) != 0)
 	{
-		regCtrlA |= SERCOM_SPI_CTRLA_CPOL;
+		cfg2 |= SPI_CFG2_CPOL;
 	}
 	if (((uint8_t)mode & 1) != 0)
 	{
-		regCtrlA |= SERCOM_SPI_CTRLA_CPHA;
+		cfg2 |= SPI_CFG2_CPHA;
 	}
-	hardware->SPI.CTRLA.reg = regCtrlA;
+	hardware->CFG2 = cfg2;
 	Enable();
 }
 

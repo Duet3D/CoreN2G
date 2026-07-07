@@ -14,10 +14,9 @@
 constexpr uint32_t DefaultSharedSpiClockFrequency = 2000000;
 constexpr uint32_t SpiTimeout = 10000;
 
-SpiDevice::SpiDevice(const SpiParameters& params, uint32_t interruptPriority) noexcept
+SpiDevice::SpiDevice(const SpiParameters& params) noexcept
 	: hardware(Serial::GetSercom(params.sercomNumber)), sercomNumber(params.sercomNumber), dmaChanTx(params.dmaChanTx), dmaPrioTx(params.dmaPrioTx)
 {
-	(void)interruptPriority;											// this driver does not currently use SPI interrupts
 	SetPinMode(params.mosiPin, INPUT_PULLDOWN);
 	SetPinMode(params.misoPin, INPUT_PULLDOWN);
 	SetPinMode(params.sclkPin, INPUT_PULLDOWN);

@@ -865,6 +865,8 @@ inline uint32_t GetTimerClockFrequency(unsigned int timerNumber) noexcept { retu
  */
 void EnableTimerClock(unsigned int timerNumber) noexcept;
 
+inline uint32_t GetSpiClockFrequency(unsigned int spiNumber) noexcept { return 48'000'000; }			// all SPI devices currently use a 48MHz clock
+
 void EnableSpiClock(unsigned int spiInstanceNumber) noexcept;
 
 #endif

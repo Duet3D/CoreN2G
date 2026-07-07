@@ -14,7 +14,7 @@
 class SharedSpiDevice : public SpiDevice
 {
 public:
-	SharedSpiDevice(const SpiParameters& params, uint32_t interruptpriority) noexcept;
+	SharedSpiDevice(const SpiParameters& params) noexcept;
 
 	// Get ownership of this SPI, return true if successful
 	bool Take(uint32_t timeout) noexcept { return mutex.Take(timeout); }

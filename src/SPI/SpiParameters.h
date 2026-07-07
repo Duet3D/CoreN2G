@@ -37,6 +37,7 @@ struct SpiParameters
 	Pin misoPin;
 	Pin sclkPin;
 	GpioPinFunction pinFunction;
+	NvicPriority irqPriority;
 	DmaChannel dmaChanTx;
 	DmaChannel dmaChanRx;
 	DmaPriority dmaPrioTx;
