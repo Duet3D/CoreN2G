@@ -29,12 +29,8 @@ bool SharedSpiClient::Select(uint32_t timeout) const noexcept
 	const bool ok = device.Take(timeout);
 	if (ok)
 	{
-		device.SetClockFrequencyAndMode(clockFrequency, mode
-#if SAME5x
-										, false						// for now we always use 8-bit mode
-#endif
-									   );							// this also enables the SPI peripheral
-		delayMicroseconds(1);										// allow the clock time to settle
+		device.SetClockFrequencyAndMode(clockFrequency, mode, false);	// for now we always use 8-bit mode
+		delayMicroseconds(1);											// allow the clock time to settle
 		digitalWrite(csPin, csActivePolarity);
 	}
 	return ok;
@@ -44,7 +40,7 @@ bool SharedSpiClient::Select(uint32_t timeout) const noexcept
 void SharedSpiClient::Deselect() const noexcept
 {
 	digitalWrite(csPin, !csActivePolarity);
-	delayMicroseconds(1);											// in case the clock makes an abrupt transition when we disable SPI
+	delayMicroseconds(1);												// in case the clock makes an abrupt transition when we disable SPI
 	device.Disable();
 	device.Release();
 }

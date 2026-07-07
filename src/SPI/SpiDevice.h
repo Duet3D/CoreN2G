@@ -86,8 +86,8 @@ private:
 # ifdef RTOS
 	TaskBase *null waitingTask = nullptr;
 # endif
-	DmaChannel dmaChanTx;
-	DmaPriority dmaPrioTx;
+	DmaChannel dmaChanTx, dmaChanRx;
+	DmaPriority dmaPrioTx, dmaPrioRx;
 #else
 # error Unsupported configuration
 #endif

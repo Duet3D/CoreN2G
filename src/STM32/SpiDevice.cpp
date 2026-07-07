@@ -30,7 +30,8 @@ static IRQn SpiInterruptNumbers[] = {	SPI1_IRQn, SPI2_IRQn, SPI3_IRQn, SPI4_IRQn
 }
 
 SpiDevice::SpiDevice(const SpiParameters& params) noexcept
-	: hardware(SpiDevices[params.instanceNumber - 1]), instanceNumber(params.instanceNumber), dmaChanTx(params.dmaChanTx), dmaPrioTx(params.dmaPrioTx)
+	: hardware(SpiDevices[params.instanceNumber - 1]), instanceNumber(params.instanceNumber),
+	  dmaChanTx(params.dmaChanTx), dmaChanRx(params.dmaChanRx), dmaPrioTx(params.dmaPrioTx), dmaPrioRx(params.dmaPrioRx)
 {
 	SetPinMode(params.mosiPin, INPUT_PULLDOWN);
 	SetPinMode(params.misoPin, INPUT_PULLDOWN);
@@ -155,24 +156,49 @@ bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t
 	(void)hardware->RXDR;
 
 # if defined(RTOS)
-	if (len >= 40 && rx_data == nullptr && tx_data != nullptr)
+	if (len >= 20 && tx_data != nullptr)
 	{
-		// Sending a large amount of data to LCD, so use DMA
+		// Sending a large amount of data, so use DMA
 		DmacManager::DisableChannel(dmaChanTx);
 		DmacManager::SetSourceAddress(dmaChanTx, tx_data);
 		DmacManager::SetDestinationAddress(dmaChanTx, &(hardware->TXDR));
-		DmacManager::SetBtctrl(dmaChanTx, DMAC_BTCTRL_STEPSIZE_X1 | DMAC_BTCTRL_STEPSEL_SRC | DMAC_BTCTRL_SRCINC | DMAC_BTCTRL_BEATSIZE_BYTE | DMAC_BTCTRL_BLOCKACT_NOACT);
+		DmacManager::SetBtctrl(dmaChanTx,
+								  (0 << DMA_CTR1_DBL_1_Pos)						// destination burst length = 1
+								| (0 << DMA_CTR1_DDW_LOG2_Pos)					// destination beat size = 1 byte
+								| (0 << DMA_CTR1_SBL_1_Pos)						// source burst length = 1
+								| (0 << DMA_CTR1_SDW_LOG2_Pos)					// source beat size = 1 byte
+								| DMA_CTR1_SINC									// increment source address
+							  );
 		DmacManager::SetDataLength(dmaChanTx, len);
 		DmacManager::SetTriggerSourceSpiTx(dmaChanTx, instanceNumber);
 		waitingTask = TaskBase::GetCallerTaskHandle();
 		DmacManager::SetInterruptCallback(dmaChanTx, SpiDevice::DmaComplete, CallbackParameter((void *)this));
 		DmacManager::EnableCompletedInterrupt(dmaChanTx);
+		if (rx_data != nullptr)
+		{
+			DmacManager::DisableChannel(dmaChanRx);
+			DmacManager::SetSourceAddress(dmaChanRx, &(hardware->RXDR));
+			DmacManager::SetDestinationAddress(dmaChanRx, rx_data);
+			DmacManager::SetBtctrl(dmaChanRx,
+									  (0 << DMA_CTR1_DBL_1_Pos)						// destination burst length = 1
+									| (0 << DMA_CTR1_DDW_LOG2_Pos)					// destination beat size = 1 byte
+									| (0 << DMA_CTR1_SBL_1_Pos)						// source burst length = 1
+									| (0 << DMA_CTR1_SDW_LOG2_Pos)					// source beat size = 1 byte
+									| DMA_CTR1_DINC									// increment destination address
+								  );
+			DmacManager::SetDataLength(dmaChanRx, len);
+			DmacManager::SetTriggerSourceSpiTx(dmaChanRx, instanceNumber);
+			DmacManager::SetInterruptCallback(dmaChanRx, SpiDevice::DmaComplete, CallbackParameter((void *)this));
+			DmacManager::EnableCompletedInterrupt(dmaChanRx);
+			DmacManager::EnableChannel(dmaChanRx, dmaPrioTx);
+		}
 		DmacManager::EnableChannel(dmaChanTx, dmaPrioTx);
 		TaskBase::TakeIndexed(NotifyIndices::Spi, 10);			// maximum 3kb transfer should complete in about 2ms @ 14MHz clock speed
 	}
 	else
 # endif
 	{
+		// For now we use polling mode
 		for (uint32_t i = 0; i < len; ++i)
 		{
 			uint32_t dOut = (tx_data == nullptr) ? 0x000000FF : (uint32_t)*tx_data++;
