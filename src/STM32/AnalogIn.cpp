@@ -27,8 +27,6 @@ on the F4 based devices. We should probably consider using higher sample avlues 
 oversampling.
 */
 
-#if 0	//TODO this disabled for now
-
 #ifdef RTOS
 #include <Core.h>
 #include <AnalogIn.h>
@@ -45,6 +43,37 @@ oversampling.
 #endif
 
 extern "C" void debugPrintf(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
+
+#if 1	// TODO temporarily stub this module
+
+// Enable analog input on a pin.
+// Readings will be taken and about every 'ticksPerCall' milliseconds the callback function will be called with the specified parameter and ADC reading.
+// Set ticksPerCall to 0 to get a callback on every reading.
+// Warning! there is nothing to stop you enabling a channel twice, in which case in the SAME51 configuration, it will be read twice in the sequence.
+// After calling this, the result of calling ReadChannel will be zero until a reading has been taken.
+bool AnalogIn::EnableChannel(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall) noexcept
+{
+	return true;
+}
+
+// Readings will be taken and about every 'ticksPerCall' milliseconds the callback function will be called with the specified parameter and ADC reading.
+// Set ticksPerCall to 0 to get a callback on every reading.
+// Call this with fn == nullptr to stop getting callbacks.
+bool AnalogIn::SetCallback(AdcInput adcin, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall) noexcept
+{
+	return true;
+}
+
+// Return whether or not the channel is enabled
+bool AnalogIn::IsChannelEnabled(AdcInput adcin) noexcept { return false; }
+
+// Disable a previously-enabled channel
+void AnalogIn::DisableChannel(AdcInput adcin) noexcept { }
+
+// Get the latest result from a channel. The channel must have been enabled first.
+uint16_t AnalogIn::ReadChannel(AdcInput adcin) noexcept { return 0; }
+
+#else
 
 constexpr uint32_t NumADCs = 3;                          // Max supported ADCs
 constexpr uint32_t OversampleBits = 2;                   // Number of extra bit of resolution
