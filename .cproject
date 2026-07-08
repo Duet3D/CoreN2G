@@ -2842,7 +2842,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/STMCubeMX/Drivers/CMSIS/Device/ST/STM32H7xx|src/STMCubeMX/Drivers/STM32H7xx_HAL_Driver|src/STM32Hx/STM/CMSIS/Driver/vStream|src/STM32Hx/STM/CMSIS/RTOS2/Source|src/STM32Hx/STM/CMSIS/Device/ST/STM32H7xx|src/SAME5x_C21|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/STMCubeMX/Core/Src|src/STMCubeMX/Drivers/CMSIS/Device/ST/STM32H7xx|src/STMCubeMX/Drivers/STM32H7xx_HAL_Driver|src/STM32Hx/STM/CMSIS/Driver/vStream|src/STM32Hx/STM/CMSIS/RTOS2/Source|src/STM32Hx/STM/CMSIS/Device/ST/STM32H7xx|src/SAME5x_C21|src/RP2040|src/SAM4S_4E_E70|src/SAME5x_C21/SAME5x/usb|src/SAME5x_C21/SAMC21|src/atmel|src/arm" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>

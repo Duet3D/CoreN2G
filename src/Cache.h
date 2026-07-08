@@ -41,6 +41,11 @@ inline bool Cache::Disable() noexcept { return false; }
 inline void Cache::Flush(const volatile void *start, size_t length) noexcept { __DSB(); }
 inline void Cache::Invalidate(const volatile void *start, size_t length) noexcept { __DSB(); }
 
+#elif STM32H5
+
+// STM32H5 caches instructions only
+inline void Cache::Invalidate(const volatile void *start, size_t length) noexcept { __DSB(); }
+
 #elif SAM4E || SAME5x
 
 # if SAME5x

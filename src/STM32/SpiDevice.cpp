@@ -255,6 +255,11 @@ void SpiDevice::DmaComplete(DmaCallbackReason reason) noexcept
 	static_cast<SpiDevice*>(param.vp)->DmaComplete(reason);
 }
 
+void SpiDevice::Interrupt() noexcept
+{
+	// not currently used
+}
+
 #endif
 
 // End

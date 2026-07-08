@@ -400,7 +400,7 @@ void Cache::Flush(const volatile void *start, size_t length) noexcept
 
 #endif
 
-#if !SAME5x && !STM32H5 && CACHE_INSTRUCTIONS_ONLY
+#if !STM32H5 && !(SAME5x && CACHE_INSTRUCTIONS_ONLY)
 void Cache::Invalidate(const volatile void *start, size_t length) noexcept
 {
 # if SAME70
