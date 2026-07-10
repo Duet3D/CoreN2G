@@ -12,7 +12,7 @@
 # include <Serial.h>
 
 constexpr uint32_t DefaultSharedSpiClockFrequency = 2000000;
-constexpr uint32_t SpiTimeout = 10000;
+constexpr uint32_t SpiCharTimeout = 10000;			// this is a count of how often we loop while waiting for the SPI peripheral to finish transmitting or receiving a character
 
 SpiDevice::SpiDevice(const SpiParameters& params) noexcept
 	: hardware(Serial::GetUsart(params.usartNumber))
@@ -47,7 +47,7 @@ void SpiDevice::Enable() const noexcept
 // Wait for transmitter ready returning true if timed out
 inline bool SpiDevice::waitForTxReady() const noexcept
 {
-	uint32_t timeout = SpiTimeout;
+	uint32_t timeout = SpiCharTimeout;
 	while (!usart_is_tx_ready(hardware))
 	{
 		if (--timeout == 0)
@@ -61,7 +61,7 @@ inline bool SpiDevice::waitForTxReady() const noexcept
 // Wait for transmitter empty returning true if timed out
 inline bool SpiDevice::waitForTxEmpty() const noexcept
 {
-	uint32_t timeout = SpiTimeout;
+	uint32_t timeout = SpiCharTimeout;
 	while (!usart_is_tx_empty(hardware))
 	{
 		if (!timeout--)
@@ -75,7 +75,7 @@ inline bool SpiDevice::waitForTxEmpty() const noexcept
 // Wait for receive data available returning true if timed out
 inline bool SpiDevice::waitForRxReady() const noexcept
 {
-	uint32_t timeout = SpiTimeout;
+	uint32_t timeout = SpiCharTimeout;
 	while (!usart_is_rx_ready(hardware))
 	{
 		if (--timeout == 0)
@@ -110,7 +110,7 @@ void SpiDevice::SetClockFrequencyAndMode(uint32_t freq, SpiMode mode) const noex
 }
 
 // Send and receive data returning true if successful
-bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t *_ecv_array null rx_data, size_t len) noexcept
+bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t *_ecv_array null rx_data, size_t len, uint32_t dmaTimeout) noexcept
 {
 	// Clear any existing data
 	(void)hardware->US_RHR;

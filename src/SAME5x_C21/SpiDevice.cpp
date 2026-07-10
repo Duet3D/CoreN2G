@@ -12,7 +12,7 @@
 # include <peripheral_clk_config.h>
 
 constexpr uint32_t DefaultSharedSpiClockFrequency = 2000000;
-constexpr uint32_t SpiTimeout = 10000;
+constexpr uint32_t SpiCharTimeout = 10000;			// this is a count of how often we loop while waiting for the SPI peripheral to finish transmitting or receiving a character
 
 SpiDevice::SpiDevice(const SpiParameters& params) noexcept
 	: hardware(Serial::GetSercom(params.sercomNumber)), sercomNumber(params.sercomNumber), dmaChanTx(params.dmaChanTx), dmaPrioTx(params.dmaPrioTx)
@@ -73,7 +73,7 @@ void SpiDevice::Enable() const noexcept
 // Wait for transmitter ready returning true if timed out
 inline bool SpiDevice::waitForTxReady() const noexcept
 {
-	uint32_t timeout = SpiTimeout;
+	uint32_t timeout = SpiCharTimeout;
 	while (!(hardware->SPI.INTFLAG.bit.DRE))
 	{
 		if (--timeout == 0)
@@ -87,7 +87,7 @@ inline bool SpiDevice::waitForTxReady() const noexcept
 // Wait for transmitter empty returning true if timed out
 inline bool SpiDevice::waitForTxEmpty() const noexcept
 {
-	uint32_t timeout = SpiTimeout;
+	uint32_t timeout = SpiCharTimeout;
 	while (!(hardware->SPI.INTFLAG.bit.TXC))
 	{
 		if (!timeout--)
@@ -101,7 +101,7 @@ inline bool SpiDevice::waitForTxEmpty() const noexcept
 // Wait for receive data available returning true if timed out
 inline bool SpiDevice::waitForRxReady() const noexcept
 {
-	uint32_t timeout = SpiTimeout;
+	uint32_t timeout = SpiCharTimeout;
 	while (!(hardware->SPI.INTFLAG.bit.RXC))
 	{
 		if (--timeout == 0)
@@ -146,7 +146,7 @@ void SpiDevice::SetClockFrequencyAndMode(uint32_t freq, SpiMode mode
 }
 
 // Send and receive data returning true if successful
-bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t *_ecv_array null rx_data, size_t len) noexcept
+bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t *_ecv_array null rx_data, size_t len, uint32_t dmaTimeout) noexcept
 {
 	// Clear any existing data
 	(void)hardware->SPI.DATA.reg;
@@ -165,7 +165,7 @@ bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t
 		DmacManager::SetInterruptCallback(dmaChanTx, SpiDevice::DmaComplete, CallbackParameter((void *)this));
 		DmacManager::EnableCompletedInterrupt(dmaChanTx);
 		DmacManager::EnableChannel(dmaChanTx, dmaPrioTx);
-		TaskBase::TakeIndexed(NotifyIndices::Spi, 10);			// maximum 3kb transfer should complete in about 2ms @ 14MHz clock speed
+		TaskBase::TakeIndexed(NotifyIndices::Spi, dmaTimeout);			// maximum 3kb transfer should complete in about 2ms @ 14MHz clock speed
 	}
 	else
 # endif
@@ -173,7 +173,7 @@ bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t
 		for (uint32_t i = 0; i < len; ++i)
 		{
 			uint32_t dOut = (tx_data == nullptr) ? 0x000000FF : (uint32_t)*tx_data++;
-			if (waitForTxReady())			// we have to write the first byte after enabling the device without waiting for DRE to be set
+			if (waitForTxReady())										// we have to write the first byte after enabling the device without waiting for DRE to be set
 			{
 				return false;
 			}
@@ -217,7 +217,7 @@ bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t
 #if SAME5x
 
 // Send and receive data returning true if successful, using 16-bit data transfers (needed when using 9-bit characters). 'len' is in 16-bit words.
-bool SpiDevice::TransceivePacketNineBit(const uint16_t *_ecv_array null tx_data, uint16_t *_ecv_array null rx_data, size_t len) noexcept
+bool SpiDevice::TransceivePacketNineBit(const uint16_t *_ecv_array null tx_data, uint16_t *_ecv_array null rx_data, size_t len, uint32_t dmaTimeout) noexcept
 {
 	// Clear any existing data
 	(void)hardware->SPI.DATA.reg;
@@ -236,7 +236,7 @@ bool SpiDevice::TransceivePacketNineBit(const uint16_t *_ecv_array null tx_data,
 		DmacManager::SetInterruptCallback(dmaChanTx, SpiDevice::DmaComplete, CallbackParameter((void *)this));
 		DmacManager::EnableCompletedInterrupt(dmaChanTx);
 		DmacManager::EnableChannel(dmaChanTx, dmaPrioTx);
-		TaskBase::TakeIndexed(NotifyIndices::Spi, 10);			// maximum 3kb transfer should complete in about 2ms @ 14MHz clock speed
+		TaskBase::TakeIndexed(NotifyIndices::Spi, dmaTimeout);			// maximum 3kb transfer should complete in about 2ms @ 14MHz clock speed
 	}
 	else
 #endif
@@ -244,7 +244,7 @@ bool SpiDevice::TransceivePacketNineBit(const uint16_t *_ecv_array null tx_data,
 		for (uint32_t i = 0; i < len; ++i)
 		{
 			uint32_t dOut = (tx_data == nullptr) ? 0x000001FF : (uint32_t)*tx_data++;
-			if (waitForTxReady())			// we have to write the first byte after enabling the device without waiting for DRE to be set
+			if (waitForTxReady())										// we have to write the first byte after enabling the device without waiting for DRE to be set
 			{
 				return false;
 			}

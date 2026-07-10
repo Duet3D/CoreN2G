@@ -29,7 +29,11 @@ bool SharedSpiClient::Select(uint32_t timeout) const noexcept
 	const bool ok = device.Take(timeout);
 	if (ok)
 	{
-		device.SetClockFrequencyAndMode(clockFrequency, mode, false);	// for now we always use 8-bit mode
+		device.SetClockFrequencyAndMode(clockFrequency, mode
+#if SAME5x || STM32
+										, false							// for now we always use 8-bit mode
+#endif
+									   );
 		delayMicroseconds(1);											// allow the clock time to settle
 		digitalWrite(csPin, csActivePolarity);
 	}
@@ -45,9 +49,9 @@ void SharedSpiClient::Deselect() const noexcept
 	device.Release();
 }
 
-bool SharedSpiClient::TransceivePacket(const uint8_t *_ecv_array _ecv_null tx_data, uint8_t *_ecv_array _ecv_null rx_data, size_t len) const noexcept
+bool SharedSpiClient::TransceivePacket(const uint8_t *_ecv_array _ecv_null tx_data, uint8_t *_ecv_array _ecv_null rx_data, size_t len, uint32_t dmaTimeout) const noexcept
 {
-	return device.TransceivePacket(tx_data, rx_data, len);
+	return device.TransceivePacket(tx_data, rx_data, len, dmaTimeout);
 }
 
 // End

@@ -9,8 +9,7 @@
 #include <CoreNotifyIndices.h>
 #include <Serial.h>
 
-constexpr uint32_t DefaultSharedSpiClockFrequency = 2000000;
-constexpr uint32_t SpiTimeout = 10000;
+constexpr uint32_t SpiCharTimeout = 10000;			// this is a count of how often we loop while waiting for the SPI peripheral to finish transmitting or receiving a character
 
 static SPI_TypeDef *const SpiDevices[] = {	SPI1, SPI2, SPI3, SPI4,
 #ifdef SPI5
@@ -72,7 +71,7 @@ void SpiDevice::Enable() const noexcept
 // Wait for transmitter ready returning true if timed out
 inline bool SpiDevice::waitForTxReady() const noexcept
 {
-	uint32_t timeout = SpiTimeout;
+	uint32_t timeout = SpiCharTimeout;
 	while (!(hardware->SR & SPI_SR_TXP))
 	{
 		if (--timeout == 0)
@@ -86,7 +85,7 @@ inline bool SpiDevice::waitForTxReady() const noexcept
 // Wait for transmitter empty returning true if timed out
 inline bool SpiDevice::waitForTxEmpty() const noexcept
 {
-	uint32_t timeout = SpiTimeout;
+	uint32_t timeout = SpiCharTimeout;
 	while (!(hardware->SR & SPI_SR_TXC))
 	{
 		if (!timeout--)
@@ -100,7 +99,7 @@ inline bool SpiDevice::waitForTxEmpty() const noexcept
 // Wait for receive data available returning true if timed out
 inline bool SpiDevice::waitForRxReady() const noexcept
 {
-	uint32_t timeout = SpiTimeout;
+	uint32_t timeout = SpiCharTimeout;
 	while (!(hardware->SR & SPI_SR_RXP))
 	{
 		if (--timeout == 0)
@@ -150,7 +149,7 @@ void SpiDevice::SetClockFrequencyAndMode(uint32_t freq, SpiMode mode, bool nineB
 }
 
 // Send and receive data returning true if successful
-bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t *_ecv_array null rx_data, size_t len) noexcept
+bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t *_ecv_array null rx_data, size_t len, uint32_t dmaTimeout) noexcept
 {
 	// Clear any existing data
 	(void)hardware->RXDR;
@@ -172,8 +171,6 @@ bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t
 		DmacManager::SetDataLength(dmaChanTx, len);
 		DmacManager::SetTriggerSourceSpiTx(dmaChanTx, instanceNumber);
 		waitingTask = TaskBase::GetCallerTaskHandle();
-		DmacManager::SetInterruptCallback(dmaChanTx, SpiDevice::DmaComplete, CallbackParameter((void *)this));
-		DmacManager::EnableCompletedInterrupt(dmaChanTx);
 		if (rx_data != nullptr)
 		{
 			DmacManager::DisableChannel(dmaChanRx);
@@ -192,42 +189,48 @@ bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t
 			DmacManager::EnableCompletedInterrupt(dmaChanRx);
 			DmacManager::EnableChannel(dmaChanRx, dmaPrioTx);
 		}
-		DmacManager::EnableChannel(dmaChanTx, dmaPrioTx);
-		TaskBase::TakeIndexed(NotifyIndices::Spi, 10);			// maximum 3kb transfer should complete in about 2ms @ 14MHz clock speed
-	}
-	else
-# endif
-	{
-		// For now we use polling mode
-		for (uint32_t i = 0; i < len; ++i)
+		else
 		{
-			uint32_t dOut = (tx_data == nullptr) ? 0x000000FF : (uint32_t)*tx_data++;
-			if (waitForTxReady())			// we have to write the first byte after enabling the device without waiting for DRE to be set
+			DmacManager::SetInterruptCallback(dmaChanTx, SpiDevice::DmaComplete, CallbackParameter((void *)this));
+			DmacManager::EnableCompletedInterrupt(dmaChanTx);
+		}
+		DmacManager::EnableChannel(dmaChanTx, dmaPrioTx);
+		const bool ok = TaskBase::TakeIndexed(NotifyIndices::Spi, dmaTimeout);		// maximum 3kb transfer should complete in about 2ms @ 14MHz clock speed
+		if (ok)
+		{
+			waitForTxEmpty();														// wait for transmitter empty, to make sure that the last clock pulse has finished
+		}
+		return ok;
+	}
+# endif
+	// For now we use polling mode
+	for (uint32_t i = 0; i < len; ++i)
+	{
+		uint32_t dOut = (tx_data == nullptr) ? 0x000000FF : (uint32_t)*tx_data++;
+		if (waitForTxReady())			// we have to write the first byte after enabling the device without waiting for DRE to be set
+		{
+			return false;
+		}
+
+		// Write to transmit register
+		hardware->TXDR = dOut;
+
+		// Some devices are transmit-only e.g. 12864 display, so don't wait for received data if we don't need to
+		if (rx_data != nullptr)
+		{
+			// Wait for receive register
+			if (waitForRxReady())
 			{
 				return false;
 			}
 
-			// Write to transmit register
-			hardware->TXDR = dOut;
-
-			// Some devices are transmit-only e.g. 12864 display, so don't wait for received data if we don't need to
-			if (rx_data != nullptr)
-			{
-				// Wait for receive register
-				if (waitForRxReady())
-				{
-					return false;
-				}
-
-				// Get data from receive register
-				const uint8_t dIn = (uint8_t)hardware->RXDR;
-				*rx_data++ = dIn;
-			}
+			// Get data from receive register
+			const uint8_t dIn = (uint8_t)hardware->RXDR;
+			*rx_data++ = dIn;
 		}
 	}
 
-	// Wait for transmitter empty, to make sure that the last clock pulse has finished
-	waitForTxEmpty();
+	waitForTxEmpty();						// wait for transmitter empty, to make sure that the last clock pulse has finished
 
 	// If we were not receiving, clear data from the receive buffer
 	if (rx_data == nullptr)

@@ -41,10 +41,10 @@ public:
 	// Send and receive data returning true if successful.
 	// If this is a shared SPI device then the caller must already own the mutex.
 	// Either way, caller must already have asserted CS for the selected SPI slave.
-	bool TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t *_ecv_array null rx_data, size_t len) noexcept;
+	bool TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t *_ecv_array null rx_data, size_t len, uint32_t timeout = SpiDmaTimeout) noexcept;
 
 #if SAME5x || STM32
-	bool TransceivePacketNineBit(const uint16_t *_ecv_array null tx_data, uint16_t *_ecv_array null rx_data, size_t len) noexcept;
+	bool TransceivePacketNineBit(const uint16_t *_ecv_array null tx_data, uint16_t *_ecv_array null rx_data, size_t len, uint32_t timeout = SpiDmaTimeout) noexcept;
 #endif
 
 #if SAME5x || SAMC21 || STM32
@@ -54,6 +54,8 @@ public:
 #if STM32
 	static void CommonInterrupt(void *param) noexcept;
 #endif
+
+	static constexpr uint32_t SpiDmaTimeout = 10;				// timeout for a whole SPI transaction, in clock ticks (ms)
 
 private:
 	bool waitForTxReady() const noexcept;
