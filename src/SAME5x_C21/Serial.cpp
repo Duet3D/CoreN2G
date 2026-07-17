@@ -65,7 +65,7 @@ void Serial::EnableSercomClock(uint8_t sercomNumber) noexcept
 }
 
 // Initialise the serial port. This does not set up the I/O pins. It assumes that we always transmit on pad 0.
-void Serial::InitUart(uint8_t sercomNumber, uint32_t baudRate, uint8_t rxPad, uint8_t txPad
+void Serial::InitUart(uint8_t sercomNumber, uint32_t baudRate, uint8_t rxPad, uint8_t txPad, UartMode uartMode
 #if SAME5x
 						, bool use32bitMode
 #endif
@@ -74,23 +74,40 @@ void Serial::InitUart(uint8_t sercomNumber, uint32_t baudRate, uint8_t rxPad, ui
 	EnableSercomClock(sercomNumber);
 	Sercom * const sercom = GetSercom(sercomNumber);
 
-	const uint32_t ctrla = (1u << SERCOM_USART_CTRLA_DORD_Pos)				// MSB first
-						 | (0u << SERCOM_USART_CTRLA_CPOL_Pos)				// use rising clock edge
-						 | (0u << SERCOM_USART_CTRLA_CMODE_Pos)				// async mode
-						 | (0u << SERCOM_USART_CTRLA_FORM_Pos)				// usart frame, no parity
-						 | (0u << SERCOM_USART_CTRLA_SAMPA_Pos)				// sample on clocks 7-8-9
-						 | ((uint32_t)rxPad << SERCOM_USART_CTRLA_RXPO_Pos)	// receive data pad
-						 | ((uint32_t)txPad << SERCOM_USART_CTRLA_TXPO_Pos)	// transmit data pad
-						 | (0u << SERCOM_USART_CTRLA_SAMPR_Pos)				// 16x over sampling, normal baud rate generation
+	uint32_t ctrla = (1u << SERCOM_USART_CTRLA_DORD_Pos)				// MSB first
+					 | (0u << SERCOM_USART_CTRLA_CPOL_Pos)				// use rising clock edge
+					 | (0u << SERCOM_USART_CTRLA_CMODE_Pos)				// async mode
+					 | (0u << SERCOM_USART_CTRLA_FORM_Pos)				// usart frame, no parity
+					 | (0u << SERCOM_USART_CTRLA_SAMPA_Pos)				// sample on clocks 7-8-9
+					 | ((uint32_t)rxPad << SERCOM_USART_CTRLA_RXPO_Pos)	// receive data pad
+					 | ((uint32_t)txPad << SERCOM_USART_CTRLA_TXPO_Pos)	// transmit data pad
+					 | (0u << SERCOM_USART_CTRLA_SAMPR_Pos)				// 16x over sampling, normal baud rate generation
 #if SAME5x
-						 | (0u << SERCOM_USART_CTRLA_RXINV_Pos)				// don't invert receive data
-						 | (0u << SERCOM_USART_CTRLA_TXINV_Pos)				// don't invert transmitted data
+					 | (0u << SERCOM_USART_CTRLA_RXINV_Pos)				// don't invert receive data
+					 | (0u << SERCOM_USART_CTRLA_TXINV_Pos)				// don't invert transmitted data
 #endif
-						 | (0u << SERCOM_USART_CTRLA_IBON_Pos)				// don't report buffer overflow early
-						 | (0u << SERCOM_USART_CTRLA_RUNSTDBY_Pos)			// don't clock during standby
-						 | (1u << SERCOM_USART_CTRLA_MODE_Pos)				// use internal clock
-						 | (0u << SERCOM_USART_CTRLA_ENABLE_Pos)			// not enabled
-						 | (0u << SERCOM_USART_CTRLA_SWRST_Pos);			// no reset
+					 | (0u << SERCOM_USART_CTRLA_IBON_Pos)				// don't report buffer overflow early
+					 | (0u << SERCOM_USART_CTRLA_RUNSTDBY_Pos)			// don't clock during standby
+					 | (1u << SERCOM_USART_CTRLA_MODE_Pos)				// use internal clock
+					 | (0u << SERCOM_USART_CTRLA_ENABLE_Pos)			// not enabled
+					 | (0u << SERCOM_USART_CTRLA_SWRST_Pos);			// no reset
+	uint32_t ctrlb = SERCOM_USART_CTRLB_TXEN | SERCOM_USART_CTRLB_RXEN;
+	switch (uartMode)
+	{
+	case UartMode::Mode8N1:
+	default:
+		break;
+
+	case UartMode::Mode8E1:
+		ctrla |= 1u << SERCOM_USART_CTRLA_FORM_Pos;
+		break;
+
+	case UartMode::Mode8O1:
+		ctrlb |= SERCOM_USART_CTRLB_PMODE;
+		ctrla |= 1u << SERCOM_USART_CTRLA_FORM_Pos;
+		break;
+	}
+
 	if (!hri_sercomusart_is_syncing(sercom, SERCOM_USART_SYNCBUSY_SWRST))
 	{
 		const uint32_t mode = ctrla & SERCOM_USART_CTRLA_MODE_Msk;
@@ -104,7 +121,7 @@ void Serial::InitUart(uint8_t sercomNumber, uint32_t baudRate, uint8_t rxPad, ui
 	hri_sercomusart_wait_for_sync(sercom, SERCOM_USART_SYNCBUSY_SWRST);
 
 	sercom->USART.CTRLA.reg = ctrla;
-	sercom->USART.CTRLB.reg = SERCOM_USART_CTRLB_TXEN | SERCOM_USART_CTRLB_RXEN;
+	sercom->USART.CTRLB.reg = ctrlb;
 #if SAME5x
 	sercom->USART.CTRLC.reg = (use32bitMode) ? SERCOM_USART_CTRLC_DATA32B(3) : 0u;
 #else
