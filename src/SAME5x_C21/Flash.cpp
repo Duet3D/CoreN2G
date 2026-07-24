@@ -120,7 +120,7 @@ uint32_t Flash::GetFlashSize() noexcept
 	const uint32_t member = deviceId & 0x000000FF;
 
 	constexpr uint16_t sizeTable_d51_e53_e54[] = { 1024, 512, 1024, 512, 1024, 512, 256, 512, 256 };
-	constexpr uint16_t sizeTable_e51[] = { 1024, 512, 512, 256, 1024, 0, 256 };
+	constexpr uint16_t sizeTable_e51[] = { 1024, 512, 512, 256, 1024, 512, 256 };		// see note below about datasheet error
 
 	switch (family)
 	{
@@ -132,7 +132,8 @@ uint32_t Flash::GetFlashSize() noexcept
 		break;
 
 	case 0x6181:	// SAME51
-		if (member <= 4 || member == 6)
+		// ERROR IN DATASHEET: Rev. M of the datasheet says member number 0x05 is reserved, however that value is returned for the ATSAME51J19A
+		if (member <= 6)
 		{
 			return  (uint32_t)sizeTable_e51[member] * 1024;
 		}

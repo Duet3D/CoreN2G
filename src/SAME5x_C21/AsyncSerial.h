@@ -13,6 +13,7 @@
 #include <General/RingBuffer.h>
 #include "Serial.h"
 #include <UART/UartParameters.h>
+#include <UART/UartMode.h>
 
 class AsyncSerial : public Stream
 {
@@ -36,6 +37,9 @@ public:
 
 	AsyncSerial(const UartParameters& params) noexcept;
 
+	void begin(uint32_t baudRate, UartMode mode = UartMode::Mode8N1) noexcept;
+	void end() noexcept;
+
 	// Overridden virtual functions
 	int available() noexcept override;
 	int read() noexcept override;
@@ -50,9 +54,6 @@ public:
 	void DisableTransmit() noexcept;
 	void EnableTransmit() noexcept;
 
-	// Compatibility functions
-	void begin(uint32_t baudRate) noexcept;
-	void end() noexcept;
 	void setInterruptPriority(uint32_t rxPrio, uint32_t txAndErrorPrio) const noexcept;
 
 	InterruptCallbackFn _ecv_null SetInterruptCallback(InterruptCallbackFn _ecv_null f) noexcept;

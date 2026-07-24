@@ -25,8 +25,8 @@ AsyncSerial::AsyncSerial(const UartParameters& params) noexcept
 	rxBuffer.Init(params.numRxSlots);
 }
 
-// Initialise the UART. numRxSlots may be zero if we don't wish to receive.
-void AsyncSerial::begin(uint32_t baudRate) noexcept
+// Initialise the UART
+void AsyncSerial::begin(uint32_t baudRate, UartMode mode) noexcept
 {
 	txBuffer.Clear();
 	rxBuffer.Clear();
@@ -34,7 +34,7 @@ void AsyncSerial::begin(uint32_t baudRate) noexcept
 
 	SetPinFunction(txPin, pinFunction);
 	SetPinFunction(rxPin, pinFunction);
-	Serial::InitUart(sercomNumber, baudRate, rxPad, txPad);
+	Serial::InitUart(sercomNumber, baudRate, rxPad, txPad, mode);
 	errors.all = 0;
 	numInterruptBytesMatched = 0;
 	sercom->USART.INTENSET.reg = SERCOM_USART_INTENSET_RXC | SERCOM_USART_INTENSET_ERROR;
