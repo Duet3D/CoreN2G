@@ -61,6 +61,8 @@ inline constexpr uint32_t GpioMask(Pin p) noexcept { return (uint32_t)1 << GpioP
 
 #if SAME70 || SAM4E || SAM4S
 inline Pio *GpioPort(Pin p) noexcept { return (Pio*)((uint32_t)PIOA + GpioPortNumber(p) * 0x200); }
+#elif SAME5x || SAMC21
+inline PortGroup& GpioPort(Pin p) noexcept { return PORT->Group[GpioPortNumber(p)]; }
 #elif STM32
 inline GPIO_TypeDef *GpioPort(Pin p) noexcept { return (GPIO_TypeDef *)(GPIOA_BASE + GpioPortNumber(p) * 0x0400); }
 #endif
