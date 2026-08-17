@@ -9,6 +9,7 @@
 #define SRC_SERIAL_H_
 
 #include <CoreIO.h>
+#include <UART/UartMode.h>
 #include <General/RingBuffer.h>
 #include <RTOSIface/RTOSIface.h>
 
@@ -50,7 +51,7 @@ namespace Serial
 	inline constexpr IRQn GetSercomIRQn(uint8_t sercomNumber) noexcept { return SercomIRQns[sercomNumber]; }
 
 	void EnableSercomClock(uint8_t sercomNumber) noexcept;
-	void InitUart(uint8_t sercomNumber, uint32_t baudRate, uint8_t rxPad, uint8_t txPad
+	void InitUart(uint8_t sercomNumber, uint32_t baudRate, uint8_t rxPad, uint8_t txPad, UartMode uartMode
 #if SAME5x
 		, bool use32bitMode = false
 #endif
