@@ -270,6 +270,15 @@ void digitalWrite(Pin pin, bool high) noexcept;
  */
 uint32_t random32(void) noexcept;		// needed by lwip
 
+#ifdef __cplusplus
+static inline constexpr uint32_t NanosecondsToCycles(uint32_t ns) noexcept
+#else
+static inline uint32_t NanosecondsToCycles(uint32_t ns) noexcept
+#endif
+{
+	return (ns * (uint64_t)SystemCoreClockFreq)/1000000000u;
+}
+
 /**
  * @brief Delay for a specified number of CPU clock cycles from the starting time
  *
