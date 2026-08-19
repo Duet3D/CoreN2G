@@ -28,5 +28,6 @@ typedef __fp16 float16_t;			///< A 16-bit floating point type
 
 static const Pin NoPin = 0xFF;		///< A number that represents no I/O pin
 static const Pin Nx = 0xFF;			///< A number that represents no I/O EXINT number (used on SAME5x/SAMC21 only)
+static const DmaChannel NoDmaChannel = 0xFF;	///< A number that represents no DMA channel
 
 #endif /* SRC_CORETYPES_H_ */
