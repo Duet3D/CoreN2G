@@ -32,9 +32,11 @@
 
 #include <cstring>
 
+constexpr uint32_t RecoveryHalfClockMicros = 5;
+
 void TwoWire::ErrorCounts::Clear() noexcept
 {
-	naks = sendTimeouts = recvTimeouts = finishTimeouts = resets = 0;
+	naks = sendTimeouts = recvTimeouts = finishTimeouts = resets = recoveries = 0;
 }
 
 // This is the default wait-for-status function.
@@ -85,7 +87,8 @@ inline bool TwoWire::WaitByteReceived(WaitForStatusFunc statusWaitFunc) noexcept
 	return WaitForStatus(TWI_SR_RXRDY, errorCounts.recvTimeouts, statusWaitFunc);
 }
 
-TwoWire::TwoWire(Twi *_twi, void(*_beginCb)(void) noexcept) noexcept : twi(_twi), onBeginCallback(_beginCb), clockFrequency(100000)
+TwoWire::TwoWire(Twi *p_twi, Pin p_sdaPin, Pin p_sclPin, GpioPinFunction p_pinFunction, void(*begin_cb)(void) noexcept) noexcept
+	: twi(p_twi), sdaPin(p_sdaPin), sclPin(p_sclPin), pinFunction(p_pinFunction), onBeginCallback(begin_cb), clockFrequency(100000)
 {
 }
 
@@ -100,6 +103,37 @@ void TwoWire::ReInit()
 	twi_master_init(twi, &opt);
 }
 
+// Release the bus if a slave device is holding SDA low, e.g. because the processor was reset part way through a read transfer.
+// Nine clocks let the slave shift out the rest of its byte and see a NACK, then a STOP condition returns it to idle. Stopping early when SDA reads high is not enough,
+// the slave is still mid-byte then and drives SDA low again on the next clock if its next bit is zero.
+// The pins are driven as GPIO while doing this and connected to the TWI afterwards, so call ReInit() after this
+void TwoWire::RecoverBus() noexcept
+{
+	SetPinMode(sclPin, INPUT);
+	SetPinMode(sdaPin, INPUT);
+	if (!digitalRead(sdaPin))
+	{
+		for (unsigned int i = 0; i < 9; i++)
+		{
+			SetPinMode(sclPin, OUTPUT_LOW);
+			delayMicroseconds(RecoveryHalfClockMicros);
+			SetPinMode(sclPin, INPUT);
+			delayMicroseconds(RecoveryHalfClockMicros);
+		}
+		SetPinMode(sclPin, OUTPUT_LOW);
+		delayMicroseconds(RecoveryHalfClockMicros);
+		SetPinMode(sdaPin, OUTPUT_LOW);
+		delayMicroseconds(RecoveryHalfClockMicros);
+		SetPinMode(sclPin, INPUT);
+		delayMicroseconds(RecoveryHalfClockMicros);
+		SetPinMode(sdaPin, INPUT);
+		delayMicroseconds(RecoveryHalfClockMicros);
+		errorCounts.recoveries++;
+	}
+	SetPinFunction(sclPin, pinFunction);
+	SetPinFunction(sdaPin, pinFunction);
+}
+
 // Begin in master mode
 void TwoWire::BeginMaster(uint32_t p_clockFrequency) noexcept
 {
@@ -109,6 +143,7 @@ void TwoWire::BeginMaster(uint32_t p_clockFrequency) noexcept
 		onBeginCallback();
 	}
 	errorCounts.Clear();
+	RecoverBus();
 	ReInit();
 }
 
@@ -131,6 +166,7 @@ size_t TwoWire::Transfer(uint16_t address, uint8_t *buffer, size_t numToWrite, s
 		}
 
 		// Had an I2C error, so re-initialise and try again
+		RecoverBus();
 		ReInit();
 		++errorCounts.resets;
 	}
@@ -232,6 +268,13 @@ size_t TwoWire::InternalTransfer(uint16_t address, uint8_t *buffer, size_t numTo
 	(void)WaitTransferComplete(statusWaitFunc);
 	return bytesSent + bytesReceived;
 
+}
+
+void TwoWire::ClearTransferErrors() noexcept
+{
+	const irqflags_t flags = IrqSave();
+	errorCounts.naks = errorCounts.sendTimeouts = errorCounts.recvTimeouts = errorCounts.finishTimeouts = errorCounts.resets = 0;
+	IrqRestore(flags);
 }
 
 TwoWire::ErrorCounts TwoWire::GetErrorCounts(bool clear) noexcept
