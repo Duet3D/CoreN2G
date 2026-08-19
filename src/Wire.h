@@ -41,22 +41,25 @@ public:
 		uint32_t recvTimeouts;
 		uint32_t finishTimeouts;
 		uint32_t resets;
+		uint32_t recoveries;
 
 		void Clear() noexcept;
 	};
 
 	typedef uint32_t (*WaitForStatusFunc)(Twi *twi, uint32_t bitsToWaitFor) noexcept;
 
-	TwoWire(Twi *p_twi, void(*begin_cb)(void) noexcept) noexcept;
+	TwoWire(Twi *p_twi, Pin p_sdaPin, Pin p_sclPin, GpioPinFunction p_pinFunction, void(*begin_cb)(void) noexcept) noexcept;
 
 	void BeginMaster(uint32_t p_clockFrequency) noexcept;
 	size_t Transfer(uint16_t address, uint8_t *_ecv_array buffer, size_t numToWrite, size_t numToRead, WaitForStatusFunc statusWaitFunc = DefaultWaitForStatusFunc) noexcept;
 	ErrorCounts GetErrorCounts(bool clear) noexcept;
+	void ClearTransferErrors() noexcept;		// clear the counts of failed transfers but keep the bus recovery count
 
 	static uint32_t DefaultWaitForStatusFunc(Twi *twiInstance, uint32_t bitsToWaitFor) noexcept;
 
 private:
 	void ReInit() noexcept;
+	void RecoverBus() noexcept;
 	bool WaitForStatus(uint32_t statusBit, uint32_t& timeoutErrorCounter, WaitForStatusFunc statusWaitFunc) noexcept;
 	bool WaitTransferComplete(WaitForStatusFunc statusWaitFunc) noexcept;
 	bool WaitByteSent(WaitForStatusFunc statusWaitFunc) noexcept;
@@ -64,6 +67,8 @@ private:
 	size_t InternalTransfer(uint16_t address, uint8_t *buffer, size_t numToWrite, size_t numToRead, WaitForStatusFunc statusWaitFunc) noexcept;
 
 	Twi *twi;							// TWI instance
+	const Pin sdaPin, sclPin;
+	const GpioPinFunction pinFunction;	// pin function that connects SDA and SCL to the TWI
 	void (*onBeginCallback)(void) noexcept;		// called before initialization
 	ErrorCounts errorCounts;			// error counts
 	uint32_t clockFrequency;			// the clock frequency we were asked for

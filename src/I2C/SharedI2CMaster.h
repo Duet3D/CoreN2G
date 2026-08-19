@@ -17,11 +17,11 @@
 
 struct I2cErrors
 {
-	unsigned int busErrors, naks, contentions, otherErrors;
+	unsigned int busErrors, naks, contentions, otherErrors, recoveries;
 
 	void Clear() noexcept
 	{
-		busErrors = naks = contentions = otherErrors = 0;
+		busErrors = naks = contentions = otherErrors = recoveries = 0;
 	}
 };
 
@@ -51,6 +51,7 @@ private:
 
 	void Enable() const noexcept;
 	void Disable() const noexcept;
+	void RecoverBus() noexcept;
 	bool InternalTransfer(uint16_t address, const uint8_t *_ecv_array txBuffer, uint8_t *_ecv_array rxBuffer, size_t numToWrite, size_t numToRead) noexcept;
 	void ProtocolError()  noexcept;
 
@@ -59,6 +60,8 @@ private:
 	void Interrupt() noexcept;
 
 	Sercom * const hardware;
+	const Pin sclPin, sdaPin;
+	const GpioPinFunction pinFunction;
 #endif
 
 	TaskHandle taskWaiting;
