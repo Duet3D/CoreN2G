@@ -14,6 +14,9 @@
 #ifdef RTOS					// we dn't support I2C in non-RTOS builds
 
 #include <RTOSIface/RTOSIface.h>
+#if SAME5x || SAMC21
+# include <DmacManager.h>
+#endif
 
 struct I2cErrors
 {
@@ -46,7 +49,7 @@ public:
 private:
 	enum class I2cState : uint8_t
 	{
-		idle = 0, writing, sendingTenBitAddressForRead, reading, protocolError
+		idle = 0, writing, sendingTenBitAddressForRead, reading, readingWithDma, protocolError
 	};
 
 	void Enable() const noexcept;
@@ -58,10 +61,15 @@ private:
 #if SAME5x || SAMC21
 	static void CommonInterrupt(void *param) noexcept;
 	void Interrupt() noexcept;
+	void StartReading(uint32_t addressToSend) noexcept;
+	static void RxDmaCompleteCallback(CallbackParameter cp, DmaCallbackReason reason) noexcept;
+	void RxDmaComplete(DmaCallbackReason reason) noexcept;
 
 	Sercom * const hardware;
 	const Pin sclPin, sdaPin;
 	const GpioPinFunction pinFunction;
+	const DmaChannel rxDmaChannel;
+	const DmaPriority rxDmaPriority;
 #endif
 
 	TaskHandle taskWaiting;
