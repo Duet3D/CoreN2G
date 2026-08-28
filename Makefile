@@ -38,7 +38,9 @@ CONFIGS := \
 	SAME70_SDHC \
 	SAME70_SDHC_USB \
 	RP2040_CAN_RTOS \
-	RP2040_RTOS
+	RP2040_RTOS \
+	STM32H5_CAB_RTOS \
+	STM32H7_CAN_RTOS
 
 # Default target
 .DEFAULT_GOAL := SAM4E_SDHC_USB_RTOS
@@ -88,6 +90,8 @@ all: $(filter-out RP2040_CAN_RTOS RP2040_RTOS,$(CONFIGS))
 -include Makefiles/SAME70_SDHC_USB.mk
 -include Makefiles/RP2040_CAN_RTOS.mk
 -include Makefiles/RP2040_RTOS.mk
+-include Makefiles/STM32H5_CAN_RTOS.mk
+-include Makefiles/STM32H7_CAN_RTOS.mk
 
 # Generic clean target
 .PHONY: clean
