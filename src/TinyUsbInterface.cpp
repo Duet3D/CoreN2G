@@ -29,6 +29,8 @@
 #include "class/hid/hid_device.h"
 #include "class/audio/audio.h"
 #include "class/midi/midi.h"
+#include "host/hcd.h"
+#include "device/dcd.h"
 
 #if SAME70
 
@@ -266,11 +268,27 @@ extern "C" const uint16_t *tud_descriptor_string_cb(uint8_t index, uint16_t lang
 	return desc_str;
 }
 
-// Call this to initialise the hardware
-void CoreUsbInit(NvicPriority priority) noexcept
-{
-#if SAME70
+#if CFG_TUH_ENABLED
+static volatile bool isHostMode = false;
+static volatile bool changingMode = false;
 
+static Pin UsbVbusDetect;
+static Pin UsbVbusOn;
+static Pin UsbModeSwitch;
+static Pin UsbModeDetect;
+#endif
+
+// Call this to initialise the hardware
+void CoreUsbInit(NvicPriority priority, Pin usbVbusDetect, Pin usbVbusOn, Pin usbModeSwitch, Pin usbModeDetect) noexcept
+{
+#if CFG_TUH_ENABLED
+	UsbVbusDetect = usbVbusDetect;
+	UsbVbusOn = usbVbusOn;
+	UsbModeSwitch = usbModeSwitch;
+	UsbModeDetect = usbModeDetect;
+#endif
+
+#if SAME70
 	// Set the USB interrupt priority to a level that is allowed to make FreeRTOS calls
 	NVIC_SetPriority(USBHS_IRQn, priority);
 
@@ -323,23 +341,161 @@ void CoreUsbInit(NvicPriority priority) noexcept
 #endif
 }
 
+#if CFG_TUH_ENABLED
+bool CoreUsbSetHostMode(bool hostMode, const StringRef& reply)
+{
+	if (changingMode)
+	{
+		reply.printf("Previous USB mode change still in progress");
+		return false;
+	}
+
+	if (!CoreUsbIsHostMode() && hostMode && digitalRead(UsbVbusDetect))
+	{
+		reply.printf("Unable to change to host mode, board plugged in to computer\n");
+		return false;
+	}
+
+	if (hostMode != CoreUsbIsHostMode())
+	{
+		CoreUsbStop();
+		changingMode = true;
+	}
+
+	return true;
+}
+
+bool CoreUsbIsHostMode()
+{
+	return isHostMode;
+}
+
 // USB Device Driver task
 // This top level thread process all usb events and invoke callbacks
 extern "C" void CoreUsbDeviceTask(void* param) noexcept
 {
 	(void)param;
 
-	// This should be called after scheduler/kernel is started.
-	// Otherwise it could cause kernel issue since USB IRQ handler does use RTOS queue API.
-	tusb_init();
-
-	// RTOS forever loop
-	while (1)
+	while (true)
 	{
-		// tinyusb device task
-		tud_task();
-//	    tud_cdc_write_flush();
+		digitalWrite(UsbVbusOn, isHostMode);
+
+		auto tusb_init = isHostMode ? tuh_init : tud_init;
+		if (changingMode)
+		{
+			auto tusb_inited = isHostMode ? tuh_inited : tud_inited;
+			if (tusb_inited())
+			{
+				// TinyUSB class drivers already inited previously, just call
+				// the functions to initialize the USB peripheral.
+				if (isHostMode)
+				{
+					hcd_init(0);
+					hcd_int_enable(0);
+				}
+				else
+				{
+					dcd_init(0);
+					dcd_int_enable(0);
+				}
+			}
+			else
+			{
+				tusb_init(0);
+			}
+		}
+		else
+		{
+			tusb_init(0);
+		}
+
+		auto tusb_task = isHostMode ? tuh_task_ext : tud_task_ext;
+
+		changingMode = false;
+		while (!changingMode)
+		{
+			tusb_task(100, false);
+		}
+
+		// Disable pipes, deallocate DPRAM
+		for (int i = 9; i >= 0; i--)
+		{
+			if (isHostMode)
+			{
+				USBHS->USBHS_HSTPIP &= ~(USBHS_HSTPIP_PEN0 << i);
+				USBHS->USBHS_HSTPIPCFG[i] &= ~(USBHS_HSTPIPCFG_ALLOC);
+			}
+			else
+			{
+				USBHS->USBHS_DEVEPT &= ~(USBHS_DEVEPT_EPEN0 << i);
+				USBHS->USBHS_DEVEPTCFG[i] &= ~(USBHS_DEVEPTCFG_ALLOC);
+			}
+		}
+
+		// Reset DMA registers
+		for (int i = 0; i < 7; i++)
+		{
+			if (isHostMode)
+			{
+				USBHS->USBHS_HSTDMA[i].USBHS_HSTDMAADDRESS = 0;
+				USBHS->USBHS_HSTDMA[i].USBHS_HSTDMACONTROL = 0;
+				USBHS->USBHS_HSTDMA[i].USBHS_HSTDMASTATUS = 0;
+			}
+			else
+			{
+				USBHS->USBHS_DEVDMA[i].USBHS_DEVDMAADDRESS = 0;
+				USBHS->USBHS_DEVDMA[i].USBHS_DEVDMACONTROL = 0;
+				USBHS->USBHS_DEVDMA[i].USBHS_DEVDMASTATUS = 0;
+			}
+		}
+
+		// Deinit current tinyUSB host context. Not needed for device
+		// since changing mode requires the board to not be connected
+		// to a host, so if we are changing mode then the DCD_EVENT_UNPLUGGED
+		// must have been handled in the past already.
+		if (isHostMode)
+		{
+			hcd_event_device_remove(0, false);
+			tusb_task(100, false);
+		}
+
+		// Reset USB hardware
+		USBHS->USBHS_CTRL &= ~(USBHS_CTRL_USBE | USBHS_CTRL_UIMOD);
+		USBHS->USBHS_CTRL |= USBHS_CTRL_FRZCLK;
+
+		// Toggle mode for next loop
+		isHostMode = !isHostMode;
 	}
+}
+#else
+extern "C" void CoreUsbDeviceTask(void* param) noexcept
+{
+	(void)param;
+
+	tud_init(0);
+	while (true)
+	{
+		tud_task();
+	}
+}
+#endif
+
+void CoreUsbStop()
+{
+#if CFG_TUH_ENABLED
+	digitalWrite(UsbVbusOn, false);
+#endif
+
+#if SAME5x
+	NVIC_DisableIRQ(USB_0_IRQn);
+	NVIC_DisableIRQ(USB_1_IRQn);
+	NVIC_DisableIRQ(USB_2_IRQn);
+	NVIC_DisableIRQ(USB_3_IRQn);
+	USB->DEVICE.CTRLA.reg &= ~USB_CTRLA_ENABLE;
+#elif SAME70
+	NVIC_DisableIRQ((IRQn_Type)ID_USBHS);
+	USBHS->USBHS_CTRL &= ~USBHS_CTRL_USBE;
+#endif
 }
 
 #if RP2040		// RP2040 USB configuration has HID enabled by default
@@ -390,7 +546,12 @@ uint32_t numUsbInterrupts = 0;
 extern "C" void USBHS_Handler() noexcept
 {
 	++numUsbInterrupts;
+#if CFG_TUH_ENABLED
+	auto tusb_handler = isHostMode ? tuh_int_handler : tud_int_handler;
+	tusb_handler(0);
+#else
 	tud_int_handler(0);
+#endif
 }
 
 #elif SAME5x
