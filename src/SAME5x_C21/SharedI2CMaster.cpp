@@ -7,7 +7,7 @@
 
 #include <I2C/SharedI2CMaster.h>
 
-#ifdef RTOS					// we dn't support I2C in non-RTOS builds
+#if defined(RTOS)					// we don't support I2C in non-RTOS builds
 
 #include <SAME5x_C21/Serial.h>
 #include <CoreNotifyIndices.h>
@@ -25,8 +25,8 @@ constexpr uint32_t RecoveryHalfClockMicros = 5;
 constexpr size_t MinBytesForDmaRead = 8;			// shorter reads are not worth the DMA setup cost
 
 SharedI2CMaster::SharedI2CMaster(const I2cParameters& params) noexcept
-	: hardware(Serial::Sercoms[params.sercomNumber]), sclPin(params.sclPin), sdaPin(params.sdaPin), pinFunction(params.pinFunction),
-	  rxDmaChannel(params.rxDmaChannel), rxDmaPriority(params.rxDmaPriority), taskWaiting(nullptr), state(I2cState::idle)
+	: sclPin(params.sclPin), sdaPin(params.sdaPin), pinFunction(params.pinFunction),
+	  rxDmaChannel(params.rxDmaChannel), rxDmaPriority(params.rxDmaPriority), hardware(Serial::Sercoms[params.sercomNumber]), taskWaiting(nullptr), state(I2cState::idle)
 {
 	errors.Clear();
 
