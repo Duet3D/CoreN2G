@@ -11,7 +11,7 @@
 #include <CoreIO.h>
 #include "I2cParameters.h"
 
-#ifdef RTOS					// we dn't support I2C in non-RTOS builds
+#ifdef RTOS					// we don't support I2C in non-RTOS builds
 
 #include <RTOSIface/RTOSIface.h>
 #if SAME5x || SAMC21
