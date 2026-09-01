@@ -27,10 +27,10 @@ STM32H7_CAN_RTOS_CXXFLAGS := -c -std=c++20 \
 	-O3
 
 # Defines - C only
-STM32H7_CAN_RTOS_C_DEFS := -DSTM32H723xx -Dnoexcept= -DSUPPORT_CAN=1 -DSUPPORT_SDHC=0 -DSUPPORT_USB=0 -DRTOS
+STM32H7_CAN_RTOS_C_DEFS := -DSTM32H743xx -Dnoexcept= -DSUPPORT_CAN=1 -DSUPPORT_SDHC=0 -DSUPPORT_USB=0 -DRTOS
 
 # Defines - C++
-STM32H7_CAN_RTOS_CXX_DEFS := -DSTM32H723xx -DSUPPORT_CAN=1 -DSUPPORT_SDHC=0 -DSUPPORT_USB=0 -DRTOS
+STM32H7_CAN_RTOS_CXX_DEFS := -DSTM32H743xx -DSUPPORT_CAN=1 -DSUPPORT_SDHC=0 -DSUPPORT_USB=0 -DRTOS
 
 # Include paths
 STM32H7_CAN_RTOS_INCLUDES := \
@@ -43,13 +43,14 @@ STM32H7_CAN_RTOS_INCLUDES := \
 	-I../RRFLibraries/src \
 	-I../CANlib/src \
 	-I../FreeRTOS/src/include \
-	-I../FreeRTOS/src/portable/GCC/ARM_CM33_NTZ/non_secure
+	-I../FreeRTOS/src/portable/GCC/ARM_CM7/r0p1
 
 # Source files
 STM32H7_CAN_RTOS_CSRC := $(shell find $(STM32H7_CAN_RTOS_SRC_DIR) -name '*.c' \
 	! -path '*/RP2040/*' \
 	! -path '*/SAM4S_4E_E70/*' \
 	! -path '*/SAME5x_C21/*' \
+	! -path '*STM32H5xx*' \
 	! -path '*/atmel/*' \
 	! -path '*/arm/*')
 
@@ -57,6 +58,7 @@ STM32H7_CAN_RTOS_CPPSRC := $(shell find $(STM32H7_CAN_RTOS_SRC_DIR) -name '*.cpp
 	! -path '*/RP2040/*' \
 	! -path '*/SAM4S_4E_E70/*' \
 	! -path '*/SAME5x_C21/*' \
+	! -path '*STM32H5xx*' \
 	! -path '*/atmel/*' \
 	! -path '*/arm/*')
 

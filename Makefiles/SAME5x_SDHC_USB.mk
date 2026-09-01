@@ -59,6 +59,8 @@ SAME5x_SDHC_USB_CSRC := $(shell find $(SAME5x_SDHC_USB_SRC_DIR) -name '*.c' \
 	! -path '*/RP2040/*' \
 	! -path '*/SAM4S_4E_E70/*' \
 	! -path '*/SAME5x_C21/SAMC21/*' \
+	! -path '*/STM32/*' \
+	! -path '*/STMCubeMX/*' \
 	! -path '*/atmel/*' \
 	! -path '*/arm/*')
 
@@ -66,6 +68,8 @@ SAME5x_SDHC_USB_CPPSRC := $(shell find $(SAME5x_SDHC_USB_SRC_DIR) -name '*.cpp' 
 	! -path '*/RP2040/*' \
 	! -path '*/SAM4S_4E_E70/*' \
 	! -path '*/SAME5x_C21/SAMC21/*' \
+	! -path '*/STM32/*' \
+	! -path '*/STMCubeMX/*' \
 	! -path '*/atmel/*' \
 	! -path '*/arm/*')
 

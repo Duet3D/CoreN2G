@@ -10,6 +10,8 @@ SAME70SU_CPP_SRCS := $(shell find $(SAME70SU_SRC_DIR) -name '*.cpp' \
 	! -path '*/SAM4S_4E_E70/SAM4S/*' \
 	! -path '*/SAM4S_4E_E70/SAM4E/*' \
 	! -path '*/SAME5x_C21/*' \
+	! -path '*/STM32/*' \
+	! -path '*/STMCubeMX/*' \
 	! -path '*/atmel/*' \
 	! -path '*/arm/*')
 SAME70SU_C_SRCS := $(shell find $(SAME70SU_SRC_DIR) -name '*.c' \
@@ -30,6 +32,8 @@ SAME70SU_C_SRCS := $(shell find $(SAME70SU_SRC_DIR) -name '*.c' \
 	! -path '*/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s/*' \
 	! -path '*/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4e/*' \
 	! -path '*/SAME5x_C21/*' \
+	! -path '*/STM32/*' \
+	! -path '*/STMCubeMX/*' \
 	! -path '*/atmel/*' \
 	! -path '*/arm/*')
 # Assembly source files
@@ -38,6 +42,8 @@ SAME70SU_ASM_SRCS := $(shell find $(SAME70SU_SRC_DIR) -name '*.s' \
 	! -path '*/SAM4S_4E_E70/SAM4S/*' \
 	! -path '*/SAM4S_4E_E70/SAM4E/*' \
 	! -path '*/SAME5x_C21/*' \
+	! -path '*/STM32/*' \
+	! -path '*/STMCubeMX/*' \
 	! -path '*/atmel/*' \
 	! -path '*/arm/*')
 # Include paths (matching Eclipse .cproject for SAME70_SDHC_USB_Debug)

@@ -12,6 +12,8 @@ SAME5X_CPP_SRCS := $(shell find $(SAME5X_SRC_DIR) -name '*.cpp' \
 	! -path '*/RP2040/*' \
 	! -path '*/SAM4S_4E_E70/*' \
 	! -path '*/SAME5x_C21/SAMC21/*' \
+	! -path '*/STM32/*' \
+	! -path '*/STMCubeMX/*' \
 	! -path '*/atmel/*' \
 	! -path '*/arm/*')
 
@@ -19,6 +21,8 @@ SAME5X_C_SRCS := $(shell find $(SAME5X_SRC_DIR) -name '*.c' \
 	! -path '*/RP2040/*' \
 	! -path '*/SAM4S_4E_E70/*' \
 	! -path '*/SAME5x_C21/SAMC21/*' \
+	! -path '*/STM32/*' \
+	! -path '*/STMCubeMX/*' \
 	! -path '*/atmel/*' \
 	! -path '*/arm/*')
 

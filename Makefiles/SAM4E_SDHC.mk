@@ -74,6 +74,8 @@ SAM4E_SDHC_CSRC := $(shell find $(SAM4E_SDHC_SRC_DIR) -name '*.c' \
 	! -path '*/SAM4E/*' \
 	! -path '*/SAME5x_C21/*' \
 	! -path '*/SAME70/*' \
+	! -path '*/STM32/*' \
+	! -path '*/STMCubeMX/*' \
 	! -path '*/atmel/*' \
 	! -path '*/arm/*')
 
@@ -83,6 +85,8 @@ SAM4E_SDHC_CPPSRC := $(shell find $(SAM4E_SDHC_SRC_DIR) -name '*.cpp' \
 	! -path '*/SAM4S_4E_E70/SAME70/*' \
 	! -path '*/SAME5x_C21/*' \
 	! -path '*/SAME70/*' \
+	! -path '*/STM32/*' \
+	! -path '*/STMCubeMX/*' \
 	! -path '*/atmel/*' \
 	! -path '*/arm/*')
 

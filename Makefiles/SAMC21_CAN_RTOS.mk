@@ -54,6 +54,8 @@ SAMC21_CAN_RTOS_CSRC := $(shell find $(SAMC21_CAN_RTOS_SRC_DIR) \
 	! -path "$(SAMC21_CAN_RTOS_SRC_DIR)/SAME5x_C21/SAME5x/*" \
 	! -path "$(SAMC21_CAN_RTOS_SRC_DIR)/SAME5x/*" \
 	! -path "$(SAMC21_CAN_RTOS_SRC_DIR)/SAME70/*" \
+	! -path "$(SAMC21_CAN_RTOS_SRC_DIR)/STM32/*" \
+	! -path "$(SAMC21_CAN_RTOS_SRC_DIR)/STMCubeMX/*" \
 	! -path "$(SAMC21_CAN_RTOS_SRC_DIR)/atmel/*" \
 	! -path "$(SAMC21_CAN_RTOS_SRC_DIR)/arm/*")
 
@@ -65,6 +67,8 @@ SAMC21_CAN_RTOS_CPPSRC := $(shell find $(SAMC21_CAN_RTOS_SRC_DIR) \
 	! -path "$(SAMC21_CAN_RTOS_SRC_DIR)/SAME5x_C21/SAME5x/*" \
 	! -path "$(SAMC21_CAN_RTOS_SRC_DIR)/SAME5x/*" \
 	! -path "$(SAMC21_CAN_RTOS_SRC_DIR)/SAME70/*" \
+	! -path "$(SAMC21_CAN_RTOS_SRC_DIR)/STM32/*" \
+	! -path "$(SAMC21_CAN_RTOS_SRC_DIR)/STMCubeMX/*" \
 	! -path "$(SAMC21_CAN_RTOS_SRC_DIR)/atmel/*" \
 	! -path "$(SAMC21_CAN_RTOS_SRC_DIR)/arm/*")
 

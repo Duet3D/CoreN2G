@@ -50,6 +50,7 @@ STM32H5_CAN_RTOS_CSRC := $(shell find $(STM32H5_CAN_RTOS_SRC_DIR) -name '*.c' \
 	! -path '*/RP2040/*' \
 	! -path '*/SAM4S_4E_E70/*' \
 	! -path '*/SAME5x_C21/*' \
+	! -path '*STM32H7xx*' \
 	! -path '*/atmel/*' \
 	! -path '*/arm/*')
 
@@ -57,6 +58,7 @@ STM32H5_CAN_RTOS_CPPSRC := $(shell find $(STM32H5_CAN_RTOS_SRC_DIR) -name '*.cpp
 	! -path '*/RP2040/*' \
 	! -path '*/SAM4S_4E_E70/*' \
 	! -path '*/SAME5x_C21/*' \
+	! -path '*STM32H7xx*' \
 	! -path '*/atmel/*' \
 	! -path '*/arm/*')
 

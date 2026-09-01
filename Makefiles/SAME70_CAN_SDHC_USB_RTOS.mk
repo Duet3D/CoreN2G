@@ -13,6 +13,8 @@ SAME70_CPP_SRCS := $(shell find $(SAME70_SRC_DIR) -name '*.cpp' \
 	! -path '*/SAM4S_4E_E70/SAM4S/*' \
 	! -path '*/SAM4S_4E_E70/SAM4E/*' \
 	! -path '*/SAME5x_C21/*' \
+	! -path '*/STM32/*' \
+	! -path '*/STMCubeMX/*' \
 	! -path '*/atmel/*' \
 	! -path '*/arm/*')
 
@@ -34,6 +36,8 @@ SAME70_C_SRCS := $(shell find $(SAME70_SRC_DIR) -name '*.c' \
 	! -path '*/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s/*' \
 	! -path '*/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4e/*' \
 	! -path '*/SAME5x_C21/*' \
+	! -path '*/STM32/*' \
+	! -path '*/STMCubeMX/*' \
 	! -path '*/atmel/*' \
 	! -path '*/arm/*')
 
@@ -43,6 +47,8 @@ SAME70_ASM_SRCS := $(shell find $(SAME70_SRC_DIR) -name '*.s' \
 	! -path '*/SAM4S_4E_E70/SAM4S/*' \
 	! -path '*/SAM4S_4E_E70/SAM4E/*' \
 	! -path '*/SAME5x_C21/*' \
+	! -path '*/STM32/*' \
+	! -path '*/STMCubeMX/*' \
 	! -path '*/atmel/*' \
 	! -path '*/arm/*')
 
