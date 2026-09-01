@@ -2210,6 +2210,10 @@ HAL_StatusTypeDef HAL_DMAEx_List_InsertQ(DMA_QListTypeDef *const pSrcQList,
   DMA_NodeInQInfoTypeDef src_q_node_info;
   DMA_NodeInQInfoTypeDef dest_q_node_info;
 
+#if 1	//DC avoid gcc "may be used uninitialised" warning-as-error
+  dest_q_node_info.nextnode_addr = 0;
+#endif
+
   /* Check the source and destination queues and the previous node parameters */
   if ((pSrcQList == NULL) || (pDestQList == NULL))
   {
@@ -4547,7 +4551,14 @@ static void DMA_List_ConvertNodeToStatic(uint32_t ContextNodeAddr,
       DMA_List_FormatNode(current_node, contextnode_reg_counter, RegisterNumber, NODE_STATIC_FORMAT);
 
       /* Update node field */
+#if 1	//DC avoid gcc 15.2Rel1 spurious warning-as-error
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
       current_node->LinkRegisters[contextnode_reg_counter] = context_node->LinkRegisters[contextnode_reg_counter];
+#if 1	//DC avoid gcc spurious warning-as-error
+# pragma GCC diagnostic pop
+#endif
     }
 
     /* Increment context node number register counter */
