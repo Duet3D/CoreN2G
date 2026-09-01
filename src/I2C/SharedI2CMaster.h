@@ -69,10 +69,16 @@ private:
 
 #if SAME5x || SAMC21
 	Sercom * const hardware;
+
 	static void RxDmaCompleteCallback(CallbackParameter cp, DmaCallbackReason reason) noexcept;
 	void RxDmaComplete(DmaCallbackReason reason) noexcept;
 #elif SAME70
 	Twihs *const hardware;
+
+	bool WaitForStatus(uint32_t statusBit, uint32_t& timeoutErrorCounter) noexcept;
+	bool WaitTransferComplete() noexcept;
+	bool WaitByteSent() noexcept;
+	bool WaitByteReceived() noexcept;
 #endif
 
 	TaskHandle taskWaiting;
