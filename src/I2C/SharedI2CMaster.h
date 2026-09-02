@@ -56,7 +56,6 @@ private:
 	void Disable() const noexcept;
 	void RecoverBus() noexcept;
 	bool InternalTransfer(uint16_t address, const uint8_t *_ecv_array txBuffer, uint8_t *_ecv_array rxBuffer, size_t numToWrite, size_t numToRead) noexcept;
-	void ProtocolError()  noexcept;
 
 	static void CommonInterrupt(void *param) noexcept;
 	void Interrupt() noexcept;
@@ -68,14 +67,15 @@ private:
 	const DmaPriority rxDmaPriority;
 
 #if SAME5x || SAMC21
-	Sercom * const hardware;
+	Sercom *const hardware;
 
 	static void RxDmaCompleteCallback(CallbackParameter cp, DmaCallbackReason reason) noexcept;
 	void RxDmaComplete(DmaCallbackReason reason) noexcept;
+	void ProtocolError()  noexcept;
 #elif SAME70
 	Twihs *const hardware;
 
-	bool WaitForStatus(uint32_t statusBit, uint32_t& timeoutErrorCounter) noexcept;
+	bool WaitForStatus(uint32_t statusBit, unsigned int& timeoutErrorCounter) noexcept;
 	bool WaitTransferComplete() noexcept;
 	bool WaitByteSent() noexcept;
 	bool WaitByteReceived() noexcept;

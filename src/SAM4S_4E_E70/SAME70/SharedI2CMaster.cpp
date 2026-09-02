@@ -10,7 +10,7 @@
 #if SAME70 && defined(RTOS)							// we don't support I2C in non-RTOS builds
 
 #include <CoreNotifyIndices.h>
-#include "twihs/twihs.h"		//TODO not sure we need this
+#include "twihs/twihs.h"
 #include <pmc/pmc.h>
 
 //******************** Public methods ********************
@@ -31,9 +31,11 @@ SharedI2CMaster::SharedI2CMaster(const I2cParameters& params) noexcept
 {
 	pmc_enable_periph_clk(TwihsIds[params.instanceNumber]);						// enable the peripheral clock
 	errors.Clear();
+	twihs_reset(hardware);
 
 	RecoverBus();																// this also connects the pins to the TWIHS
 
+	currentClockRate = 0;														// make sure that SetClockFrequency does the initialisation
 	SetClockFrequency(DefaultSharedI2CClockFrequency);							// this also does the initialisation
 
 	const IRQn irqn = I2cIrqns[params.instanceNumber];
@@ -49,13 +51,18 @@ void SharedI2CMaster::End() noexcept
 	Disable();
 }
 
+// Set the clock frequency and initialise the I2C interface in master mode
 void SharedI2CMaster::SetClockFrequency(uint32_t freq) noexcept
 {
-	twihs_options_t opt;
-	opt.speed = freq;
-	opt.master_clk = SystemPeripheralClock();
-	opt.chip = opt.smbus = 0;
-	twihs_master_init(hardware, &opt);
+	if (currentClockRate != freq)
+	{
+		twihs_options_t opt;
+		opt.speed = freq;
+		opt.master_clk = SystemPeripheralClock();
+		opt.chip = opt.smbus = 0;
+		twihs_master_init(hardware, &opt);
+		currentClockRate = freq;
+	}
 }
 
 bool SharedI2CMaster::Transfer(uint16_t address, const uint8_t *txBuffer, uint8_t *rxBuffer, size_t numToWrite, size_t numToRead) noexcept
@@ -147,9 +154,9 @@ void SharedI2CMaster::RecoverBus() noexcept
 
 // Wait for a status bit or NAK to be set, returning true if successful and it wasn't NAK
 // It waits until either 2 clock ticks have passed (so we have waited for at least 1ms) or one or more of the status bits we are interested in has been set.
-bool SharedI2CMaster::WaitForStatus(uint32_t statusBit, uint32_t& timeoutErrorCounter) noexcept
+bool SharedI2CMaster::WaitForStatus(uint32_t statusBit, unsigned int& timeoutErrorCounter) noexcept
 {
-	//TODO use interrupts instead
+	//TODO use interrupts instead of polling
 	const uint32_t startMillis = millis();
 	bool timedOut;
 	uint32_t sr;
@@ -174,17 +181,17 @@ bool SharedI2CMaster::WaitForStatus(uint32_t statusBit, uint32_t& timeoutErrorCo
 
 inline bool SharedI2CMaster::WaitTransferComplete() noexcept
 {
-	return WaitForStatus(TWIHS_SR_TXCOMP, errors.finishTimeouts);
+	return WaitForStatus(TWIHS_SR_TXCOMP, errors.otherErrors);
 }
 
 inline bool SharedI2CMaster::WaitByteSent() noexcept
 {
-	return WaitForStatus(TWIHS_SR_TXRDY, errors.sendTimeouts);
+	return WaitForStatus(TWIHS_SR_TXRDY, errors.otherErrors);
 }
 
 inline bool SharedI2CMaster::WaitByteReceived() noexcept
 {
-	return WaitForStatus(TWIHS_SR_RXRDY, errors.recvTimeouts);
+	return WaitForStatus(TWIHS_SR_RXRDY, errors.otherErrors);
 }
 
 bool SharedI2CMaster::InternalTransfer(uint16_t address, const uint8_t *_ecv_array txBuffer, uint8_t *_ecv_array rxBuffer, size_t numToWrite, size_t numToRead) noexcept
@@ -281,11 +288,6 @@ bool SharedI2CMaster::InternalTransfer(uint16_t address, const uint8_t *_ecv_arr
 	}
 	(void)WaitTransferComplete();
 	return bytesSent + bytesReceived;
-}
-
-void SharedI2CMaster::ProtocolError() noexcept
-{
-	//TODO
 }
 
 #endif
