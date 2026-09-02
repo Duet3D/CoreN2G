@@ -46,6 +46,10 @@ public:
 		errors.Clear();
 	}
 
+#if SAME70
+	void Interrupt() noexcept;
+#endif
+
 private:
 	enum class I2cState : uint8_t
 	{
@@ -57,10 +61,6 @@ private:
 	void RecoverBus() noexcept;
 	bool InternalTransfer(uint16_t address, const uint8_t *_ecv_array txBuffer, uint8_t *_ecv_array rxBuffer, size_t numToWrite, size_t numToRead) noexcept;
 
-	static void CommonInterrupt(void *param) noexcept;
-	void Interrupt() noexcept;
-	void StartReading(uint32_t addressToSend) noexcept;
-
 	const Pin sclPin, sdaPin;
 	const GpioPinFunction pinFunction;
 	const DmaChannel rxDmaChannel;
@@ -69,7 +69,10 @@ private:
 #if SAME5x || SAMC21
 	Sercom *const hardware;
 
+	static void CommonInterrupt(void *param) noexcept;
 	static void RxDmaCompleteCallback(CallbackParameter cp, DmaCallbackReason reason) noexcept;
+	void Interrupt() noexcept;
+	void StartReading(uint32_t addressToSend) noexcept;
 	void RxDmaComplete(DmaCallbackReason reason) noexcept;
 	void ProtocolError()  noexcept;
 #elif SAME70

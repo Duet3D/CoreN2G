@@ -25,6 +25,9 @@ Twihs *const I2cInterfaces[] = { TWIHS0, TWIHS1, TWIHS2 };
 constexpr IRQn I2cIrqns[] = { TWIHS0_IRQn, TWIHS1_IRQn, TWIHS2_IRQn };
 constexpr uint8_t TwihsIds[] = { ID_TWIHS0, ID_TWIHS1, ID_TWIHS2 };
 
+// List of I2CMaster devices for the interrupt handlers
+static SharedI2CMaster *i2cMasters[3] = { 0 };
+
 SharedI2CMaster::SharedI2CMaster(const I2cParameters& params) noexcept
 	: sclPin(params.sclPin), sdaPin(params.sdaPin), pinFunction(params.pinFunction),
 	  rxDmaChannel(params.rxDmaChannel), rxDmaPriority(params.rxDmaPriority), hardware(I2cInterfaces[params.instanceNumber]), taskWaiting(nullptr), state(I2cState::idle)
@@ -38,10 +41,15 @@ SharedI2CMaster::SharedI2CMaster(const I2cParameters& params) noexcept
 	currentClockRate = 0;														// make sure that SetClockFrequency does the initialisation
 	SetClockFrequency(DefaultSharedI2CClockFrequency);							// this also does the initialisation
 
+	i2cMasters[params.instanceNumber] = this;									// store our address for the ISR
+
 	const IRQn irqn = I2cIrqns[params.instanceNumber];
 	NVIC_SetPriority(irqn, params.irqPriority);
 	NVIC_ClearPendingIRQ(irqn);
 	NVIC_EnableIRQ(irqn);
+
+	mutex.Create("I2C");
+	Enable();
 }
 
 // Resetting the processor part way through a transfer leaves the slave device driving SDA low. RecoverBus() clears that at the next startup, but better not to get there
@@ -152,6 +160,36 @@ void SharedI2CMaster::RecoverBus() noexcept
 	SetPinFunction(sdaPin, pinFunction);
 }
 
+#if 1
+
+// Interrupt driven status wait function
+bool SharedI2CMaster::WaitForStatus(uint32_t statusBit, unsigned int& timeoutErrorCounter) noexcept
+{
+	bool ok = true;
+	uint32_t sr;
+	while (ok && ((sr = hardware->TWIHS_SR) & (statusBit | TWIHS_SR_NACK)) == 0)
+	{
+		// Suspend this task until we get an interrupt indicating that a status bit that we are interested in has been set
+		taskWaiting = TaskBase::GetCallerTaskHandle();
+		hardware->TWIHS_IDR = 0xFFFFFFFFu;
+		hardware->TWIHS_IER = statusBit;
+		ok = TaskBase::TakeIndexed(NotifyIndices::I2C, 2);
+		taskWaiting = nullptr;
+		hardware->TWIHS_IDR = 0xFFFFFFFFu;
+	}
+
+	if (sr & TWIHS_SR_NACK)
+	{
+		++errors.naks;
+		return false;
+	}
+
+	return ok;
+}
+
+#else
+
+// Polling status wait function
 // Wait for a status bit or NAK to be set, returning true if successful and it wasn't NAK
 // It waits until either 2 clock ticks have passed (so we have waited for at least 1ms) or one or more of the status bits we are interested in has been set.
 bool SharedI2CMaster::WaitForStatus(uint32_t statusBit, unsigned int& timeoutErrorCounter) noexcept
@@ -178,6 +216,8 @@ bool SharedI2CMaster::WaitForStatus(uint32_t statusBit, unsigned int& timeoutErr
 	++timeoutErrorCounter;
 	return false;
 }
+
+#endif
 
 inline bool SharedI2CMaster::WaitTransferComplete() noexcept
 {
@@ -288,6 +328,28 @@ bool SharedI2CMaster::InternalTransfer(uint16_t address, const uint8_t *_ecv_arr
 	}
 	(void)WaitTransferComplete();
 	return bytesSent + bytesReceived;
+}
+
+void SharedI2CMaster::Interrupt() noexcept
+{
+	hardware->TWIHS_IDR = 0xFFFFFFFFu;
+	TaskBase::GiveFromISR(taskWaiting, NotifyIndices::I2C);			// wake up the task
+	taskWaiting = nullptr;
+}
+
+extern "C" void TWIHS0_Handler() noexcept
+{
+	i2cMasters[0]->Interrupt();
+}
+
+extern "C" void TWIHS1_Handler() noexcept
+{
+	i2cMasters[1]->Interrupt();
+}
+
+extern "C" void TWIHS2_Handler() noexcept
+{
+	i2cMasters[2]->Interrupt();
 }
 
 #endif
