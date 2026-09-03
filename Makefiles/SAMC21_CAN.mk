@@ -51,6 +51,8 @@ SAMC21_CAN_CSRC := $(shell find $(SAMC21_CAN_SRC_DIR) -name '*.c' \
 	! -path '*/RP2040/*' \
 	! -path '*/SAM4S_4E_E70/*' \
 	! -path '*/SAME5x_C21/SAME5x/*' \
+	! -path '*/STM32/*' \
+	! -path '*/STMCubeMX/*' \
 	! -path '*/atmel/*' \
 	! -path '*/arm/*')
 
@@ -58,6 +60,8 @@ SAMC21_CAN_CPPSRC := $(shell find $(SAMC21_CAN_SRC_DIR) -name '*.cpp' \
 	! -path '*/RP2040/*' \
 	! -path '*/SAM4S_4E_E70/*' \
 	! -path '*/SAME5x_C21/SAME5x/*' \
+	! -path '*/STM32/*' \
+	! -path '*/STMCubeMX/*' \
 	! -path '*/atmel/*' \
 	! -path '*/arm/*')
 

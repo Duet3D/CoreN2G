@@ -18,7 +18,23 @@ struct I2cParameters
 	Pin sdaPin;
 	GpioPinFunction pinFunction;
 	NvicPriority irqPriority;
-#elif RP2040
+	DmaChannel rxDmaChannel;			// channel used to receive long reads, NoDmaChannel to receive everything under interrupt
+	DmaPriority rxDmaPriority;
+#elif STM32
+	uint8_t instanceNumber;
+	Pin sclPin;
+	Pin sdaPin;
+	GpioPinFunction pinFunction;
+	NvicPriority irqPriority;
+#elif SAME70
+	uint8_t instanceNumber;
+	Pin sclPin;
+	Pin sdaPin;
+	GpioPinFunction pinFunction;
+	NvicPriority irqPriority;
+	DmaChannel rxDmaChannel;			// channel used to receive long reads, NoDmaChannel to receive everything under interrupt
+	DmaPriority rxDmaPriority;
+#elif RPXXXX
 	uint8_t instanceNumber;
 	Pin sclPin;
 	Pin sdaPin;

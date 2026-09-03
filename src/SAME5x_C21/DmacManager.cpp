@@ -84,9 +84,9 @@ void DmacManager::Init() noexcept
 	DMAC->CTRL.reg |= DMAC_CTRL_DMAENABLE;
 }
 
-void DmacManager::SetBtctrl(const uint8_t channel, const uint16_t val) noexcept
+void DmacManager::SetBtctrl(const uint8_t channel, const uint32_t val) noexcept
 {
-	descriptor_section[channel].BTCTRL.reg = val;
+	descriptor_section[channel].BTCTRL.reg = (uint16_t)val;
 }
 
 void DmacManager::SetDestinationAddress(const uint8_t channel, volatile void *const dst) noexcept
@@ -328,7 +328,7 @@ void DmacManager::DisableCompletedInterrupt(const uint8_t channel) noexcept
 #endif
 }
 
-uint8_t DmacManager::GetAndClearChannelStatus(uint8_t channel) noexcept
+uint32_t DmacManager::GetAndClearChannelStatus(uint8_t channel) noexcept
 {
 #if SAME5x
 	const uint8_t ret = DMAC->Channel[channel].CHINTFLAG.reg;

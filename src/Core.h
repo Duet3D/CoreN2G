@@ -27,92 +27,66 @@
 # define unlikely(x)	__builtin_expect(!!(x), 0)
 #endif
 
+#include <McuType.h>
 #if defined(__SAME54P20A__) || defined(__SAME51P20A__)
 # include <same54.h>
-# define SAMC21				0
-# define SAM3XA				0
-# define SAM4E				0
-# define SAM4S				0
-# define SAME5x				1
-# define SAME70				0
-# define RP2040				0
 #elif defined(__SAME51N19A__) || defined(__SAME51G19A__) || defined(__SAME51J19A__)
 # include <same51.h>
-# define SAMC21				0
-# define SAM3XA				0
-# define SAM4E				0
-# define SAM4S				0
-# define SAME5x				1
-# define SAME70				0
-# define RP2040				0
 #elif defined(__SAMD51N19A__)
 # include <samd51.h>
-# define SAMC21				0
-# define SAM3XA				0
-# define SAM4E				0
-# define SAM4S				0
-# define SAME5x				1
-# define SAME70				0
-# define RP2040				0
 #elif defined(__SAMC21G18A__)
 # include <samc21.h>
-# define SAMC21				1
-# define SAM3XA				0
-# define SAM4E				0
-# define SAM4S				0
-# define SAME5x				0
-# define SAME70				0
-# define RP2040				0
-# define SUPPORT_SDHC		0			// SAMC21 doesn't support SDHC
-# define SUPPORT_USB		0			// SAMC21 doesn't support USB
 #elif defined(__SAM4E8E__)
 # include <parts.h>
 # include <sam4e8e.h>
-# define SAME5x				0
-# define RP2040				0
-# define SUPPORT_CAN		0			// SAM4E doesn't support CAN-FD
 #elif defined(__SAM4S8C__)
 # include <parts.h>
 # include <sam4s8c.h>
-# define SAME5x				0
-# define RP2040				0
-# define SUPPORT_CAN		0			// SAM4S doesn't support CAN-FD
 #elif defined(__SAME70Q20B__)
 # include <parts.h>
 # include <same70q20b.h>
-# define SAME5x				0
-# define RP2040				0
 #elif defined __RP2040__
 extern "C" {
 # include <hardware/gpio.h>
 # include <cmsis_compiler.h>
 # include <RP2040.h>
+# include <system_RP2040.h>
 # include <core_cm0plus.h>
 }
-# define RP2040				1
-# define SAMC21				0
-# define SAM3XA				0
-# define SAM4E				0
-# define SAM4S				0
-# define SAME5x				0
-# define SAME70				0
-# define SUPPORT_SDHC		0			// SAMC21 doesn't support SDHC
+#elif defined __RP2350__
+extern "C" {
+# include <hardware/gpio.h>
+# include <cmsis_compiler.h>
+# include <pico/rp2350mcu.h>
+# include <system_RP2040.h>
+# include <core_cm33.h>
+}
+#elif defined(STM32H523xx)
+# include <stm32h5xx.h>
+# include <stm32h5xx_ll_rcc.h>
+#elif defined(STM32H743xx)
+# include <stm32h7xx.h>
 #else
 # error unsupported processor
 #endif
 
-#define STM32				0			// this core doesn't support STM32 yet
-#define STM32H5				0
-#define STM32H7				0
+#define STM32		(STM32H5 || STM32H7)
 
-#if defined(RTOS) && (SAME70 || RP2040 || SAME5x)
+#if STM32
+typedef IRQn_Type IRQn;
+#endif
+
+#if defined(RTOS) && (SAME70 || RP2040 || SAME5x || STM32)
 # define CORE_USES_TINYUSB		1
 #else
 # define CORE_USES_TINYUSB		0
 #endif
 
+#define SUPPORT_SWSPI		(0)			// Duet boards do not use software SPI
+
 #include <inttypes.h>					// for PRIu32 etc.
 #include <ctype.h>
+#include <stdint.h>
 #include "CoreTypes.h"
 
 // Standard GCLK numbers and frequencies
@@ -122,7 +96,7 @@ static const uint32_t SystemCoreClockFreq = 120000000;	///< The processor clock 
 
 static const unsigned int GclkNum120MHz = 0;			// clock used by the CPU and high speed peripherals
 static const unsigned int GclkNum31KHz = 1;				// frequency is 31250Hz
-static const unsigned int GclkNum25MHz = 2;				// reserved for crystal oscillator direct, used for the Ethernet PHY clock on the Duet 3 Mini Ethernet and on some tool boards. CAUTION: not 25MHz on older EXP3HC boards!
+static const unsigned int GclkNum25MHz = 2;				// reserved for crystal oscillator direct, used for the Ethernet PHY clock on the Duet 3 Mini Ethernet, and on some tool boards for the LDC1612. CAUTION: not 25MHz on older EXP3HC boards!
 static const unsigned int GclkNum60MHz = 3;				// clock used for lower speed peripherals
 static const unsigned int GclkNum48MHz = 4;				// clock used for step timer and CAN timing
 static const unsigned int GclkNumApp1 = 5;				// clock used for the TMC2160A driver on closed loop boards, or as the LDC1612 clock
@@ -164,9 +138,21 @@ static const uint32_t SystemCoreClockFreq = 120000000;	///< The processor clock 
 
 static const uint32_t SystemCoreClockFreq = 300000000;	///< The processor clock frequency after initialisation
 
+#elif STM32H5
+
+static const uint32_t SystemCoreClockFreq = 240000000;	///< The processor clock frequency after initialisation (VOS0 mode, max junction temperature 105C)
+
+#elif STM32H7
+
+static const uint32_t SystemCoreClockFreq = 480000000;	///< The processor clock frequency after initialisation
+
 #elif RP2040
 
 static const uint32_t SystemCoreClockFreq = 125000000;	///< The processor clock frequency after initialisation
+
+#elif RP2350
+
+static const uint32_t SystemCoreClockFreq = 150000000;	///< The processor clock frequency after initialisation
 
 #else
 # error unsupported processor
@@ -270,6 +256,8 @@ void digitalWrite(Pin pin, bool high) noexcept;
  */
 uint32_t random32(void) noexcept;		// needed by lwip
 
+//********************** Mechanism for measuring and delaying for short amounts of time **************************
+
 #ifdef __cplusplus
 static inline constexpr uint32_t NanosecondsToCycles(uint32_t ns) noexcept
 #else
@@ -278,6 +266,36 @@ static inline uint32_t NanosecondsToCycles(uint32_t ns) noexcept
 {
 	return (ns * (uint64_t)SystemCoreClockFreq)/1000000000u;
 }
+
+#if STM32
+
+# include <STM32/dwt.h>
+
+// On STM processors we have a cycle counter. This is easier to use than the systick counter because it wraps around at a full 32 bits.
+
+// Delay in cycles
+static inline uint32_t DelayCycles(const uint32_t start, const uint32_t cycles) noexcept __attribute__((always_inline, unused));
+#ifdef __cplusplus
+[[gnu::always_inline, gnu::optimize("03")]]
+#endif
+static inline uint32_t DelayCycles(const uint32_t start, const uint32_t cycles) noexcept
+{
+	uint32_t val;
+	while ((val = DWT->CYCCNT) - start < cycles) { }
+	return val;
+}
+
+static inline uint32_t GetCurrentCycles() noexcept
+{
+	return (DWT->CYCCNT);
+}
+
+static inline uint32_t GetElapsedCyclesBetween(uint32_t startCycles, uint32_t endCycles) noexcept
+{
+	return endCycles - startCycles;
+}
+
+#else
 
 /**
  * @brief Delay for a specified number of CPU clock cycles from the starting time
@@ -322,6 +340,8 @@ static inline uint32_t GetElapsedCycles(uint32_t startCycles) noexcept
 {
 	return GetElapsedCyclesBetween(startCycles, GetCurrentCycles());
 }
+
+#endif
 
 /**
  * @brief Delay for at least the specified number of microseconds

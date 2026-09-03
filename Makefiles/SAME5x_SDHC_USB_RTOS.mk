@@ -58,6 +58,8 @@ SAME5x_SDHC_USB_RTOS_CSRC := $(shell find $(SAME5x_SDHC_USB_RTOS_SRC_DIR) -name 
 	! -path '*/RP2040/*' \
 	! -path '*/SAM4S_4E_E70/*' \
 	! -path '*/SAME5x_C21/SAMC21/*' \
+	! -path '*/STM32/*' \
+	! -path '*/STMCubeMX/*' \
 	! -path '*/atmel/*' \
 	! -path '*/arm/*')
 
@@ -65,6 +67,8 @@ SAME5x_SDHC_USB_RTOS_CPPSRC := $(shell find $(SAME5x_SDHC_USB_RTOS_SRC_DIR) -nam
 	! -path '*/RP2040/*' \
 	! -path '*/SAM4S_4E_E70/*' \
 	! -path '*/SAME5x_C21/SAMC21/*' \
+	! -path '*/STM32/*' \
+	! -path '*/STMCubeMX/*' \
 	! -path '*/atmel/*' \
 	! -path '*/arm/*')
 

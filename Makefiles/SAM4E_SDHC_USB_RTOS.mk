@@ -20,6 +20,8 @@ SAM4E_CPP_SRCS := $(shell find $(SAM4E_SRC_DIR) -name '*.cpp' \
 	! -path '*/SAM4S_4E_E70/SAME70/*' \
 	! -path '*/SAME5x_C21/*' \
 	! -path '*/SAME70/*' \
+	! -path '*/STM32/*' \
+	! -path '*/STMCubeMX/*' \
 	! -path '*/atmel/*' \
 	! -path '*/arm/*')
 
@@ -42,6 +44,8 @@ SAM4E_C_SRCS := $(shell find $(SAM4E_SRC_DIR) -name '*.c' \
 	! -path '*/SAM4S_4E_E70/asf/sam/drivers/xdmac/*' \
 	! -path '*/SAME5x_C21/*' \
 	! -path '*/SAME70/*' \
+	! -path '*/STM32/*' \
+	! -path '*/STMCubeMX/*' \
 	! -path '*/atmel/*' \
 	! -path '*/arm/*')
 

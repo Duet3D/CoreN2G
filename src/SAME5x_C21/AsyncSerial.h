@@ -67,8 +67,6 @@ public:
 	size_t TryPutBlock(const uint8_t *buffer, size_t buflen) noexcept;
 #endif
 
-	// ISRs, must be called by the ISRs for the SERCOM
-
 	// Get and clear the errors
 	Errors GetAndClearErrors() noexcept;
 

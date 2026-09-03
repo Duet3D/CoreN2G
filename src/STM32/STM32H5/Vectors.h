@@ -1,0 +1,173 @@
+/*
+ * Vectors.h
+ *
+ *  Created on: 8 Jul 2026
+ *      Author: David
+ */
+
+#ifndef SRC_STM32_STM32H5_VECTORS_H_
+#define SRC_STM32_STM32H5_VECTORS_H_
+
+struct DeviceVectors
+{
+	void *pvStack;
+
+	void *pfnReset_Handler;
+	void *pfnNonMaskableInt_Handler;
+	void *pfnHardFault_Handler;
+	void *pfnMemManagement_Handler;
+	void *pfnBusFault_Handler;
+	void *pfnUsageFault_Handler;
+#if 1
+	void *pvReservedM9;
+	void *pvReservedM8;
+	void *pvReservedM7;
+#else
+	void *pvReservedM9;
+	void *pvReservedM8;
+	void *pvReservedM7;
+#endif
+	void *pvReservedM6;
+	void *pfnSVCall_Handler;
+	void *pfnDebugMonitor_Handler;
+	void *pvReservedM3;
+	void *pfnPendSV_Handler;
+	void *pfnSysTick_Handler;
+
+	// Configurable interrupts
+	void *pfnWWDG_Handler;
+	void *pfnPFD_AVD_Handler;
+	void *pfnRTC_Handler;
+	void *pfnRTC_S_Handler;
+	void *pfnTAMP_Handler;
+	void *pfnRAMCFG_Handler;
+	void *pfnFLASH_Handler;
+	void *pfnFLASH_S_Handler;
+	void *pfnGTZC_Handler;
+	void *pfnRCC_Handler;
+	void *pfnRCC_S_Handler;
+	void *pfnEXTI0_Handler;
+	void *pfnEXTI1_Handler;
+	void *pfnEXTI2_Handler;
+	void *pfnEXTI3_Handler;
+	void *pfnEXTI4_Handler;
+	void *pfnEXTI5_Handler;
+	void *pfnEXTI6_Handler;
+	void *pfnEXTI7_Handler;
+	void *pfnEXTI8_Handler;
+	void *pfnEXTI9_Handler;
+	void *pfnEXTI10_Handler;
+	void *pfnEXTI11_Handler;
+	void *pfnEXTI12_Handler;
+	void *pfnEXTI13_Handler;
+	void *pfnEXTI14_Handler;
+	void *pfnEXTI15_Handler;
+	void *pfnGPDMA1_Channel0_Handler;
+	void *pfnGPDMA1_Channel1_Handler;
+	void *pfnGPDMA1_Channel2_Handler;
+	void *pfnGPDMA1_Channel3_Handler;
+	void *pfnGPDMA1_Channel4_Handler;
+	void *pfnGPDMA1_Channel5_Handler;
+	void *pfnGPDMA1_Channel6_Handler;
+	void *pfnGPDMA1_Channel7_Handler;
+	void *pfnIWDG_Handler;
+	void *pvReserved36;
+	void *pfnADC1_Handler;
+	void *pfnDAC1_Handler;
+	void *pfnFDCAN1_IT0_Handler;
+	void *pfnFDCAN1_IT1_Handler;
+	void *pfnTIM1_BRK_Handler;
+	void *pfnTIM1_UP_Handler;
+	void *pfnTIM1_TRG_COM_IHandler;
+	void *pfnTIM1_CC_Handler;
+	void *pfnTIM2_Handler;
+	void *pfnTIM3_Handler;
+	void *pfnTIM4_Handler;
+	void *pfnTIM5_Handler;
+	void *pfnTIM6_Handler;
+	void *pfnTIM7_Handler;
+	void *pfnI2C1_EV_Handler;
+	void *pfnI2C1_ER_Handler;
+	void *pfnI2C2_EV_3_Handler;
+	void *pfnI2C2_ER_Handler;
+	void *pfnSPI1_Handler;
+	void *pfnSPI2_Handler;
+	void *pfnSPI3_Handler;
+	void *pfnUSART1_Handler;
+	void *pfnUSART2_Handler;
+	void *pfnUSART3_Handler;
+	void *pfnUART4_Handler;
+	void *pfnUART5_Handler;
+	void *pfnLPUART1_Handler;
+	void *pfnLPTIM1_Handler;
+	void *pfnTIM8_BRK_Handler;
+	void *pfnTIM8_UP_Handler;
+	void *pfnTIM8_TRG_COM_Handler;
+	void *pfnTIM8_CC_Handler;
+	void *pfnADC2_Handler;
+	void *pfnLPTIM2_Handler;
+	void *pfnTIM15_Handler;
+	void *pvReserved72;
+	void *pvReserved73;
+	void *pfnUSB_DRD_FS_Handler;
+	void *pfnCRS_Handler;
+	void *pfnUCPD1_Handler;
+	void *pfnFMC_Handler;
+	void *pfnOCTOSPI1_Handler;
+	void *pfnSDMMC1_Handler;
+	void *pfnI2C3_EV_Handler;
+	void *pfnI2C3_ER_Handler;
+	void *pfnSPI4_Handler;
+	void *pvReserved83;
+	void *pvReserved84;
+	void *pfnUSART6_Handler;
+	void *pvReserved86;
+	void *pvReserved87;
+	void *pvReserved88;
+	void *pvReserved89;
+	void *pfnGPDMA2_Channel0_Handler;
+	void *pfnGPDMA2_Channel1_Handler;
+	void *pfnGPDMA2_Channel2_Handler;
+	void *pfnGPDMA2_Channel3_Handler;
+	void *pfnGPDMA2_Channel4_Handler;
+	void *pfnGPDMA2_Channel5_Handler;
+	void *pfnGPDMA2_Channel6_Handler;
+	void *pfnGPDMA2_Channel7_Handler;
+	void *pvReserved98;
+	void *pvReserved99;
+	void *pvReserved100;
+	void *pvReserved101;
+	void *pvReserved102;
+	void *pfnFPU_Handler;
+	void *pfnICACHE_Handler;
+	void *pfnDCACHE1_Handler;
+	void *pvReserved106;
+	void *pvReserved107;
+	void *pfnDCMI_PSSI_Handler;
+	void *pfnFDCAN2_IT0_Handler;
+	void *pfnFDCAN2_IT1_Handler;
+	void *pvReserved111;
+	void *pvReserved112;
+	void *pfnDTS_Handler;
+	void *pfnRNG_Handler;
+	void *pfnOFTDEC1_Handler;
+	void *pvReserved116;
+	void *pfnHASH_Handler;
+	void *pvReserved118;
+	void *pfnCEC_Handler;
+	void *pfnTIM12_Handler;
+	void *pvReserved121;
+	void *pvReserved122;
+	void *pfnI3C1_EV_Handler;
+	void *pfnI3C1_ER_Handler;
+	void *pvReserved125;
+	void *pvReserved126;
+	void *pvReserved127;
+	void *pvReserved128;
+	void *pvReserved129;
+	void *pvReserved130;
+	void *pfnI3C2_EV_Handler;
+	void *pfnI3C2_ER_Handler;
+};
+
+#endif	// SRC_STM32_STM32H5_VECTORS_H_

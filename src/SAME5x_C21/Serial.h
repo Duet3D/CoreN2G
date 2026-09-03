@@ -56,7 +56,7 @@ namespace Serial
 		, bool use32bitMode = false
 #endif
 		) noexcept;
-	void Disable(uint8_t sercomNumber) noexcept;
+	void DisableSercom(uint8_t sercomNumber) noexcept;
 
 	// Support for serial interrupt vector reassignment
 

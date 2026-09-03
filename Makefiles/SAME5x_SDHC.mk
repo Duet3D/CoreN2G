@@ -52,6 +52,8 @@ SAME5x_SDHC_CSRC := $(shell find $(SAME5x_SDHC_SRC_DIR) -name '*.c' \
 	! -path '*/SAM4S_4E_E70/*' \
 	! -path '*/SAME5x_C21/SAMC21/*' \
 	! -path '*/SAME5x_C21/SAME5x/usb/*' \
+	! -path '*/STM32/*' \
+	! -path '*/STMCubeMX/*' \
 	! -path '*/atmel/*' \
 	! -path '*/arm/*')
 
@@ -60,6 +62,8 @@ SAME5x_SDHC_CPPSRC := $(shell find $(SAME5x_SDHC_SRC_DIR) -name '*.cpp' \
 	! -path '*/SAM4S_4E_E70/*' \
 	! -path '*/SAME5x_C21/SAMC21/*' \
 	! -path '*/SAME5x_C21/SAME5x/usb/*' \
+	! -path '*/STM32/*' \
+	! -path '*/STMCubeMX/*' \
 	! -path '*/atmel/*' \
 	! -path '*/arm/*')
 

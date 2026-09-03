@@ -14,6 +14,7 @@
 #include <CoreIO.h>
 #include <SPI/SpiMode.h>
 #include <RTOSIface/RTOSIface.h>
+#include <SPI/SpiDevice.h>
 
 class SharedSpiDevice;
 
@@ -30,7 +31,7 @@ public:
 
 	bool Select(uint32_t timeout = Mutex::TimeoutUnlimited) const noexcept;					// get SPI ownership and select the device, return true if successful
 	void Deselect() const noexcept;
-	bool TransceivePacket(const uint8_t *_ecv_array _ecv_null tx_data, uint8_t *_ecv_array _ecv_null rx_data, size_t len) const noexcept;
+	bool TransceivePacket(const uint8_t *_ecv_array _ecv_null tx_data, uint8_t *_ecv_array _ecv_null rx_data, size_t len, uint32_t dmaTimeout = SpiDevice::SpiDmaTimeout) const noexcept;
 	bool ReadPacket(uint8_t *_ecv_array rx_data, size_t len) const noexcept { return TransceivePacket(nullptr, rx_data, len); }
 	bool WritePacket(const uint8_t *_ecv_array tx_data, size_t len) const noexcept { return TransceivePacket(tx_data, nullptr, len); }
 

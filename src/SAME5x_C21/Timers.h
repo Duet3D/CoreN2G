@@ -17,7 +17,7 @@ namespace Timers
 		TC0, TC1, TC2, TC3, TC4,
 #if SAME5x
 		TC5,
-# if defined(SAME51N19A) || defined(SAME51P20A)
+# if defined(TC6)
 		TC6, TC7					// CAUTION! lower pin count variants of SAME5x devices don't have these
 # endif
 #endif

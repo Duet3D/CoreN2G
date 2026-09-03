@@ -267,7 +267,6 @@ size_t TwoWire::InternalTransfer(uint16_t address, uint8_t *buffer, size_t numTo
 	}
 	(void)WaitTransferComplete(statusWaitFunc);
 	return bytesSent + bytesReceived;
-
 }
 
 void TwoWire::ClearTransferErrors() noexcept

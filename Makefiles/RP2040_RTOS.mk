@@ -72,6 +72,8 @@ RP2040_RTOS_CSRC := $(shell find $(RP2040_RTOS_SRC_DIR) \
 	! -path "$(RP2040_RTOS_SRC_DIR)/SAME5x_C21/*" \
 	! -path "$(RP2040_RTOS_SRC_DIR)/SAM4S_4E_E70/*" \
 	! -path "$(RP2040_RTOS_SRC_DIR)/SAME70/*" \
+	! -path "$(RP2040_RTOS_SRC_DIR)/STM32/*" \
+	! -path "$(RP2040_RTOS_SRC_DIR)/STMCubeMX/*" \
 	! -path "$(RP2040_RTOS_SRC_DIR)/atmel/*" \
 	! -path "$(RP2040_RTOS_SRC_DIR)/arm/*")
 
@@ -82,6 +84,8 @@ RP2040_RTOS_CPPSRC := $(shell find $(RP2040_RTOS_SRC_DIR) \
 	! -path "$(RP2040_RTOS_SRC_DIR)/SAME5x_C21/*" \
 	! -path "$(RP2040_RTOS_SRC_DIR)/SAM4S_4E_E70/*" \
 	! -path "$(RP2040_RTOS_SRC_DIR)/SAME70/*" \
+	! -path "$(RP2040_RTOS_SRC_DIR)/STM32/*" \
+	! -path "$(RP2040_RTOS_SRC_DIR)/STMCubeMX/*" \
 	! -path "$(RP2040_RTOS_SRC_DIR)/atmel/*" \
 	! -path "$(RP2040_RTOS_SRC_DIR)/arm/*")
 

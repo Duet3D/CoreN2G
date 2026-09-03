@@ -39,6 +39,9 @@ static_assert(MaxRxBuffers <= 30);					// the hardware allows up to 64 but our c
 # if SAME70
 constexpr unsigned int NumCanDevices = 2;			// this driver supports both CAN devices on the SAME70
 typedef Mcan Can;
+# elif STM32
+typedef FDCAN_GlobalTypeDef Can;
+constexpr unsigned int NumCanDevices = 2;			// this driver supports all three CAN devices on the STM32H7
 #else
 constexpr unsigned int NumCanDevices = 1;			// on other MCUs we only support one CAN device
 # endif
@@ -99,7 +102,7 @@ public:
 		// Test whether the data size is supported by the CAN hardware
 		constexpr bool ValidDataSize() const noexcept
 		{
-#if RP2040
+#if RP2040 || STM32H5
 			return dataSize == 64;
 #else
 			return dataSize >= 8
@@ -113,7 +116,13 @@ public:
 		constexpr bool IsValid() const noexcept
 		{
 			return ValidDataSize()
-#if RP2040
+#if STM32H5
+				// STM32H5 has fixed numbers of everything
+				&& numRxBuffers == 0 && numTxBuffers == 0
+				&& rxFifo0Size == 3 && rxFifo1Size == 3
+				&& txFifoSize == 3 && txEventFifoSize == 3
+				&& numShortFilterElements == 28 && numExtendedFilterElements == 8;
+#elif RP2040
 				&& numTxBuffers == 0										// our RP2040 code doesn't support dedicated Tx buffers
 				&& txEventFifoSize == 0										// our RP2040 code doesn't support the transmit event FIFO
 				&& numRxBuffers == 0;										// our RP2040 code doesn't support dedicates receive buffers
@@ -262,12 +271,14 @@ public:
 		return timer_hw->timerawl;									// read lower 32 bits of the hardware timer, which we also use for CAN time stamping
 #elif SAME70
 		return hw->MCAN_TSCV;
+#elif STM32
+		return hw->TSCV & 0xFFFF;
 #else
 		return hw->TSCV.bit.TSC;
 #endif
 	}
 
-#if !SAME70 && !RP2040
+#if !SAME70 && !STM32 && !RP2040
 	uint16_t GetTimeStampPeriod() const noexcept
 	{
 		return bitPeriod;

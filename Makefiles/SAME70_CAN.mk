@@ -78,6 +78,8 @@ SAME70_CAN_CSRC := $(shell find $(SAME70_CAN_SRC_DIR) -name '*.c' \
 	! -path '*/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s/*' \
 	! -path '*/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4e/*' \
 	! -path '*/SAME5x_C21/*' \
+	! -path '*/STM32/*' \
+	! -path '*/STMCubeMX/*' \
 	! -path '*/atmel/*' \
 	! -path '*/arm/*')
 
@@ -99,6 +101,8 @@ SAME70_CAN_CPPSRC := $(shell find $(SAME70_CAN_SRC_DIR) -name '*.cpp' \
 	! -path '*/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s/*' \
 	! -path '*/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4e/*' \
 	! -path '*/SAME5x_C21/*' \
+	! -path '*/STM32/*' \
+	! -path '*/STMCubeMX/*' \
 	! -path '*/atmel/*' \
 	! -path '*/arm/*')
 

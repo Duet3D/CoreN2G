@@ -11,8 +11,8 @@
  *      Author: David
  */
 
-#ifndef SRC_HARDWARE_SAME5X_COREIO_H_
-#define SRC_HARDWARE_SAME5X_COREIO_H_
+#ifndef SRC_COREIO_H_
+#define SRC_COREIO_H_
 
 #include "Core.h"
 
@@ -23,40 +23,55 @@ extern char *_ecv_array heapTop;
 extern const char *_ecv_array heapLimit;
 extern const char *_ecv_array sysStackLimit;
 
+#if STM32
+constexpr unsigned int PinBits = 4;			// STM MCUs have 16-bit ports
+#else
+constexpr unsigned int PinBits = 5;			// other MCUs have 32-bit ports
+#endif
+
+constexpr unsigned int PinsPerPort = 1u << PinBits;
+
 // Define NumTotalPins as the pin number at and beyond which it is not safe to access the corresponding port registers on this processor family.
 // This may be greater than the number of I/O pins actually on the particular device we are running on.
 #if SAME5x
-constexpr unsigned int NumTotalPins = (3 * 32) + 22;	// SAME54P20A goes up to PD21
+constexpr unsigned int NumTotalPins = (3 * PinsPerPort) + 22;	// SAME54P20A goes up to PD21
 #elif SAMC21
-constexpr unsigned int NumTotalPins = 2 * 32;			// SAMC21J goes up to PB31. We don't support the SAMC21N.
+constexpr unsigned int NumTotalPins = 2 * PinsPerPort;			// SAMC21J goes up to PB31. We don't support the SAMC21N.
 #elif SAM4E
-constexpr unsigned int NumTotalPins = (4 * 32) + 6;		// SAM4E8E goes up to PE5
+constexpr unsigned int NumTotalPins = (4 * PinsPerPort) + 6;	// SAM4E8E goes up to PE5
 #elif SAM4S
-constexpr unsigned int NumTotalPins = 3 * 32;			// SAM4S8C goes up to PC31
+constexpr unsigned int NumTotalPins = 3 * PinsPerPort;			// SAM4S8C goes up to PC31
 #elif SAME70
-constexpr unsigned int NumTotalPins = (4 * 32) + 6;		// SAME70 goes up to PE5
+constexpr unsigned int NumTotalPins = (4 * PinsPerPort) + 6;	// SAME70 goes up to PE5
+#elif STM32H5
+constexpr unsigned int NumTotalPins = (3 * PinsPerPort) + 3;	// STM32H523RET goes up to PD02 (some STM32H5 variants go up to PG15)
+#elif STM32H7
+constexpr unsigned int NumTotalPins = (9 * PinsPerPort);		// STM32H743 goes up to PI15
 #elif RP2040
-constexpr unsigned int NumTotalPins = 30;				// RP2040 goes up to GPIO29
+constexpr unsigned int NumTotalPins = 30;						// RP2040 goes up to GPIO29
+#elif RP2350
+constexpr unsigned int NumTotalPins = 48;						// RP2350B goes up to GPIO47
 #else
 # error Unsupported processor
 #endif
 
-#if RP2040
-
-inline constexpr Pin GpioPin(unsigned int n) noexcept { return n; }
-inline constexpr uint32_t GpioMask(Pin p) noexcept { return (uint32_t)1 << p; }
-
-#else
-
-inline uint32_t GpioPortNumber(Pin p) noexcept { return p >> 5; }
-inline constexpr uint32_t GpioPinNumber(Pin p) noexcept { return p & 0x1F; }
+inline uint32_t GpioPortNumber(Pin p) noexcept { return p >> PinBits; }
+inline constexpr uint32_t GpioPinNumber(Pin p) noexcept { return p & (PinsPerPort - 1); }
 inline constexpr uint32_t GpioMask(Pin p) noexcept { return (uint32_t)1 << GpioPinNumber(p); }
 
 #if SAME70 || SAM4E || SAM4S
 inline Pio *GpioPort(Pin p) noexcept { return (Pio*)((uint32_t)PIOA + GpioPortNumber(p) * 0x200); }
 #elif SAME5x || SAMC21
 inline PortGroup& GpioPort(Pin p) noexcept { return PORT->Group[GpioPortNumber(p)]; }
+#elif STM32
+inline GPIO_TypeDef *GpioPort(Pin p) noexcept { return (GPIO_TypeDef *)(GPIOA_BASE + GpioPortNumber(p) * 0x0400); }
 #endif
+
+#if RPXXXX
+
+inline constexpr Pin GpioPin(unsigned int n) noexcept { return n; }
+
+#else
 
 /**
  * @brief Return the global pin number for a Port A pin
@@ -72,9 +87,9 @@ inline constexpr Pin PortAPin(unsigned int n) noexcept { return (Pin)n; }
  * @param n The bit number of the pin on Port B
  * @return The global pin number
  */
-inline constexpr Pin PortBPin(unsigned int n) noexcept { return (Pin)(32+n); }
+inline constexpr Pin PortBPin(unsigned int n) noexcept { return (Pin)(PinsPerPort + n); }
 
-#if SAME5x || SAM4E || SAM4S || SAME70
+# if SAME5x || SAM4E || SAM4S || SAME70 || STM32H5 || STM32H7
 
 /**
  * @brief Return the global pin number for a Port C pin
@@ -82,11 +97,11 @@ inline constexpr Pin PortBPin(unsigned int n) noexcept { return (Pin)(32+n); }
  * @param n The bit number of the pin on Port C
  * @return The global pin number
  */
-inline constexpr Pin PortCPin(unsigned int n) noexcept { return (Pin)(64+n); }
+inline constexpr Pin PortCPin(unsigned int n) noexcept { return (Pin)(2 * PinsPerPort + n); }
 
-#endif
+# endif
 
-#if SAME5x || SAM4E || SAME70
+# if SAME5x || SAM4E || SAME70 || STM32H5 || STM32H7
 
 /**
  * @brief Return the global pin number for a Port D pin
@@ -94,11 +109,11 @@ inline constexpr Pin PortCPin(unsigned int n) noexcept { return (Pin)(64+n); }
  * @param n The bit number of the pin on Port D
  * @return The global pin number
  */
-inline constexpr Pin PortDPin(unsigned int n) noexcept { return (Pin)(96+n); }
+inline constexpr Pin PortDPin(unsigned int n) noexcept { return (Pin)(3 * PinsPerPort + n); }
 
-#endif
+# endif
 
-#if SAM4E || SAME70
+# if SAM4E || SAME70 || STM32H5 || STM32H7
 
 /**
  * @brief Return the global pin number for a Port E pin
@@ -106,11 +121,51 @@ inline constexpr Pin PortDPin(unsigned int n) noexcept { return (Pin)(96+n); }
  * @param n The bit number of the pin on Port E
  * @return The global pin number
  */
-inline constexpr Pin PortEPin(unsigned int n) noexcept { return (Pin)(128+n); }
+inline constexpr Pin PortEPin(unsigned int n) noexcept { return (Pin)(4 * PinsPerPort + n); }
+
+# endif
+
+# if STM32H5 || STM32H7
+
+/**
+ * @brief Return the global pin number for a Port F pin
+ *
+ * @param n The bit number of the pin on Port F
+ * @return The global pin number
+ */
+inline constexpr Pin PortFPin(unsigned int n) noexcept { return (Pin)(5 * PinsPerPort + n); }
+
+/**
+ * @brief Return the global pin number for a Port G pin
+ *
+ * @param n The bit number of the pin on Port G
+ * @return The global pin number
+ */
+inline constexpr Pin PortGPin(unsigned int n) noexcept { return (Pin)(6 * PinsPerPort + n); }
+
+# endif
+
+# if STM32H7
+
+/**
+ * @brief Return the global pin number for a Port H pin
+ *
+ * @param n The bit number of the pin on Port H
+ * @return The global pin number
+ */
+inline constexpr Pin PortHPin(unsigned int n) noexcept { return (Pin)(7 * PinsPerPort + n); }
+
+/**
+ * @brief Return the global pin number for a Port I pin
+ *
+ * @param n The bit number of the pin on Port I
+ * @return The global pin number
+ */
+inline constexpr Pin PortIPin(unsigned int n) noexcept { return (Pin)(8 * PinsPerPort + n); }
+
+# endif
 
 #endif
-
-#endif	// !RP2040
 
 /**
  * @brief Pin function numbers for calls to SetPinFunction
@@ -122,6 +177,8 @@ enum class GpioPinFunction : uint8_t
     Xip = 0, Spi = 1, Uart = 2, I2c = 3, Pwm = 4,
     Sio = 5, Pio0 = 6, Pio1 = 7, Gpck = 8, Usb = 9,
     None = 0x1f
+#elif STM32
+	AF0 = 0, AF1, AF2, AF3, AF4, AF5, AF6, AF7, AF8, AF9, AF10, AF11, AF12, AF13, AF14, AF15
 #else
 	A = 0, B, C, D,
 # if SAME5x || SAMC21
@@ -142,7 +199,7 @@ void SetPinFunction(Pin p, GpioPinFunction f) noexcept;
  * @brief Set the drive strength of a pin
  * @param p The pin number
  * @param strength the strength, where 0 = minimum
- * The maximum is limited to 3 for the RP2040, and 1 for SAME5x and SAMC21.
+ * The maximum is limited to 3 for the RP2040 and STM32, and 1 for SAME5x and SAMC21.
  */
 void SetDriveStrength(Pin p, unsigned int strength) noexcept;
 
@@ -285,7 +342,6 @@ static inline const uint32_t *_ecv_array GetStackPointer() noexcept
 
 #endif
 
-// Atomic section locker, alternative to InterruptCriticalSectionLocker (is safe to call from within an ISR, and may be faster)
 /**
  * @brief This class is an alternative to InterruptCriticalSectionLocker. It is safe to call from within an ISR, and may be faster.
  *
@@ -311,7 +367,7 @@ private:
 	coreIrqflags_t flags;
 };
 
-#if SAME5x || SAM4E || SAM4S || SAME70		// SAMC21 doesn't support these
+#if SAME5x || SAM4E || SAM4S || SAME70 || STM32 || RP2350		// SAMC21 and RP2040 don't support these
 
 // Functions to change the base priority, to shut out interrupts up to a priority level
 
@@ -452,6 +508,8 @@ inline void fastDigitalWriteHigh(uint32_t pin) noexcept
 	GpioPort(pin)->PIO_SODR = GpioMask(pin);
 #elif RP2040
 	gpio_set_mask(GpioMask(pin));
+#elif STM32
+	GpioPort(pin)->BSRR = GpioPinNumber(pin);
 #else
 # error Unsupported processor
 #endif
@@ -470,6 +528,8 @@ inline void fastDigitalWriteLow(uint32_t pin) noexcept
 	GpioPort(pin)->PIO_CODR = GpioMask(pin);
 #elif RP2040
 	gpio_clr_mask(GpioMask(pin));
+#elif STM32
+	GpioPort(pin)->BSRR = GpioPinNumber(pin) << 16;
 #else
 # error Unsupported processor
 #endif
@@ -488,6 +548,8 @@ inline bool fastDigitalRead(uint32_t pin) noexcept
 	return GpioPort(pin)->PIO_PDSR & GpioMask(pin);
 #elif RP2040
 	return gpio_get(pin);			//TODO can we optimise this?
+#elif STM32
+	return (GpioPort(pin)->IDR & GpioPinNumber(pin)) != 0;
 #else
 # error Unsupported processor
 #endif
@@ -499,7 +561,7 @@ inline bool fastDigitalRead(uint32_t pin) noexcept
  */
 [[noreturn]] void ResetProcessor() noexcept;
 
-#if !RP2040
+#if SAME70 || SAM4E || SAM4S || SAME5x || SAMC21
 
 /**
  * @brief TC output identifiers used in pin tables
@@ -728,48 +790,158 @@ static inline constexpr GpioPinFunction GetPeriNumber(PwmOutput pwm) noexcept
 
 #endif
 
+#if STM32
+
+enum class TimerOutput : uint16_t
+{
+	// Bits 0-4 are the timer number
+	// Bits 5-7 are the channel number
+	// Bit 8 is the output inversion flag
+	// Bits 9-12 are the pin function number
+
+	none = 0,									// timer numbers start at 1 so we can use 0 for this
+
+		// Timer numbers
+	tim1 = 1, tim2, tim3, tim4, tim5,
+	tim8 = 8,
+	tim12 = 12,
+#if STM32H7
+	tim13 = 13, tim14,
+#endif
+	tim15 = 15,
+#if STM32H7
+	tim16 = 16, tim17,
+# if defined(STM32H723xx)
+	tim23 = 23, tim24,
+# endif
+#endif
+	lptim1 = 25, lptim2,						// we number the low power timers from 25
+
+	// Channel numbers
+	ch1 = 0, ch2 = 0x20, ch3 = 0x40, ch4 = 0x60,
+#if STM32H7
+	ch5 = 0x80, ch6 = 0xA0,
+#endif
+
+	// Output inversion
+	neg = 0x100,
+
+	// Combinations. Add any extras that additional boards/processors need here.
+	tim1_ch1 = tim1 | ch1,
+	tim1_ch2 = tim1 | ch2,
+	tim2_ch4 = tim2 | ch4,
+	tim4_ch1 = tim4 | ch1,
+	tim8_ch1 = tim8 | ch1,
+	tim15_ch1 = tim15 | ch1,
+	lptim1_ch1 = lptim1 | ch1,
+};
+
+inline constexpr TimerOutput operator |(TimerOutput a, GpioPinFunction f) noexcept { return (TimerOutput)((uint16_t)a | ((uint16_t)f) << 9); }
+
+// Extract the timer number from a TimerOutput
+inline constexpr unsigned int GetTimerNumber(TimerOutput timOut) noexcept { return (unsigned int)timOut & 0x1f; }
+constexpr unsigned int FirstLowPowerTimerNumber = GetTimerNumber(TimerOutput::lptim1);
+inline constexpr bool IsLowPowerTimer(unsigned int timerNumber) noexcept { return timerNumber >= FirstLowPowerTimerNumber; }
+inline constexpr bool Is32bitTimer(unsigned int timerNumber) noexcept { return timerNumber == 3 || timerNumber == 5; }
+
+// Extract the output channel number(0-3) from a TimerOutput
+inline constexpr unsigned int GetTimerChannel(TimerOutput timOut) noexcept { return ((unsigned int)timOut >> 5) & 3; }
+
+// Return true if the output is negated, else false
+inline constexpr bool GetIsOutputInverted(TimerOutput timOut) noexcept { return (unsigned int)timOut & 0x80; }
+
+// Get the pin function
+inline constexpr GpioPinFunction GetPinFunction(TimerOutput timOut) noexcept { return (GpioPinFunction)((uint16_t)timOut >> 9); }
+
+// Get the hardware timer device corresponding to a timer number
+TIM_TypeDef *const GetHardwareTimer(unsigned int timerNumber) noexcept;
+LPTIM_TypeDef *const GetLowPowerHardwareTimer(unsigned int timerNumber) noexcept;
+
+// Return the clock frequency used by a give timer number
+inline uint32_t GetTimerClockFrequency(unsigned int timerNumber) noexcept { return 240'000'000; }		// all timers currently use a 240MHz clock
+
+/**
+ * @brief Initialise a timer clock
+ *
+ * @param timerNumber The timer number that needs a clock
+ */
+void EnableTimerClock(unsigned int timerNumber) noexcept;
+
+inline uint32_t GetSpiClockFrequency(unsigned int spiNumber) noexcept { return 48'000'000; }			// all SPI devices currently use a 48MHz clock
+
+void EnableSpiClock(unsigned int spiInstanceNumber) noexcept;
+
+#endif
+
 /**
  * @brief ADC input identifiers, encoding both the ADC device and the ADC input number within the device.
  * On the SAMC21 we only support the first ADC and the SDADC. On the SAME5x, SAM4S and SAmE70 we support both ADCs.
  * SAM4S only has one ADC.
- *
  */
 enum class AdcInput : uint8_t
 {
-	adc0_0 = 0x00, adc0_1, adc0_2, adc0_3,
-#if RP2040
-	adc0_tempSense,
+#if STM32H5
+	// 0x00 to 0x1F are inputs to ADC1 only
+	adc1_2 = 0x02, adc1_6 = 0x06,
+	// 0x20 to 0x3f are inputs to ADC2 only
+	adc2_2 = 0x22, adc2_6 = 0x26,
+	// 0x60 to 0x7F are inputs to ADC1 and ADC2
+	adc12_0 = 0x60, adc12_1,
+	adc12_3 = 0x63, adc12_4, adc12_5,
+	adc12_7 = 0x67, adc12_8, adc12_9, adc12_10, adc12_11, adc12_12, adc12_13, adc12_14, adc12_15, adc12_16, adc12_17, adc12_18, adc12_19,
+	ldc1612 = 0x80, ads131m02,
+#elif STM32H7
+	// 0x00 to 0x1F are inputs to ADC1 only
+	adc1_2 = 0x02, adc1_6 = 0x06, adc1_16 = 0x10, adc1_17,
+	// 0x20 to 0x3f are inputs to ADC2 only
+	adc2_2 = 0x22, acd2_6 = 0x26,
+	// 0x40 to 0x5F are inputs to ADC3 only
+	adc3_0 = 0x40, adc3_1, adc3_2, adc3_3, adc3_4, adc3_5, adc3_6, adc3_7, adc3_8, adc3_9,
+	adc3_13 = 0x4D, adc3_14, adc3_15, adc3_16,
+	// 0x60 to 0x7F are inputs to ADC1 and ADC2
+	adc12_0 = 0x60, adc12_1,
+	adc12_3 = 0x63, adc12_4, adc12_5,
+	adc12_7 = 0x67, adc12_8, adc12_9,
+	adc12_13 = 0x6D, adc12_14,
+	adc12_18 = 0x72, adc12_19,
+	// 0x80 to 0x9F are inputs to ADC1, ADC2 and ADC3
+	adc123_10 = 0x8A, adc123_11, adc123_12,
 #else
+	adc0_0 = 0x00, adc0_1, adc0_2, adc0_3,
+# if RP2040
+	adc0_tempSense,
+# else
 	adc0_4, adc0_5, adc0_6, adc0_7, adc0_8, adc0_9,
-#endif
-#if SAMC21
+# endif
+# if SAMC21
 	adc0_10, adc0_11,
 	sdadc_0 = 0x10, sdadc_1,
 	ldc1612 = 0x20,
-#endif
-#if SAM4E || SAM4S
-	adc0_10, adc0_11, adc0_12, adc0_13, adc0_14,
-# if SAM4E
-	adc1_0 = 0x10, adc1_1, adc1_2, adc1_3, adc1_4, adc1_5, adc1_6, adc1_7,
 # endif
+# if SAM4E || SAM4S
+	adc0_10, adc0_11, adc0_12, adc0_13, adc0_14,
+#  if SAM4E
+	adc1_0 = 0x10, adc1_1, adc1_2, adc1_3, adc1_4, adc1_5, adc1_6, adc1_7,
+#  endif
 	dac0 = 0x20, dac1,
-#endif
-#if SAME5x
+# endif
+# if SAME5x
 	adc0_10, adc0_11, adc0_12, adc0_13, adc0_14, adc0_15,
 	adc1_0 = 0x10, adc1_1, adc1_2, adc1_3, adc1_4, adc1_5, adc1_6, adc1_7,
 					adc1_8, adc1_9, adc1_10, adc1_11, adc1_12, adc1_13, adc1_14, adc1_15,
 	ldc1612 = 0x20, ads131m02,
-#endif
-#if SAME70
+# endif
+# if SAME70
 	adc1_0 = 0x10, adc1_1, adc1_2, adc1_3, adc1_4, adc1_5, adc1_6, adc1_7,
 	adc1_8, adc1_9, adc1_10, adc1_11,
+# endif
 #endif
 
 	none = 0xFF			// this must give an out-of-range device number when passed to GetDeviceNumber
 };
 
 typedef AdcInput AnalogChannelNumber;						///< for backwards compatibility
-constexpr AnalogChannelNumber NO_ADC = AdcInput::none;		///< for backwards compatibility
+constexpr AdcInput NO_ADC = AdcInput::none;		///< for backwards compatibility
 
 #if !RP2040
 
@@ -814,7 +986,7 @@ AdcInput PinToAdcChannel(Pin p) noexcept;
  * @param p The pin number
  * @return The AdcInput, or AdcInput::none
  */
-AnalogChannelNumber PinToSdAdcChannel(Pin p) noexcept;
+AdcInput PinToSdAdcChannel(Pin p) noexcept;
 
 #endif
 
@@ -931,6 +1103,12 @@ struct PinDescriptionBase
 	PwmOutput pwm;					///< The PWM output that is connected to this pin and available for PWM generation, or PwmOutput::none
 	AdcInput adc;					///< The ADC input that is connected to this pin and available, or AdcInput::none
 
+#elif STM32
+
+	TimerOutput to;
+	AdcInput adc;
+	ExintNumber exintNumber;		///< The EXINT number that is allocated exclusively for use by this pin, or Nx if none available
+
 #else
 # error Unsupported processor
 #endif
@@ -1026,4 +1204,4 @@ extern void DisableCore1Processing() noexcept;
 extern void EnableCore1Processing() noexcept;
 #endif
 
-#endif /* SRC_HARDWARE_SAME5X_COREIO_H_ */
+#endif /* SRC_COREIO_H_ */
