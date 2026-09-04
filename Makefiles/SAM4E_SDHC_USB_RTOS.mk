@@ -98,8 +98,10 @@ SAM4E_CFLAGS := -c -std=gnu99 \
 	-Wundef \
 	-Wdouble-promotion \
 	-fsingle-precision-constant \
+	-Os \
 	$(SAM4E_INCLUDES) \
-	$(SAM4E_C_DEFINES)
+	$(SAM4E_C_DEFINES) \
+	$(DEBUG_FLAGS)
 
 # Compiler flags - C++
 SAM4E_CXXFLAGS := -c -std=c++20 \
@@ -119,17 +121,10 @@ SAM4E_CXXFLAGS := -c -std=c++20 \
 	-Wdouble-promotion \
 	-fsingle-precision-constant \
 	-Werror -Wnoexcept -Wshadow -Wsign-promo \
+	-Os \
 	$(SAM4E_INCLUDES) \
-	$(SAM4E_DEFINES)
-
-# Add debug flags if DEBUG=1
-ifeq ($(DEBUG),1)
-SAM4E_CFLAGS += -O0 -g3
-SAM4E_CXXFLAGS += -O0 -g3
-else
-SAM4E_CFLAGS += -Os
-SAM4E_CXXFLAGS += -Os
-endif
+	$(SAM4E_DEFINES) \
+	$(DEBUG_FLAGS)
 
 # Object files
 SAM4E_CPP_OBJS := $(SAM4E_CPP_SRCS:%.cpp=$(SAM4E_BUILD_DIR)/%.o)

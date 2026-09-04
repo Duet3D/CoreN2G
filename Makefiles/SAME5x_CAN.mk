@@ -12,7 +12,8 @@ SAME5x_CAN_CFLAGS := -c -std=gnu99 \
 	-ffunction-sections -fdata-sections -nostdlib \
 	-Wall -Wundef -Wdouble-promotion -Werror=return-type -Werror=implicit \
 	-fsingle-precision-constant \
-	-Os
+	-Os \
+	$(DEBUG_FLAGS)
 
 # Compiler flags - C++
 SAME5x_CAN_CXXFLAGS := -c -std=c++20 \
@@ -23,7 +24,8 @@ SAME5x_CAN_CXXFLAGS := -c -std=c++20 \
 	-Wall -Wundef -Wdouble-promotion -Werror=return-type -Wsuggest-override \
 	-Werror -Wnoexcept -Wshadow -Wsign-promo \
 	-fsingle-precision-constant \
-	-Os
+	-Os \
+	$(DEBUG_FLAGS)
 
 # Defines - C only
 SAME5x_CAN_C_DEFS := -D__SAME54P20A__ -Dnoexcept= -DSUPPORT_CAN=1 -DSUPPORT_SDHC=0 -DSUPPORT_USB=0

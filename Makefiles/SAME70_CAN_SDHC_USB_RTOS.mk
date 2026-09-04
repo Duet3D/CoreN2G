@@ -113,7 +113,8 @@ SAME70_CFLAGS := -c -std=gnu99 \
 	-Wall \
 	$(SAME70_INCLUDES) \
 	$(SAME70_DEFINES) \
-	-Dnoexcept=
+	-Dnoexcept= \
+	$(DEBUG_FLAGS)
 
 # Compiler flags - C++
 SAME70_CXXFLAGS := -c -std=c++20 \
@@ -141,7 +142,8 @@ SAME70_CXXFLAGS := -c -std=c++20 \
 	-O3 \
 	-Wall \
 	$(SAME70_INCLUDES) \
-	$(SAME70_DEFINES)
+	$(SAME70_DEFINES) \
+	$(DEBUG_FLAGS)
 
 # Assembler flags
 SAME70_ASFLAGS := -c \

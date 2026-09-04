@@ -120,12 +120,14 @@ extern "C" [[noreturn]] void _exit(int status) noexcept
 	for (;;) { }
 }
 
-extern "C" void exit(int code) noexcept
+// No 'noexcept' on these two: <stdlib.h> declares them without one, and while GCC tolerates a
+// redeclaration that adds it, clang (and therefore clang-tidy) rejects it as a hard error.
+extern "C" void exit(int code)
 {
 	_exit(code);
 }
 
-extern "C" void abort() noexcept
+extern "C" void abort()
 {
 	_exit(1);
 }
