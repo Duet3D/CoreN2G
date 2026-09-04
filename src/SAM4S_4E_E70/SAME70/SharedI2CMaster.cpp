@@ -160,9 +160,7 @@ void SharedI2CMaster::RecoverBus() noexcept
 	SetPinFunction(sdaPin, pinFunction);
 }
 
-#if 1
-
-// Interrupt driven status wait function
+// Interrupt driven status wait function.
 bool SharedI2CMaster::WaitForStatus(uint32_t statusBit, unsigned int& timeoutErrorCounter) noexcept
 {
 	bool ok = true;
@@ -187,38 +185,6 @@ bool SharedI2CMaster::WaitForStatus(uint32_t statusBit, unsigned int& timeoutErr
 	return ok;
 }
 
-#else
-
-// Polling status wait function
-// Wait for a status bit or NAK to be set, returning true if successful and it wasn't NAK
-// It waits until either 2 clock ticks have passed (so we have waited for at least 1ms) or one or more of the status bits we are interested in has been set.
-bool SharedI2CMaster::WaitForStatus(uint32_t statusBit, unsigned int& timeoutErrorCounter) noexcept
-{
-	//TODO use interrupts instead of polling
-	const uint32_t startMillis = millis();
-	bool timedOut;
-	uint32_t sr;
-	do
-	{
-		timedOut = (millis() - startMillis > 2);
-		sr = hardware->TWIHS_SR;							// read this after checking for timeout, in case we get descheduled between the two statements
-	} while (!timedOut && (sr & statusBit) == 0);
-
-	if ((sr & TWIHS_SR_NACK) != 0)
-	{
-		++errors.naks;
-		return false;
-	}
-	if ((sr & statusBit) != 0)
-	{
-		return true;
-	}
-	++timeoutErrorCounter;
-	return false;
-}
-
-#endif
-
 inline bool SharedI2CMaster::WaitTransferComplete() noexcept
 {
 	return WaitForStatus(TWIHS_SR_TXCOMP, errors.otherErrors);
@@ -234,6 +200,9 @@ inline bool SharedI2CMaster::WaitByteReceived() noexcept
 	return WaitForStatus(TWIHS_SR_RXRDY, errors.otherErrors);
 }
 
+// This transfer function is based on the Duet 2 (SAM4E) code.
+// It would be more efficient to do the data transfer to/from the I2C hardware in the ISR as we do in the SAM5x driver, instead of waking the task for each byte to be transferred as we do here.
+// If we ever send/receive large amount of data then we should use DMA instead.
 bool SharedI2CMaster::InternalTransfer(uint16_t address, const uint8_t *_ecv_array txBuffer, uint8_t *_ecv_array rxBuffer, size_t numToWrite, size_t numToRead) noexcept
 {
 	// Set up the mode register and address
