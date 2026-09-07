@@ -12,7 +12,8 @@ RP2040_RTOS_CFLAGS := -c -std=gnu99 \
 	-ffunction-sections -fdata-sections -nostdlib \
 	-Wall -Wundef -Wdouble-promotion -Wno-error=return-type \
 	-fsingle-precision-constant \
-	-O3
+	-O3 \
+	$(DEBUG_FLAGS)
 
 # Compiler flags - C++
 RP2040_RTOS_CXXFLAGS := -c -std=c++20 \
@@ -23,7 +24,8 @@ RP2040_RTOS_CXXFLAGS := -c -std=c++20 \
 	-Wall -Wundef -Wdouble-promotion -Werror=return-type -Wsuggest-override \
 	-Werror -Wnoexcept -Wshadow -Wsign-promo \
 	-fsingle-precision-constant \
-	-O3
+	-O3 \
+	$(DEBUG_FLAGS)
 
 # Defines - C only
 RP2040_RTOS_C_DEFS := -D__RP2040__ -Dnoexcept= -DSUPPORT_CAN=0 -DSUPPORT_USB=1 -DRTOS

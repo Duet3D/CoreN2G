@@ -12,7 +12,8 @@ SAMC21_CAN_CFLAGS := -c -std=gnu99 \
 	-ffunction-sections -fdata-sections -nostdlib \
 	-Wall -Wundef -Wdouble-promotion -Wno-error=return-type \
 	-fsingle-precision-constant \
-	-Os
+	-Os \
+	$(DEBUG_FLAGS)
 
 # Compiler flags - C++
 SAMC21_CAN_CXXFLAGS := -c -std=c++20 \
@@ -23,7 +24,8 @@ SAMC21_CAN_CXXFLAGS := -c -std=c++20 \
 	-Wall -Wundef -Wdouble-promotion -Werror=return-type -Wsuggest-override \
 	-Werror -Wnoexcept -Wshadow -Wsign-promo \
 	-fsingle-precision-constant \
-	-Os
+	-Os \
+	$(DEBUG_FLAGS)
 
 # Defines - C only
 SAMC21_CAN_C_DEFS := -D__SAMC21G18A__ -Dnoexcept= -DSUPPORT_CAN=1

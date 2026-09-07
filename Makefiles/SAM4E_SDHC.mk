@@ -12,7 +12,8 @@ SAM4E_SDHC_CFLAGS := -c -std=gnu99 \
 	-ffunction-sections -fdata-sections -nostdlib \
 	-Wall -Wundef -Wdouble-promotion -Werror=return-type -Werror=implicit \
 	-fsingle-precision-constant \
-	-Os
+	-Os \
+	$(DEBUG_FLAGS)
 
 # Compiler flags - C++
 SAM4E_SDHC_CXXFLAGS := -c -std=c++20 \
@@ -23,7 +24,8 @@ SAM4E_SDHC_CXXFLAGS := -c -std=c++20 \
 	-Wall -Wundef -Wdouble-promotion -Werror=return-type -Wsuggest-override \
 	-Werror -Wnoexcept -Wshadow -Wsign-promo \
 	-fsingle-precision-constant \
-	-Os
+	-Os \
+	$(DEBUG_FLAGS)
 
 # Defines - C only
 SAM4E_SDHC_C_DEFS := -D__SAM4E8E__ -Dnoexcept= -DSUPPORT_SDHC=1 -DSUPPORT_USB=0
