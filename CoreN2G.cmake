@@ -91,6 +91,8 @@ function(coren2g_add_library OUT_TARGET)
             "/SAM4S_4E_E70/SAM4S/"
             "/SAM4S_4E_E70/SAM4E/"
             "/SAME5x_C21/"
+            "/STM32/"
+            "/STMCubeMX/"
             "/atmel/"
             "/arm/"
         )
