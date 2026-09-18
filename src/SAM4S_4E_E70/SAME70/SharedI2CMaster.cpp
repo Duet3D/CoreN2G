@@ -170,7 +170,7 @@ bool SharedI2CMaster::WaitForStatus(uint32_t statusBit, unsigned int& timeoutErr
 		// Suspend this task until we get an interrupt indicating that a status bit that we are interested in has been set
 		taskWaiting = TaskBase::GetCallerTaskHandle();
 		hardware->TWIHS_IDR = 0xFFFFFFFFu;
-		hardware->TWIHS_IER = statusBit;
+		hardware->TWIHS_IER = statusBit | TWIHS_SR_NACK;
 		ok = TaskBase::TakeIndexed(NotifyIndices::I2C, 2);
 		taskWaiting = nullptr;
 		hardware->TWIHS_IDR = 0xFFFFFFFFu;
@@ -182,6 +182,10 @@ bool SharedI2CMaster::WaitForStatus(uint32_t statusBit, unsigned int& timeoutErr
 		return false;
 	}
 
+	if (!ok)
+	{
+		++timeoutErrorCounter;
+	}
 	return ok;
 }
 
