@@ -35,7 +35,7 @@ const char *heapLimit = (const char*)&__StackLimit;
 # define SystemStackSize	(1024)
 #endif
 
-const char *_ecv_array sysStackLimit = (const char *_ecv_array)&_estack - SystemStackSize;
+const char *_ecv_array const sysStackLimit = (const char *_ecv_array)&_estack - SystemStackSize;		// this must be const so allocated in ROM for Cortex M33
 const char *_ecv_array heapLimit = (const char *_ecv_array)&_estack - SystemStackSize;
 
 #endif

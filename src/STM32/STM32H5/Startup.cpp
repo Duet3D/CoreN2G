@@ -33,8 +33,9 @@ void SystemInit() noexcept;
  */
 extern "C" [[noreturn]] void Reset_Handler() noexcept
 {
-	asm("ldr   r0, =_sstack");
-	asm("msr   MSPLIM, r0");      // set stack pointer limit
+	asm("ldr   r0, =sysStackLimit");
+	asm("ldr   r0, [r0]");
+	asm("msr   MSPLIM, r0");				// set stack pointer limit
 
 	SystemInit();
 
