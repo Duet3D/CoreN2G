@@ -32,7 +32,8 @@ void SpiDevice::SetClockFrequencyAndMode(uint32_t freq, SpiMode mode) const noex
 }
 
 // Send and receive data returning true if successful
-bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t *_ecv_array null rx_data, size_t len) noexcept
+//TODO implement timeout
+bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t *_ecv_array null rx_data, size_t len, uint32_t timeout) noexcept
 {
 	const int bytesTransferred = (rx_data == nullptr) ? spi_write_blocking(hardware, tx_data, len)
 								: (tx_data == nullptr) ? spi_read_blocking(hardware, 0xFF, rx_data, len)

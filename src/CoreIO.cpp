@@ -256,7 +256,7 @@ void SetDriveStrength(Pin p, unsigned int strength) noexcept
 		p_pio->OSPEEDR = (p_pio->OSPEEDR & ~((strength & 0x03) << shift2));
 #elif SAM4E || SAM4S
 		// These processors don't support setting the drive strength
-#elif RP2XXX
+#elif RPXXXX
 		gpio_set_drive_strength(p, gpio_drive_strength((gpio_drive_strength)min<unsigned int>(strength, 3)));	// 2, 4, 8 and 12mA can be selected
 #else
 # error Unsupported processor
