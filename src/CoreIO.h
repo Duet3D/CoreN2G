@@ -21,7 +21,7 @@
 // Exported memory control variables. These are defined in file syscalls.h which must be included by exactly one client file.
 extern char *_ecv_array heapTop;
 extern const char *_ecv_array heapLimit;
-extern const char *const _ecv_array sysStackLimit;
+extern const uint32_t sysStackLimit;
 
 #if STM32
 constexpr unsigned int PinBits = 4;			// STM MCUs have 16-bit ports

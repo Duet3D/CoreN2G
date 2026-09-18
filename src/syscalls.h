@@ -26,7 +26,7 @@ extern uint32_t _estack;
 extern uint32_t __StackLimit;							// defined by the linker script (poorly named, see linker script)
 extern uint32_t __StackBottom;
 
-const char *sysStackLimit = (const char*)&__StackBottom;
+const uint32_t sysStackLimit = (uint32_t)&__StackBottom;
 const char *heapLimit = (const char*)&__StackLimit;
 
 #else
@@ -35,7 +35,7 @@ const char *heapLimit = (const char*)&__StackLimit;
 # define SystemStackSize	(1024)
 #endif
 
-const char *_ecv_array const sysStackLimit = (const char *_ecv_array)&_estack - SystemStackSize;		// this must be const so allocated in ROM for Cortex M33
+const uint32_t sysStackLimit = (uint32_t)&_estack - SystemStackSize;		// this must be const so allocated in ROM for Cortex M33
 const char *_ecv_array heapLimit = (const char *_ecv_array)&_estack - SystemStackSize;
 
 #endif
