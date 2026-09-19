@@ -8,49 +8,37 @@ SAME70_TARGET := $(SAME70_BUILD_DIR)/libCoreN2G.a
 SAME70_SRC_DIR := src
 
 # Find all source files (Eclipse excludes similar paths as SAM4E but with SAME70 included, SAM4E excluded)
-SAME70_CPP_SRCS := $(shell find $(SAME70_SRC_DIR) -name '*.cpp' \
-	! -path '*/RP2040/*' \
-	! -path '*/SAM4S_4E_E70/SAM4S/*' \
-	! -path '*/SAM4S_4E_E70/SAM4E/*' \
-	! -path '*/SAME5x_C21/*' \
-	! -path '*/STM32/*' \
-	! -path '*/STMCubeMX/*' \
-	! -path '*/atmel/*' \
-	! -path '*/arm/*')
+SAME70_EXCLUDE_DIRS := \
+	$(SAME70_SRC_DIR)/RP2040 \
+	$(SAME70_SRC_DIR)/SAM4S_4E_E70/SAM4S \
+	$(SAME70_SRC_DIR)/SAM4S_4E_E70/SAM4E \
+	$(SAME70_SRC_DIR)/SAME5x_C21 \
+	$(SAME70_SRC_DIR)/STM32 \
+	$(SAME70_SRC_DIR)/STMCubeMX \
+	$(SAME70_SRC_DIR)/atmel \
+	$(SAME70_SRC_DIR)/arm
 
-SAME70_C_SRCS := $(shell find $(SAME70_SRC_DIR) -name '*.c' \
-	! -path '*/RP2040/*' \
-	! -path '*/SAM4S_4E_E70/SAM4S/*' \
-	! -path '*/SAM4S_4E_E70/SAM4E/*' \
-	! -path '*/SAM4S_4E_E70/asf/common/services/clock/sam4s/*' \
-	! -path '*/SAM4S_4E_E70/asf/common/services/clock/sam4e/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/adc/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/cmcc/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/crccu/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/dmac/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/pdc/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/trng/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/twi/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/udp/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/uotghs/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4e/*' \
-	! -path '*/SAME5x_C21/*' \
-	! -path '*/STM32/*' \
-	! -path '*/STMCubeMX/*' \
-	! -path '*/atmel/*' \
-	! -path '*/arm/*')
+SAME70_C_EXCLUDE_DIRS := $(SAME70_EXCLUDE_DIRS) \
+	$(SAME70_SRC_DIR)/SAM4S_4E_E70/asf/common/services/clock/sam4s \
+	$(SAME70_SRC_DIR)/SAM4S_4E_E70/asf/common/services/clock/sam4e \
+	$(SAME70_SRC_DIR)/SAM4S_4E_E70/asf/sam/drivers/adc \
+	$(SAME70_SRC_DIR)/SAM4S_4E_E70/asf/sam/drivers/cmcc \
+	$(SAME70_SRC_DIR)/SAM4S_4E_E70/asf/sam/drivers/crccu \
+	$(SAME70_SRC_DIR)/SAM4S_4E_E70/asf/sam/drivers/dmac \
+	$(SAME70_SRC_DIR)/SAM4S_4E_E70/asf/sam/drivers/pdc \
+	$(SAME70_SRC_DIR)/SAM4S_4E_E70/asf/sam/drivers/trng \
+	$(SAME70_SRC_DIR)/SAM4S_4E_E70/asf/sam/drivers/twi \
+	$(SAME70_SRC_DIR)/SAM4S_4E_E70/asf/sam/drivers/udp \
+	$(SAME70_SRC_DIR)/SAM4S_4E_E70/asf/sam/drivers/uotghs \
+	$(SAME70_SRC_DIR)/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s \
+	$(SAME70_SRC_DIR)/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4e
+
+SAME70_CPP_SRCS := $(filter-out $(addsuffix /%,$(SAME70_EXCLUDE_DIRS)),$(call rwildcard,$(SAME70_SRC_DIR),*.cpp))
+
+SAME70_C_SRCS := $(filter-out $(addsuffix /%,$(SAME70_C_EXCLUDE_DIRS)),$(call rwildcard,$(SAME70_SRC_DIR),*.c))
 
 # Assembly source files
-SAME70_ASM_SRCS := $(shell find $(SAME70_SRC_DIR) -name '*.s' \
-	! -path '*/RP2040/*' \
-	! -path '*/SAM4S_4E_E70/SAM4S/*' \
-	! -path '*/SAM4S_4E_E70/SAM4E/*' \
-	! -path '*/SAME5x_C21/*' \
-	! -path '*/STM32/*' \
-	! -path '*/STMCubeMX/*' \
-	! -path '*/atmel/*' \
-	! -path '*/arm/*')
+SAME70_ASM_SRCS := $(filter-out $(addsuffix /%,$(SAME70_EXCLUDE_DIRS)),$(call rwildcard,$(SAME70_SRC_DIR),*.s))
 
 # Include paths (matching Eclipse .cproject for SAME70_CAN_SDHC_USB_RTOS_Debug)
 SAME70_INCLUDES := \

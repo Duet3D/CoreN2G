@@ -54,23 +54,18 @@ SAME5x_SDHC_USB_RTOS_INCLUDES := \
 	-I../LibTinyusb/src
 
 # Source files
-SAME5x_SDHC_USB_RTOS_CSRC := $(shell find $(SAME5x_SDHC_USB_RTOS_SRC_DIR) -name '*.c' \
-	! -path '*/RP2040/*' \
-	! -path '*/SAM4S_4E_E70/*' \
-	! -path '*/SAME5x_C21/SAMC21/*' \
-	! -path '*/STM32/*' \
-	! -path '*/STMCubeMX/*' \
-	! -path '*/atmel/*' \
-	! -path '*/arm/*')
+SAME5x_SDHC_USB_RTOS_EXCLUDE_DIRS := \
+	$(SAME5x_SDHC_USB_RTOS_SRC_DIR)/RP2040 \
+	$(SAME5x_SDHC_USB_RTOS_SRC_DIR)/SAM4S_4E_E70 \
+	$(SAME5x_SDHC_USB_RTOS_SRC_DIR)/SAME5x_C21/SAMC21 \
+	$(SAME5x_SDHC_USB_RTOS_SRC_DIR)/STM32 \
+	$(SAME5x_SDHC_USB_RTOS_SRC_DIR)/STMCubeMX \
+	$(SAME5x_SDHC_USB_RTOS_SRC_DIR)/atmel \
+	$(SAME5x_SDHC_USB_RTOS_SRC_DIR)/arm
 
-SAME5x_SDHC_USB_RTOS_CPPSRC := $(shell find $(SAME5x_SDHC_USB_RTOS_SRC_DIR) -name '*.cpp' \
-	! -path '*/RP2040/*' \
-	! -path '*/SAM4S_4E_E70/*' \
-	! -path '*/SAME5x_C21/SAMC21/*' \
-	! -path '*/STM32/*' \
-	! -path '*/STMCubeMX/*' \
-	! -path '*/atmel/*' \
-	! -path '*/arm/*')
+SAME5x_SDHC_USB_RTOS_CSRC := $(filter-out $(addsuffix /%,$(SAME5x_SDHC_USB_RTOS_EXCLUDE_DIRS)),$(call rwildcard,$(SAME5x_SDHC_USB_RTOS_SRC_DIR),*.c))
+
+SAME5x_SDHC_USB_RTOS_CPPSRC := $(filter-out $(addsuffix /%,$(SAME5x_SDHC_USB_RTOS_EXCLUDE_DIRS)),$(call rwildcard,$(SAME5x_SDHC_USB_RTOS_SRC_DIR),*.cpp))
 
 # Object files
 SAME5x_SDHC_USB_RTOS_COBJ := $(patsubst $(SAME5x_SDHC_USB_RTOS_SRC_DIR)/%.c,$(SAME5x_SDHC_USB_RTOS_BUILD_DIR)/%.o,$(SAME5x_SDHC_USB_RTOS_CSRC))
