@@ -62,6 +62,7 @@ extern "C" {
 # include <core_cm33.h>
 }
 #elif defined(STM32H523xx)
+# include <stm32h5xx_hal_conf.h>				// must include this first to get the correct HSE_VALUE
 # include <stm32h5xx.h>
 # include <stm32h5xx_ll_rcc.h>
 #elif defined(STM32H743xx)
