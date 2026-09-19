@@ -56,41 +56,36 @@ SAM4E_SDHC_INCLUDES := \
 	-I../RRFLibraries/src
 
 # Source files
-SAM4E_SDHC_CSRC := $(shell find $(SAM4E_SDHC_SRC_DIR) -name '*.c' \
-	! -path '*/RP2040/*' \
-	! -path '*/SAM4S_4E_E70/SAM4S/*' \
-	! -path '*/SAM4S_4E_E70/SAME70/*' \
-	! -path '*/SAM4S_4E_E70/asf/common/services/clock/sam4s/*' \
-	! -path '*/SAM4S_4E_E70/asf/common/services/clock/same70/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/crccu/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/utils/cmsis/same70/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/adc/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/aes/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/trng/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/usbhs/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/uotghs/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/twihs/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/mcan/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/xdmac/*' \
-	! -path '*/SAM4E/*' \
-	! -path '*/SAME5x_C21/*' \
-	! -path '*/SAME70/*' \
-	! -path '*/STM32/*' \
-	! -path '*/STMCubeMX/*' \
-	! -path '*/atmel/*' \
-	! -path '*/arm/*')
+SAM4E_SDHC_EXCLUDE_DIRS := \
+	$(SAM4E_SDHC_SRC_DIR)/RP2040 \
+	$(SAM4E_SDHC_SRC_DIR)/SAM4S_4E_E70/SAM4S \
+	$(SAM4E_SDHC_SRC_DIR)/SAM4S_4E_E70/SAME70 \
+	$(SAM4E_SDHC_SRC_DIR)/SAME5x_C21 \
+	$(SAM4E_SDHC_SRC_DIR)/SAME70 \
+	$(SAM4E_SDHC_SRC_DIR)/STM32 \
+	$(SAM4E_SDHC_SRC_DIR)/STMCubeMX \
+	$(SAM4E_SDHC_SRC_DIR)/atmel \
+	$(SAM4E_SDHC_SRC_DIR)/arm
 
-SAM4E_SDHC_CPPSRC := $(shell find $(SAM4E_SDHC_SRC_DIR) -name '*.cpp' \
-	! -path '*/RP2040/*' \
-	! -path '*/SAM4S_4E_E70/SAM4S/*' \
-	! -path '*/SAM4S_4E_E70/SAME70/*' \
-	! -path '*/SAME5x_C21/*' \
-	! -path '*/SAME70/*' \
-	! -path '*/STM32/*' \
-	! -path '*/STMCubeMX/*' \
-	! -path '*/atmel/*' \
-	! -path '*/arm/*')
+SAM4E_SDHC_C_EXCLUDE_DIRS := $(SAM4E_SDHC_EXCLUDE_DIRS) \
+	$(SAM4E_SDHC_SRC_DIR)/SAM4S_4E_E70/asf/common/services/clock/sam4s \
+	$(SAM4E_SDHC_SRC_DIR)/SAM4S_4E_E70/asf/common/services/clock/same70 \
+	$(SAM4E_SDHC_SRC_DIR)/SAM4S_4E_E70/asf/sam/drivers/crccu \
+	$(SAM4E_SDHC_SRC_DIR)/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s \
+	$(SAM4E_SDHC_SRC_DIR)/SAM4S_4E_E70/asf/sam/utils/cmsis/same70 \
+	$(SAM4E_SDHC_SRC_DIR)/SAM4S_4E_E70/asf/sam/drivers/adc \
+	$(SAM4E_SDHC_SRC_DIR)/SAM4S_4E_E70/asf/sam/drivers/aes \
+	$(SAM4E_SDHC_SRC_DIR)/SAM4S_4E_E70/asf/sam/drivers/trng \
+	$(SAM4E_SDHC_SRC_DIR)/SAM4S_4E_E70/asf/sam/drivers/usbhs \
+	$(SAM4E_SDHC_SRC_DIR)/SAM4S_4E_E70/asf/sam/drivers/uotghs \
+	$(SAM4E_SDHC_SRC_DIR)/SAM4S_4E_E70/asf/sam/drivers/twihs \
+	$(SAM4E_SDHC_SRC_DIR)/SAM4S_4E_E70/asf/sam/drivers/mcan \
+	$(SAM4E_SDHC_SRC_DIR)/SAM4S_4E_E70/asf/sam/drivers/xdmac \
+	$(SAM4E_SDHC_SRC_DIR)/SAM4S_4E_E70/SAM4E
+
+SAM4E_SDHC_CSRC := $(filter-out $(addsuffix /%,$(SAM4E_SDHC_C_EXCLUDE_DIRS)),$(call rwildcard,$(SAM4E_SDHC_SRC_DIR),*.c))
+
+SAM4E_SDHC_CPPSRC := $(filter-out $(addsuffix /%,$(SAM4E_SDHC_EXCLUDE_DIRS)),$(call rwildcard,$(SAM4E_SDHC_SRC_DIR),*.cpp))
 
 # Object files
 SAM4E_SDHC_C_OBJS := $(SAM4E_SDHC_CSRC:%.c=$(SAM4E_SDHC_BUILD_DIR)/%.o)

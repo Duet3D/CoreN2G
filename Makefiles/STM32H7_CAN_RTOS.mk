@@ -12,7 +12,8 @@ STM32H7_CAN_RTOS_CFLAGS := -c -std=gnu99 \
 	-ffunction-sections -fdata-sections -nostdlib \
 	-Wall -Wundef -Wdouble-promotion -Werror=return-type -Werror=implicit \
 	-fsingle-precision-constant \
-	-O3
+	-O3 \
+	$(DEBUG_FLAGS)
 
 # Compiler flags - C++
 STM32H7_CAN_RTOS_CXXFLAGS := -c -std=c++20 \
@@ -24,7 +25,8 @@ STM32H7_CAN_RTOS_CXXFLAGS := -c -std=c++20 \
 	-Werror -Wnoexcept -Wshadow -Wsign-promo \
 	-fsingle-precision-constant \
 	-fstack-usage \
-	-O3
+	-O3 \
+	$(DEBUG_FLAGS)
 
 # Defines - C only
 STM32H7_CAN_RTOS_C_DEFS := -DSTM32H743xx -Dnoexcept= -DSUPPORT_CAN=1 -DSUPPORT_SDHC=0 -DSUPPORT_USB=0 -DRTOS
@@ -46,21 +48,18 @@ STM32H7_CAN_RTOS_INCLUDES := \
 	-I../FreeRTOS/src/portable/GCC/ARM_CM7/r0p1
 
 # Source files
-STM32H7_CAN_RTOS_CSRC := $(shell find $(STM32H7_CAN_RTOS_SRC_DIR) -name '*.c' \
-	! -path '*/RP2040/*' \
-	! -path '*/SAM4S_4E_E70/*' \
-	! -path '*/SAME5x_C21/*' \
-	! -path '*STM32H5xx*' \
-	! -path '*/atmel/*' \
-	! -path '*/arm/*')
+STM32H7_CAN_RTOS_EXCLUDE_DIRS := \
+	$(STM32H7_CAN_RTOS_SRC_DIR)/RP2040 \
+	$(STM32H7_CAN_RTOS_SRC_DIR)/SAM4S_4E_E70 \
+	$(STM32H7_CAN_RTOS_SRC_DIR)/SAME5x_C21 \
+	$(STM32H7_CAN_RTOS_SRC_DIR)/STMCubeMX/Drivers/STM32H5xx_HAL_Driver \
+	$(STM32H7_CAN_RTOS_SRC_DIR)/STMCubeMX/Drivers/CMSIS/Device/ST/STM32H5xx \
+	$(STM32H7_CAN_RTOS_SRC_DIR)/atmel \
+	$(STM32H7_CAN_RTOS_SRC_DIR)/arm
 
-STM32H7_CAN_RTOS_CPPSRC := $(shell find $(STM32H7_CAN_RTOS_SRC_DIR) -name '*.cpp' \
-	! -path '*/RP2040/*' \
-	! -path '*/SAM4S_4E_E70/*' \
-	! -path '*/SAME5x_C21/*' \
-	! -path '*STM32H5xx*' \
-	! -path '*/atmel/*' \
-	! -path '*/arm/*')
+STM32H7_CAN_RTOS_CSRC := $(filter-out $(addsuffix /%,$(STM32H7_CAN_RTOS_EXCLUDE_DIRS)),$(call rwildcard,$(STM32H7_CAN_RTOS_SRC_DIR),*.c))
+
+STM32H7_CAN_RTOS_CPPSRC := $(filter-out $(addsuffix /%,$(STM32H7_CAN_RTOS_EXCLUDE_DIRS)),$(call rwildcard,$(STM32H7_CAN_RTOS_SRC_DIR),*.cpp))
 
 # Object files
 STM32H7_CAN_RTOS_COBJ := $(patsubst $(STM32H7_CAN_RTOS_SRC_DIR)/%.c,$(STM32H7_CAN_RTOS_BUILD_DIR)/%.o,$(STM32H7_CAN_RTOS_CSRC))

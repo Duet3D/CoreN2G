@@ -61,50 +61,31 @@ SAME70_CAN_INCLUDES := \
 	-I../CANlib/src
 
 # Source files
-SAME70_CAN_CSRC := $(shell find $(SAME70_CAN_SRC_DIR) -name '*.c' \
-	! -path '*/RP2040/*' \
-	! -path '*/SAM4S_4E_E70/SAM4S/*' \
-	! -path '*/SAM4S_4E_E70/SAM4E/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/adc/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/cmcc/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/crccu/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/pdc/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/dmac/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/udp/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/uotghs/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/twi/*' \
-	! -path '*/SAM4S_4E_E70/asf/common/services/clock/sam4s/*' \
-	! -path '*/SAM4S_4E_E70/asf/common/services/clock/sam4e/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4e/*' \
-	! -path '*/SAME5x_C21/*' \
-	! -path '*/STM32/*' \
-	! -path '*/STMCubeMX/*' \
-	! -path '*/atmel/*' \
-	! -path '*/arm/*')
+SAME70_CAN_EXCLUDE_DIRS := \
+	$(SAME70_CAN_SRC_DIR)/RP2040 \
+	$(SAME70_CAN_SRC_DIR)/SAM4S_4E_E70/SAM4S \
+	$(SAME70_CAN_SRC_DIR)/SAM4S_4E_E70/SAM4E \
+	$(SAME70_CAN_SRC_DIR)/SAM4S_4E_E70/asf/sam/drivers/adc \
+	$(SAME70_CAN_SRC_DIR)/SAM4S_4E_E70/asf/sam/drivers/cmcc \
+	$(SAME70_CAN_SRC_DIR)/SAM4S_4E_E70/asf/sam/drivers/crccu \
+	$(SAME70_CAN_SRC_DIR)/SAM4S_4E_E70/asf/sam/drivers/pdc \
+	$(SAME70_CAN_SRC_DIR)/SAM4S_4E_E70/asf/sam/drivers/dmac \
+	$(SAME70_CAN_SRC_DIR)/SAM4S_4E_E70/asf/sam/drivers/udp \
+	$(SAME70_CAN_SRC_DIR)/SAM4S_4E_E70/asf/sam/drivers/uotghs \
+	$(SAME70_CAN_SRC_DIR)/SAM4S_4E_E70/asf/sam/drivers/twi \
+	$(SAME70_CAN_SRC_DIR)/SAM4S_4E_E70/asf/common/services/clock/sam4s \
+	$(SAME70_CAN_SRC_DIR)/SAM4S_4E_E70/asf/common/services/clock/sam4e \
+	$(SAME70_CAN_SRC_DIR)/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s \
+	$(SAME70_CAN_SRC_DIR)/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4e \
+	$(SAME70_CAN_SRC_DIR)/SAME5x_C21 \
+	$(SAME70_CAN_SRC_DIR)/STM32 \
+	$(SAME70_CAN_SRC_DIR)/STMCubeMX \
+	$(SAME70_CAN_SRC_DIR)/atmel \
+	$(SAME70_CAN_SRC_DIR)/arm
 
-SAME70_CAN_CPPSRC := $(shell find $(SAME70_CAN_SRC_DIR) -name '*.cpp' \
-	! -path '*/RP2040/*' \
-	! -path '*/SAM4S_4E_E70/SAM4S/*' \
-	! -path '*/SAM4S_4E_E70/SAM4E/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/aes/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/adc/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/cmcc/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/crccu/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/pdc/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/dmac/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/udp/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/uotghs/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/drivers/twi/*' \
-	! -path '*/SAM4S_4E_E70/asf/common/services/clock/sam4s/*' \
-	! -path '*/SAM4S_4E_E70/asf/common/services/clock/sam4e/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4s/*' \
-	! -path '*/SAM4S_4E_E70/asf/sam/utils/cmsis/sam4e/*' \
-	! -path '*/SAME5x_C21/*' \
-	! -path '*/STM32/*' \
-	! -path '*/STMCubeMX/*' \
-	! -path '*/atmel/*' \
-	! -path '*/arm/*')
+SAME70_CAN_CSRC := $(filter-out $(addsuffix /%,$(SAME70_CAN_EXCLUDE_DIRS)),$(call rwildcard,$(SAME70_CAN_SRC_DIR),*.c))
+
+SAME70_CAN_CPPSRC := $(filter-out $(addsuffix /%,$(SAME70_CAN_EXCLUDE_DIRS) $(SAME70_CAN_SRC_DIR)/SAM4S_4E_E70/asf/sam/drivers/aes),$(call rwildcard,$(SAME70_CAN_SRC_DIR),*.cpp))
 
 # Object files
 SAME70_CAN_COBJ := $(patsubst $(SAME70_CAN_SRC_DIR)/%.c,$(SAME70_CAN_BUILD_DIR)/%.o,$(SAME70_CAN_CSRC))
