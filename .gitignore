@@ -65,3 +65,5 @@
 /STM32H7_CAN_RTOS/
 /.clangd
 /.clang-format
+/STM32H5_CAN_RTOS_DEBUG/
+/STM32H5_CAN_RTOS_Debug/
