@@ -261,6 +261,15 @@ void CanDevice::CanStats::Clear() noexcept
 	dev.txCallback = p_txCallback;
 	devicesByPort[p_whichPort] = &dev;
 
+#if STM32H5
+	// We must enable APB clock before we can clear the FDCAN memory
+	//TODO only do the following for the first FDCAN that we initialise
+	RCC->APB1HENR |= RCC_APB1HENR_FDCANEN;
+	(void)RCC->APB1HENR;												// delay after an RCC peripheral clock enabling
+//	RCC->APB1HRSTR  |=  (RCC_APB1HRSTR_FDCANRST); // reset FDCAN
+//	RCC->APB1HRSTR  &= ~(RCC_APB1HRSTR_FDCANRST); // un-reset FDCAN
+#endif
+
 	// Set up pointers to the individual parts of the buffer memory
 	memset(memStart, 0, p_config.GetMemorySize() * sizeof(uint32_t));	// clear out filters, transmit pending flags etc.
 
@@ -326,12 +335,13 @@ void CanDevice::CanStats::Clear() noexcept
 		pmc_enable_periph_clk(ID_MCAN1);
 	}
 #elif STM32
-	// Enable APB clock
-	RCC->APB1HENR |= RCC_APB1HENR_FDCANEN;
-	(void)RCC->APB1HENR;												// delay after an RCC peripheral clock enabling
+	// We enabled the APB clock earlier
 	// Enable 48MHz CAN clock
 # if STM32H5
+	//TODO only do the following for the first FDCAN that we initialise
+	__HAL_RCC_PLL1_CLKOUT_ENABLE(RCC_PLL1_DIVQ);
 	MODIFY_REG(RCC->CCIPR5, RCC_CCIPR5_FDCANSEL, LL_RCC_FDCAN_CLKSOURCE_PLL1Q);
+	FDCAN_CONFIG_NS->CKDIV = 0;
 # elif STM32H7
 	//TODO
 # else
@@ -578,9 +588,12 @@ bool CanDevice::IsSpaceAvailable(TxBufferNumber whichBuffer, uint32_t timeout) n
 	}
 	else
 	{
+#if STM32H5
+		bufferFree = false;
+#else
 		const unsigned int bufferIndex = (unsigned int)whichBuffer - (unsigned int)TxBufferNumber::buffer0;
 		const uint32_t trigMask = (uint32_t)1 << bufferIndex;
-#ifdef RTOS
+# ifdef RTOS
 		bufferFree = (hw->REG(TXBRP) & trigMask) == 0;
 		if (!bufferFree && timeout != 0)
 		{
@@ -608,11 +621,12 @@ bool CanDevice::IsSpaceAvailable(TxBufferNumber whichBuffer, uint32_t timeout) n
 				hw->REG(TXBTIE) &= ~trigMask;
 			}
 		}
-#else
+# else
 		do
 		{
 			bufferFree = (hw->REG(TXBRP) & trigMask) == 0;
 		} while (!bufferFree && millis() - start < timeout);
+# endif
 #endif
 	}
 	return bufferFree;
@@ -712,12 +726,20 @@ void CanDevice::CopyMessageForTransmit(CanMessageBuffer *buffer, volatile CanTxB
 uint32_t CanDevice::SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept
 {
 	uint32_t cancelledId = 0;
+#if STM32H5
+	if (whichBuffer == TxBufferNumber::fifo)
+#else
 	if ((uint32_t)whichBuffer < (uint32_t)TxBufferNumber::buffer0 + config->numTxBuffers)
+#endif
 	{
 		const bool bufferFree = IsSpaceAvailable(whichBuffer, timeout);
+#if STM32H5
+		const uint32_t bufferIndex = READBITS(hw, TXFQS, TFQPI);			// we have only the fifo
+#else
 		const uint32_t bufferIndex = (whichBuffer == TxBufferNumber::fifo)
 										? READBITS(hw, TXFQS, TFQPI)
 											: (uint32_t)whichBuffer - (uint32_t)TxBufferNumber::buffer0;
+#endif
 		const uint32_t trigMask = (uint32_t)1 << bufferIndex;
 		if (!bufferFree)
 		{
@@ -729,7 +751,13 @@ uint32_t CanDevice::SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, Ca
 			{
 				delay(1);
 			}
-			while ((hw->REG(TXBRP) & trigMask) != 0 || (whichBuffer == TxBufferNumber::fifo && READBITS(hw, TXFQS, TFQF)));
+			while ((hw->REG(TXBRP) & trigMask) != 0
+#if STM32H5
+					|| READBITS(hw, TXFQS, TFQF)
+#else
+					|| (whichBuffer == TxBufferNumber::fifo && READBITS(hw, TXFQS, TFQF))
+#endif
+				  );
 		}
 
 		CopyMessageForTransmit(buffer, GetTxBuffer(bufferIndex));
@@ -990,12 +1018,14 @@ void CanDevice::SetShortFilterElement(unsigned int index, RxBufferNumber whichBu
 			s0.bit.SFID2 = mask;
 			break;
 		default:
+#if !STM32H5
 			if ((uint32_t)whichBuffer - (uint32_t)RxBufferNumber::buffer0 < config->numRxBuffers)
 			{
 				s0.bit.SFEC = 0x07;						// store in buffer
 				s0.bit.SFID2 = (uint32_t)whichBuffer - (uint32_t)RxBufferNumber::buffer0;
 			}
 			else
+#endif
 			{
 				s0.bit.SFEC = 0x00;						// discard message
 				s0.bit.SFID2 = mask;
@@ -1041,12 +1071,14 @@ void CanDevice::SetExtendedFilterElement(unsigned int index, RxBufferNumber whic
 			f1.bit.EFID2 = mask;
 			break;
 		default:
+#if !STM32H5
 			if ((uint32_t)whichBuffer - (uint32_t)RxBufferNumber::buffer0 < config->numRxBuffers)
 			{
 				f0.bit.EFEC = 0x07;
 				f1.bit.EFID2 = (uint32_t)whichBuffer - (uint32_t)RxBufferNumber::buffer0;
 			}
 			else
+#endif
 			{
 				f0.bit.EFEC = 0x00;						// discard message
 				f1.bit.EFID2 = mask;

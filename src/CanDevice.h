@@ -57,7 +57,7 @@ public:
 	enum class RxBufferNumber : uint32_t
 	{
 		fifo0 = 0, fifo1,
-#if !RP2040
+#if !RP2040 && !STM32H5
 		buffer0, buffer1, buffer2, buffer3,
 #endif
 		none = 0xFFFF
@@ -68,7 +68,7 @@ public:
 		fifo = 0,
 #if RP2040
 		fifo1 = 1									// high priority fifo
-#else
+#elif !STM32H5
 		buffer0, buffer1, buffer2, buffer3, buffer4, buffer5,
 #endif
 	};

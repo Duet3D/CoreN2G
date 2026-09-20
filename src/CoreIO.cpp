@@ -760,6 +760,29 @@ static void RandomInit()
 
 void CoreInit() noexcept
 {
+#if STM32
+	// Enable all GPIO AHB clocks, they need to be active to allow us to set the pin mode
+	RCC->AHB2ENR |= RCC_AHB2ENR_GPIOAEN | RCC_AHB2ENR_GPIOBEN | RCC_AHB2ENR_GPIOCEN | RCC_AHB2ENR_GPIODEN
+#if defined(GPIOE)
+				| RCC_AHB2ENR_GPIOEEN
+#endif
+#if defined(GPIOF)
+				| RCC_AHB2ENR_GPIOFEN
+#endif
+#if defined(GPIOG)
+				| RCC_AHB2ENR_GPIOGEN
+#endif
+				| RCC_AHB2ENR_GPIOHEN
+#if defined(GPIOI)
+				| RCC_AHB2ENR_GPIOIEN
+#endif
+#if defined(GPIOJ)
+				| RCC_AHB2ENR_GPIOJEN
+#endif
+		;
+	(void)RCC->AHB2ENR;
+#endif
+
 #if SAME5x || SAMC21 || SAME70 || RPXXXX
 	DmacManager::Init();
 #endif
