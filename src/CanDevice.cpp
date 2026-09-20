@@ -176,7 +176,7 @@ struct CanDevice::TxEvent
 // The STM32H5 uses a similar Bosch device as the Microchip MCUs with the following differences:
 // - Some of the register offsets are different
 // - There is no MRCFG (message RAM configuration) register because it has 10Kb of dedicated RAM (shared between all CAN peripherals)
-// - Register GFC is renamed RXGFC on the STM32H5
+// - Register GFC is renamed RXGFC on the STM32H5 and it has additional fields to specify how many filters are in use
 // - There are no SIDFC, XIDFC, NDAT1, NAT2, RXF0C, RXBC, RXF1C, RXESC, TXESC, TXEFC registers on the STM32H5
 // - The TXBC register contains only one bit, TFQM
 // - The IR register has no RF0W, RF1W, TWFW, DRX, BEC, or BEU bits
@@ -246,7 +246,7 @@ void CanDevice::CanStats::Clear() noexcept
 	// STM32H5 supports exactly 3 buffers in each FIFO and no dedicated transmit or receive buffers
 	if (   p_config.numRxBuffers != 0 || p_config.numTxBuffers != 0 || p_config.rxFifo0Size != 3
 		|| p_config.rxFifo1Size != 3 || p_config.txFifoSize != 3 || p_config.txEventFifoSize != 3
-		|| p_config.numShortFilterElements != 28 || p_config.numExtendedFilterElements != 8
+		|| p_config.numShortFilterElements > 28 || p_config.numExtendedFilterElements > 8
 	   )
 	{
 		return nullptr;
@@ -421,11 +421,16 @@ void CanDevice::DoHardwareInit() noexcept
 		  CAN_(GFC_ANFS_REJECT)
 		| CAN_(GFC_ANFE_REJECT)
 		| CAN_(GFC_RRFS)
-		| CAN_(GFC_RRFE);
+		| CAN_(GFC_RRFE)
+#if STM32H5
+		| CAN_Val(RXGFC_LSS, config->numShortFilterElements)
+		| CAN_Val(RXGFC_LSE, config->numExtendedFilterElements)
+#endif
+		;
 #if !STM32H5
 	hw->REG(SIDFC) = CAN_Val(SIDFC_LSS, config->numShortFilterElements)		// number of short filter elements
 					| Bits2to15(rxStdFilter);								// short filter start address - don't use CAN_(SIDFC_FLSSA) here, it is defined strangely on the SAME70
-	hw->REG(XIDFC) = CAN_Val(XIDFC_LSE, config->numExtendedFilterElements)		// number of extended filter elements
+	hw->REG(XIDFC) = CAN_Val(XIDFC_LSE, config->numExtendedFilterElements)	// number of extended filter elements
 					| Bits2to15(rxExtFilter);								// extended filter start address - don't use CAN_(SIDFC_FLESA) here, it is defined strangely on the SAME70
 #endif
 	hw->REG(XIDAM) = 0x1FFFFFFF;
