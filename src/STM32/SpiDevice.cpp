@@ -133,10 +133,14 @@ void SpiDevice::SetClockFrequencyAndMode(uint32_t freq, SpiMode mode, bool nineB
 	{
 		cfg1 |= (prescaleFactor - 1) << SPI_CFG1_MBR_Pos;
 	}
-	hardware->CFG1 = cfg1;			//TODO need to add DMA bits of using DMA
+	hardware->CFG1 = cfg1;								//TODO need to add DMA bits if using DMA
 
-	uint32_t cfg2 = SPI_CFG2_AFCNTR | SPI_CFG2_MASTER;
+	// Before the SPI peripheral will allow us to set CFG2_MASTER we have to set the internal NSS input to not active
+	uint32_t cfg2 = SPI_CFG2_AFCNTR | SPI_CFG2_SSM;		// set software management of NSS
+	hardware->CFG2 = cfg2;
 
+	hardware->CR1 |= SPI_CR1_SSI;						// set software-controlled NSS high
+	cfg2 |= SPI_CFG2_MASTER;							// now we can select master mode
 	if (((uint8_t)mode & 2) != 0)
 	{
 		cfg2 |= SPI_CFG2_CPOL;
@@ -149,10 +153,11 @@ void SpiDevice::SetClockFrequencyAndMode(uint32_t freq, SpiMode mode, bool nineB
 	Enable();
 }
 
-// Send and receive data returning true if successful
+// Send and receive data returning true if successful. Caller must handle the CS signal. If tx_data is null, we send 0xFF. If rx_data is null, we don't read the received data.
 bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t *_ecv_array null rx_data, size_t len, uint32_t dmaTimeout) noexcept
 {
-	// Clear any existing data
+	// Clear any existing received data
+	// TODO: allow for the FIFO, when we enable it
 	(void)hardware->RXDR;
 
 # if defined(RTOS)

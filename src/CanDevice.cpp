@@ -339,7 +339,6 @@ void CanDevice::CanStats::Clear() noexcept
 	// Enable 48MHz CAN clock
 # if STM32H5
 	//TODO only do the following for the first FDCAN that we initialise
-	__HAL_RCC_PLL1_CLKOUT_ENABLE(RCC_PLL1_DIVQ);
 	MODIFY_REG(RCC->CCIPR5, RCC_CCIPR5_FDCANSEL, LL_RCC_FDCAN_CLKSOURCE_PLL1Q);
 	FDCAN_CONFIG_NS->CKDIV = 0;
 # elif STM32H7

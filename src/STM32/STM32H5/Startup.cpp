@@ -47,7 +47,7 @@ extern "C" [[noreturn]] void Reset_Handler() noexcept
 
 	SystemInit();							// initialise FPU, set vector table address, reset clocks
 
-	// Cop the initialised data from flash to RAM
+	// Copy the initialised data from flash to RAM
 	uint32_t *pSrc = &_etext;
 	uint32_t *pDest = &_srelocate;
 
@@ -236,6 +236,11 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+
+  // Enable the PLL1 Q output, it is used by CAN and SPI
+  __HAL_RCC_PLL1_CLKOUT_ENABLE(RCC_PLL1_DIVQ);
+
+  // Enable the pin outputs
   HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_HSE, RCC_MCODIV_2);
   HAL_RCC_MCOConfig(RCC_MCO2, RCC_MCO2SOURCE_HSE, RCC_MCODIV_1);
 

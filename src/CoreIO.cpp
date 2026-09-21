@@ -1047,12 +1047,33 @@ void EnableSpiClock(unsigned int spiInstanceNumber) noexcept
 {
 	switch (spiInstanceNumber)
 	{
-	case 1:		__HAL_RCC_SPI1_CLK_ENABLE(); break;
-	case 2:		__HAL_RCC_SPI2_CLK_ENABLE(); break;
-	case 3:		__HAL_RCC_SPI3_CLK_ENABLE(); break;
-	case 4:		__HAL_RCC_SPI4_CLK_ENABLE(); break;
+	case 1:
+		__HAL_RCC_SPI1_CLK_ENABLE();
+		MODIFY_REG(RCC->CCIPR3, RCC_CCIPR3_SPI1SEL, LL_RCC_SPI1_CLKSOURCE_PLL1Q);
+		break;
+
+	case 2:
+		__HAL_RCC_SPI2_CLK_ENABLE();
+		MODIFY_REG(RCC->CCIPR3, RCC_CCIPR3_SPI2SEL, LL_RCC_SPI2_CLKSOURCE_PLL1Q);
+		break;
+
+	case 3:
+		__HAL_RCC_SPI3_CLK_ENABLE();
+		MODIFY_REG(RCC->CCIPR3, RCC_CCIPR3_SPI3SEL, LL_RCC_SPI3_CLKSOURCE_PLL1Q);
+		break;
+
+	case 4:
+		__HAL_RCC_SPI4_CLK_ENABLE();
+		// CAUTION! SPI4 can't take its clock from PLL1 so we need to use a different clock.
+		// For example, we could initialise PLL2 (see Startup.cpp), enable its Q output, and use the following.
+		MODIFY_REG(RCC->CCIPR3, RCC_CCIPR3_SPI4SEL, LL_RCC_SPI4_CLKSOURCE_PLL2Q);
+		break;
+
 #if defined(SPI5_BASE)
-	case 5:		__HAL_RCC_SPI5_CLK_ENABLE(); break;
+	case 5:
+		__HAL_RCC_SPI5_CLK_ENABLE();
+		//TODO select the SPI kernel clock
+		break;
 #endif
 	}
 }
