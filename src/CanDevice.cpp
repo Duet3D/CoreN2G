@@ -200,8 +200,8 @@ struct CanDevice::TxEvent
 
 # define CAN0_IRQn					FDCAN1_IT0_IRQn
 # define CAN1_IRQn					FDCAN2_IT0_IRQn
-# define CAN0_Handler				FDCAN1_IT0_Handler
-# define CAN1_Handler				FDCAN2_IT0_Handler
+# define CAN0_Handler				FDCAN1_IT0_IRQHandler
+# define CAN1_Handler				FDCAN2_IT0_IRQHandler
 
 #endif
 
@@ -1354,12 +1354,12 @@ void CanDevice::Interrupt() noexcept
 
 // Interrupt handlers
 
-void CAN0_Handler() noexcept
+extern "C" void CAN0_Handler() noexcept
 {
 	devicesByPort[0]->Interrupt();
 }
 
-void CAN1_Handler() noexcept
+extern "C" void CAN1_Handler() noexcept
 {
 	devicesByPort[1]->Interrupt();
 }

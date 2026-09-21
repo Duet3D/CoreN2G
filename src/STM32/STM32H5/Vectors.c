@@ -40,18 +40,20 @@ extern const char VersionText[];
 uint32_t SystemCoreClock = 240000000;
 
 // Forward declaration
-void Reset_Handler(void);
+void Reset_Handler(void) noexcept;
 
 /* Default empty handler */
-void Dummy_Handler(void);
+void Dummy_Handler(void) noexcept;
 
-/* Cortex-M4 core handlers */
+void SecureFault_Handler(void) noexcept;
+
+/* Cortex-M33 core handlers */
 void NMI_Handler             ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
 void HardFault_Handler       ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
 void MemManage_Handler       ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
 void BusFault_Handler        ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
 void UsageFault_Handler      ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
-void SecureFault_Handler     ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
+//void SecureFault_Handler     ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
 void SVC_Handler             ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
 void DebugMon_Handler        ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
 void PendSV_Handler          ( void ) __attribute__ ((weak, alias("Dummy_Handler")));
@@ -333,6 +335,11 @@ const struct DeviceVectors exception_table =
  * \brief Default interrupt handler for unused IRQs.
  */
 void Dummy_Handler(void) noexcept
+{
+	while (1) { }
+}
+
+void SecureFault_Handler(void) noexcept
 {
 	while (1) { }
 }

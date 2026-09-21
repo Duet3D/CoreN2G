@@ -90,23 +90,27 @@ static void *usartParam[NumUsarts];
 
 void Serial::SetUsartVector(uint8_t usartNumber, Serial::IrqFunc f, void *param) noexcept
 {
-	usartParam[usartNumber] = param;
-	usartIrq[usartNumber] = f;
+	usartParam[usartNumber - 1] = param;
+	usartIrq[usartNumber - 1] = f;
 }
 
 void Serial::ReleaseUsartVector(uint8_t usartNumber) noexcept
 {
-	usartIrq[usartNumber] = DummyHandler;
+	usartIrq[usartNumber - 1] = DummyHandler;
 }
 
+// USARTs and UARTs use a common numbering system on STM MCUs
 #define DEFINE_USART_IRQ(_usart) \
-	void USART ## _usart ## _Handler() noexcept { usartIrq[_usart - 1](usartParam[_usart - 1]); }
+	extern "C" void USART ## _usart ## _IRQHandler() noexcept { usartIrq[_usart - 1](usartParam[_usart - 1]); }
+
+#define DEFINE_UART_IRQ(_uart) \
+	extern "C" void UART ## _uart ## _IRQHandler() noexcept { usartIrq[_uart - 1](usartParam[_uart - 1]); }
 
 DEFINE_USART_IRQ(1)
 DEFINE_USART_IRQ(2)
 DEFINE_USART_IRQ(3)
-DEFINE_USART_IRQ(4)
-DEFINE_USART_IRQ(5)
+DEFINE_UART_IRQ(4)
+DEFINE_UART_IRQ(5)
 
 #if STM32H7
 
@@ -127,17 +131,17 @@ static void *spiParam[NumSpi];
 
 void Serial::SetSpiVector(uint8_t spiNumber, Serial::IrqFunc f, void *param) noexcept
 {
-	spiParam[spiNumber] = param;
-	spiIrq[spiNumber] = f;
+	spiParam[spiNumber - 1] = param;
+	spiIrq[spiNumber - 1] = f;
 }
 
 void Serial::ReleaseSpiVector(uint8_t spiNumber) noexcept
 {
-	spiIrq[spiNumber] = DummyHandler;
+	spiIrq[spiNumber - 1] = DummyHandler;
 }
 
 #define DEFINE_SPI_IRQ(_spi) \
-	void SPI ## _spi ## _Handler() noexcept { spiIrq[_spi - 1](spiParam[_spi - 1]); }
+	extern "C" void SPI ## _spi ## _IRQHandler() noexcept { spiIrq[_spi - 1](spiParam[_spi - 1]); }
 
 DEFINE_SPI_IRQ(1)
 DEFINE_SPI_IRQ(2)

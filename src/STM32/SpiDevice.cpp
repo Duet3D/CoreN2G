@@ -49,8 +49,9 @@ SpiDevice::SpiDevice(const SpiParameters& params) noexcept
 	// Enable the interrupt in the NVIC
 	Serial::SetSpiVector(instanceNumber, CommonInterrupt, this);
 	NVIC_SetPriority(SpiInterruptNumbers[instanceNumber - 1], params.irqPriority);
+#if 0	// interrupt not used yet
 	NVIC_EnableIRQ(SpiInterruptNumbers[instanceNumber - 1]);
-
+#endif
 	// Leave the SPI disabled until after we have set its comms parameters
 }
 
