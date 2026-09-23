@@ -221,7 +221,7 @@ bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t
 		}
 
 		// Write to transmit register
-		*(volatile uint8_t*)&hardware->TXDR = dOut;						// the STM32 SPI TXDR behaviour depends on whether you address it as an 8, 16 or 32-bit port
+		*(volatile uint8_t*)&hardware->TXDR = dOut;						// the STM32 SPI TXDR register behaviour depends on whether you address it as an 8, 16 or 32-bit port
 
 		// Some devices are transmit-only e.g. 12864 display, so don't wait for received data if we don't need to
 		if (rx_data != nullptr)
@@ -233,7 +233,7 @@ bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t
 			}
 
 			// Get data from receive register
-			const uint8_t dIn = *(volatile uint8_t*)&hardware->RXDR;	// the STM32 SPI RXDR behaviour depends on whether you address it as an 8, 16 or 32-bit port
+			const uint8_t dIn = *(volatile uint8_t*)&hardware->RXDR;	// the STM32 SPI register RXDR behaviour depends on whether you address it as an 8, 16 or 32-bit port
 			*rx_data++ = dIn;
 		}
 	}

@@ -204,6 +204,7 @@ inline bool SharedI2CMaster::WaitByteReceived() noexcept
 	return WaitForStatus(TWIHS_SR_RXRDY, errors.otherErrors);
 }
 
+// Write/read some data to/from I2C returning true if successful, false if failed.
 // This transfer function is based on the Duet 2 (SAM4E) code.
 // It would be more efficient to do the data transfer to/from the I2C hardware in the ISR as we do in the SAM5x driver, instead of waking the task for each byte to be transferred as we do here.
 // If we ever send/receive large amount of data then we should use DMA instead.
@@ -224,62 +225,63 @@ bool SharedI2CMaster::InternalTransfer(uint16_t address, const uint8_t *_ecv_arr
 	    hardware->TWIHS_IADR = 0;
 	}
 
-	size_t bytesSent = 0;
 	if (numToWrite != 0)
 	{
 		// Send all bytes except the last one.
 		// Ideally, if there are bytes to read as well as write, we would not send a STOP after sending all the bytes.
 		// Unfortunately, the SAM TWI peripheral doesn't provide any means of reporting when the transmission is complete if we don't send STOP after it.
-		while (bytesSent + 1 < numToWrite)
+		for (size_t bytesSent = 0; bytesSent + 1 < numToWrite; ++bytesSent)
 		{
 			hardware->TWIHS_THR = *txBuffer++;
 			if (!WaitByteSent())
 			{
 				hardware->TWIHS_CR = TWIHS_CR_STOP;
 				(void)WaitTransferComplete();
-				return bytesSent;
+				return false;
 			}
-			++bytesSent;
 		}
 
 		hardware->TWIHS_THR = *txBuffer++;
 		hardware->TWIHS_CR = TWIHS_CR_STOP;
-		if (WaitByteSent())
+		if (!WaitByteSent())
 		{
-			++bytesSent;
+			return false;
 		}
-		(void)WaitTransferComplete();
-		if (bytesSent < numToWrite || numToRead == 0)
+
+		if (!WaitTransferComplete())
 		{
-			return bytesSent;
+			return false;
+		}
+
+		if (numToRead == 0)
+		{
+			return true;
 		}
 	}
 
 	// There are bytes to read, and if there were any bytes to send then we have sent them all
     hardware->TWIHS_MMR |= TWIHS_MMR_MREAD;							// change the mode to read
-	size_t bytesReceived = 0;
 	if (numToRead == 1)
 	{
 		hardware->TWIHS_CR = TWIHS_CR_START | TWIHS_CR_STOP;
 		if (WaitByteReceived())
 		{
 			*rxBuffer = hardware->TWIHS_RHR;
-			++bytesReceived;
 		}
 
-		(void)WaitTransferComplete();
-		return bytesSent + bytesReceived;
+		return WaitTransferComplete();
 	}
 
 	// Multi-byte read. We must set the STOP flag before we read the penultimate byte from the RHR.
 	hardware->TWIHS_CR = TWIHS_CR_START;
+	size_t bytesReceived = 0;
 	for (;;)
 	{
 		if (!WaitByteReceived())
 		{
 			hardware->TWIHS_CR = TWIHS_CR_STOP;						// this may not do any good
 			(void)WaitTransferComplete();							// neither may this
-			return bytesSent + bytesReceived;
+			return false;
 		}
 
 		++bytesReceived;
@@ -294,13 +296,12 @@ bool SharedI2CMaster::InternalTransfer(uint16_t address, const uint8_t *_ecv_arr
 	// The penultimate byte is in the RHR
 	hardware->TWIHS_CR = TWIHS_CR_STOP;
 	*rxBuffer++ = hardware->TWIHS_RHR;
-	if (WaitByteReceived())
+	if (!WaitByteReceived())
 	{
-		*rxBuffer++ = hardware->TWIHS_RHR;
-		++bytesReceived;
+		return false;
 	}
-	(void)WaitTransferComplete();
-	return bytesSent + bytesReceived;
+	*rxBuffer++ = hardware->TWIHS_RHR;
+	return WaitTransferComplete();
 }
 
 void SharedI2CMaster::Interrupt() noexcept
