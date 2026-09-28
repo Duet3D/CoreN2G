@@ -509,7 +509,7 @@ inline void fastDigitalWriteHigh(uint32_t pin) noexcept
 #elif RP2040
 	gpio_set_mask(GpioMask(pin));
 #elif STM32
-	GpioPort(pin)->BSRR = GpioPinNumber(pin);
+	GpioPort(pin)->BSRR = GpioMask(pin);
 #else
 # error Unsupported processor
 #endif
@@ -529,7 +529,7 @@ inline void fastDigitalWriteLow(uint32_t pin) noexcept
 #elif RP2040
 	gpio_clr_mask(GpioMask(pin));
 #elif STM32
-	GpioPort(pin)->BSRR = GpioPinNumber(pin) << 16;
+	GpioPort(pin)->BSRR = GpioMask(pin) << 16;
 #else
 # error Unsupported processor
 #endif
@@ -549,7 +549,7 @@ inline bool fastDigitalRead(uint32_t pin) noexcept
 #elif RP2040
 	return gpio_get(pin);			//TODO can we optimise this?
 #elif STM32
-	return (GpioPort(pin)->IDR & GpioPinNumber(pin)) != 0;
+	return (GpioPort(pin)->IDR & GpioMask(pin)) != 0;
 #else
 # error Unsupported processor
 #endif
