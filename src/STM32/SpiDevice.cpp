@@ -265,7 +265,7 @@ bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t
 	if (ok)
 	{
 		// Wait for transmission to complete
-		while ((hardware->SR & SPI_SR_EOT) == 0)
+		while ((hardware->SR & SPI_SR_TXC) == 0)
 		{
 			waitingTask = TaskBase::GetCallerTaskHandle();
 			hardware->IER = SPI_IER_EOTIE;
