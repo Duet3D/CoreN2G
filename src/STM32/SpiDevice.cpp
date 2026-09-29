@@ -11,17 +11,29 @@
 
 constexpr uint32_t SpiCharTimeout = 10000;			// this is a count of how often we loop while waiting for the SPI peripheral to finish transmitting or receiving a character
 
+// The following table must be indexed by (instance - 1)
 static SPI_TypeDef *const SpiDevices[] = {	SPI1, SPI2, SPI3, SPI4,
 #ifdef SPI5
-											SPI5
+											SPI5,
+#endif
+#ifdef SPI6
+											SPI6
 #endif
 										 };
 
+// The following table must be indexed by (instance - 1)
 static IRQn SpiInterruptNumbers[] = {	SPI1_IRQn, SPI2_IRQn, SPI3_IRQn, SPI4_IRQn,
 #ifdef SPI5
-										SPI5_IRQn
+										SPI5_IRQn,
+#endif
+#ifdef SPI5
+										SPI6_IRQn
 #endif
 									};
+
+// Return the fifo size of an SPI instance
+// This version is valid for STM32H523, 533, 562, 553, 573, 723, 733, 725, 735, 730, 742, 743, 753 and 750 MCUs
+static size_t GetFifoSize(unsigned int instance) noexcept { return (instance <= 3) ? 16 : 8; }
 
 /*static*/ void SpiDevice::CommonInterrupt(void* param) noexcept
 {
@@ -49,9 +61,7 @@ SpiDevice::SpiDevice(const SpiParameters& params) noexcept
 	// Enable the interrupt in the NVIC
 	Serial::SetSpiVector(instanceNumber, CommonInterrupt, this);
 	NVIC_SetPriority(SpiInterruptNumbers[instanceNumber - 1], params.irqPriority);
-#if 0	// interrupt not used yet
 	NVIC_EnableIRQ(SpiInterruptNumbers[instanceNumber - 1]);
-#endif
 	// Leave the SPI disabled until after we have set its comms parameters
 }
 
@@ -157,16 +167,62 @@ void SpiDevice::SetClockFrequencyAndMode(uint32_t freq, SpiMode mode, bool nineB
 bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t *_ecv_array null rx_data, size_t len, uint32_t dmaTimeout) noexcept
 {
 	// Clear any existing received data
-	// TODO: allow for the FIFO, when we enable it
-	(void)hardware->RXDR;
-
-# if defined(RTOS)
-	if (len >= 20 && tx_data != nullptr)
+	while ((hardware->SR & SPI_SR_RXP) != 0)
 	{
-		// Sending a large amount of data, so use DMA
-		DmacManager::DisableChannel(dmaChanTx);
+		(void)hardware->RXDR;
+	}
+
+	if (len <= GetFifoSize(instanceNumber))
+	{
+		hardware->CR1 |= SPI_CR1_CSTART;
+
+		// The whole packet will fit in the transmit and receive fifos
+		// Copy all the transmit data into the fifo
+		for (size_t i = 0; i < len; ++i)
+		{
+			*(volatile uint8_t*)&hardware->TXDR = (tx_data == nullptr) ? 0xFF : *tx_data++;		// the STM32 SPI register TXDR behaviour depends on whether you address it as an 8, 16 or 32-bit port
+		}
+
+		// Wait for transmission to complete
+		bool ok = true;
+		while ((hardware->SR & SPI_SR_TXC) == 0)
+		{
+			waitingTask = TaskBase::GetCallerTaskHandle();
+			hardware->IER = SPI_IER_EOTIE;
+			if (!TaskBase::TakeIndexed(NotifyIndices::Spi, dmaTimeout)) { ok = false; break; }
+		}
+
+		// Copy the received data
+		for (size_t i = 0; i < len; ++i)
+		{
+			if ((hardware->SR & SPI_SR_RXP) == 0) { return false; }
+			const uint8_t dIn = *(volatile uint8_t*)&hardware->RXDR;	// the STM32 SPI register RXDR behaviour depends on whether you address it as an 8, 16 or 32-bit port
+			if (rx_data != nullptr)
+			{
+				*rx_data++ = dIn;
+			}
+		}
+		return ok;
+	}
+
+#if defined(RTOS)
+	// Sending a large amount of data, so use DMA
+	DmacManager::DisableChannel(dmaChanTx);
+	DmacManager::SetDestinationAddress(dmaChanTx, &(hardware->TXDR));
+	if (tx_data == nullptr)
+	{
+		static uint8_t txByte = 0xFF;
+		DmacManager::SetSourceAddress(dmaChanTx, &txByte);
+		DmacManager::SetBtctrl(dmaChanTx,
+								  (0 << DMA_CTR1_DBL_1_Pos)						// destination burst length = 1
+								| (0 << DMA_CTR1_DDW_LOG2_Pos)					// destination beat size = 1 byte
+								| (0 << DMA_CTR1_SBL_1_Pos)						// source burst length = 1
+								| (0 << DMA_CTR1_SDW_LOG2_Pos)					// source beat size = 1 byte
+							  );
+	}
+	else
+	{
 		DmacManager::SetSourceAddress(dmaChanTx, tx_data);
-		DmacManager::SetDestinationAddress(dmaChanTx, &(hardware->TXDR));
 		DmacManager::SetBtctrl(dmaChanTx,
 								  (0 << DMA_CTR1_DBL_1_Pos)						// destination burst length = 1
 								| (0 << DMA_CTR1_DDW_LOG2_Pos)					// destination beat size = 1 byte
@@ -174,45 +230,54 @@ bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t
 								| (0 << DMA_CTR1_SDW_LOG2_Pos)					// source beat size = 1 byte
 								| DMA_CTR1_SINC									// increment source address
 							  );
-		DmacManager::SetDataLength(dmaChanTx, len);
-		DmacManager::SetTriggerSourceSpiTx(dmaChanTx, instanceNumber);
-		waitingTask = TaskBase::GetCallerTaskHandle();
-		if (rx_data != nullptr)
-		{
-			DmacManager::DisableChannel(dmaChanRx);
-			DmacManager::SetSourceAddress(dmaChanRx, &(hardware->RXDR));
-			DmacManager::SetDestinationAddress(dmaChanRx, rx_data);
-			DmacManager::SetBtctrl(dmaChanRx,
-									  (0 << DMA_CTR1_DBL_1_Pos)						// destination burst length = 1
-									| (0 << DMA_CTR1_DDW_LOG2_Pos)					// destination beat size = 1 byte
-									| (0 << DMA_CTR1_SBL_1_Pos)						// source burst length = 1
-									| (0 << DMA_CTR1_SDW_LOG2_Pos)					// source beat size = 1 byte
-									| DMA_CTR1_DINC									// increment destination address
-								  );
-			DmacManager::SetDataLength(dmaChanRx, len);
-			DmacManager::SetTriggerSourceSpiTx(dmaChanRx, instanceNumber);
-			DmacManager::SetInterruptCallback(dmaChanRx, SpiDevice::DmaComplete, CallbackParameter((void *)this));
-			DmacManager::EnableCompletedInterrupt(dmaChanRx);
-			DmacManager::EnableChannel(dmaChanRx, dmaPrioTx);
-		}
-		else
-		{
-			DmacManager::SetInterruptCallback(dmaChanTx, SpiDevice::DmaComplete, CallbackParameter((void *)this));
-			DmacManager::EnableCompletedInterrupt(dmaChanTx);
-		}
-		DmacManager::EnableChannel(dmaChanTx, dmaPrioTx);
-		const bool ok = TaskBase::TakeIndexed(NotifyIndices::Spi, dmaTimeout);		// maximum 3kb transfer should complete in about 2ms @ 14MHz clock speed
-		if (ok)
-		{
-			waitForTxEmpty();														// wait for transmitter empty, to make sure that the last clock pulse has finished
-		}
-		return ok;
 	}
-# endif
+	DmacManager::SetDataLength(dmaChanTx, len);
+	DmacManager::SetTriggerSourceSpiTx(dmaChanTx, instanceNumber);
+	waitingTask = TaskBase::GetCallerTaskHandle();
+	if (rx_data != nullptr)
+	{
+		DmacManager::DisableChannel(dmaChanRx);
+		DmacManager::SetSourceAddress(dmaChanRx, &(hardware->RXDR));
+		DmacManager::SetDestinationAddress(dmaChanRx, rx_data);
+		DmacManager::SetBtctrl(dmaChanRx,
+								  (0 << DMA_CTR1_DBL_1_Pos)						// destination burst length = 1
+								| (0 << DMA_CTR1_DDW_LOG2_Pos)					// destination beat size = 1 byte
+								| (0 << DMA_CTR1_SBL_1_Pos)						// source burst length = 1
+								| (0 << DMA_CTR1_SDW_LOG2_Pos)					// source beat size = 1 byte
+								| DMA_CTR1_DINC									// increment destination address
+							  );
+		DmacManager::SetDataLength(dmaChanRx, len);
+		DmacManager::SetTriggerSourceSpiTx(dmaChanRx, instanceNumber);
+		DmacManager::SetInterruptCallback(dmaChanRx, SpiDevice::DmaComplete, CallbackParameter((void *)this));
+		DmacManager::EnableCompletedInterrupt(dmaChanRx);
+		DmacManager::EnableChannel(dmaChanRx, dmaPrioTx);
+	}
+	else
+	{
+		DmacManager::SetInterruptCallback(dmaChanTx, SpiDevice::DmaComplete, CallbackParameter((void *)this));
+		DmacManager::EnableCompletedInterrupt(dmaChanTx);
+	}
+	DmacManager::EnableChannel(dmaChanTx, dmaPrioTx);
+	hardware->CR1 |= SPI_CR1_CSTART;
+
+	// Wait for DMA to complete (could we just wait for EOT instead?)
+	const bool ok = TaskBase::TakeIndexed(NotifyIndices::Spi, dmaTimeout);		// maximum 3kb transfer should complete in about 2ms @ 14MHz clock speed
+	if (ok)
+	{
+		// Wait for transmission to complete
+		while ((hardware->SR & SPI_SR_EOT) == 0)
+		{
+			waitingTask = TaskBase::GetCallerTaskHandle();
+			hardware->IER = SPI_IER_EOTIE;
+			if (!TaskBase::TakeIndexed(NotifyIndices::Spi, dmaTimeout)) { return false; }
+		}
+	}
+	return ok;
+#else
 	hardware->CR1 |= SPI_CR1_CSTART;
 
 	// For now we use polling mode
-	for (uint32_t i = 0; i < len; ++i)
+	for (size_t i = 0; i < len; ++i)
 	{
 		uint32_t dOut = (tx_data == nullptr) ? 0x000000FF : (uint32_t)*tx_data++;
 		if (waitForTxReady())			// we have to write the first byte after enabling the device without waiting for DRE to be set
@@ -243,7 +308,6 @@ bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t
 	// If we were not receiving, clear data from the receive buffer
 	if (rx_data == nullptr)
 	{
-		// The SAME5x seems to buffer more than one received character
 		while (hardware->SR & SPI_SR_RXP)
 		{
 			(void)hardware->RXDR;
@@ -251,6 +315,7 @@ bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t
 	}
 
 	return true;	// success
+#endif
 }
 
 #if defined(RTOS)
@@ -268,7 +333,9 @@ void SpiDevice::DmaComplete(DmaCallbackReason reason) noexcept
 
 void SpiDevice::Interrupt() noexcept
 {
-	// not currently used
+	hardware->IER = 0;
+	TaskBase::GiveFromISR(waitingTask, NotifyIndices::Spi);
+	waitingTask = nullptr;
 }
 
 #endif
