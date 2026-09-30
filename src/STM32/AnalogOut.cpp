@@ -97,12 +97,14 @@ void AnalogOut::Write(Pin pin, float ulValue, PwmFrequency freq) noexcept
 				const uint32_t val = ConvertRange(ulValue, 65536);
 				if (reprogram)
 				{
-					timer->CR1 &= ~(TIM_CR1_CEN | TIM_CR1_UIFREMAP | TIM_CR1_ARPE | TIM_CR1_OPM | TIM_CR1_URS | TIM_CR1_UDIS | TIM_CR1_CKD);
+					timer->CR1 = TIM_CR1_URS;
 
 					// All regular timers can take a prescale factor of between 1 and 65535. We run all timers in 16-bit compare mode.
 					const uint16_t prescaler = (uint16_t)((GetTimerClockFrequency(timerNumber)/(uint32_t)freq) >> 16);
 					timer->PSC = prescaler;
 					timer->ARR = 0x0000FFFF;
+					timer->CNT = 0;
+					timer->EGR = TIM_EGR_UG;									// update the live registers, in particular the prescaler
 
 					// Set the PWM mode
 					const uint32_t pwmMode = (GetIsOutputInverted(tout)) ? 7 : 6;
@@ -124,7 +126,7 @@ void AnalogOut::Write(Pin pin, float ulValue, PwmFrequency freq) noexcept
 					SetPinFunction(pin, GetPinFunction(tout));
 
 					// Start the timer
-			        timer->CR1 |= TIM_CR1_CEN;
+			        timer->CR1 = TIM_CR1_CEN | TIM_CR1_URS;
 				}
 				else
 				{
