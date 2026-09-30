@@ -282,7 +282,13 @@ void Cache::Init() noexcept
 		// Final 128kb RAM, read-write, cacheable, execute disabled
 		{
 			ARM_MPU_RBAR(6, IRAM_ADDR + 0x00040000),
-			ARM_MPU_RASR_EX(1u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_NORMAL(CACHE_MODE, CACHE_MODE, 0u), 0u, ARM_MPU_REGION_SIZE_128KB)
+			ARM_MPU_RASR_EX(1u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_NORMAL(CACHE_MODE, CACHE_MODE, 0u), 0u,
+#if defined(__PIC32CZ2051CA70144__)
+								ARM_MPU_REGION_SIZE_256KB			// PIC32CZ2051CA70 has 512kb RAM
+#else
+								ARM_MPU_REGION_SIZE_128KB			// SAME70 has 384kb RAM
+#endif
+						   )
 		},
 		// Peripherals
 		{

@@ -27,6 +27,9 @@
 # define unlikely(x)	__builtin_expect(!!(x), 0)
 #endif
 
+// Note: the build for the PIC32CZCA70 MCU defined both __PIC32CZ2051CA70144__ and __SAME70Q20B__ to avoid having to modify lots of ASF3 driver files. So we don't need to handle it separately here.
+// Any code that depends on which of these two MCUs we are running on must check whether __PIC32CZ2051CA70144__ is defined.
+
 #include <McuType.h>
 #if defined(__SAME54P20A__) || defined(__SAME51P20A__)
 # include <same54.h>
