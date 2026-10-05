@@ -39,7 +39,7 @@ extern uint32_t _srelocate;
 extern uint32_t _erelocate;
 extern uint32_t _szero;
 extern uint32_t _ezero;
-extern uint32_t _estack;
+extern char _estack[], _sstack[];
 
 #if SUPPORT_CAN
 extern uint32_t _szero_nocache;
@@ -124,7 +124,19 @@ extern "C" [[noreturn]] void Reset_Handler() noexcept
 	}
 
 	// Now it's safe to reset the stack pointer to the top of memory
-	SetStackPointer(&_estack);
+	const uint32_t deviceId = CHIPID->CHIPID_CIDR;
+	constexpr uint32_t ArchAndSramMask = 0x0fff0000;
+	if ((deviceId & ArchAndSramMask) == 0x01AF0000)
+	{
+		constexpr uint32_t extraRamSize = 0x00020000;			// it's a PIC32CZ CA70 with 128kb additional RAM
+		sysStackTop = _estack + extraRamSize;
+		SetStackPointer((uint32_t*)sysStackTop);
+		sysStackLimit = heapLimit = _sstack + extraRamSize;
+	}
+	else
+	{
+		SetStackPointer((uint32_t*)_estack);
+	}
 
 #if SUPPORT_CAN
 	// Clear the nocache RAM segment

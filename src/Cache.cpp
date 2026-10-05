@@ -251,17 +251,17 @@ void Cache::Init() noexcept
 		// Flash memory: read-only, execute allowed, cacheable
 		{
 			ARM_MPU_RBAR(0, IFLASH_ADDR),
-			ARM_MPU_RASR_EX(0u, ARM_MPU_AP_RO, ARM_MPU_ACCESS_NORMAL(ARM_MPU_CACHEP_WB_WRA, ARM_MPU_CACHEP_WB_WRA, 0u), 0u, ARM_MPU_REGION_SIZE_1MB)
+			ARM_MPU_RASR_EX(0u, ARM_MPU_AP_RO, ARM_MPU_ACCESS_NORMAL(ARM_MPU_CACHEP_WB_WRA, ARM_MPU_CACHEP_WB_WRA, 0u), 0u, ARM_MPU_REGION_SIZE_2MB)
 		},
 		// First 512b of the flash memory is also the flash write page buffer, which we need to write to when writing the user page
 		{
 			ARM_MPU_RBAR(1, IFLASH_ADDR),
 			ARM_MPU_RASR_EX(0u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_NORMAL(ARM_MPU_CACHEP_WT_NWA, ARM_MPU_CACHEP_WT_NWA, 0u), 0u, ARM_MPU_REGION_SIZE_512B)
 		},
-		// First 256kb RAM, read-write, cacheable, execute disabled (parts of this are overridden later)
+		// 512kb RAM, read-write, cacheable, execute disabled (parts of this are overridden later)
 		{
 			ARM_MPU_RBAR(2, IRAM_ADDR),
-			ARM_MPU_RASR_EX(1u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_NORMAL(CACHE_MODE, CACHE_MODE, 0u), 0u, ARM_MPU_REGION_SIZE_256KB)
+			ARM_MPU_RASR_EX(1u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_NORMAL(CACHE_MODE, CACHE_MODE, 0u), 0u, ARM_MPU_REGION_SIZE_512KB)
 		},
 		// First 64kb RAM, read-write, shared, non-cacheable, execute disabled
 		{
@@ -279,29 +279,24 @@ void Cache::Init() noexcept
 			ARM_MPU_RBAR(5, IRAM_ADDR + 0x00012000),
 			ARM_MPU_RASR_EX(0u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_NORMAL(CACHE_MODE, CACHE_MODE, 0u), 0u, ARM_MPU_REGION_SIZE_256B)
 		},
-		// Final 128kb or 256kb RAM, read-write, cacheable, execute disabled
-		{
-			ARM_MPU_RBAR(6, IRAM_ADDR + 0x00040000),
-			ARM_MPU_RASR_EX(1u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_NORMAL(CACHE_MODE, CACHE_MODE, 0u), 0u, ARM_MPU_REGION_SIZE_256KB)			// PIC32CZ2051CA70 has 512kb RAM, SAME70 has 384kb
-		},
 		// Peripherals
 		{
-			ARM_MPU_RBAR(7, 0x40000000),
+			ARM_MPU_RBAR(6, 0x40000000),
 			ARM_MPU_RASR_EX(1u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_DEVICE(1u), 0u, ARM_MPU_REGION_SIZE_16MB)
 		},
 		// USBHS
 		{
-			ARM_MPU_RBAR(8, 0xA0100000u),
+			ARM_MPU_RBAR(7, 0xA0100000u),
 			ARM_MPU_RASR_EX(1u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_DEVICE(1u), 0u, ARM_MPU_REGION_SIZE_1MB)
 		},
 		// ROM
 		{
-			ARM_MPU_RBAR(9, IROM_ADDR),
+			ARM_MPU_RBAR(8, IROM_ADDR),
 			ARM_MPU_RASR_EX(0u, ARM_MPU_AP_RO, ARM_MPU_ACCESS_NORMAL(ARM_MPU_CACHEP_WT_NWA, ARM_MPU_CACHEP_WT_NWA, 0u), 0u, ARM_MPU_REGION_SIZE_4MB)
 		},
 		// ARM Private Peripheral Bus
 		{
-			ARM_MPU_RBAR(10, 0xE0000000u),
+			ARM_MPU_RBAR(9, 0xE0000000u),
 			ARM_MPU_RASR_EX(1u, ARM_MPU_AP_FULL, ARM_MPU_ACCESS_ORDERED, 0u, ARM_MPU_REGION_SIZE_1MB)
 		}
 #elif STM32H7

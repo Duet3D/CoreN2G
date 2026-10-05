@@ -13,7 +13,7 @@
 #include <new>
 
 extern char _end;										// defined by the linker script
-extern uint32_t _estack;
+extern char _estack[], _sstack[];
 
 [[noreturn]] void OutOfMemoryHandler() noexcept;		// this must be provided by the client application
 
@@ -32,11 +32,12 @@ const char *heapLimit = (const char*)&__StackLimit;
 #else
 
 #ifndef SystemStackSize
-# define SystemStackSize	(1024)
+# define SystemStackSize	(1024)						// stack size in dwords
 #endif
 
-const uint32_t sysStackLimit = (uint32_t)&_estack - SystemStackSize;		// this must be const so allocated in ROM for Cortex M33
-const char *_ecv_array heapLimit = (const char *_ecv_array)&_estack - SystemStackSize;
+const char *_ecv_array heapLimit = _sstack;
+const char *_ecv_array sysStackLimit = _sstack;
+const char *_ecv_array sysStackTop = _estack;
 
 #endif
 
