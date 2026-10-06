@@ -762,6 +762,7 @@ void CoreInit() noexcept
 {
 #if STM32
 	// Enable all GPIO AHB clocks, they need to be active to allow us to set the pin mode
+	//TODO the following are for STM32H5. The STM32H7 MCUs use different registers.
 	RCC->AHB2ENR |= RCC_AHB2ENR_GPIOAEN | RCC_AHB2ENR_GPIOBEN | RCC_AHB2ENR_GPIOCEN | RCC_AHB2ENR_GPIODEN
 #if defined(GPIOE)
 				| RCC_AHB2ENR_GPIOEEN
@@ -1045,6 +1046,7 @@ void EnableTimerClock(unsigned int timerNumber) noexcept
 // Initialise a SPI clock
 void EnableSpiClock(unsigned int spiInstanceNumber) noexcept
 {
+	//TODO the following are for STM32H5. The STM32H7 MCUs use different registers.
 	switch (spiInstanceNumber)
 	{
 	case 1:

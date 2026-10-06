@@ -187,9 +187,13 @@ bool SpiDevice::TransceivePacket(const uint8_t *_ecv_array null tx_data, uint8_t
 		bool ok = true;
 		while ((hardware->SR & SPI_SR_TXC) == 0)
 		{
+#ifdef RTOS
 			waitingTask = TaskBase::GetCallerTaskHandle();
 			hardware->IER = SPI_IER_EOTIE;
 			if (!TaskBase::TakeIndexed(NotifyIndices::Spi, dmaTimeout)) { ok = false; break; }
+#else
+			// Ideally we would implement timeout here, however we only use non-RTOS builds for the bootloaders, which don't use SPI
+#endif
 		}
 
 		// Copy the received data
