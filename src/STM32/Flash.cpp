@@ -53,6 +53,9 @@ static void FlashClearError()
 #endif
 }
 
+bool Flash::Init() noexcept { }
+void Flash::Deinit() noexcept { }
+
 bool Flash::FlashIsErased(const uint32_t addr, const size_t len) noexcept
 {
 #if STM32H7 || STM32H5

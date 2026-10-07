@@ -12,6 +12,9 @@
 
 namespace Flash
 {
+	bool Init() noexcept;
+	void Deinit() noexcept;
+
 #if STM32
 	bool FlashIsErased(const uint32_t addr, const size_t len) noexcept;
 	uint32_t FlashGetSector(const uint32_t addr) noexcept;
@@ -20,8 +23,6 @@ namespace Flash
 	bool FlashWrite(const uint32_t addr, const uint8_t *data, const size_t len) noexcept;
 	bool FlashRead(const uint32_t addr, uint8_t *data, const size_t len) noexcept;
 #else
-	bool Init() noexcept;
-	void Deinit() noexcept;
 	bool Unlock(uint32_t start, uint32_t length) noexcept;
 	bool Lock(uint32_t start, uint32_t length) noexcept;
 	bool Write(uint32_t start, uint32_t length, const uint32_t *_ecv_array data) noexcept;
