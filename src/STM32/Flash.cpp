@@ -53,7 +53,7 @@ static void FlashClearError()
 #endif
 }
 
-bool Flash::Init() noexcept { }
+bool Flash::Init() noexcept { return true; }
 void Flash::Deinit() noexcept { }
 
 bool Flash::FlashIsErased(const uint32_t addr, const size_t len) noexcept
