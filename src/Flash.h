@@ -15,20 +15,20 @@ namespace Flash
 	bool Init() noexcept;
 	void Deinit() noexcept;
 
-#if STM32
-	bool FlashIsErased(const uint32_t addr, const size_t len) noexcept;
-	uint32_t FlashGetSector(const uint32_t addr) noexcept;
-	size_t FlashGetSectorLength(const uint32_t addr) noexcept;
-	bool FlashEraseSector(const uint32_t sector) noexcept;
-	bool FlashWrite(const uint32_t addr, const uint8_t *data, const size_t len) noexcept;
-	bool FlashRead(const uint32_t addr, uint8_t *data, const size_t len) noexcept;
-#else
+	bool Write(uint32_t start, uint32_t length, const uint32_t *_ecv_array data) noexcept;
+
+#if SAMC21 || SAME5x || SAM4S || SAM4E || SAME70
 	bool Unlock(uint32_t start, uint32_t length) noexcept;
 	bool Lock(uint32_t start, uint32_t length) noexcept;
-	bool Write(uint32_t start, uint32_t length, const uint32_t *_ecv_array data) noexcept;
+#endif
+
 # if SAM4S || SAM4E || SAME70
 	bool EraseSector(uint32_t) noexcept;
-# else
+# endif
+# if STM32
+	bool EraseSectors(uint32_t sector, uint32_t numSectors) noexcept;
+# endif
+# if SAMC21 || SAME5x || STM32H5
 	bool Erase(uint32_t start, uint32_t length) noexcept;
 # endif
 
@@ -45,11 +45,19 @@ namespace Flash
 	bool ClearGpNvm(uint32_t gpnvm) noexcept;
 # endif
 
+#if !STM32
 	uint32_t GetLastFlashError() noexcept;
 	uint32_t GetPageSize() noexcept;
 	uint32_t GetLockRegionSize() noexcept;
 	uint32_t GetEraseRegionSize() noexcept;
 	uint32_t GetFlashSize() noexcept;
+#endif
+
+#if STM32
+	bool IsErased(uint32_t addr, size_t len) noexcept;
+	uint32_t GetSector(uint32_t addr) noexcept;
+	uint32_t GetSectorLength() noexcept;
+	bool Read(uint32_t addr, uint32_t length, uint8_t *_ecv_array data) noexcept;
 #endif
 }
 

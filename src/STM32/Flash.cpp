@@ -5,9 +5,11 @@
 #if STM32H5
 # include <stm32h5xx_hal_flash.h>
 # include <stm32h5xx_hal_flash_ex.h>
+const uint32_t SectorSize = 0x00002000;		// 8kb
 #elif STM32H7
 # include <stm32h7xx_hal_flash.h>
 # include <stm32h7xx_hal_flash_ex.h>
+const uint32_t SectorSize = 0x00020000;		// 128kb
 #endif
 
 // Flash write/erase
@@ -56,7 +58,7 @@ static void FlashClearError()
 bool Flash::Init() noexcept { return true; }
 void Flash::Deinit() noexcept { }
 
-bool Flash::FlashIsErased(const uint32_t addr, const size_t len) noexcept
+bool Flash::IsErased(uint32_t addr, size_t len) noexcept
 {
 #if STM32H7 || STM32H5
 	// On the STM32H7 if the flash has not been correctly erased then simply reading
@@ -96,7 +98,7 @@ bool Flash::FlashIsErased(const uint32_t addr, const size_t len) noexcept
 	return blank;
 }
 
-uint32_t Flash::FlashGetSector(const uint32_t addr) noexcept
+uint32_t Flash::GetSector(uint32_t addr) noexcept
 {
 	if (!IS_FLASH_PROGRAM_ADDRESS(addr))
 	{
@@ -106,33 +108,33 @@ uint32_t Flash::FlashGetSector(const uint32_t addr) noexcept
 
 	// Flash memory sector size on STM3H5 is 8kb
 	// On the H7 all sectors are 128Kb
-	uint32_t offset = addr - FLASH_BASE;
-#if STM32H7
-	return offset/0x20000;
-#elif STM32H5
-	return offset/0x02000;
+	const uint32_t offset = addr - FLASH_BASE;
+#if STM32H7 || STM32H5
+	return offset/SectorSize;
 #else
 # error Unsupported processor
 #endif
 }
 
-size_t Flash::FlashGetSectorLength(const uint32_t addr) noexcept
+uint32_t Flash::GetSectorLength() noexcept
 {
-	uint32_t sector = FlashGetSector(addr);
-	if (sector == IAP_BAD_SECTOR)
-	{
-		return 0;
-	}
-#if STM32H7
-	return 0x20000;
-#elif STM32H5
-	return 0x02000;
+#if STM32H7 || STM32H5
+	return SectorSize;
 #else
 # error Unsupported processor
 #endif
 }
 
-bool Flash::FlashEraseSector(const uint32_t sector) noexcept
+#if STM32H5
+bool Flash::Erase(uint32_t start, uint32_t length) noexcept
+{
+	const uint32_t sector = GetSector(start);
+	const uint32_t numSectors = length/GetSectorLength();
+	return EraseSectors(sector, numSectors);
+}
+#endif
+
+bool Flash::EraseSectors(uint32_t sector, uint32_t numSectors) noexcept
 {
 	WatchdogReset();
 	FLASH_EraseInitTypeDef eraseInfo;
@@ -155,7 +157,7 @@ bool Flash::FlashEraseSector(const uint32_t sector) noexcept
 #else
 	eraseInfo.Sector = sector;
 #endif
-	eraseInfo.NbSectors = 1;
+	eraseInfo.NbSectors = numSectors;
 #if STM32H7
 	eraseInfo.VoltageRange = FLASH_VOLTAGE_RANGE_3;
 #endif
@@ -170,13 +172,13 @@ bool Flash::FlashEraseSector(const uint32_t sector) noexcept
 	return ret;
 }
 
-bool Flash::FlashWrite(const uint32_t addr, const uint8_t *data, const size_t len) noexcept
+bool Flash::Write(uint32_t addr, uint32_t length, const uint32_t *data) noexcept
 {
 	uint32_t *dst = (uint32_t *)addr;
-	uint32_t *src = (uint32_t *)data;
-	if (!IS_FLASH_ALIGNED(dst) || !IS_WORD_ALIGNED(src) || !IS_WORD_ALIGNED(len))
+	const uint32_t *src = data;
+	if (!IS_FLASH_ALIGNED(dst) || !IS_WORD_ALIGNED(src) || !IS_WORD_ALIGNED(length))
 	{
-		debugPrintf("FlashWrite alignment error dst %x, data %d len %d\n", (unsigned)dst, (unsigned)src, (int)len);
+		debugPrintf("FlashWrite alignment error dst %x, data %d len %d\n", (unsigned)dst, (unsigned)src, (int)length);
 		return false;
 	}
 	bool ret = true;
@@ -186,7 +188,7 @@ bool Flash::FlashWrite(const uint32_t addr, const uint8_t *data, const size_t le
 	HAL_FLASH_Unlock();
 	FlashClearError();
 	uint32_t cnt = 0;
-	while (cnt < len)
+	while (cnt < length)
 	{
 #if STM32H7
 		// We write 256 bits = 8 32bit words at a time
@@ -219,7 +221,7 @@ bool Flash::FlashWrite(const uint32_t addr, const uint8_t *data, const size_t le
 	return ret;
 }
 
-bool Flash::FlashRead(const uint32_t addr, uint8_t *data, const size_t len) noexcept
+bool Flash::Read(uint32_t addr, uint32_t length, uint8_t *data) noexcept
 {
 #if STM32H7 || STM32H5
 	// On the STM32H7 if the flash has not been correctly erased then simply reading
@@ -235,7 +237,7 @@ bool Flash::FlashRead(const uint32_t addr, uint8_t *data, const size_t len) noex
 	HAL_FLASH_Unlock();
 	FlashClearError();
 	// Do the actual read from flash
-	memcpy((void *)data, (void *)addr, len);
+	memcpy((void *)data, (const void *)addr, length);
 	// Clear any errors
 	FlashClearError();
 	HAL_FLASH_Lock();
