@@ -206,8 +206,13 @@ public:
 		void Clear() noexcept;
 	};
 
-	// Type of the callback function called when a transmi event with a nonzero message marker occurs
+#ifdef RTOS
+	// Type of the callback function called when a transmit event with a nonzero message marker occurs
 	typedef void (*TxEventCallbackFunction)(uint8_t marker, CanId id, uint16_t timeStamp) noexcept;
+
+	// Type of the callback function when a message is received into receive buffer 0
+	typedef void (*RxEventCallbackFunction)(uint16_t messageTimeStamp, uint16_t timeStampCounter) noexcept;
+#endif
 
 	// Initialise one of the CAN interfaces and return a pointer to the corresponding device. Returns null if device is already in use or device number is out of range.
 	// IMPORTANT: the CanDevice stores a copy of the p_config reference. The Config structure that is refers to must remain available and unchanged while the CanDevice is being used!
@@ -217,7 +222,14 @@ public:
 #else
 							unsigned int p_whichCan, unsigned int p_whichPort,
 #endif
-							const Config& p_config, uint32_t *_ecv_array memStart, const CanTiming& timing, TxEventCallbackFunction p_txCallback) noexcept;
+							const Config& p_config,
+							uint32_t *_ecv_array memStart,
+							const CanTiming& timing
+#ifdef RTOS
+							, TxEventCallbackFunction p_txCallback,
+							RxEventCallbackFunction p_rxCallback
+#endif
+						   ) noexcept;
 
 #if !RPXXXX
 	// Set the extended ID mask. May only be used while the interface is disabled. Only needed when using dedicated buffers.
@@ -286,14 +298,15 @@ public:
 #endif
 	}
 
-#if !SAME70 && !STM32 && !RPXXXX
+#if !EXTERNAL_CAN_TIMESTAMP_COUNTER
+	// Return the number of 48MHz clocks in one CAN bit at the arbitration phase data rate
 	uint16_t GetTimeStampPeriod() const noexcept
 	{
 		return bitPeriod;
 	}
 #endif
 
-#if !RPXXXX
+#if defined(RTOS) && !RPXXXX
 	void PollTxEventFifo(TxEventCallbackFunction p_txCallback) noexcept;
 #endif
 
@@ -365,8 +378,9 @@ private:
 
 	CanStats stats;												//!< Statistics gathered
 
-#if !RPXXXX	// we don't emulate the transmit event fifo on the RP2040
+#if defined(RTOS) && !RPXXXX	// we don't emulate the transmit event fifo on the RP2040
 	TxEventCallbackFunction txCallback;							// function that gets called by the ISR when a transmit event for a message with a nonzero marker occurs
+	RxEventCallbackFunction rxCallback;
 #endif
 
 # ifdef RTOS
@@ -380,7 +394,7 @@ private:
 	std::atomic<uint32_t> rxBuffersWaiting;						// which buffers tasks are waiting on
 # endif
 
-#if !SAME70 && !RPXXXX
+#if !EXTERNAL_CAN_TIMESTAMP_COUNTER
 	uint16_t bitPeriod;											// how many clocks in a CAN normal bit
 #endif
 

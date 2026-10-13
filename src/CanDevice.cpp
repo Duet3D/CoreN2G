@@ -9,8 +9,6 @@
 
 #if SUPPORT_CAN && !RP2040
 
-#define USE_TRANSCEIVER_COMPENSATION	(1)
-
 #include <Cache.h>
 #include <CanSettings.h>
 #include <CanMessageBuffer.h>
@@ -226,7 +224,11 @@ void CanDevice::CanStats::Clear() noexcept
 }
 
 // Initialise a CAN device and return a pointer to it
-/*static*/ CanDevice* CanDevice::Init(unsigned int p_whichCan, unsigned int p_whichPort, const Config& p_config, uint32_t *memStart, const CanTiming &timing, TxEventCallbackFunction p_txCallback) noexcept
+/*static*/ CanDevice* CanDevice::Init(unsigned int p_whichCan, unsigned int p_whichPort, const Config& p_config, uint32_t *memStart, const CanTiming &timing
+#if defined(RTOS)
+										, TxEventCallbackFunction p_txCallback, RxEventCallbackFunction p_rxCallback
+#endif
+									 ) noexcept
 {
 	if (   p_whichCan >= NumCanDevices									// device number out of range
 		|| p_whichPort >= 2												// CAN instance number out of range
@@ -258,7 +260,10 @@ void CanDevice::CanStats::Clear() noexcept
 	dev.whichPort = p_whichPort;
 	dev.hw = CanPorts[p_whichPort];
 	dev.config = &p_config;
+#ifdef RTOS
 	dev.txCallback = p_txCallback;
+	dev.rxCallback = p_rxCallback;
+#endif
 	devicesByPort[p_whichPort] = &dev;
 
 #if STM32H5
@@ -379,12 +384,8 @@ void CanDevice::DoHardwareInit() noexcept
 #endif
 	hw->REG(NBTP) = nbtp;
 	hw->REG(DBTP) = dbtp;
-#if USE_TRANSCEIVER_COMPENSATION
 	const uint32_t dTseg1 = ((dbtp & CAN_(DBTP_DTSEG1_Msk)) >> CAN_(DBTP_DTSEG1_Pos)) + 1;
 	hw->REG(TDCR) = CAN_Val(TDCR_TDCO, dTseg1) | CAN_Val(TDCR_TDCF, dTseg1);
-#else
-	hw->REG(TDCR) = 0;														// use just the measured transceiver delay
-#endif
 
 #if STM32H5
 	hw->REG(TXBC) = (0 << CAN_(TXBC_TFQM_Pos));								// configure transmit buffers: FIFO not queue
@@ -512,6 +513,8 @@ void CanDevice::Disable() noexcept
 	hw->REG(CCCR) |= CAN_(CCCR_CCE);
 }
 
+#if defined(RTOS)
+
 // Drain the Tx event fifo. Can use this instead of supplying a Tx event callback in Init() if we don't expect many events.
 void CanDevice::PollTxEventFifo(TxEventCallbackFunction p_txCallback) noexcept
 {
@@ -534,6 +537,8 @@ void CanDevice::PollTxEventFifo(TxEventCallbackFunction p_txCallback) noexcept
 		__DSB();														// probably not needed, but just in case
 	}
 }
+
+#endif
 
 uint32_t CanDevice::GetErrorRegister() const noexcept
 {
@@ -1126,12 +1131,8 @@ void CanDevice::ChangeLocalCanTiming(const CanTiming &timing) noexcept
 	UpdateLocalCanTiming(timing);						// set up nbtp and dbtp variables
 	hw->REG(NBTP) = nbtp;
 	hw->REG(DBTP) = dbtp;
-#if USE_TRANSCEIVER_COMPENSATION
 	const uint32_t dTseg1 = ((dbtp & CAN_(DBTP_DTSEG1_Msk)) >> CAN_(DBTP_DTSEG1_Pos)) + 1;
 	hw->REG(TDCR) = CAN_Val(TDCR_TDCO, dTseg1) | CAN_Val(TDCR_TDCF, dTseg1);
-#else
-	hw->REG(TDCR) = 0;														// use just the measured transceiver delay
-#endif
 	Enable();
 }
 
@@ -1164,7 +1165,7 @@ void CanDevice::UpdateLocalCanTiming(const CanTiming &timing) noexcept
 
 	if (nJumpWidth > nTseg2) { nJumpWidth = nTseg2; }	// jump width cannot exceed tseg2
 
-#if !SAME70
+#if !EXTERNAL_CAN_TIMESTAMP_COUNTER
 	bitPeriod = nPeriod * nPrescaler;					// the actual CAN normal bit period in 48MHz clocks (may be different from timing.period)
 #endif
 
@@ -1206,10 +1207,7 @@ void CanDevice::UpdateLocalCanTiming(const CanTiming &timing) noexcept
 			 | ((dTseg2 - 1) << CAN_(DBTP_DTSEG2_Pos))
 			 | ((dJumpWidth - 1) << CAN_(DBTP_DSJW_Pos))
 			 | ((dPrescaler - 1) << CAN_(DBTP_DBRP_Pos))
-#if USE_TRANSCEIVER_COMPENSATION
-			 | CAN_(DBTP_TDC)
-#endif
-				;
+			 | CAN_(DBTP_TDC);
 		usingBrs = true;
 	}
 	else
@@ -1258,7 +1256,7 @@ void CanDevice::Interrupt() noexcept
 			TaskBase::GiveFromISR(rxTaskWaiting[rxFifo1WaitingIndex], NotifyIndices::CanDevice);
 		}
 
-#if !STM32H5
+#if !STM32H5			// STM32H5 has no dedicated receive buffers
 		// Test whether messages have been received into receive buffers
 		if (ir & CAN_(IR_DRX))
 		{
@@ -1267,6 +1265,17 @@ void CanDevice::Interrupt() noexcept
 			while ((newData = hw->REG(NDAT1) & rxBuffersWaiting) != 0)
 			{
 				const unsigned int rxBufferNumber = LowestSetBit(newData);
+# if !EXTERNAL_CAN_TIMESTAMP_COUNTER					// if not using an external timestamp counter
+				if (rxBufferNumber == 0 && rxCallback != nullptr)
+				{
+					// Using the can bit time counter as the timestamp counter is problematic when using bit rate switching.
+					// Calculating the receive delay is critical when we receive time stamp messages, which are the only messages we receive into buffer 0.
+					// Pass the message timestamp and the current value of the timestamp counter to the callback function to make this more accurate.
+					Cache::InvalidateAfterDMAReceive(rxBuffers, sizeof(CanRxBufferHeader));						// flush the header
+					AtomicCriticalSectionLocker lock;
+					rxCallback((uint16_t)((const CanRxBufferHeader*)rxBuffers)->R1.bit.RXTS, hw->TSCV.bit.TSC);
+				}
+# endif
 				rxBuffersWaiting &= ~((uint32_t)1 << rxBufferNumber);
 				const unsigned int waitingIndex = rxBufferNumber + (unsigned int)RxBufferNumber::buffer0;
 				if (waitingIndex < ARRAY_SIZE(rxTaskWaiting))
@@ -1286,7 +1295,7 @@ void CanDevice::Interrupt() noexcept
 			{
 				const unsigned int bufferNumber = LowestSetBit(transmitDone);
 				hw->REG(TXBTIE) &= ~((uint32_t)1 << bufferNumber);
-#if !STM32H5
+#if !STM32H5			// STM32H5 has no dedicated transmit buffers
 				if (bufferNumber < READBITS(hw, TXBC, NDTB))
 				{
 					// Completed transmission from a dedicated transmit buffer
