@@ -77,7 +77,9 @@ CONFIGS := \
 	SAME70_SDHC_USB \
 	RP2040_CAN_RTOS \
 	RP2040_RTOS \
-	STM32H5_CAN_RTOS \
+	STM32H5_CAN \
+	STM32H5_CAN_RTOS
+	STM32H7_CAN \
 	STM32H7_CAN_RTOS
 
 # Default target
@@ -110,7 +112,7 @@ help:
 # RP2040 configs are excluded from 'all' (they require the pico-sdk build); still buildable as explicit targets
 # STM32H7_CAN_RTOS is excluded too: src/STMCubeMX/Core holds the H523 CubeMX project, there is no H7 one yet
 .PHONY: all
-all: $(filter-out RP2040_CAN_RTOS RP2040_RTOS STM32H7_CAN_RTOS,$(CONFIGS))
+all: $(filter-out RP2040_CAN_RTOS RP2040_RTOS STM32H7_CAN STM32H7_CAN_RTOS,$(CONFIGS))
 
 # Include configuration-specific makefiles
 -include Makefiles/SAMC21_CAN.mk
@@ -129,7 +131,9 @@ all: $(filter-out RP2040_CAN_RTOS RP2040_RTOS STM32H7_CAN_RTOS,$(CONFIGS))
 -include Makefiles/SAME70_SDHC_USB.mk
 -include Makefiles/RP2040_CAN_RTOS.mk
 -include Makefiles/RP2040_RTOS.mk
+-include Makefiles/STM32H5_CAN.mk
 -include Makefiles/STM32H5_CAN_RTOS.mk
+-include Makefiles/STM32H7_CAN.mk
 -include Makefiles/STM32H7_CAN_RTOS.mk
 
 # Generic clean target
