@@ -1,0 +1,91 @@
+# CoreN2G STM32H7_CAN Configuration Makefile
+
+STM32H7_CAN_BUILD_DIR := STM32H7_CAN
+STM32H7_CAN_TARGET := $(STM32H7_CAN_BUILD_DIR)/libCoreN2G.a
+STM32H7_CAN_SRC_DIR := src
+
+
+# Compiler flags - C
+STM32H7_CAN_CFLAGS := -c -std=gnu99 \
+	-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard \
+	-fno-math-errno -mfp16-format=ieee \
+	-ffunction-sections -fdata-sections -nostdlib \
+	-Wall -Wundef -Wdouble-promotion -Werror=return-type -Werror=implicit \
+	-fsingle-precision-constant \
+	-Os \
+	$(DEBUG_FLAGS)
+
+# Compiler flags - C++
+STM32H7_CAN_CXXFLAGS := -c -std=c++20 \
+	-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard \
+	-fno-math-errno -mfp16-format=ieee \
+	-ffunction-sections -fdata-sections \
+	-fno-threadsafe-statics -fno-rtti -fno-exceptions -nostdlib \
+	-Wall -Wundef -Wdouble-promotion -Werror=return-type -Wsuggest-override \
+	-Werror -Wnoexcept -Wshadow -Wsign-promo \
+	-fsingle-precision-constant \
+	-fstack-usage \
+	-Os \
+	$(DEBUG_FLAGS)
+
+# Defines - C only
+STM32H7_CAN_C_DEFS := -DSTM32H743xx -Dnoexcept= -DSUPPORT_CAN=1 -DSUPPORT_SDHC=0 -DSUPPORT_USB=0
+
+# Defines - C++
+STM32H7_CAN_CXX_DEFS := -DSTM32H743xx -DSUPPORT_CAN=1 -DSUPPORT_SDHC=0 -DSUPPORT_USB=0
+
+# Include paths
+STM32H7_CAN_INCLUDES := \
+	-I$(STM32H7_CAN_SRC_DIR) \
+	-I$(STM32H7_CAN_SRC_DIR)/STMCubeMX/Drivers/STM32H7xx_HAL_Driver/Inc \
+	-I$(STM32H7_CAN_SRC_DIR)/STMCubeMX/Core/Inc \
+	-I$(STM32H7_CAN_SRC_DIR)/STMCubeMX/Drivers/CMSIS/Device/ST/STM32H7xx/Include \
+	-I$(STM32H7_CAN_SRC_DIR)/STMCubeMX/Drivers/CMSIS/Include \
+	-I$(STM32H7_CAN_SRC_DIR)/STM32 \
+	-I../RRFLibraries/src \
+	-I../CANlib/src
+
+# Source files
+STM32H7_CAN_EXCLUDE_DIRS := \
+	$(STM32H7_CAN_SRC_DIR)/RP2040 \
+	$(STM32H7_CAN_SRC_DIR)/SAM4S_4E_E70 \
+	$(STM32H7_CAN_SRC_DIR)/SAME5x_C21 \
+	$(STM32H7_CAN_SRC_DIR)/STMCubeMX/Core/Src \
+	$(STM32H7_CAN_SRC_DIR)/STMCubeMX/Drivers/STM32H5xx_HAL_Driver \
+	$(STM32H7_CAN_SRC_DIR)/STMCubeMX/Drivers/CMSIS/Device/ST/STM32H5xx \
+	$(STM32H7_CAN_SRC_DIR)/atmel \
+	$(STM32H7_CAN_SRC_DIR)/arm
+
+STM32H7_CAN_CSRC := $(filter-out $(addsuffix /%,$(STM32H7_CAN_EXCLUDE_DIRS)),$(call rwildcard,$(STM32H7_CAN_SRC_DIR),*.c))
+
+STM32H7_CAN_CPPSRC := $(filter-out $(addsuffix /%,$(STM32H7_CAN_EXCLUDE_DIRS)),$(call rwildcard,$(STM32H7_CAN_SRC_DIR),*.cpp))
+
+# Object files
+STM32H7_CAN_COBJ := $(patsubst $(STM32H7_CAN_SRC_DIR)/%.c,$(STM32H7_CAN_BUILD_DIR)/%.o,$(STM32H7_CAN_CSRC))
+STM32H7_CAN_CXXOBJ := $(patsubst $(STM32H7_CAN_SRC_DIR)/%.cpp,$(STM32H7_CAN_BUILD_DIR)/%.o,$(STM32H7_CAN_CPPSRC))
+STM32H7_CAN_OBJS := $(STM32H7_CAN_COBJ) $(STM32H7_CAN_CXXOBJ)
+
+# Dependency files
+STM32H7_CAN_DEPS := $(STM32H7_CAN_OBJS:.o=.d)
+
+# Build target
+$(STM32H7_CAN_TARGET): $(STM32H7_CAN_OBJS)
+	@mkdir -p $(dir $@)
+	$(AR) rcs $@ $^
+
+# Compilation rules
+$(STM32H7_CAN_BUILD_DIR)/%.o: $(STM32H7_CAN_SRC_DIR)/%.c
+	@mkdir -p $(dir $@)
+	$(Q)$(CC) $(STM32H7_CAN_CFLAGS) $(STM32H7_CAN_C_DEFS) $(STM32H7_CAN_INCLUDES) -MMD -MP -o $@ $<
+
+$(STM32H7_CAN_BUILD_DIR)/%.o: $(STM32H7_CAN_SRC_DIR)/%.cpp
+	@mkdir -p $(dir $@)
+	$(Q)$(CXX) $(STM32H7_CAN_CXXFLAGS) $(STM32H7_CAN_CXX_DEFS) $(STM32H7_CAN_INCLUDES) -MMD -MP -o $@ $<
+
+# Include dependencies
+-include $(STM32H7_CAN_DEPS)
+
+# Configuration target
+STM32H7_CAN: $(STM32H7_CAN_TARGET)
+
+.PHONY: STM32H7_CAN
