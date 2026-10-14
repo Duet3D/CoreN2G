@@ -20,7 +20,8 @@ const uint32_t SectorSize = 0x00020000;		// 128kb
 // This protection also means that the H7 does not seem to like writing to flash
 // lines that have already been written to. Because of the alignment of the
 // postmortum data this means that we need to use a new 512byte block for each write.
-extern "C" void debugPrintf(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
+
+//extern "C" void debugPrintf(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
 
 #if STM32H7
 // We write in 256 bit (32 byte) alignment!
@@ -102,7 +103,7 @@ uint32_t Flash::GetSector(uint32_t addr) noexcept
 {
 	if (!IS_FLASH_PROGRAM_ADDRESS(addr))
 	{
-		debugPrintf("Bad flash address %x\n", (unsigned)addr);
+//		debugPrintf("Bad flash address %x\n", (unsigned)addr);
 		return IAP_BAD_SECTOR;
 	}
 
@@ -168,7 +169,7 @@ bool Flash::EraseSectors(uint32_t sector, uint32_t numSectors) noexcept
 		ret = false;
 	}
 	HAL_FLASH_Lock();
-	if (!ret) { debugPrintf("Flash erase failed sector %d error %x\n", (int)sector, (unsigned)SectorError); }
+//	if (!ret) { debugPrintf("Flash erase failed sector %d error %x\n", (int)sector, (unsigned)SectorError); }
 	return ret;
 }
 
@@ -178,7 +179,7 @@ bool Flash::Write(uint32_t addr, uint32_t length, const uint32_t *data) noexcept
 	const uint32_t *src = data;
 	if (!IS_FLASH_ALIGNED(dst) || !IS_WORD_ALIGNED(src) || !IS_WORD_ALIGNED(length))
 	{
-		debugPrintf("FlashWrite alignment error dst %x, data %d len %d\n", (unsigned)dst, (unsigned)src, (int)length);
+//		debugPrintf("FlashWrite alignment error dst %x, data %d len %d\n", (unsigned)dst, (unsigned)src, (int)length);
 		return false;
 	}
 	bool ret = true;
@@ -216,7 +217,7 @@ bool Flash::Write(uint32_t addr, uint32_t length, const uint32_t *data) noexcept
 	}
 	HAL_FLASH_Lock();
 	if (cacheEnabled) { Cache::Enable(); }
-	if (!ret) { debugPrintf("Flash write failed cnt %d\n", (int)((int)dst - addr)); }
+//	if (!ret) { debugPrintf("Flash write failed cnt %d\n", (int)((int)dst - addr)); }
 
 	return ret;
 }
