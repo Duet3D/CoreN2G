@@ -142,7 +142,28 @@ bool Flash::EraseSectors(uint32_t sector, uint32_t numSectors) noexcept
 	uint32_t SectorError;
 	bool ret = true;
 	eraseInfo.TypeErase = FLASH_TYPEERASE_SECTORS;
-#if STM32H7
+#if STM32H5
+	// Sectors are numbered from zero within each bank, so a range that crosses the bank boundary takes one erase operation per bank
+	HAL_FLASH_Unlock();
+	FlashClearError();
+	while (numSectors != 0)
+	{
+		const uint32_t sectorInBank = sector % FLASH_SECTOR_NB;
+		const uint32_t sectorsLeftInBank = FLASH_SECTOR_NB - sectorInBank;
+		eraseInfo.Banks = (sector < FLASH_SECTOR_NB) ? FLASH_BANK_1 : FLASH_BANK_2;
+		eraseInfo.Sector = sectorInBank;
+		eraseInfo.NbSectors = (numSectors > sectorsLeftInBank) ? sectorsLeftInBank : numSectors;
+		if (HAL_FLASHEx_Erase(&eraseInfo, &SectorError) != HAL_OK)
+		{
+			ret = false;
+			break;
+		}
+		sector += eraseInfo.NbSectors;
+		numSectors -= eraseInfo.NbSectors;
+	}
+	HAL_FLASH_Lock();
+#else
+# if STM32H7
 	if (sector < FLASH_SECTOR_TOTAL)
 	{
 		eraseInfo.Banks = FLASH_BANK_1;
@@ -150,18 +171,18 @@ bool Flash::EraseSectors(uint32_t sector, uint32_t numSectors) noexcept
 	}
 	else
 	{
-# if STM32H743xx || STM32H742xx
+#  if STM32H743xx || STM32H742xx
 		eraseInfo.Banks = FLASH_BANK_2;
 		eraseInfo.Sector = sector - FLASH_SECTOR_TOTAL;
-# endif
+#  endif
 	}
-#else
+# else
 	eraseInfo.Sector = sector;
-#endif
+# endif
 	eraseInfo.NbSectors = numSectors;
-#if STM32H7
+# if STM32H7
 	eraseInfo.VoltageRange = FLASH_VOLTAGE_RANGE_3;
-#endif
+# endif
 	HAL_FLASH_Unlock();
 	FlashClearError();
 	if (HAL_FLASHEx_Erase(&eraseInfo, &SectorError) != HAL_OK)
@@ -169,6 +190,7 @@ bool Flash::EraseSectors(uint32_t sector, uint32_t numSectors) noexcept
 		ret = false;
 	}
 	HAL_FLASH_Lock();
+#endif
 //	if (!ret) { debugPrintf("Flash erase failed sector %d error %x\n", (int)sector, (unsigned)SectorError); }
 	return ret;
 }
