@@ -203,7 +203,7 @@ bool Flash::Write(uint32_t addr, uint32_t length, const uint32_t *data) noexcept
 		cnt += 32;
 #elif STM32H5
 		// We write 128 bits = 4 32-bit words at a time
-		if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_QUADWORD, (uint32_t) dst, (uint64_t) *src) != HAL_OK)
+		if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_QUADWORD, (uint32_t) dst, (uint32_t) src) != HAL_OK)
 		{
 			ret = false;
 			break;
