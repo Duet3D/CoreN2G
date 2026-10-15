@@ -442,8 +442,12 @@ void CanDevice::DoHardwareInit() noexcept
 	// Use external timestamp counter, which is TC0. So TC0 must be the step clock lower 16 bits on SAME70 boards.
 	hw->MCAN_TSCC = MCAN_TSCC_TSS_EXT_TIMESTAMP;							// select external timestamp counter
 #elif STM32
+# ifdef RTOS
 	// Use external timestamp counter, which is timer 3.
 	hw->TSCC = 0x02;														// select external timestamp counter
+# else
+	hw->TSCC = 0x00;														// select no timestamp counter
+# endif
 #else
 	hw->TSCC.reg = CAN_TSCC_TSS_INC | CAN_TSCC_TCP(0);						// run timestamp counter at CAN bit speed (prescaler = 1)
 #endif
@@ -455,14 +459,14 @@ void CanDevice::DoHardwareInit() noexcept
 
 	hw->REG(ILS) = 0;														// all interrupt sources assigned to interrupt line 0 for now
 	statusMask =          CAN_(IR_RF0N)  | CAN_(IR_RF1N)
-#if !STM32H5
+# if !STM32H5
 						| CAN_(IR_DRX)
-#endif
+# endif
 						| CAN_(IR_TC)  | CAN_(IR_BO)  | CAN_(IR_RF0L)  | CAN_(IR_RF1L)  | CAN_(IR_PED)  | CAN_(IR_PEA);
 	uint32_t intEnable =  CAN_(IE_RF0NE) | CAN_(IE_RF1NE)
-#if !STM32H5
+# if !STM32H5
 						| CAN_(IE_DRXE)
-#endif
+# endif
 						| CAN_(IE_TCE) | CAN_(IE_BOE) | CAN_(IE_RF0LE) | CAN_(IE_RF1LE) | CAN_(IE_PEDE) | CAN_(IE_PEAE);
 	if (txCallback != nullptr)
 	{
@@ -491,7 +495,9 @@ void CanDevice::DeInit() noexcept
 {
 	if (hw != nullptr)
 	{
+#ifdef RTOS
 		NVIC_DisableIRQ(IRQnsByPort[whichPort]);
+#endif
 		Disable();
 		devicesByPort[whichPort] = nullptr;									// free the port
 		hw = nullptr;														// free the device
