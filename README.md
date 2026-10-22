@@ -44,4 +44,20 @@ AppInit() should call CoreInit(). If the application uses analog input, it shoul
 
 The client project must also initialise the 1000Hz Systick interrupt. If the application uses FreeRTOS, this will be done by FreeRTOS; but you must provide function vApplicationTickHook which is called by FreeRTOS, and that must call CoreSysTick() which this project provides. If the application doesn't use FreeRTOS then it must set up Systick itself and provide the systick handler, which must call CoreSysTick().
 
+## RP2040 and the pico-sdk submodule
+
+The RP2040 build needs the pico-sdk submodule at src/RP2040/pico-sdk. It is large, so it is marked `update = none` in .gitmodules and `git submodule update --init --recursive` skips it. To fetch it, run:
+
+```bash
+git submodule update --init --checkout src/RP2040/pico-sdk
+```
+
+Repeat this command, keeping `--checkout`, whenever the pinned commit changes.
+
+To make your clone always update it like any other submodule, override the setting in your local git config:
+
+```bash
+git config submodule.src/RP2040/pico-sdk.update checkout
+```
+
 DC, 2020-07-27
