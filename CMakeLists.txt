@@ -3,6 +3,8 @@
 #
 #   DUET_MCU              SAME70, SAME5x, SAMC21 or STM32H5
 #   DUET_PART_DEFINE      the macro naming the MCU part, e.g. __SAME70Q20B__
+#   DUET_RTL_DUMPS        write each source's RTL (-fdump-rtl-expand), for call graph and
+#                         stack analysis; ccache cannot cache these compiles
 #   DUET_RTOS             build against Duet::FreeRTOS, which must already exist
 #   COREN2G_CAN           CAN support, using Duet::CANlib
 #   COREN2G_USB           USB support; with DUET_RTOS it uses Duet::LibTinyusb
@@ -220,6 +222,6 @@ target_compile_options(CoreN2G PRIVATE
     "$<$<COMPILE_LANGUAGE:C>:${_c_options}>"
     "$<$<COMPILE_LANGUAGE:CXX>:${_cxx_options}>"
     -fstack-usage
-    -fdump-rtl-expand
+    $<$<BOOL:${DUET_RTL_DUMPS}>:-fdump-rtl-expand>
     # __FILE__ relative to the library root, so the image does not depend on the checkout location
     -fmacro-prefix-map=${CMAKE_CURRENT_SOURCE_DIR}/=)
