@@ -883,7 +883,7 @@ void EnableSpiClock(unsigned int spiInstanceNumber) noexcept;
 
 /**
  * @brief ADC input identifiers, encoding both the ADC device and the ADC input number within the device.
- * On the SAMC21 we only support the first ADC and the SDADC. On the SAME5x, SAM4S and SAmE70 we support both ADCs.
+ * On the SAMC21 we only support the first ADC and the SDADC. On the SAME5x, SAM4S and SAME70 we support both ADCs.
  * SAM4S only has one ADC.
  */
 enum class AdcInput : uint8_t
@@ -959,7 +959,17 @@ constexpr AdcInput NO_ADC = AdcInput::none;		///< for backwards compatibility
  * @param ain The AdcInput value
  * @return The ADC number. If the input value was AdcInput::none then an out-of-range ADC number is returned.
  */
-static inline constexpr unsigned int GetDeviceNumber(AdcInput ain) noexcept { return (uint8_t)ain >> 4; }
+static inline constexpr unsigned int GetDeviceNumber(AdcInput ain) noexcept
+{
+#if STM32
+	const unsigned int devnum = (uint8_t)ain >> 5;
+	return (devnum >= 3 && devnum < 7)
+			? 0										// This input is on both ADCs. Currently we always choose ADC1 (device number 0)
+			: devnum;
+#else
+	return (uint8_t)ain >> 4;
+#endif
+}
 
 #endif
 
@@ -973,6 +983,8 @@ static inline constexpr unsigned int GetInputNumber(AdcInput ain) noexcept
 {
 #if RP2040
 	return (uint8_t)ain;
+#elif STM32
+	return (uint8_t)ain & 0x1F;
 #else
 	return (uint8_t)ain & 0x0F;
 #endif

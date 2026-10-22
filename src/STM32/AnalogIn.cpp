@@ -21,6 +21,7 @@
 #include <stm32h5xx_hal_rcc.h>
 
 #if STM32H5
+constexpr uint8_t TempSenseDevice = 0;				// temp sense is ADC1 (aka device 0) channel 16
 constexpr uint8_t TempSenseChannel = 16;			// temp sense is ADC1 channel 16
 #endif
 
@@ -52,7 +53,6 @@ public:
 	bool IsChannelEnabled(unsigned int chan) const noexcept;
 	bool StartConversion() noexcept;
 	uint16_t ReadChannel(unsigned int chan) const noexcept { return resultsByChannel[chan]; }
-	bool EnableTemperatureSensor(AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
 
 	void ExecuteCallbacks() noexcept;
 
@@ -153,16 +153,6 @@ bool AdcClass::SetCallback(unsigned int chan, AnalogInCallbackFunction fn, Callb
 bool AdcClass::IsChannelEnabled(unsigned int chan) const noexcept
 {
 	return (channelsEnabled & (1ul << chan)) != 0;
-}
-
-bool AdcClass::EnableTemperatureSensor(AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept
-{
-	if (numChannelsEnabled == MaxSequenceLength)
-	{
-		return false;
-	}
-
-	return InternalEnableChannel(TempSenseChannel, fn, param, p_ticksPerCall);
 }
 
 // Initialise or re-initialise the ADC. The ADC clock has already been enabled.
@@ -437,17 +427,11 @@ uint16_t AnalogIn::ReadChannel(AdcInput adcin) noexcept
 	return (deviceNumber < ARRAY_SIZE(adcs)) ? adcs[deviceNumber]->ReadChannel(GetInputNumber(adcin)) : 0;
 }
 
-// Enable an on-chip MCU temperature sensor
-// From the SAME5x-E5x errata document version K:
-// 2.23.1 Temperature Sensor
-// Both internal temperature sensors, TSENSP and TSENSC, are not supported and should not be used.
-// Workaround: None
-// Affected Silicon Revisions: A, D
+// Enable the on-chip MCU temperature sensor
 bool AnalogIn::EnableTemperatureSensor(AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall) noexcept
 {
 #if STM32H5
-	// On the STM32H5 the temperature sensor is on ADC1 (aka adcs[0]) channel 16
-	return adcs[0]->EnableTemperatureSensor(fn, param, ticksPerCall);
+	return adcs[TempSenseDevice]->EnableChannel(TempSenseChannel, fn, param, ticksPerCall);
 #else
 # error Unsupportewd MCU
 #endif
