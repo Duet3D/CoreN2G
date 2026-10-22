@@ -199,6 +199,17 @@ if(COREN2G_USB AND DUET_RTOS)
     target_link_libraries(CoreN2G PRIVATE Duet::LibTinyusb)
 endif()
 
+set(_cxx_options
+    -Werror=return-type
+    -fno-threadsafe-statics
+    -fno-rtti
+    -fno-exceptions
+    -Wsuggest-override
+    -Werror
+    -Wnoexcept
+    -Wshadow
+    -Wsign-promo)
+
 target_compile_options(CoreN2G PRIVATE
     $<$<CONFIG:Release>:${COREN2G_OPTIMISATION}>
     -fno-math-errno
@@ -206,8 +217,8 @@ target_compile_options(CoreN2G PRIVATE
     -Wall
     -Wundef
     -Wdouble-promotion
-    $<$<COMPILE_LANGUAGE:C>:${_c_options}>
-    $<$<COMPILE_LANGUAGE:CXX>:-Werror=return-type;-fno-threadsafe-statics;-fno-rtti;-fno-exceptions;-Wsuggest-override;-Werror;-Wnoexcept;-Wshadow;-Wsign-promo>
+    "$<$<COMPILE_LANGUAGE:C>:${_c_options}>"
+    "$<$<COMPILE_LANGUAGE:CXX>:${_cxx_options}>"
     -fstack-usage
     -fdump-rtl-expand
     # __FILE__ relative to the library root, so the image does not depend on the checkout location
