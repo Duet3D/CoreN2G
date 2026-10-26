@@ -350,6 +350,7 @@ void AnalogIn::TaskLoop(void *) noexcept
 		if (conversionStarted)
 		{
 			TaskBase::TakeIndexed(NotifyIndices::AnalogIn, 100);
+			delay(2);			//TEMPORARY! without this the AIN task blocks the MAIN task.
 		}
 		else
 		{
