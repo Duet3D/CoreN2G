@@ -311,12 +311,12 @@ bool AdcClass::ConversionDone() noexcept
 static AdcClass *adcs[2];
 
 // ADC ISRs
-void ADC1_IRQHandler() noexcept
+extern "C" void ADC1_IRQHandler() noexcept
 {
 	adcs[0]->ResultReadyInterrupt();
 }
 
-void ADC2_IRQHandler() noexcept
+extern "C" void ADC2_IRQHandler() noexcept
 {
 	adcs[1]->ResultReadyInterrupt();
 }

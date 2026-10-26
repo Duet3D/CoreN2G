@@ -65,8 +65,11 @@ bool Flash::IsErased(uint32_t addr, size_t len) noexcept
 	bool blank = true;
 	// Disable the exception normally generated when there is a flash CRC error, which occurs when reading flash that has been erased but not written
 	{
+		__HAL_RCC_SBS_CLK_ENABLE();								// enable SBS clock, otherwise the write doesn't do anything
 		AtomicCriticalSectionLocker lock;
 		SBS->ECCNMIR |= SBS_ECCNMIR_ECCNMI_MASK_EN;
+		__set_FAULTMASK(1);
+		SCB->CCR |= SCB_CCR_BFHFNMIGN_Msk;
 		__DSB();
 		__ISB();
 
@@ -79,7 +82,11 @@ bool Flash::IsErased(uint32_t addr, size_t len) noexcept
 			}
 		}
 		FlashClearError();
+		__set_FAULTMASK(0);
+		SCB->CCR &= ~SCB_CCR_BFHFNMIGN_Msk;
 		SBS->ECCNMIR &= ~SBS_ECCNMIR_ECCNMI_MASK_EN;
+		__DSB();
+		__ISB();
 	}
 
 #elif STM32H7
@@ -267,14 +274,21 @@ bool Flash::Read(uint32_t addr, uint32_t length, uint8_t *data) noexcept
 {
 #if STM32H5
 	// Disable the exception normally generated when there is a flash CRC error, which occurs when reading flash that has been erased but not written
+	__HAL_RCC_SBS_CLK_ENABLE();								// enable SBS clock, otherwise the write doesn't do anything
 	{
 		AtomicCriticalSectionLocker lock;
 		SBS->ECCNMIR |= SBS_ECCNMIR_ECCNMI_MASK_EN;
+		__set_FAULTMASK(1);
+		SCB->CCR |= SCB_CCR_BFHFNMIGN_Msk;
 		__DSB();
 		__ISB();
 		memcpy(data, reinterpret_cast<const void *>(addr), length);
 		FlashClearError();
+		__set_FAULTMASK(0);
+		SCB->CCR &= ~SCB_CCR_BFHFNMIGN_Msk;
 		SBS->ECCNMIR &= ~SBS_ECCNMIR_ECCNMI_MASK_EN;
+		__DSB();
+		__ISB();
 	}
 #elif STM32H7
 	// On the STM32H7 if the flash has not been correctly erased then simply reading
