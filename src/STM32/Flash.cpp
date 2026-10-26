@@ -61,7 +61,28 @@ void Flash::Deinit() noexcept { }
 
 bool Flash::IsErased(uint32_t addr, size_t len) noexcept
 {
-#if STM32H7 || STM32H5
+#if STM32H5
+	bool blank = true;
+	// Disable the exception normally generated when there is a flash CRC error, which occurs when reading flash that has been erased but not written
+	{
+		AtomicCriticalSectionLocker lock;
+		SBS->ECCNMIR |= SBS_ECCNMIR_ECCNMI_MASK_EN;
+		__DSB();
+		__ISB();
+
+		// Check that the sector really is erased
+		for (uint32_t p = addr; p < addr + len && blank; p += sizeof(uint32_t))
+		{
+			if (*reinterpret_cast<const uint32_t*>(p) != 0xFFFFFFFF)
+			{
+				blank = false; break;
+			}
+		}
+		FlashClearError();
+		SBS->ECCNMIR &= ~SBS_ECCNMIR_ECCNMI_MASK_EN;
+	}
+
+#elif STM32H7
 	// On the STM32H7 if the flash has not been correctly erased then simply reading
 	// it can cause a bus fault (due to multiple ECC errors). We avoid this by disabling
 	// the fault mechanism while checking the flash memory.
@@ -71,7 +92,6 @@ bool Flash::IsErased(uint32_t addr, size_t len) noexcept
 	SCB->CCR |= SCB_CCR_BFHFNMIGN_Msk;
 	__DSB();
 	__ISB();
-#endif
 	HAL_FLASH_Unlock();
 	FlashClearError();
 
@@ -81,14 +101,13 @@ bool Flash::IsErased(uint32_t addr, size_t len) noexcept
 	{
 		if (*reinterpret_cast<const uint32_t*>(p) != 0xFFFFFFFF)
 		{
-			blank = false;
+			blank = false; break;
 		}
 	}
 
 	FlashClearError();
 	HAL_FLASH_Lock();
 
-#if STM32H7 || STM32H5
 	// restore bus fault logic
 	__set_FAULTMASK(0);
 	SCB->CCR &= ~SCB_CCR_BFHFNMIGN_Msk;
@@ -246,7 +265,18 @@ bool Flash::Write(uint32_t addr, uint32_t length, const uint32_t *data) noexcept
 
 bool Flash::Read(uint32_t addr, uint32_t length, uint8_t *data) noexcept
 {
-#if STM32H7 || STM32H5
+#if STM32H5
+	// Disable the exception normally generated when there is a flash CRC error, which occurs when reading flash that has been erased but not written
+	{
+		AtomicCriticalSectionLocker lock;
+		SBS->ECCNMIR |= SBS_ECCNMIR_ECCNMI_MASK_EN;
+		__DSB();
+		__ISB();
+		memcpy(data, reinterpret_cast<const void *>(addr), length);
+		FlashClearError();
+		SBS->ECCNMIR &= ~SBS_ECCNMIR_ECCNMI_MASK_EN;
+	}
+#elif STM32H7
 	// On the STM32H7 if the flash has not been correctly erased then simply reading
 	// it can cause a bus fault (due to multiple ECC errors). We avoid this by disabling
 	// the fault mechanism while checking the flash memory.
@@ -256,7 +286,6 @@ bool Flash::Read(uint32_t addr, uint32_t length, uint8_t *data) noexcept
 	SCB->CCR |= SCB_CCR_BFHFNMIGN_Msk;
 	__DSB();
 	__ISB();
-#endif
 	HAL_FLASH_Unlock();
 	FlashClearError();
 	// Do the actual read from flash
@@ -264,7 +293,6 @@ bool Flash::Read(uint32_t addr, uint32_t length, uint8_t *data) noexcept
 	// Clear any errors
 	FlashClearError();
 	HAL_FLASH_Lock();
-#if STM32H7 || STM32H5
 	// restore bus fault logic
 	__set_FAULTMASK(0);
 	SCB->CCR &= ~SCB_CCR_BFHFNMIGN_Msk;
