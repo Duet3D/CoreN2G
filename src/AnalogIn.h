@@ -22,16 +22,18 @@ namespace AnalogIn
 #elif RP2040
 	constexpr unsigned int AdcBits = 12;
 #elif SAME70
-	static constexpr unsigned int AdcBits = 14;
-#else
-	static constexpr unsigned int AdcBits = 12;
+	constexpr unsigned int AdcBits = 14;
+#elif STM32H5
+	constexpr unsigned int AdcBits = 16;
+#elif SAM4E || SAM4S
+	constexpr unsigned int AdcBits = 12;
 #endif
 
 #ifdef RTOS
 	// Initialise the analog input subsystem. Call this just once.
-	// For the SAME5x we need 4 DMA channels. For the SAMC21 we need 1 DMA channel, or 2 if supporting the SDADC.
+	// For the SAME5x we no longer use DMA because of a chip bug that we were unable to work around. For the SAMC21 we need 1 DMA channel, or 2 if supporting the SDADC.
 	void Init(
-#if SAME5x || STM32
+#if SAME5x || STM32H5
 				NvicPriority interruptPriority
 #elif SAMC21
 				DmaChannel dmaChan,
@@ -43,7 +45,7 @@ namespace AnalogIn
 #endif
 			) noexcept;
 
-	// Shut down the analog system. making it safe to terminate the AnalogIn task
+	// Shut down the analog system, making it safe to terminate the AnalogIn task
 	void Exit() noexcept;
 
 	// Enable analog input on a pin.
@@ -73,6 +75,8 @@ namespace AnalogIn
 #if SAME5x
 	// Enable an on-chip MCU temperature sensor. We don't use this on the SAMC21 because that chip has a separate TSENS peripheral.
 	bool EnableTemperatureSensor(unsigned int sensorNumber, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall, unsigned int adcnum) noexcept;
+#elif STM32
+	bool EnableTemperatureSensor(AnalogInCallbackFunction fn, CallbackParameter param, uint32_t ticksPerCall) noexcept;
 #endif
 
 #if SAMC21 || RP2040
@@ -105,7 +109,7 @@ namespace LegacyAnalogIn
 	void AnalogInEnableChannel(AnalogChannelNumber channel, bool enable) noexcept;
 
 	// Return the number of bits provided by a call to AnalogInReadChannel
-	static constexpr unsigned int AdcBits = AnalogIn::AdcBits;
+	constexpr unsigned int AdcBits = AnalogIn::AdcBits;
 
 	// Read the most recent result from a channel
 	uint16_t AnalogInReadChannel(AnalogChannelNumber channel) noexcept;
