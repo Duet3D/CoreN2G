@@ -128,8 +128,7 @@ elseif(DUET_MCU STREQUAL "SAMC21")
         src/SAME5x_C21/SAMC21
         src/SAME5x_C21/SAMC21/Config)
     set(_consumer_includes src/SAME5x_C21)
-    # The SAMC21 HAL's C sources have functions that fall off the end
-    set(_c_options -Wno-error=return-type)
+    set(_c_options -Werror=return-type)
 elseif(DUET_MCU STREQUAL "STM32H5")
     set(_excludes
         RP2040 SAM4S_4E_E70 SAME5x_C21 STMCubeMX/Core/Src STMCubeMX/Drivers/STM32H7xx_HAL_Driver

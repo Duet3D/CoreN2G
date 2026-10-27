@@ -10,7 +10,7 @@ SAMC21_CAN_RTOS_CFLAGS := -c -std=gnu99 \
 	-mcpu=cortex-m0plus -mthumb \
 	-fno-math-errno -mfp16-format=ieee \
 	-ffunction-sections -fdata-sections -nostdlib \
-	-Wall -Wundef -Wdouble-promotion -Wno-error=return-type \
+	-Wall -Wundef -Wdouble-promotion -Werror=return-type \
 	-fsingle-precision-constant \
 	-O3 \
 	$(DEBUG_FLAGS)
