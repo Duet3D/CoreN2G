@@ -21,8 +21,6 @@ const uint32_t SectorSize = 0x00020000;		// 128kb
 // lines that have already been written to. Because of the alignment of the
 // postmortum data this means that we need to use a new 512byte block for each write.
 
-//extern "C" void debugPrintf(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
-
 #if STM32H7
 // We write in 256 bit (32 byte) alignment!
 # define IS_FLASH_ALIGNED(addr) (((uint32_t)(addr) & (32-1)) == 0)
@@ -227,11 +225,9 @@ bool Flash::Write(uint32_t addr, uint32_t length, const uint32_t *data) noexcept
 	const uint32_t *src = data;
 	if (!IS_FLASH_ALIGNED(dst) || !IS_WORD_ALIGNED(src) || !IS_WORD_ALIGNED(length))
 	{
-//		debugPrintf("FlashWrite alignment error dst %x, data %d len %d\n", (unsigned)dst, (unsigned)src, (int)length);
 		return false;
 	}
 	bool ret = true;
-	//debugPrintf("Write flash addr %x len %d\n", (unsigned)addr, (int)len);
 	WatchdogReset();
 	const bool cacheEnabled = Cache::Disable();
 	HAL_FLASH_Unlock();
@@ -265,8 +261,6 @@ bool Flash::Write(uint32_t addr, uint32_t length, const uint32_t *data) noexcept
 	}
 	HAL_FLASH_Lock();
 	if (cacheEnabled) { Cache::Enable(); }
-//	if (!ret) { debugPrintf("Flash write failed cnt %d\n", (int)((int)dst - addr)); }
-
 	return ret;
 }
 
