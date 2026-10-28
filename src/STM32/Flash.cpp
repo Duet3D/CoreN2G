@@ -26,7 +26,7 @@ const uint32_t SectorSize = 0x00020000;		// 128kb
 # define IS_FLASH_ALIGNED(addr) (((uint32_t)(addr) & (32-1)) == 0)
 #elif STM32H5
 // We write with 128 bit (16 byte) alignment
-# define IS_FLASH_PROGRAM_ADDRESS(addr) (((addr) >= FLASH_BASE) && ((addr) <= FLASH_BASE+FLASH_SIZE))
+# define IS_FLASH_PROGRAM_ADDRESS(addr) (((addr) >= FLASH_BASE) && ((addr) < FLASH_BASE + FLASH_SIZE_DEFAULT))
 # define IS_FLASH_ALIGNED(addr) (((uint32_t)(addr) & (16-1)) == 0)
 #else
 # error Unsupported processor
