@@ -881,6 +881,25 @@ void EnableSpiClock(unsigned int spiInstanceNumber) noexcept;
 
 #endif
 
+#if SAME70 || SAME5x || STM32		// the SAMC21 does not have an backup registers
+
+/**
+ * @brief Class to describe the reason we are resetting the MCU, which can be saved to make it available when we startup again.
+ * This value is stored in a register whose value survives a software reset.
+ */
+enum class ResettingReason : uint32_t
+{
+	powerup = 0,									// this is the state of the backup register after power up
+	user = 0x2d743f29,								// the reset was requested e.g. because M999 was used
+	updateBootloader = 0x47e05b71,					// bootloader update has been requested
+	fault = 0xa632f904								// an exception has occurred and stores reset data
+};
+
+ResettingReason GetSoftwareResettingReason() noexcept;
+void SetSoftwareResettingReason(ResettingReason reason) noexcept;
+
+#endif
+
 /**
  * @brief ADC input identifiers, encoding both the ADC device and the ADC input number within the device.
  * On the SAMC21 we only support the first ADC and the SDADC. On the SAME5x, SAM4S and SAME70 we support both ADCs.

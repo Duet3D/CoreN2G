@@ -786,20 +786,28 @@ void CoreInit() noexcept
 				| RCC_AHB2ENR_GPIOJEN
 #endif
 		;
-	(void)RCC->AHB2ENR;
 #endif
 
-#if SAME5x || SAMC21 || SAME70 || RPXXXX
+#if SAME5x || SAMC21 || SAME70 || STM32
 	DmacManager::Init();
 #endif
-#if SAME5x || SAMC21
+#if SAME5x || SAMC21 || STM32
 	InitialiseExints();
 #endif
-#if !RPXXXX
+#if SAME5x || SAMC21 || SAME70 || STM32
 	Serial::Init();
 #endif
 #if SAME5x || SAME70 || STM32
 	RandomInit();
+#endif
+
+	// Enable any clocks that we need in order to access the backup registers
+#if STM32
+	__HAL_RCC_RTC_CLK_ENABLE();
+#elif SAME70
+	pmc_enable_periph_clk(ID_RTC);
+#elif SAME5x
+	MCLK->APBAMASK.reg |= MCLK_APBAMASK_RTC;
 #endif
 }
 
@@ -875,6 +883,36 @@ void ResetProcessor() noexcept
 #endif
 	for (;;) { }
 }
+
+#if SAME70 || SAME5x || STM32		// the SAMC21 does not have an backup registers
+
+ResettingReason GetSoftwareResettingReason() noexcept
+{
+# if STM32H5
+	return (ResettingReason)TAMP->BKP0R;
+# elif SAME70
+	return (ResettingReason)GPBR->SYS_GPBR[0];
+# elif SAME5x
+	return (ResettingReason)RTC->MODE0.BKUP[0].reg;
+# else
+#  error Unsupported MCU
+# endif
+}
+
+void SetSoftwareResettingReason(ResettingReason reason) noexcept
+{
+# if STM32H5
+	TAMP->BKP0R = (uint32_t)reason;
+# elif SAME70
+	GPBR->SYS_GPBR[0] = (uint32_t)reason;
+# elif SAME5x
+	RTC->MODE0.BKUP[0].reg = (uint32_t)reason;
+# else
+#  error Unsupported MCU
+# endif
+}
+
+#endif
 
 #if SAME5x || SAMC21
 
