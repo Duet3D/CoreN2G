@@ -886,9 +886,23 @@ void ResetProcessor() noexcept
 
 #if SAME70 || SAME5x || STM32		// the SAMC21 does not have an backup registers
 
+# if STM32H5
+
+// The RTC and TAMP registers are unclocked and the backup domain is write protected after every system reset.
+// We do this on each access instead of in CoreInit because the bootloader update flag is read before CoreInit runs
+static void EnableBackupRegisterAccess() noexcept
+{
+	__HAL_RCC_RTC_CLK_ENABLE();
+	PWR->DBPCR |= PWR_DBPCR_DBP;
+	(void)PWR->DBPCR;							// let the write take effect before we access a backup register
+}
+
+# endif
+
 ResettingReason GetSoftwareResettingReason() noexcept
 {
 # if STM32H5
+	EnableBackupRegisterAccess();
 	return (ResettingReason)TAMP->BKP0R;
 # elif SAME70
 	return (ResettingReason)GPBR->SYS_GPBR[0];
@@ -902,6 +916,7 @@ ResettingReason GetSoftwareResettingReason() noexcept
 void SetSoftwareResettingReason(ResettingReason reason) noexcept
 {
 # if STM32H5
+	EnableBackupRegisterAccess();
 	TAMP->BKP0R = (uint32_t)reason;
 # elif SAME70
 	GPBR->SYS_GPBR[0] = (uint32_t)reason;
