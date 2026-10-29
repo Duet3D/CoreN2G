@@ -53,6 +53,7 @@ public:
 	bool IsChannelEnabled(unsigned int chan) const noexcept;
 	bool StartConversion() noexcept;
 	uint16_t ReadChannel(unsigned int chan) const noexcept { return resultsByChannel[chan]; }
+	State GetState() const noexcept { return state; }
 
 	void ExecuteCallbacks() noexcept;
 
@@ -165,7 +166,7 @@ void AdcClass::ReInit() noexcept
 	while (device->CR & ADC_CR_ADCAL) { }					// wait for calibration to complete
 
 	device->CFGR = ADC_CFGR_JQDIS;	//TODO enable DMA when we change this driver to use it
-	device->CFGR2 = (2 << ADC_CFGR2_OVSS_Pos) | (5 << ADC_CFGR2_OVSR_Pos);		// 64x oversampling, shift result right 2 to get 16-bit result
+	device->CFGR2 = (2u << ADC_CFGR2_OVSS_Pos) | (5u << ADC_CFGR2_OVSR_Pos) | ADC_CFGR2_ROVSE;	// 64x oversampling, shift result right 2 to get 16-bit result
 
 	SetupChannels(numChannelsEnabled);
 
@@ -206,6 +207,7 @@ bool AdcClass::InternalEnableChannel(unsigned int chan, AnalogInCallbackFunction
 		callbackParams[newChannelNumber] = param;
 		ticksPerCall[newChannelNumber] = p_ticksPerCall;
 		ticksAtLastCall[newChannelNumber] = millis();
+		channelNumbers[newChannelNumber] = chan;
 
 		resultsByChannel[chan] = 0;
 		channelsEnabled |= 1ul << chan;
@@ -331,14 +333,17 @@ void AnalogIn::TaskLoop(void *) noexcept
 		bool conversionStarted = false;
 		for (AdcClass* adc : adcs)
 		{
-			if (adc->ConversionDone())
+			if (adc->GetState() != AdcClass::State::noChannels)
 			{
-				adc->ExecuteCallbacks();
-			}
+				if (adc->ConversionDone())
+				{
+					adc->ExecuteCallbacks();
+				}
 
-			if (adc->StartConversion())
-			{
-				conversionStarted = true;
+				if (adc->StartConversion())
+				{
+					conversionStarted = true;
+				}
 			}
 		}
 
