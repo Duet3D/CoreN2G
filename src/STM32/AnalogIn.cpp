@@ -167,6 +167,7 @@ void AdcClass::ReInit() noexcept
 
 	device->CFGR = ADC_CFGR_JQDIS;	//TODO enable DMA when we change this driver to use it
 	device->CFGR2 = (2u << ADC_CFGR2_OVSS_Pos) | (5u << ADC_CFGR2_OVSR_Pos) | ADC_CFGR2_ROVSE;	// 64x oversampling, shift result right 2 to get 16-bit result
+	device->OR = ADC_OR_OP0;								// channel 0 is not connected to its pin unless this bit is set, see the ADC_OR description in DS14540
 
 	SetupChannels(numChannelsEnabled);
 
