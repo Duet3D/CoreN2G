@@ -93,7 +93,7 @@ SAM4E_CFLAGS := -c -std=gnu99 \
 	-Wundef \
 	-Wdouble-promotion \
 	-fsingle-precision-constant \
-	-Os \
+	-O2 \
 	$(SAM4E_INCLUDES) \
 	$(SAM4E_C_DEFINES) \
 	$(DEBUG_FLAGS)
@@ -116,7 +116,7 @@ SAM4E_CXXFLAGS := -c -std=c++20 \
 	-Wdouble-promotion \
 	-fsingle-precision-constant \
 	-Werror -Wnoexcept -Wshadow -Wsign-promo \
-	-Os \
+	-O2 \
 	$(SAM4E_INCLUDES) \
 	$(SAM4E_DEFINES) \
 	$(DEBUG_FLAGS)

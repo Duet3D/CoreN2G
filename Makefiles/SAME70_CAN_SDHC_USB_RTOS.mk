@@ -97,7 +97,7 @@ SAME70_CFLAGS := -c -std=gnu99 \
 	-fsingle-precision-constant \
 	-fstack-usage \
 	-fdump-rtl-expand \
-	-O3 \
+	-O2 \
 	-Wall \
 	$(SAME70_INCLUDES) \
 	$(SAME70_DEFINES) \
@@ -127,7 +127,7 @@ SAME70_CXXFLAGS := -c -std=c++20 \
 	-fsingle-precision-constant \
 	-fstack-usage \
 	-fdump-rtl-expand \
-	-O3 \
+	-O2 \
 	-Wall \
 	$(SAME70_INCLUDES) \
 	$(SAME70_DEFINES) \

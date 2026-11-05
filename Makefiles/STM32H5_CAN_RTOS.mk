@@ -12,7 +12,7 @@ STM32H5_CAN_RTOS_CFLAGS := -c -std=gnu99 \
 	-ffunction-sections -fdata-sections -nostdlib \
 	-Wall -Wundef -Wdouble-promotion -Werror=return-type -Werror=implicit \
 	-fsingle-precision-constant \
-	-O3 \
+	-O2 \
 	$(DEBUG_FLAGS)
 
 # Compiler flags - C++
@@ -25,7 +25,7 @@ STM32H5_CAN_RTOS_CXXFLAGS := -c -std=c++20 \
 	-Werror -Wnoexcept -Wshadow -Wsign-promo \
 	-fsingle-precision-constant \
 	-fstack-usage \
-	-O3 \
+	-O2 \
 	$(DEBUG_FLAGS)
 
 # Defines - C only

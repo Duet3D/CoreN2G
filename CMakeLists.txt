@@ -9,7 +9,6 @@
 #   COREN2G_CAN           CAN support, using Duet::CANlib
 #   COREN2G_USB           USB support; with DUET_RTOS it uses Duet::LibTinyusb
 #   COREN2G_SDHC          SD card (HSMCI/SDHC) support
-#   COREN2G_OPTIMISATION  Release optimisation for this library (default -O3)
 #
 # Target: Duet::CoreN2G. Needs Duet::RRFLibraries.
 #
@@ -26,9 +25,6 @@ project(CoreN2G LANGUAGES C CXX)
 option(COREN2G_CAN  "Build CoreN2G with CAN support"  OFF)
 option(COREN2G_USB  "Build CoreN2G with USB support"  OFF)
 option(COREN2G_SDHC "Build CoreN2G with SD card support" OFF)
-if(NOT DEFINED COREN2G_OPTIMISATION)
-    set(COREN2G_OPTIMISATION -O3)
-endif()
 
 # Per MCU:
 #   _excludes          source directories under src/ for other MCUs
@@ -212,7 +208,6 @@ set(_cxx_options
     -Wsign-promo)
 
 target_compile_options(CoreN2G PRIVATE
-    $<$<CONFIG:Release>:${COREN2G_OPTIMISATION}>
     -fno-math-errno
     -fsingle-precision-constant
     -Wall

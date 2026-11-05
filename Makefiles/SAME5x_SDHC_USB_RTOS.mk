@@ -12,7 +12,7 @@ SAME5x_SDHC_USB_RTOS_CFLAGS := -c -std=gnu99 \
 	-ffunction-sections -fdata-sections -nostdlib \
 	-Wall -Wundef -Wdouble-promotion -Werror=return-type -Werror=implicit \
 	-fsingle-precision-constant \
-	-O3 \
+	-O2 \
 	$(DEBUG_FLAGS)
 
 # Compiler flags - C++
@@ -24,7 +24,7 @@ SAME5x_SDHC_USB_RTOS_CXXFLAGS := -c -std=c++20 \
 	-Wall -Wundef -Wdouble-promotion -Werror=return-type -Wsuggest-override \
 	-Werror -Wnoexcept -Wshadow -Wsign-promo \
 	-fsingle-precision-constant \
-	-O3 \
+	-O2 \
 	$(DEBUG_FLAGS)
 
 # Defines - C only

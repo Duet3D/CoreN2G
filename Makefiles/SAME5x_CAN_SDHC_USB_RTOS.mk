@@ -73,7 +73,7 @@ SAME5X_CFLAGS := -c -std=gnu99 \
 	-Wall \
 	$(SAME5X_INCLUDES) \
 	$(SAME5X_C_DEFINES) \
-	-O3 \
+	-O2 \
 	$(DEBUG_FLAGS)
 
 # Compiler flags - C++
@@ -100,7 +100,7 @@ SAME5X_CXXFLAGS := -c -std=c++20 \
 	-fdump-rtl-expand \
 	-Wall \
 	$(SAME5X_INCLUDES) \
-	-O3 \
+	-O2 \
 	$(SAME5X_DEFINES) \
 	$(DEBUG_FLAGS)
 
