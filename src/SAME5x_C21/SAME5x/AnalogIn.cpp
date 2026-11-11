@@ -5,7 +5,7 @@
  *      Author: David
  */
 
-#ifdef RTOS
+#ifdef RTOS			// non-RTOS builds should use SimpleAnalogIn instead of this module
 
 #include <CoreIO.h>
 
@@ -53,6 +53,7 @@ public:
 
 	bool ConversionDone() noexcept;
 	bool EnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
+	void DisableChannel(unsigned int chan) noexcept;
 	bool SetCallback(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
 	bool IsChannelEnabled(unsigned int chan) const noexcept;
 	bool StartConversion() noexcept;
@@ -66,7 +67,6 @@ public:
 	void ResultReadyInterrupt() noexcept;
 
 private:
-	bool InternalEnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
 	size_t GetChannel(size_t slot) noexcept { return inputRegisters[slot].inputCtrl & 0x1F; }
 	void ReInit() noexcept;
 
@@ -126,17 +126,54 @@ void AdcClass::Exit() noexcept
 
 // Try to enable this ADC on the specified channel returning true if successful
 // Only single ended mode with gain x1 is supported
-// There is no check to avoid adding the same channel twice. If you do that it will be converted twice.
 bool AdcClass::EnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept
 {
-	if (numChannelsEnabled == MaxSequenceLength || chan >= NumAdcChannels)
+	// First check whether this channel is already in the sequence, if so just update the callback parameters
+	if (SetCallback(chan, fn, param, p_ticksPerCall))
 	{
-		return false;
+		return true;
 	}
 
-	return InternalEnableChannel(chan, fn, param, p_ticksPerCall);
+	if (chan < NumAdcChannels && numChannelsEnabled < MaxSequenceLength)
+	{
+		TaskCriticalSectionLocker lock;
+
+		// Set up the ADC
+		const size_t newChannelNumber = numChannelsEnabled;
+		callbackFunctions[newChannelNumber] = fn;
+		callbackParams[newChannelNumber] = param;
+		ticksPerCall[newChannelNumber] = p_ticksPerCall;
+		ticksAtLastCall[newChannelNumber] = millis();
+
+		// Set up the input registers
+		inputRegisters[newChannelNumber].inputCtrl = ADC_INPUTCTRL_MUXNEG_GND | (uint16_t)chan;
+		inputRegisters[newChannelNumber].avgCtrl = AvgCtrl;
+
+		resultsByChannel[chan] = 0;
+		channelsEnabled |= 1ul << chan;
+		numChannelsEnabled = newChannelNumber + 1;
+
+		if (newChannelNumber == 0)
+		{
+			// First channel is being enabled, so initialise the ADC
+			ReInit();
+		}
+
+		return true;
+	}
+
+	return false;
 }
 
+// Disable the specified channel.
+// To avoid changing the sequence, we leave the channel in the list of channels to be converted, but disable the callback.
+void AdcClass::DisableChannel(unsigned int chan) noexcept
+{
+	(void)SetCallback(chan, nullptr, CallbackParameter(nullptr), 1);
+}
+
+// Set the callback parameter for an ADC channel.
+// Return true if success, false if that channel is not in the conversion sequence.
 bool AdcClass::SetCallback(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept
 {
 	for (size_t i = 0; i < numChannelsEnabled; ++i)
@@ -162,12 +199,12 @@ bool AdcClass::IsChannelEnabled(unsigned int chan) const noexcept
 
 bool AdcClass::EnableTemperatureSensor(unsigned int sensorNumber, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept
 {
-	if (numChannelsEnabled == MaxSequenceLength || sensorNumber >= 2)
+	if (sensorNumber >= 2)
 	{
 		return false;
 	}
 
-	return InternalEnableChannel(sensorNumber + ADC_INPUTCTRL_MUXPOS_PTAT_Val, fn, param, p_ticksPerCall);
+	return EnableChannel(sensorNumber + ADC_INPUTCTRL_MUXPOS_PTAT_Val, fn, param, p_ticksPerCall);
 }
 
 // Initialise or re-initialise the ADC. The ADC clock has already been enabled.
@@ -237,39 +274,6 @@ void AdcClass::ReInit() noexcept
 
 	currentChannel = 0;
 	state = State::starting;
-}
-
-bool AdcClass::InternalEnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept
-{
-	if (chan < NumAdcChannels)
-	{
-		TaskCriticalSectionLocker lock;
-
-		// Set up the ADC
-		const size_t newChannelNumber = numChannelsEnabled;
-		callbackFunctions[newChannelNumber] = fn;
-		callbackParams[newChannelNumber] = param;
-		ticksPerCall[newChannelNumber] = p_ticksPerCall;
-		ticksAtLastCall[newChannelNumber] = millis();
-
-		// Set up the input registers
-		inputRegisters[newChannelNumber].inputCtrl = ADC_INPUTCTRL_MUXNEG_GND | (uint16_t)chan;
-		inputRegisters[newChannelNumber].avgCtrl = AvgCtrl;
-
-		resultsByChannel[chan] = 0;
-		channelsEnabled |= 1ul << chan;
-		numChannelsEnabled = newChannelNumber + 1;
-
-		if (newChannelNumber == 0)
-		{
-			// First channel is being enabled, so initialise the ADC
-			ReInit();
-		}
-
-		return true;
-	}
-
-	return false;
 }
 
 // If no conversion is already in progress and there are channels to convert, start a conversion and return true; else return false
@@ -480,7 +484,11 @@ bool AnalogIn::IsChannelEnabled(AdcInput adcin) noexcept
 // Disable a previously-enabled channel
 void AnalogIn::DisableChannel(AdcInput adcin) noexcept
 {
-	//TODO not implemented yet (do we need it?)
+	const unsigned int deviceNumber = GetDeviceNumber(adcin);
+	if (deviceNumber < ARRAY_SIZE(adcs))				// this test handles AdcInput::none as well as out-of-range ADC numbers
+	{
+		adcs[deviceNumber]->DisableChannel(GetInputNumber(adcin));
+	}
 }
 
 uint16_t AnalogIn::ReadChannel(AdcInput adcin) noexcept
