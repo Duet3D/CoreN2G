@@ -408,6 +408,11 @@ static void _flash_program(void *const hw, const uint32_t dst_addr, const uint8_
 		/* Wait until this module isn't busy */
 	}
 
+	// Interrupts must stay off across the page buffer fill and the write command, else an interrupt
+	// landing in the fill corrupts a word of the page, as on the SAME5x
+	const uint32_t primask = __get_PRIMASK();
+	__disable_irq();
+
 	hri_nvmctrl_write_CTRLA_reg(hw, NVMCTRL_CTRLA_CMD_PBC | NVMCTRL_CTRLA_CMDEX_KEY);
 
 	while (!hri_nvmctrl_get_interrupt_READY_bit(hw)) {
@@ -431,6 +436,8 @@ static void _flash_program(void *const hw, const uint32_t dst_addr, const uint8_
 
 	hri_nvmctrl_write_ADDR_reg(hw, dst_addr / 2);
 	hri_nvmctrl_write_CTRLA_reg(hw, nvmctrl_cmd | NVMCTRL_CTRLA_CMDEX_KEY);
+
+	__set_PRIMASK(primask);
 }
 
 /**
