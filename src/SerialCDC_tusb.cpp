@@ -160,7 +160,6 @@ size_t SerialCDC::write(const uint8_t *buf, size_t length) noexcept
 		return 0;
 	}
 
-	static uint64_t last_avail_time;
 	int written = 0;
 	if (tud_cdc_n_connected(interfaceIndex))
 	{
@@ -178,12 +177,12 @@ size_t SerialCDC::write(const uint8_t *buf, size_t length) noexcept
 				tud_cdc_n_write_flush(interfaceIndex);
 				i += n2;
 				written += n2;
-				last_avail_time = millis();
+				lastAvailTime = millis();
 			}
 			else
 			{
 				tud_cdc_n_write_flush(interfaceIndex);
-				if (!tud_cdc_n_connected(interfaceIndex) || (!tud_cdc_n_write_available(interfaceIndex) && millis() > last_avail_time + 1000 /* 1 second */))
+				if (!tud_cdc_n_connected(interfaceIndex) || (!tud_cdc_n_write_available(interfaceIndex) && millis() - lastAvailTime > 1000 /* 1 second */))
 				{
 					break;
 				}
@@ -193,7 +192,7 @@ size_t SerialCDC::write(const uint8_t *buf, size_t length) noexcept
 	else
 	{
 		// reset our timeout
-		last_avail_time = 0;
+		lastAvailTime = 0;
 	}
 	return written;
 }
@@ -349,6 +348,9 @@ void SerialCDC::EndDirectMode() noexcept
 		usbd_edpt_clear_stall(0, epIn);
 	}
 	usbd_edpt_release(0, epIn);
+
+	// A direct transfer that completed after its timeout was handed to the CDC stream, so discard what the stream holds
+	tud_cdc_n_read_flush(interfaceIndex);
 
 	// Re-prepare the CDC stream's OUT endpoint for FIFO reads.
 	// tud_cdc_n_read triggers tu_edpt_stream_read_xfer which re-submits an OUT transfer

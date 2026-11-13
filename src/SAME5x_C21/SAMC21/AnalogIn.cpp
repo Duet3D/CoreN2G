@@ -424,6 +424,9 @@ bool SdAdcClass::StartConversion() noexcept
 	}
 
 	taskToWake = TaskBase::GetCallerTaskHandle();
+
+	DmacManager::DisableChannel(dmaChan);
+
 	(void)device->RESULT.reg;			// make sure no result pending
 	device->SEQCTRL.reg = channelsEnabled;
 

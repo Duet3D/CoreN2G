@@ -57,6 +57,7 @@ private:
 	bool running = false;
 	Pin vBusPin = NoPin;
 	size_t interfaceIndex;
+	uint32_t lastAvailTime = 0;				// when the blocking write last found space in the transmit buffer
 
 #ifdef RTOS
 	volatile TaskHandle directWaitingTask = nullptr;
