@@ -62,6 +62,7 @@ public:
 
 	bool ConversionDone() noexcept;
 	bool EnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
+	void DisableChannel(unsigned int chan) noexcept;
 	bool SetCallback(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
 	bool IsChannelEnabled(unsigned int chan) const noexcept;
 	uint16_t ReadChannel(unsigned int chan) const noexcept { return resultsByChannel[chan]; }
@@ -76,8 +77,8 @@ protected:
 
 	static void DmaCompleteCallback(CallbackParameter cp, DmaCallbackReason reason) noexcept;
 
-	static constexpr size_t NumAdcChannels = 12;		// number of channels per ADC
-	static constexpr size_t MaxSequenceLength = 12;		// the maximum length of the read sequence
+	static constexpr size_t NumAdcChannels = 12;					// number of channels per ADC
+	static constexpr size_t MaxSequenceLength = NumAdcChannels;		// the maximum length of the read sequence
 
 	volatile uint32_t channelsEnabled;
 	volatile TaskHandle taskToWake;
@@ -123,12 +124,19 @@ void AdcBase::Exit() noexcept
 // There is no check to avoid adding the same channel twice. If you do that it will be converted twice.
 bool AdcBase::EnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept
 {
-	if (numChannelsEnabled == MaxSequenceLength || chan >= NumAdcChannels)
+	if (chan >= NumAdcChannels)
 	{
 		return false;
 	}
 
 	return InternalEnableChannel(chan, fn, param, p_ticksPerCall);
+}
+
+// Disable the specified channel.
+// To avoid changing the sequence, we leave the channel in the list of channels to be converted, but disable the callback.
+void AdcBase::DisableChannel(unsigned int chan) noexcept
+{
+	(void)SetCallback(chan, nullptr, CallbackParameter(nullptr), 1);
 }
 
 bool AdcBase::SetCallback(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept
@@ -663,7 +671,11 @@ bool AnalogIn::IsChannelEnabled(AdcInput adcin) noexcept
 // Disable a previously-enabled channel
 void AnalogIn::DisableChannel(AdcInput adcin) noexcept
 {
-	//TODO not implemented yet (do we need it?)
+	const unsigned int deviceNumber = GetDeviceNumber(adcin);
+	if (deviceNumber < ARRAY_SIZE(adcs))				// this test handles AdcInput::none as well as out-of-range ADC numbers
+	{
+		adcs[deviceNumber]->DisableChannel(GetInputNumber(adcin));
+	}
 }
 
 uint16_t AnalogIn::ReadChannel(AdcInput adcin) noexcept

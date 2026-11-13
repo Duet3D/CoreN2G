@@ -49,6 +49,7 @@ public:
 
 	bool ConversionDone() noexcept;
 	bool EnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
+	void DisableChannel(unsigned int chan) noexcept;
 	bool SetCallback(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
 	bool IsChannelEnabled(unsigned int chan) const noexcept;
 	bool StartConversion() noexcept;
@@ -62,7 +63,6 @@ public:
 	void ResultReadyInterrupt() noexcept;
 
 private:
-	bool InternalEnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept;
 	size_t GetChannel(size_t slot) noexcept { return channelNumbers[slot]; }
 	void ReInit() noexcept;
 	void SetupChannels(size_t numChannels) noexcept;
@@ -125,12 +125,43 @@ void AdcClass::Exit() noexcept
 // There is no check to avoid adding the same channel twice. If you do that it will be converted twice.
 bool AdcClass::EnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept
 {
-	if (numChannelsEnabled == MaxSequenceLength || chan >= NumAdcChannels)
+	// First check whether this channel is already in the sequence, if so just update the callback parameters
+	if (SetCallback(chan, fn, param, p_ticksPerCall))
 	{
-		return false;
+		return true;
 	}
 
-	return InternalEnableChannel(chan, fn, param, p_ticksPerCall);
+	if (chan < NumAdcChannels && numChannelsEnabled < MaxSequenceLength)
+	{
+		TaskCriticalSectionLocker lock;
+
+		// Set up the ADC
+		const size_t newChannelNumber = numChannelsEnabled;
+		callbackFunctions[newChannelNumber] = fn;
+		callbackParams[newChannelNumber] = param;
+		ticksPerCall[newChannelNumber] = p_ticksPerCall;
+		ticksAtLastCall[newChannelNumber] = millis();
+		channelNumbers[newChannelNumber] = chan;
+
+		resultsByChannel[chan] = 0;
+		channelsEnabled |= 1ul << chan;
+		numChannelsEnabled = newChannelNumber + 1;
+
+		if (newChannelNumber == 0)
+		{
+			ReInit();										// first channel is being enabled, so initialise the ADC
+		}
+		return true;
+	}
+
+	return false;
+}
+
+// Disable the specified channel.
+// To avoid changing the sequence, we leave the channel in the list of channels to be converted, but disable the callback.
+void AdcClass::DisableChannel(unsigned int chan) noexcept
+{
+	(void)SetCallback(chan, nullptr, CallbackParameter(nullptr), 1);
 }
 
 bool AdcClass::SetCallback(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept
@@ -194,34 +225,6 @@ void AdcClass::SetupChannels(size_t numChannels) noexcept
 					| (channelNumbers[12] << ADC_SQR3_SQ13_Pos) | ( (channelNumbers[13] << ADC_SQR3_SQ14_Pos));
 	device->SQR4 =  (channelNumbers[14] << ADC_SQR4_SQ15_Pos) | (channelNumbers[15] << ADC_SQR4_SQ16_Pos);
 	numChannelsConverting = numChannels;
-}
-
-bool AdcClass::InternalEnableChannel(unsigned int chan, AnalogInCallbackFunction fn, CallbackParameter param, uint32_t p_ticksPerCall) noexcept
-{
-	if (chan < NumAdcChannels)
-	{
-		TaskCriticalSectionLocker lock;
-
-		// Set up the ADC
-		const size_t newChannelNumber = numChannelsEnabled;
-		callbackFunctions[newChannelNumber] = fn;
-		callbackParams[newChannelNumber] = param;
-		ticksPerCall[newChannelNumber] = p_ticksPerCall;
-		ticksAtLastCall[newChannelNumber] = millis();
-		channelNumbers[newChannelNumber] = chan;
-
-		resultsByChannel[chan] = 0;
-		channelsEnabled |= 1ul << chan;
-		numChannelsEnabled = newChannelNumber + 1;
-
-		if (newChannelNumber == 0)
-		{
-			ReInit();										// first channel is being enabled, so initialise the ADC
-		}
-		return true;
-	}
-
-	return false;
 }
 
 // If no conversion is already in progress and there are channels to convert, start a conversion and return true; else return false
@@ -425,7 +428,11 @@ bool AnalogIn::IsChannelEnabled(AdcInput adcin) noexcept
 // Disable a previously-enabled channel
 void AnalogIn::DisableChannel(AdcInput adcin) noexcept
 {
-	//TODO not implemented yet (do we need it?)
+	const unsigned int deviceNumber = GetDeviceNumber(adcin);
+	if (deviceNumber < ARRAY_SIZE(adcs))				// this test handles AdcInput::none as well as out-of-range ADC numbers
+	{
+		adcs[deviceNumber]->DisableChannel(GetInputNumber(adcin));
+	}
 }
 
 uint16_t AnalogIn::ReadChannel(AdcInput adcin) noexcept
