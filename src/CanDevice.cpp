@@ -1140,7 +1140,7 @@ void CanDevice::GetLocalCanTiming(CanTiming &timing) const noexcept
 // Calculate and store the nbtp and dbtp values needed to achieve the requested timing, and write them to the hardware
 void CanDevice::ChangeLocalCanTiming(const CanTiming &timing) noexcept
 {
-	const bool enabled = (hw->REG(CCCR) & CAN_(CCCR_CCE)) != 0;
+	const bool enabled = (hw->REG(CCCR) & CAN_(CCCR_CCE)) == 0;
 	if (enabled) { Disable(); }
 	UpdateLocalCanTiming(timing);						// set up nbtp and dbtp variables
 	hw->REG(NBTP) = nbtp;
