@@ -1117,15 +1117,22 @@ void CanDevice::GetLocalCanTiming(CanTiming &timing) const noexcept
 	timing.nTseg1 = nTseg1 * nBrp - 1;
 	timing.nJumpWidth = nJw * nBrp;
 
-	const uint32_t localDbtp = hw->REG(DBTP);
-	const uint32_t dTseg1 = ((localDbtp & CAN_(DBTP_DTSEG1_Msk)) >> CAN_(DBTP_DTSEG1_Pos)) + 1;
-	const uint32_t dTseg2 = ((localDbtp & CAN_(DBTP_DTSEG2_Msk)) >> CAN_(DBTP_DTSEG2_Pos)) + 1;
-	const uint32_t dJw = ((localDbtp & CAN_(DBTP_DSJW_Msk)) >> CAN_(DBTP_DSJW_Pos)) + 1;
-	const uint32_t dBrp = ((localDbtp & CAN_(DBTP_DBRP_Msk)) >> CAN_(DBTP_DBRP_Pos)) + 1;
-	const uint32_t dPeriod = (dTseg1 + dTseg2 + 1) * dBrp;
-	timing.dataRateMultiplier = timing.period/dPeriod - 1;
-	timing.dTseg1 = dTseg1 * dBrp - 1;
-	timing.dJumpWidth = dJw * dBrp;
+	if (usingBrs)
+	{
+		const uint32_t localDbtp = hw->REG(DBTP);
+		const uint32_t dTseg1 = ((localDbtp & CAN_(DBTP_DTSEG1_Msk)) >> CAN_(DBTP_DTSEG1_Pos)) + 1;
+		const uint32_t dTseg2 = ((localDbtp & CAN_(DBTP_DTSEG2_Msk)) >> CAN_(DBTP_DTSEG2_Pos)) + 1;
+		const uint32_t dJw = ((localDbtp & CAN_(DBTP_DSJW_Msk)) >> CAN_(DBTP_DSJW_Pos)) + 1;
+		const uint32_t dBrp = ((localDbtp & CAN_(DBTP_DBRP_Msk)) >> CAN_(DBTP_DBRP_Pos)) + 1;
+		const uint32_t dPeriod = (dTseg1 + dTseg2 + 1) * dBrp;
+		timing.dataRateMultiplier = timing.period/dPeriod - 1;
+		timing.dTseg1 = dTseg1 * dBrp - 1;
+		timing.dJumpWidth = dJw * dBrp;
+	}
+	else
+	{
+		timing.dataRateMultiplier = 0;
+	}
 	timing.spare1 = 0x0F;
 	timing.spare2 = 0xFF;
 }
@@ -1133,13 +1140,14 @@ void CanDevice::GetLocalCanTiming(CanTiming &timing) const noexcept
 // Calculate and store the nbtp and dbtp values needed to achieve the requested timing, and write them to the hardware
 void CanDevice::ChangeLocalCanTiming(const CanTiming &timing) noexcept
 {
-	Disable();
+	const bool enabled = (hw->REG(CCCR) & CAN_(CCCR_CCE)) == 0;
+	if (enabled) { Disable(); }
 	UpdateLocalCanTiming(timing);						// set up nbtp and dbtp variables
 	hw->REG(NBTP) = nbtp;
 	hw->REG(DBTP) = dbtp;
 	const uint32_t dTseg1 = ((dbtp & CAN_(DBTP_DTSEG1_Msk)) >> CAN_(DBTP_DTSEG1_Pos)) + 1;
 	hw->REG(TDCR) = CAN_Val(TDCR_TDCO, dTseg1) | CAN_Val(TDCR_TDCF, dTseg1);
-	Enable();
+	if (enabled) { Enable(); }
 }
 
 // Calculate and store the nbtp and dbtp values needed to achieve the requested timing, but don't write them to the hardware
