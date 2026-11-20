@@ -160,7 +160,6 @@ size_t SerialCDC::write(const uint8_t *buf, size_t length) noexcept
 		return 0;
 	}
 
-	static uint64_t last_avail_time;
 	int written = 0;
 	if (tud_cdc_n_connected(interfaceIndex))
 	{
@@ -178,12 +177,12 @@ size_t SerialCDC::write(const uint8_t *buf, size_t length) noexcept
 				tud_cdc_n_write_flush(interfaceIndex);
 				i += n2;
 				written += n2;
-				last_avail_time = millis();
+				lastAvailTime = millis();
 			}
 			else
 			{
 				tud_cdc_n_write_flush(interfaceIndex);
-				if (!tud_cdc_n_connected(interfaceIndex) || (!tud_cdc_n_write_available(interfaceIndex) && millis() > last_avail_time + 1000 /* 1 second */))
+				if (!tud_cdc_n_connected(interfaceIndex) || (!tud_cdc_n_write_available(interfaceIndex) && millis() - lastAvailTime > 1000 /* 1 second */))
 				{
 					break;
 				}
@@ -193,7 +192,7 @@ size_t SerialCDC::write(const uint8_t *buf, size_t length) noexcept
 	else
 	{
 		// reset our timeout
-		last_avail_time = 0;
+		lastAvailTime = 0;
 	}
 	return written;
 }
@@ -231,6 +230,8 @@ extern "C" void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
 		SerialCDC *dev = serialCDCInstances[itf];
 		if (dev != nullptr)
 		{
+			dev->NoteDisconnect();
+
 			// In direct mode, wake the blocked task so it can detect the disconnect immediately
 			if (dev->directMode && dev->directWaitingEp != 0)
 			{
@@ -350,6 +351,9 @@ void SerialCDC::EndDirectMode() noexcept
 	}
 	usbd_edpt_release(0, epIn);
 
+	// A direct transfer that completed after its timeout was handed to the CDC stream, so discard what the stream holds
+	tud_cdc_n_read_flush(interfaceIndex);
+
 	// Re-prepare the CDC stream's OUT endpoint for FIFO reads.
 	// tud_cdc_n_read triggers tu_edpt_stream_read_xfer which re-submits an OUT transfer
 	// so the CDC stream can receive data again.
@@ -399,6 +403,118 @@ size_t SerialCDC::readDirect(uint8_t *buffer, size_t maxLength, uint32_t timeout
 	return directXferredBytes;
 }
 
+size_t SerialCDC::GetMaxPacketSize() const noexcept
+{
+	return (tud_speed_get() == TUSB_SPEED_HIGH) ? 512 : 64;
+}
+
+// The CDC stream only starts an OUT transfer while its FIFO has room for a whole packet, and nothing but reading the FIFO
+// makes room. So when the caller is the only reader and finds the FIFO fuller than that, no transfer is in progress and
+// everything received so far is in the FIFO. Claiming the endpoint then keeps the stream from starting another one.
+bool SerialCDC::TakeReceiveEndpoint() noexcept
+{
+	if (!running || directMode || rxTaken || CFG_TUD_CDC_RX_BUFSIZE - tud_cdc_n_available(interfaceIndex) >= GetMaxPacketSize() || !usbd_edpt_claim(0, epOut))
+	{
+		return false;
+	}
+
+	rxPending = false;
+	rxDone = false;
+	rxTaken = true;
+	return true;
+}
+
+bool SerialCDC::StartDirectRead(uint8_t *buffer, size_t length) noexcept
+{
+	if (!rxTaken || rxPending)
+	{
+		return false;
+	}
+
+	rxDone = false;
+	rxBuffer = buffer;
+	rxPending = true;
+	if (!usbd_edpt_xfer(0, epOut, buffer, (uint16_t)length))
+	{
+		// A failed submit leaves the endpoint unclaimed, so hand it back to the stream and let the caller take it again later
+		rxPending = false;
+		ReturnReceiveEndpoint();
+		return false;
+	}
+	return true;
+}
+
+// TinyUSB does not report the progress of a transfer, so this reads it from the USB hardware where we know how.
+// On other processors it returns false and the caller has to treat the content of the read as unknown.
+// Both sources are read-only views that the device driver does not depend on.
+bool SerialCDC::GetDirectReadProgress(size_t& bytesReceived) const noexcept
+{
+	if (!rxPending)
+	{
+		return false;
+	}
+
+#if SAME5x
+	// The endpoint descriptor table counts the bytes of a multi-packet OUT transfer as its packets arrive
+	bytesReceived = reinterpret_cast<const UsbDeviceDescriptor *>(USB->DEVICE.DESCADD.reg)[epOut & 0x0F].DeviceDescBank[0].PCKSIZE.bit.BYTE_COUNT;
+	return true;
+#elif SAME70
+	// The DMA channel advances its address register as it stores data. The status register also has a count, but reading it clears flags
+	bytesReceived = USBHS->USBHS_DEVDMA[(epOut & 0x0F) - 1].USBHS_DEVDMAADDRESS - reinterpret_cast<uint32_t>(rxBuffer);
+	return true;
+#else
+	(void)bytesReceived;
+	return false;
+#endif
+}
+
+bool SerialCDC::IsDirectReadComplete(size_t& bytesRead) noexcept
+{
+	if (!rxDone)
+	{
+		return false;
+	}
+
+	bytesRead = rxBytes;
+	rxDone = false;
+	return true;
+}
+
+void SerialCDC::ReturnReceiveEndpoint() noexcept
+{
+	if (rxTaken && !rxPending)
+	{
+		rxTaken = false;				// must be cleared before the stream can start a transfer, or the hook would swallow its completion
+		usbd_edpt_release(0, epOut);
+		tud_cdc_n_read(interfaceIndex, nullptr, 0);	// reads nothing, but makes the stream start receiving again
+	}
+}
+
+// Runs in the USB task. The endpoint is claimed again at once, because completing a transfer releases it
+// and the stream could otherwise start one of its own, e.g. when the host drops DTR
+bool SerialCDC::DirectReadXferComplete(uint8_t ep_addr, uint32_t xferred_bytes) noexcept
+{
+	if (!rxTaken || ep_addr != epOut)
+	{
+		return false;
+	}
+
+	(void)usbd_edpt_claim(0, epOut);
+	rxBytes = xferred_bytes;
+	rxPending = false;
+	rxDone = true;
+	return true;
+}
+
+// Runs in the USB task after a bus reset and enumeration, which closed the endpoints and gave them back to the stream
+void SerialCDC::DeviceConfigured() noexcept
+{
+	rxTaken = false;
+	rxPending = false;
+	rxDone = false;
+	NoteDisconnect();
+}
+
 void SerialCDC::DirectXferComplete(uint32_t xferred_bytes) noexcept
 {
 	if (directMode)
@@ -422,8 +538,25 @@ extern "C" bool tud_cdc_xfer_cb(uint8_t itf, uint8_t ep_addr,
 			dev->DirectXferComplete(xferred_bytes);
 			return true;   // skip normal CDC FIFO processing
 		}
+		if (dev != nullptr && dev->DirectReadXferComplete(ep_addr, xferred_bytes))
+		{
+			return true;
+		}
 	}
 	return false;  // normal CDC processing
+}
+
+// Invoked when the host has configured the device, which follows every bus reset. A reset clears the CDC line state
+// without a call to tud_cdc_line_state_cb, so this is where a replugged cable or a restarted host shows up
+extern "C" void tud_mount_cb(void)
+{
+	for (SerialCDC *dev : serialCDCInstances)
+	{
+		if (dev != nullptr)
+		{
+			dev->DeviceConfigured();
+		}
+	}
 }
 
 #endif // RTOS

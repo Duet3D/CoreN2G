@@ -541,7 +541,10 @@ bool Flash::WriteUserSignature(const uint32_t *_ecv_array p_buffer) noexcept
 	/* Write page buffer.
 	* Writing 8-bit and 16-bit data is not allowed and may lead to unpredictable data corruption.
 	*/
+	// Interrupts must stay off across the page latch fill and the command, see Flash::Write
+	AtomicCriticalSectionLocker lock;
 	memcpyu32((uint32_t *_ecv_array)IFLASH_ADDR, p_buffer, IFLASH_PAGE_SIZE / sizeof(uint32_t));
+	__DSB();
 
 	/* Send the write signature command */
 	return (lastFlashError = efc_perform_command(EFC, EFC_FCMD_WUS, 0)) == (uint32_t)EFC_RC_OK;

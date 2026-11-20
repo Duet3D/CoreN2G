@@ -132,7 +132,8 @@ void SpiDevice::SetClockFrequencyAndMode(uint32_t freq, SpiMode mode
 											0;
 	while (hardware->SPI.SYNCBUSY.bit.CTRLB) { }
 
-	uint32_t regCtrlA = SERCOM_SPI_CTRLA_MODE(3) | SERCOM_SPI_CTRLA_DIPO(3) | SERCOM_SPI_CTRLA_DOPO(0) | SERCOM_SPI_CTRLA_FORM(0);
+	// Keep the pad assignment that the constructor set up for this board
+	uint32_t regCtrlA = SERCOM_SPI_CTRLA_MODE(3) | (hardware->SPI.CTRLA.reg & (SERCOM_SPI_CTRLA_DIPO_Msk | SERCOM_SPI_CTRLA_DOPO_Msk)) | SERCOM_SPI_CTRLA_FORM(0);
 	if (((uint8_t)mode & 2) != 0)
 	{
 		regCtrlA |= SERCOM_SPI_CTRLA_CPOL;
