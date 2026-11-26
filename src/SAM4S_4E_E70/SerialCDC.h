@@ -44,14 +44,12 @@ public:
 
 	// Callback functions called from the cdc layer - not for general use
 	void cdcSetConnected(bool b) noexcept;
-	void cdcSetDtr(bool b) noexcept;
 	void cdcRxNotify() noexcept;
 	void cdcTxEmptyNotify() noexcept;
 
 private:
 	size_t txBufsize;
-	bool isConnected;						// true when we are plugged in and enumerated
-	bool dtr;								// true when the host has the port open
+	bool isConnected;
 	Pin vBusPin;
 };
 

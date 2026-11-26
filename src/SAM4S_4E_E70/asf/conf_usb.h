@@ -148,7 +148,7 @@ void core_cdc_rx_notify(uint8_t port);
 void core_cdc_tx_empty_notify(uint8_t port);
 
 // This is called when the host ask to raise or lower DTR
-void core_cdc_set_dtr(uint8_t port, bool b_enable);
+inline void core_cdc_set_dtr(uint8_t port, bool b_enable) {}
 
 // This is called when the host ask to raise or lower RTS
 inline void core_cdc_set_rts(uint8_t port, bool b_enable) {}

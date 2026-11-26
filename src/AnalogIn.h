@@ -157,10 +157,7 @@ inline void AnalogInEnableChannel(AdcInput adcin, bool enable) noexcept
 #else
 	if (enable)
 	{
-		if (!AnalogIn::IsChannelEnabled(adcin))
-		{
-			AnalogIn::EnableChannel(adcin, nullptr, CallbackParameter(), 1000);
-		}
+		AnalogIn::EnableChannel(adcin, nullptr, CallbackParameter(), 1000);
 	}
 	else
 	{
