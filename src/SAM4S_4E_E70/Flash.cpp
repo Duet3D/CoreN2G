@@ -215,7 +215,7 @@ static void translate_address(Efc **_ecv_null pp_efc, uint32_t ul_addr, uint16_t
 	us_offset = (ul_addr - IFLASH0_ADDR) % IFLASH0_PAGE_SIZE;
 #else
 	Assert(ul_addr >= IFLASH_ADDR);
-	Assert(ul_addr <= (IFLASH_ADDR + IFLASH_SIZE));
+	Assert(ul_addr <= (IFLASH_ADDR + Flash::GetFlashSize()));
 
 	p_efc = EFC;
 	us_page = (ul_addr - IFLASH_ADDR) / IFLASH_PAGE_SIZE;
@@ -399,6 +399,16 @@ bool Flash::Write(uint32_t start, uint32_t length, const uint32_t *_ecv_array da
 uint32_t Flash::GetLockRegionSize() noexcept
 {
 	return IFLASH_LOCK_REGION_SIZE;
+}
+
+// Get the size of the flash memory. The same SAME70 binary runs on chips with 1 MiB and with 2 MiB of flash, so ask the chip
+uint32_t Flash::GetFlashSize() noexcept
+{
+#if SAME70
+	return ((CHIPID->CHIPID_CIDR & CHIPID_CIDR_NVPSIZ_Msk) == CHIPID_CIDR_NVPSIZ_2048K) ? 0x00200000 : IFLASH_SIZE;
+#else
+	return IFLASH_SIZE;
+#endif
 }
 
 /**

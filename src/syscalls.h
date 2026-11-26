@@ -9,6 +9,7 @@
  */
 
 #include <Core.h>
+#include <CoreIO.h>
 #include <cerrno>
 #include <new>
 
@@ -48,12 +49,16 @@ char *_ecv_array heapTop = (char *_ecv_array)&_end;
  */
 extern "C" void * _sbrk(ptrdiff_t incr) noexcept
 {
-	char *_ecv_array newHeap = heapTop + incr;
-	if (newHeap <= heapLimit)
 	{
-		void * const prev_heap = heapTop;
-		heapTop = newHeap;
-		return prev_heap;
+		// CoreAllocPermanent moves heapLimit down while we move heapTop up, so neither must be interrupted between its check and its update
+		AtomicCriticalSectionLocker lock;
+		char *_ecv_array const newHeap = heapTop + incr;
+		if (newHeap <= heapLimit)
+		{
+			void * const prev_heap = heapTop;
+			heapTop = newHeap;
+			return prev_heap;
+		}
 	}
 
 	OutOfMemoryHandler();
@@ -64,17 +69,21 @@ extern "C" void * _sbrk(ptrdiff_t incr) noexcept
 }
 
 /**
- * \brief Allocate memory permanently. In multi-threaded environments, take the malloc mutex before calling this.
+ * \brief Allocate memory permanently. This may be called from any task, also while the scheduler is suspended.
  */
 void *CoreAllocPermanent(size_t sz, std::align_val_t align) noexcept
 {
-	char *_ecv_array const newHeapLimit = reinterpret_cast<char *_ecv_array>(reinterpret_cast<uint32_t>(heapLimit - sz) & ~((uint32_t)align - 1));
-	if (newHeapLimit < heapTop)
 	{
-		OutOfMemoryHandler();
+		AtomicCriticalSectionLocker lock;
+		char *_ecv_array const newHeapLimit = reinterpret_cast<char *_ecv_array>(reinterpret_cast<uint32_t>(heapLimit - sz) & ~((uint32_t)align - 1));
+		if (newHeapLimit >= heapTop)
+		{
+			heapLimit = newHeapLimit;
+			return newHeapLimit;
+		}
 	}
-	heapLimit = newHeapLimit;
-	return newHeapLimit;
+
+	OutOfMemoryHandler();
 }
 
 /**
