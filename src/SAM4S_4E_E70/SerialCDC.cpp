@@ -23,7 +23,7 @@ void core_vbus_off(CallbackParameter) noexcept;
 
 // SerialCDC members
 
-SerialCDC::SerialCDC() noexcept : /* _cdc_tx_buffer(), */ txBufsize(1), isConnected(false), vBusPin(NoPin)
+SerialCDC::SerialCDC() noexcept : /* _cdc_tx_buffer(), */ txBufsize(1), isConnected(false), dtr(false), vBusPin(NoPin)
 {
 }
 
@@ -93,14 +93,25 @@ size_t SerialCDC::canWrite() noexcept
 	return (isConnected) ? udi_cdc_multi_get_free_tx_buffer(0) : 0;
 }
 
+// Return true if a host has the port open. Reading and writing depend only on being plugged in, so that data
+// received while DTR is low can still be read, which is also how the TinyUSB version of this class behaves
 bool SerialCDC::IsConnected() const noexcept
 {
-	return isConnected;
+	return isConnected && dtr;
 }
 
 void SerialCDC::cdcSetConnected(bool b) noexcept
 {
 	isConnected = b;
+	if (!b)
+	{
+		dtr = false;
+	}
+}
+
+void SerialCDC::cdcSetDtr(bool b) noexcept
+{
+	dtr = b;
 }
 
 void SerialCDC::cdcRxNotify() noexcept
@@ -136,6 +147,15 @@ extern "C" void core_cdc_disable(uint8_t port) noexcept
 	if (serialUSBDevice != nullptr)
 	{
 		serialUSBDevice->cdcSetConnected(false);
+	}
+}
+
+// This is called when the host raises or lowers DTR, which it does when it opens or closes the port
+extern "C" void core_cdc_set_dtr(uint8_t port, bool b_enable) noexcept
+{
+	if (serialUSBDevice != nullptr)
+	{
+		serialUSBDevice->cdcSetDtr(b_enable);
 	}
 }
 
